@@ -11,6 +11,7 @@ import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
+import 'cards_list_screen.dart';
 
 class CardBatchFormScreen extends ConsumerStatefulWidget {
   const CardBatchFormScreen({super.key});
@@ -70,6 +71,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     try {
       final r = await ref.read(cardsRepositoryProvider).generate(req);
       setState(() => _result = r);
+      ref.invalidate(batchesListProvider);
     } catch (e) {
       setState(() => _error = '$e');
     } finally {

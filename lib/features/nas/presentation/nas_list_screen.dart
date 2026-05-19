@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme/tokens.dart';
@@ -13,11 +14,44 @@ final nasListProvider = FutureProvider.autoDispose<List<NasDevice>>((ref) {
   return ref.watch(nasRepositoryProvider).list();
 });
 
-class NasListScreen extends ConsumerWidget {
+class NasListScreen extends ConsumerStatefulWidget {
   const NasListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NasListScreen> createState() => _NasListScreenState();
+}
+
+class _NasListScreenState extends ConsumerState<NasListScreen> {
+  final Set<int> _testing = {};
+
+  Future<void> _runTest(NasDevice d) async {
+    if (d.id == null || _testing.contains(d.id)) return;
+    setState(() => _testing.add(d.id!));
+    try {
+      final r = await ref.read(nasRepositoryProvider).test(d.id!);
+      ref.invalidate(nasListProvider);
+      if (!mounted) return;
+      final color = r.ok ? AppTokens.green : AppTokens.red;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: color,
+        content: Text(
+          r.ok
+              ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
+              : '${r.status}: ${r.message}',
+        ),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذّر الاختبار: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _testing.remove(d.id));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final async = ref.watch(nasListProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -32,7 +66,17 @@ class NasListScreen extends ConsumerWidget {
                   ),
             ),
             const Spacer(),
-            const SizedBox.shrink(),
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+              onPressed: () => ref.invalidate(nasListProvider),
+            ),
+            const SizedBox(width: AppTokens.s4),
+            ElevatedButton.icon(
+              onPressed: () => context.goNamed('nas-new'),
+              icon: const Icon(Icons.add),
+              label: const Text('جهاز جديد'),
+            ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
@@ -45,17 +89,28 @@ class NasListScreen extends ConsumerWidget {
             icon: Icons.error_outline,
             title: 'تعذّر جلب القائمة',
             subtitle: '$e',
+            action: OutlinedButton.icon(
+              onPressed: () => ref.invalidate(nasListProvider),
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+            ),
           ),
           data: (items) {
             if (items.isEmpty) {
-              return const EmptyState(
+              return EmptyState(
                 icon: Icons.router_outlined,
                 title: 'لا توجد أجهزة بعد',
+                subtitle: 'سجّل أول راوتر/AP للبدء بالعمليات.',
+                action: ElevatedButton.icon(
+                  onPressed: () => context.goNamed('nas-new'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('جهاز جديد'),
+                ),
               );
             }
             return AppCard(
               padding: EdgeInsets.zero,
-              child: _NasTable(items: items, ref: ref),
+              child: _NasTable(items: items, testing: _testing, onTest: _runTest),
             );
           },
         ),
@@ -65,9 +120,14 @@ class NasListScreen extends ConsumerWidget {
 }
 
 class _NasTable extends StatelessWidget {
-  const _NasTable({required this.items, required this.ref});
+  const _NasTable({
+    required this.items,
+    required this.testing,
+    required this.onTest,
+  });
   final List<NasDevice> items;
-  final WidgetRef ref;
+  final Set<int> testing;
+  final Future<void> Function(NasDevice) onTest;
 
   @override
   Widget build(BuildContext context) {
@@ -79,28 +139,41 @@ class _NasTable extends StatelessWidget {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (ctx, i) {
         final d = items[i];
-        final ok = d.lastCheckStatus == 'ok';
-        final fail = d.lastCheckStatus == 'fail' || d.lastCheckStatus == 'timeout';
-        final tone = ok
-            ? PillTone.green
-            : fail
-                ? PillTone.red
-                : PillTone.neutral;
+        final tone = switch (d.lastCheckStatus) {
+          'reachable' => PillTone.green,
+          'timeout' || 'unreachable' => PillTone.red,
+          '' => PillTone.neutral,
+          _ => PillTone.orange,
+        };
         return ListTile(
           leading: CircleAvatar(
             backgroundColor: AppTokens.cyan100,
-            child: const Icon(Icons.router, color: AppTokens.cyan500),
+            child: Icon(
+              d.enabled ? Icons.router : Icons.router_outlined,
+              color: AppTokens.cyan500,
+            ),
           ),
-          title: Text(
-            d.name.isEmpty ? d.ipAddress : d.name,
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  d.name.isEmpty ? d.address : d.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (!d.enabled)
+                const Padding(
+                  padding: EdgeInsets.only(left: 6),
+                  child: StatusPill(text: 'معطّل', tone: PillTone.neutral),
+                ),
+            ],
           ),
           subtitle: Text(
             [
-              d.ipAddress,
-              d.nasType,
+              d.address,
+              d.vendor,
               if (d.lastCheckAt != null) 'آخر فحص: ${df.format(d.lastCheckAt!)}',
-              if (d.lastCheckMs != null) '${d.lastCheckMs} ms',
             ].join(' • '),
             style: const TextStyle(color: AppTokens.textMuted),
           ),
@@ -108,36 +181,30 @@ class _NasTable extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               StatusPill(
-                text: d.lastCheckStatus ?? '—',
+                text: d.lastCheckStatus.isEmpty ? '—' : d.lastCheckStatus,
                 tone: tone,
               ),
-              const SizedBox(width: AppTokens.s8),
-              IconButton(
-                tooltip: 'اختبار الاتصال',
-                onPressed: () async {
-                  if (d.id == null) return;
-                  try {
-                    final r = await ref.read(nasRepositoryProvider).test(d.id!);
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                        content: Text(r.ok
-                            ? 'نجح الاتصال — ${r.ms ?? 0} ms'
-                            : 'فشل: ${r.message ?? r.status ?? "?"}'),
-                      ));
-                    }
-                    ref.invalidate(nasListProvider);
-                  } catch (e) {
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(content: Text('تعذّر الاختبار: $e')),
-                      );
-                    }
-                  }
-                },
-                icon: const Icon(Icons.network_check),
-              ),
+              const SizedBox(width: AppTokens.s4),
+              if (d.id != null && testing.contains(d.id))
+                const SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else
+                IconButton(
+                  tooltip: 'اختبار الاتصال',
+                  onPressed: () => onTest(d),
+                  icon: const Icon(Icons.network_check),
+                ),
             ],
           ),
+          onTap: d.id == null
+              ? null
+              : () => ctx.goNamed('nas-edit', pathParameters: {'id': '${d.id}'}),
         );
       },
     );

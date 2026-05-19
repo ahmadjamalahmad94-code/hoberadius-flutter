@@ -5,8 +5,23 @@ class CardBatch {
     this.planId,
     this.count = 0,
     this.generated = 0,
+    this.used = 0,
+    this.status = 'active',
     this.packageName = '',
+    this.serviceName = '',
     this.notes = '',
+    this.expireAt,
+    this.createdAt,
+    this.createdBy = '',
+    this.usernamePrefix = '',
+    this.usernameSuffix = '',
+    this.usernameLength = 8,
+    this.passwordLength = 6,
+    this.timeValue = 0,
+    this.timeUnit = 'days',
+    this.deviceCount = 1,
+    this.pricePerCard = 0,
+    this.totalPrice = 0,
   });
 
   final int? id;
@@ -14,18 +29,68 @@ class CardBatch {
   final int? planId;
   final int count;
   final int generated;
+  final int used;
+  final String status;
   final String packageName;
+  final String serviceName;
   final String notes;
+  final DateTime? expireAt;
+  final DateTime? createdAt;
+  final String createdBy;
+  final String usernamePrefix;
+  final String usernameSuffix;
+  final int usernameLength;
+  final int passwordLength;
+  final int timeValue;
+  final String timeUnit;
+  final int deviceCount;
+  final num pricePerCard;
+  final num totalPrice;
+
+  int get available => (count - used).clamp(0, count);
 
   factory CardBatch.fromJson(Map<String, dynamic> j) => CardBatch(
         id: j['id'] as int?,
         batchCode: (j['batch_code'] ?? '').toString(),
         planId: j['plan_id'] as int?,
-        count: (j['count'] ?? 0) is int ? j['count'] : int.tryParse('${j['count']}') ?? 0,
-        generated: (j['generated'] ?? 0) is int ? j['generated'] : 0,
+        count: _int(j['count']) ?? 0,
+        generated: _int(j['generated']) ?? 0,
+        used: _int(j['used']) ?? 0,
+        status: (j['status'] ?? 'active').toString(),
         packageName: (j['package_name'] ?? '').toString(),
+        serviceName: (j['service_name'] ?? '').toString(),
         notes: (j['notes'] ?? '').toString(),
+        expireAt: _parseDt(j['expire_at']),
+        createdAt: _parseDt(j['created_at']),
+        createdBy: (j['created_by'] ?? '').toString(),
+        usernamePrefix: (j['username_prefix'] ?? '').toString(),
+        usernameSuffix: (j['username_suffix'] ?? '').toString(),
+        usernameLength: _int(j['username_length']) ?? 8,
+        passwordLength: _int(j['password_length']) ?? 6,
+        timeValue: _int(j['time_value']) ?? 0,
+        timeUnit: (j['time_unit'] ?? 'days').toString(),
+        deviceCount: _int(j['device_count']) ?? 1,
+        pricePerCard: _num(j['price_per_card']) ?? 0,
+        totalPrice: _num(j['total_price']) ?? 0,
       );
+
+  static int? _int(Object? v) =>
+      v == null ? null : (v is int ? v : int.tryParse(v.toString()));
+
+  static num? _num(Object? v) {
+    if (v == null) return null;
+    if (v is num) return v;
+    return num.tryParse(v.toString());
+  }
+
+  static DateTime? _parseDt(Object? v) {
+    if (v == null) return null;
+    try {
+      return DateTime.parse(v.toString().replaceAll('Z', ''));
+    } catch (_) {
+      return null;
+    }
+  }
 }
 
 class CardItem {
@@ -38,6 +103,8 @@ class CardItem {
     this.used = false,
     this.revoked = false,
     this.expireAt,
+    this.firstUsedAt,
+    this.createdAt,
   });
 
   final int? id;
@@ -48,6 +115,8 @@ class CardItem {
   final bool used;
   final bool revoked;
   final DateTime? expireAt;
+  final DateTime? firstUsedAt;
+  final DateTime? createdAt;
 
   factory CardItem.fromJson(Map<String, dynamic> j) => CardItem(
         id: j['id'] as int?,
@@ -58,6 +127,8 @@ class CardItem {
         used: j['used'] == true || j['used'] == 1,
         revoked: j['revoked'] == true || j['revoked'] == 1,
         expireAt: _parseDt(j['expire_at']),
+        firstUsedAt: _parseDt(j['first_used_at']),
+        createdAt: _parseDt(j['created_at']),
       );
 
   static DateTime? _parseDt(Object? v) {

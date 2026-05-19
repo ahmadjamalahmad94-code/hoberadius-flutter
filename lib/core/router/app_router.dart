@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../features/admins/presentation/admins_list_screen.dart';
 import '../../features/admins/presentation/roles_list_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/cards/presentation/card_batch_detail_screen.dart';
 import '../../features/cards/presentation/card_batch_form_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
+import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
@@ -75,12 +77,33 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'card-batch-new',
                 builder: (ctx, st) => const CardBatchFormScreen(),
               ),
+              GoRoute(
+                path: 'batches/:id',
+                name: 'card-batch-detail',
+                builder: (ctx, st) => CardBatchDetailScreen(
+                  batchId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+                ),
+              ),
             ],
           ),
           GoRoute(
             path: '/nas',
             name: 'nas',
             builder: (ctx, st) => const NasListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'nas-new',
+                builder: (ctx, st) => const NasFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'nas-edit',
+                builder: (ctx, st) => NasFormScreen(
+                  nasId: int.tryParse(st.pathParameters['id'] ?? ''),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/plans',

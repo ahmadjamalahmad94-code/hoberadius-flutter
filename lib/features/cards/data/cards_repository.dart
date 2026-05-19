@@ -27,6 +27,41 @@ class CardsRepository {
     );
   }
 
+  Future<List<CardBatch>> listBatches({int limit = 100, int offset = 0}) async {
+    final res = await _api.get(
+      '/api/v1/cards/batches',
+      query: {'limit': limit, 'offset': offset},
+    );
+    final items = (res['data']?['items'] ?? const []) as List;
+    return items.whereType<Map<String, dynamic>>().map(CardBatch.fromJson).toList();
+  }
+
+  Future<CardBatch> getBatch(int batchId) async {
+    final res = await _api.get('/api/v1/cards/batches/$batchId');
+    final d = res['data'];
+    return CardBatch.fromJson(d is Map<String, dynamic> ? d : res);
+  }
+
+  Future<List<CardItem>> cardsOfBatch(
+    int batchId, {
+    bool? used,
+    bool? revoked,
+    int limit = 500,
+    int offset = 0,
+  }) async {
+    final res = await _api.get(
+      '/api/v1/cards/batches/$batchId/cards',
+      query: {
+        if (used != null) 'used': used,
+        if (revoked != null) 'revoked': revoked,
+        'limit': limit,
+        'offset': offset,
+      },
+    );
+    final items = (res['data']?['items'] ?? const []) as List;
+    return items.whereType<Map<String, dynamic>>().map(CardItem.fromJson).toList();
+  }
+
   Future<void> revoke(int cardId) =>
       _api.post('/api/v1/cards/$cardId/revoke');
 }
