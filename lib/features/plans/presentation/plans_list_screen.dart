@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -30,7 +31,17 @@ class PlansListScreen extends ConsumerWidget {
                   ),
             ),
             const Spacer(),
-            const SizedBox.shrink(),
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+              onPressed: () => ref.invalidate(plansListProvider),
+            ),
+            const SizedBox(width: AppTokens.s4),
+            ElevatedButton.icon(
+              onPressed: () => context.goNamed('plan-new'),
+              icon: const Icon(Icons.add),
+              label: const Text('باقة جديدة'),
+            ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
@@ -41,14 +52,25 @@ class PlansListScreen extends ConsumerWidget {
           ),
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
-            title: 'تعذّر جلب القائمة',
+            title: 'تعذّر جلب الباقات',
             subtitle: '$e',
+            action: OutlinedButton.icon(
+              onPressed: () => ref.invalidate(plansListProvider),
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+            ),
           ),
           data: (items) {
             if (items.isEmpty) {
-              return const EmptyState(
+              return EmptyState(
                 icon: Icons.workspace_premium_outlined,
                 title: 'لا توجد باقات بعد',
+                subtitle: 'ابدأ بإضافة أول باقة لتظهر هنا.',
+                action: ElevatedButton.icon(
+                  onPressed: () => context.goNamed('plan-new'),
+                  icon: const Icon(Icons.add),
+                  label: const Text('باقة جديدة'),
+                ),
               );
             }
             return GridView.builder(
@@ -58,7 +80,7 @@ class PlansListScreen extends ConsumerWidget {
                 maxCrossAxisExtent: 360,
                 mainAxisSpacing: AppTokens.s16,
                 crossAxisSpacing: AppTokens.s16,
-                childAspectRatio: 1.6,
+                childAspectRatio: 1.55,
               ),
               itemCount: items.length,
               itemBuilder: (ctx, i) => _PlanCard(plan: items[i]),
@@ -74,26 +96,53 @@ class _PlanCard extends StatelessWidget {
   const _PlanCard({required this.plan});
   final Plan plan;
 
-  String _planTypeLabel(String t) => switch (t) {
+  String _typeLabel(String t) => switch (t) {
         'time' => 'وقت',
         'quota' => 'حصة',
-        'mixed' => 'وقت وحصة',
+        'hybrid' => 'وقت وحصة',
         'unlimited' => 'غير محدود',
+        'recurring' => 'متجدّد',
         _ => t,
+      };
+
+  Color _typeTone(String t) => switch (t) {
+        'time' => AppTokens.cyan500,
+        'quota' => AppTokens.purple,
+        'hybrid' => AppTokens.navy700,
+        'unlimited' => AppTokens.green,
+        'recurring' => AppTokens.orange,
+        _ => AppTokens.cyan500,
       };
 
   @override
   Widget build(BuildContext context) {
+    final accent = _typeTone(plan.planType);
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTokens.s16),
-        child: Column(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTokens.r14),
+        onTap: plan.id == null
+            ? null
+            : () => context.goNamed(
+                  'plan-edit',
+                  pathParameters: {'id': '${plan.id}'},
+                ),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTokens.s16),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.workspace_premium_outlined,
-                      color: AppTokens.cyan500),
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(Icons.workspace_premium_outlined, color: accent, size: 18),
+                  ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: Text(
@@ -106,57 +155,75 @@ class _PlanCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  StatusPill(
-                    text: _planTypeLabel(plan.planType),
-                    tone: PillTone.cyan,
-                  ),
+                  if (!plan.enabled)
+                    const StatusPill(text: 'معطّل', tone: PillTone.red),
+                ],
+              ),
+              const SizedBox(height: AppTokens.s8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  StatusPill(text: _typeLabel(plan.planType), tone: PillTone.cyan),
+                  StatusPill(text: plan.serviceType, tone: PillTone.navy),
+                  if (plan.autoRenew)
+                    const StatusPill(text: 'متجدّد', tone: PillTone.purple),
                 ],
               ),
               const SizedBox(height: AppTokens.s12),
-              if (plan.downloadKbps != null || plan.uploadKbps != null)
+              if (plan.speedDownKbps > 0 || plan.speedUpKbps > 0)
                 Row(
                   children: [
-                    const Icon(Icons.speed, size: 16, color: AppTokens.textMuted),
+                    const Icon(Icons.speed, size: 14, color: AppTokens.textMuted),
                     const SizedBox(width: 6),
-                    Text(
-                      'تنزيل ${plan.downloadKbps ?? 0} • رفع ${plan.uploadKbps ?? 0} kbps',
-                      style: const TextStyle(color: AppTokens.textSecondary),
+                    Expanded(
+                      child: Text(
+                        'تنزيل ${plan.speedDownKbps} • رفع ${plan.speedUpKbps} kbps',
+                        style: const TextStyle(color: AppTokens.textSecondary, fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
-              if (plan.validityDays != null) ...[
-                const SizedBox(height: 6),
+              if (plan.validityDays > 0) ...[
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.timer_outlined,
-                        size: 16, color: AppTokens.textMuted),
+                    const Icon(Icons.timer_outlined, size: 14, color: AppTokens.textMuted),
                     const SizedBox(width: 6),
                     Text(
                       'صلاحية: ${plan.validityDays} يوم',
-                      style: const TextStyle(color: AppTokens.textSecondary),
+                      style: const TextStyle(color: AppTokens.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ],
+              if (plan.quotaTotalMb > 0) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.data_usage, size: 14, color: AppTokens.textMuted),
+                    const SizedBox(width: 6),
+                    Text(
+                      'حصة: ${plan.quotaTotalMb} MB',
+                      style: const TextStyle(color: AppTokens.textSecondary, fontSize: 13),
                     ),
                   ],
                 ),
               ],
               const Spacer(),
-              Row(
-                children: [
-                  if (plan.priceMonthly > 0)
-                    Text(
-                      '${plan.priceMonthly.toStringAsFixed(2)} / شهر',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.navy800,
-                      ),
-                    ),
-                  const Spacer(),
-                  if (plan.autoRenew)
-                    const StatusPill(text: 'متجدّد', tone: PillTone.purple),
-                ],
-              ),
+              if (plan.price > 0)
+                Text(
+                  '${plan.price.toStringAsFixed(2)} ${plan.currency}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppTokens.navy800,
+                  ),
+                ),
             ],
           ),
         ),
+      ),
     );
   }
 }

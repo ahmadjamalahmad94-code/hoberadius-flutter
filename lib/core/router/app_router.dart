@@ -10,6 +10,7 @@ import '../../features/cards/presentation/cards_list_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
+import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
@@ -85,6 +86,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/plans',
             name: 'plans',
             builder: (ctx, st) => const PlansListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'plan-new',
+                builder: (ctx, st) => const PlanFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'plan-edit',
+                builder: (ctx, st) => PlanFormScreen(
+                  planId: int.tryParse(st.pathParameters['id'] ?? ''),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/admins',

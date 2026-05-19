@@ -6,8 +6,14 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
+import '../../plans/data/plans_repository.dart';
+import '../../plans/domain/plan_model.dart';
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
+
+final _plansForPickerProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
+  return ref.watch(plansRepositoryProvider).list();
+});
 
 class SubscriberFormScreen extends ConsumerStatefulWidget {
   const SubscriberFormScreen({super.key, this.username});
@@ -428,11 +434,10 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                   ),
                 ),
                 FormFieldRow(
-                  label: 'معرّف الباقة',
-                  hint: 'plan_id من قائمة الباقات',
-                  child: TextFormField(
-                    controller: _c['plan_id'],
-                    keyboardType: TextInputType.number,
+                  label: 'الباقة',
+                  hint: 'اختر باقة من القائمة',
+                  child: _PlanPicker(
+                    controller: _c['plan_id']!,
                   ),
                 ),
                 FormFieldRow(
@@ -690,6 +695,98 @@ class _ExpirePicker extends StatelessWidget {
             icon: const Icon(Icons.clear),
           ),
       ],
+    );
+  }
+}
+
+/// Plan dropdown backed by /api/v1/profiles. Falls back to a plain numeric
+/// text field if the list cannot load — admins keep working offline-friendly
+/// instead of being blocked by a transient network error.
+class _PlanPicker extends ConsumerWidget {
+  const _PlanPicker({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(_plansForPickerProvider);
+    return async.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: LinearProgressIndicator(minHeight: 4),
+      ),
+      error: (e, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextFormField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'معرّف الباقة (يدوي)',
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  size: 14, color: AppTokens.orange),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'تعذّر جلب قائمة الباقات — أدخل المعرّف يدويًا',
+                  style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
+                ),
+              ),
+              TextButton(
+                onPressed: () => ref.invalidate(_plansForPickerProvider),
+                child: const Text('إعادة'),
+              ),
+            ],
+          ),
+        ],
+      ),
+      data: (plans) {
+        if (plans.isEmpty) {
+          return Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'لا توجد باقات بعد. أنشئ باقة من قسم الباقات.',
+                  style: TextStyle(color: AppTokens.textMuted),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => GoRouter.of(context).goNamed('plan-new'),
+                icon: const Icon(Icons.add),
+                label: const Text('إضافة'),
+              ),
+            ],
+          );
+        }
+        final current = int.tryParse(controller.text.trim());
+        final exists = plans.any((p) => p.id == current);
+        return DropdownButtonFormField<int?>(
+          initialValue: exists ? current : null,
+          isExpanded: true,
+          items: [
+            const DropdownMenuItem<int?>(
+              value: null,
+              child: Text('— بدون باقة —'),
+            ),
+            ...plans.map(
+              (p) => DropdownMenuItem<int?>(
+                value: p.id,
+                child: Text(
+                  '${p.name}${p.code.isNotEmpty ? "  •  ${p.code}" : ""}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+          onChanged: (v) {
+            controller.text = v?.toString() ?? '';
+          },
+        );
+      },
     );
   }
 }
