@@ -1,0 +1,44 @@
+name: hoberadius_app
+description: HobeRadius admin UI — Flutter client targeting Web, Android, iOS, Windows.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: '>=3.19.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # state + routing
+  flutter_riverpod: ^2.5.1
+  go_router: ^14.2.0
+
+  # networking
+  dio: ^5.4.3+1
+
+  # storage
+  shared_preferences: ^2.2.3
+  flutter_secure_storage: ^9.2.2
+
+  # ui
+  google_fonts: ^6.2.1
+  intl: ^0.20.2
+  fl_chart: ^0.68.0
+
+  # csv export
+  csv: ^6.0.0
+  file_saver: ^0.2.13
+
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
