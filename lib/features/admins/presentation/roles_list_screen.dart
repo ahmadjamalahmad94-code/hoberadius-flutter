@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/admins_repository.dart';
-import '../domain/admin_model.dart';
-
-final rolesListProvider = FutureProvider.autoDispose<List<Role>>((ref) {
-  return ref.watch(adminsRepositoryProvider).listRoles();
-});
 
 class RolesListScreen extends ConsumerWidget {
   const RolesListScreen({super.key});
@@ -31,7 +27,17 @@ class RolesListScreen extends ConsumerWidget {
                   ),
             ),
             const Spacer(),
-            const SizedBox.shrink(),
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+              onPressed: () => ref.invalidate(rolesListProvider),
+            ),
+            const SizedBox(width: AppTokens.s4),
+            ElevatedButton.icon(
+              onPressed: () => context.goNamed('role-new'),
+              icon: const Icon(Icons.add),
+              label: const Text('دور جديد'),
+            ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
@@ -44,6 +50,11 @@ class RolesListScreen extends ConsumerWidget {
             icon: Icons.error_outline,
             title: 'تعذّر جلب الأدوار',
             subtitle: '$e',
+            action: OutlinedButton.icon(
+              onPressed: () => ref.invalidate(rolesListProvider),
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+            ),
           ),
           data: (items) {
             if (items.isEmpty) {
@@ -62,44 +73,35 @@ class RolesListScreen extends ConsumerWidget {
                 itemBuilder: (ctx, i) {
                   final r = items[i];
                   return ListTile(
-                    leading: const CircleAvatar(
-                      backgroundColor: AppTokens.cyan100,
-                      child: Icon(Icons.shield, color: AppTokens.cyan500),
+                    leading: CircleAvatar(
+                      backgroundColor: _parseColor(r.color),
+                      child: const Icon(Icons.shield, color: Colors.white, size: 18),
                     ),
                     title: Row(
                       children: [
-                        Text(
-                          r.name,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        Expanded(
+                          child: Text(
+                            r.label,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
                         ),
-                        if (r.isSystem) ...[
-                          const SizedBox(width: AppTokens.s8),
+                        if (r.isSystem)
                           const StatusPill(text: 'نظام', tone: PillTone.purple),
-                        ],
                       ],
                     ),
                     subtitle: Text(
                       r.description.isEmpty
                           ? '${r.permissions.length} صلاحية'
-                          : r.description,
+                          : '${r.description} • ${r.permissions.length} صلاحية',
                       style: const TextStyle(color: AppTokens.textMuted),
                     ),
-                    trailing: r.isSystem
-                        ? const Tooltip(
-                            message: 'لا يمكن حذف الأدوار النظامية',
-                            child: Icon(Icons.lock_outline, color: AppTokens.textMuted),
-                          )
-                        : IconButton(
-                            tooltip: 'حذف',
-                            onPressed: () {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(
-                                  content: Text('endpoint DELETE role لم يُعرَض بعد على Flask.'),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.delete_outline, color: AppTokens.red),
-                          ),
+                    trailing: const Icon(Icons.chevron_left, color: AppTokens.textMuted),
+                    onTap: r.id == null
+                        ? null
+                        : () => ctx.goNamed(
+                              'role-edit',
+                              pathParameters: {'id': '${r.id}'},
+                            ),
                   );
                 },
               ),
@@ -108,5 +110,14 @@ class RolesListScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  static Color _parseColor(String hex) {
+    try {
+      final cleaned = hex.replaceAll('#', '');
+      return Color(int.parse('FF$cleaned', radix: 16));
+    } catch (_) {
+      return AppTokens.cyan500;
+    }
   }
 }

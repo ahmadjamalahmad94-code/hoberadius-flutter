@@ -16,10 +16,14 @@ class _MoreItem {
 const _items = <_MoreItem>[
   _MoreItem(Icons.workspace_premium_outlined, 'الباقات', 'plans',
       sub: 'عرض الباقات والأسعار'),
+  _MoreItem(Icons.signal_wifi_4_bar, 'الجلسات الحيّة', 'sessions',
+      sub: 'المتّصلون الآن + قطع'),
   _MoreItem(Icons.admin_panel_settings_outlined, 'المدراء', 'admins',
       sub: 'حسابات الإدارة'),
   _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles',
       sub: 'الصلاحيات'),
+  _MoreItem(Icons.history, 'سجل التدقيق', 'audit',
+      sub: 'الأحداث الإدارية'),
 ];
 
 class MoreScreen extends ConsumerWidget {

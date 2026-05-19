@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/admins/presentation/admin_form_screen.dart';
 import '../../features/admins/presentation/admins_list_screen.dart';
+import '../../features/admins/presentation/role_form_screen.dart';
 import '../../features/admins/presentation/roles_list_screen.dart';
+import '../../features/audit/presentation/audit_list_screen.dart';
+import '../../features/sessions/presentation/sessions_list_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/cards/presentation/card_batch_detail_screen.dart';
 import '../../features/cards/presentation/card_batch_form_screen.dart';
@@ -128,11 +132,49 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/admins',
             name: 'admins',
             builder: (ctx, st) => const AdminsListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'admin-new',
+                builder: (ctx, st) => const AdminFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'admin-edit',
+                builder: (ctx, st) => AdminFormScreen(
+                  adminId: int.tryParse(st.pathParameters['id'] ?? ''),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/roles',
             name: 'roles',
             builder: (ctx, st) => const RolesListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'role-new',
+                builder: (ctx, st) => const RoleFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'role-edit',
+                builder: (ctx, st) => RoleFormScreen(
+                  roleId: int.tryParse(st.pathParameters['id'] ?? ''),
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/sessions',
+            name: 'sessions',
+            builder: (ctx, st) => const SessionsListScreen(),
+          ),
+          GoRoute(
+            path: '/audit',
+            name: 'audit',
+            builder: (ctx, st) => const AuditListScreen(),
           ),
           GoRoute(
             path: '/more',
