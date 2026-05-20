@@ -191,7 +191,8 @@ class _BandwidthSchedulesScreenState
                   planNames: planNames,
                   batchNames: batchNames,
                   applying: _applying,
-                  onApply: _applySchedule,
+                  onApplyDryRun: (item) => _applySchedule(item),
+                  onApplyLive: (item) => _applySchedule(item, live: true),
                 ),
               ),
             ];
@@ -256,12 +257,15 @@ class _BandwidthSchedulesScreenState
     }
   }
 
-  Future<void> _applySchedule(BandwidthSchedule item) async {
+  Future<void> _applySchedule(
+    BandwidthSchedule item, {
+    bool live = false,
+  }) async {
     setState(() => _applying = true);
     try {
       final result = await ref
           .read(bandwidthSchedulesRepositoryProvider)
-          .applyDryRun(item.id);
+          .apply(item.id, live: live);
       ref.invalidate(bandwidthSchedulesProvider);
       if (!mounted) return;
       final msg = result.appliedToRadius
@@ -552,14 +556,16 @@ class _SchedulesList extends StatelessWidget {
     required this.planNames,
     required this.batchNames,
     required this.applying,
-    required this.onApply,
+    required this.onApplyDryRun,
+    required this.onApplyLive,
   });
 
   final List<BandwidthSchedule> items;
   final Map<int, String> planNames;
   final Map<int, String> batchNames;
   final bool applying;
-  final ValueChanged<BandwidthSchedule> onApply;
+  final ValueChanged<BandwidthSchedule> onApplyDryRun;
+  final ValueChanged<BandwidthSchedule> onApplyLive;
 
   @override
   Widget build(BuildContext context) {
@@ -582,7 +588,8 @@ class _SchedulesList extends StatelessWidget {
               item: item,
               targetName: _targetName(item, planNames, batchNames),
               applying: applying,
-              onApply: () => onApply(item),
+              onApplyDryRun: () => onApplyDryRun(item),
+              onApplyLive: () => onApplyLive(item),
             ),
             if (item != items.last) const Divider(height: AppTokens.s24),
           ],
@@ -612,13 +619,15 @@ class _ScheduleTile extends StatelessWidget {
     required this.item,
     required this.targetName,
     required this.applying,
-    required this.onApply,
+    required this.onApplyDryRun,
+    required this.onApplyLive,
   });
 
   final BandwidthSchedule item;
   final String targetName;
   final bool applying;
-  final VoidCallback onApply;
+  final VoidCallback onApplyDryRun;
+  final VoidCallback onApplyLive;
 
   @override
   Widget build(BuildContext context) {
@@ -668,10 +677,20 @@ class _ScheduleTile extends StatelessWidget {
         const SizedBox(height: AppTokens.s12),
         Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: OutlinedButton.icon(
-            onPressed: applying ? null : onApply,
-            icon: const Icon(Icons.science_outlined),
-            label: const Text('تجربة تطبيق'),
+          child: Wrap(
+            spacing: AppTokens.s8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: applying ? null : onApplyDryRun,
+                icon: const Icon(Icons.science_outlined),
+                label: const Text('تجربة تطبيق'),
+              ),
+              ElevatedButton.icon(
+                onPressed: applying ? null : onApplyLive,
+                icon: const Icon(Icons.network_check_outlined),
+                label: const Text('تطبيق فعلي'),
+              ),
+            ],
           ),
         ),
       ],

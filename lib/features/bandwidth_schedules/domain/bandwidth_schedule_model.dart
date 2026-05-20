@@ -63,18 +63,33 @@ class BandwidthSchedule {
 class BandwidthApplyResult {
   const BandwidthApplyResult({
     required this.appliedToRadius,
+    required this.dryRun,
+    required this.liveRequested,
+    required this.liveEnabled,
     required this.message,
     required this.schedule,
+    required this.rateLimit,
+    required this.targetCount,
+    required this.appliedCount,
   });
 
   final bool appliedToRadius;
+  final bool dryRun;
+  final bool liveRequested;
+  final bool liveEnabled;
   final String message;
   final BandwidthSchedule? schedule;
+  final String rateLimit;
+  final int targetCount;
+  final int appliedCount;
 
   factory BandwidthApplyResult.fromJson(Map<String, dynamic> json) {
     final log = json['log'];
     return BandwidthApplyResult(
       appliedToRadius: _asBool(json['applied_to_radius']),
+      dryRun: _asBool(json['dry_run']),
+      liveRequested: _asBool(json['live_requested']),
+      liveEnabled: _asBool(json['live_enabled']),
       message: log is Map
           ? (log['message'] ?? '').toString()
           : (json['message'] ?? '').toString(),
@@ -85,6 +100,44 @@ class BandwidthApplyResult {
                   (json['schedule'] as Map).map(
                     (key, value) => MapEntry(key.toString(), value),
                   ),
+                )
+              : null,
+      rateLimit: (json['rate_limit'] ?? '').toString(),
+      targetCount: _asInt(json['target_count']),
+      appliedCount: _asInt(json['applied_count']),
+    );
+  }
+}
+
+class EffectiveBandwidthRuleResult {
+  const EffectiveBandwidthRuleResult({
+    required this.hasRule,
+    required this.source,
+    required this.rateLimit,
+    required this.precedence,
+    this.rule,
+  });
+
+  final bool hasRule;
+  final String source;
+  final String rateLimit;
+  final List<String> precedence;
+  final BandwidthSchedule? rule;
+
+  factory EffectiveBandwidthRuleResult.fromJson(Map<String, dynamic> json) {
+    final rule = json['effective_rule'];
+    return EffectiveBandwidthRuleResult(
+      hasRule: _asBool(json['has_rule']),
+      source: (json['source'] ?? 'none').toString(),
+      rateLimit: (json['rate_limit'] ?? '').toString(),
+      precedence: (json['precedence'] as List? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      rule: rule is Map<String, dynamic>
+          ? BandwidthSchedule.fromJson(rule)
+          : rule is Map
+              ? BandwidthSchedule.fromJson(
+                  rule.map((key, value) => MapEntry(key.toString(), value)),
                 )
               : null,
     );

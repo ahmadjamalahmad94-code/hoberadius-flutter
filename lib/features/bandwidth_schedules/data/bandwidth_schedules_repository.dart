@@ -92,11 +92,42 @@ class BandwidthSchedulesRepository {
     );
   }
 
-  Future<BandwidthApplyResult> applyDryRun(int scheduleId) async {
-    final res =
-        await _api.post('/api/v1/bandwidth-schedules/$scheduleId/apply');
+  Future<BandwidthApplyResult> apply(
+    int scheduleId, {
+    bool live = false,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/bandwidth-schedules/$scheduleId/apply',
+      body: {'live': live},
+    );
     final data = res['data'];
     return BandwidthApplyResult.fromJson(
+      data is Map<String, dynamic>
+          ? data
+          : data is Map
+              ? data.map((key, value) => MapEntry(key.toString(), value))
+              : const {},
+    );
+  }
+
+  Future<BandwidthApplyResult> applyDryRun(int scheduleId) => apply(scheduleId);
+
+  Future<EffectiveBandwidthRuleResult> resolveEffective({
+    int? planId,
+    String subscriberUsername = '',
+    int? cardBatchId,
+  }) async {
+    final res = await _api.get(
+      '/api/v1/bandwidth-schedules/effective',
+      query: {
+        if (planId != null) 'plan_id': planId,
+        if (subscriberUsername.isNotEmpty)
+          'subscriber_username': subscriberUsername,
+        if (cardBatchId != null) 'card_batch_id': cardBatchId,
+      },
+    );
+    final data = res['data'];
+    return EffectiveBandwidthRuleResult.fromJson(
       data is Map<String, dynamic>
           ? data
           : data is Map
