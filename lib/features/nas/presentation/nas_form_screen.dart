@@ -172,7 +172,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
               ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
               : '${r.status}: ${r.message}',
         ),
-      ));
+      ),);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

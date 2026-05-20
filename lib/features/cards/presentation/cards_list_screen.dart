@@ -113,9 +113,9 @@ class _BatchesTable extends StatelessWidget {
             horizontal: AppTokens.s16,
             vertical: AppTokens.s12,
           ),
-          leading: CircleAvatar(
+          leading: const CircleAvatar(
             backgroundColor: AppTokens.cyan100,
-            child: const Icon(Icons.credit_card, color: AppTokens.cyan500),
+            child: Icon(Icons.credit_card, color: AppTokens.cyan500),
           ),
           title: Row(
             children: [

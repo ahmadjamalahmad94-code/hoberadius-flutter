@@ -135,7 +135,7 @@ class SessionsListScreen extends ConsumerWidget {
                     leading: const CircleAvatar(
                       backgroundColor: AppTokens.cyan100,
                       child: Icon(Icons.signal_wifi_4_bar,
-                          color: AppTokens.cyan500),
+                          color: AppTokens.cyan500,),
                     ),
                     title: Row(
                       children: [
@@ -183,7 +183,7 @@ class SessionsListScreen extends ConsumerWidget {
                     trailing: IconButton(
                       tooltip: 'قطع',
                       icon: const Icon(Icons.power_settings_new,
-                          color: AppTokens.red),
+                          color: AppTokens.red,),
                       onPressed: () => _disconnect(ctx, ref, s),
                     ),
                   );

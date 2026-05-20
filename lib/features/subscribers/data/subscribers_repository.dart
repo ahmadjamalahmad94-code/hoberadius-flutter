@@ -12,7 +12,7 @@ class SubscribersRepository {
       if (status != null) 'status': status,
       'limit': limit,
       'offset': offset,
-    });
+    },);
     final items = (res['data']?['items'] ?? res['items'] ?? []) as List;
     return items
         .whereType<Map<String, dynamic>>()

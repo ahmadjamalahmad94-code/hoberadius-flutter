@@ -130,7 +130,7 @@ class AuthController extends StateNotifier<AuthState> {
     } on ApiException catch (e) {
       state = AuthState(error: e.message);
     } catch (e) {
-      state = AuthState(error: 'تعذّر الاتصال بالخادم');
+      state = const AuthState(error: 'تعذّر الاتصال بالخادم');
     }
   }
 

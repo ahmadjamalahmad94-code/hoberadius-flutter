@@ -423,7 +423,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 FormFieldRow(
                   label: 'الحالة',
                   child: DropdownButtonFormField<String>(
-                    value: _status,
+                    initialValue: _status,
                     items: const [
                       DropdownMenuItem(value: 'enabled', child: Text('مفعّل')),
                       DropdownMenuItem(value: 'disabled', child: Text('معطّل')),
@@ -435,7 +435,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 FormFieldRow(
                   label: 'نوع المستخدم',
                   child: DropdownButtonFormField<String>(
-                    value: _userType,
+                    initialValue: _userType,
                     items: const [
                       DropdownMenuItem(value: 'subscriber', child: Text('مشترك')),
                       DropdownMenuItem(value: 'card', child: Text('كرت')),
@@ -473,7 +473,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 FormFieldRow(
                   label: 'الخدمة',
                   child: DropdownButtonFormField<String>(
-                    value: _mtService,
+                    initialValue: _mtService,
                     items: const [
                       DropdownMenuItem(value: 'pppoe', child: Text('PPPoE')),
                       DropdownMenuItem(value: 'hotspot', child: Text('Hotspot')),
@@ -621,7 +621,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 FormFieldRow(
                   label: 'نوع الاشتراك',
                   child: DropdownButtonFormField<String>(
-                    value: _subscriptionType,
+                    initialValue: _subscriptionType,
                     items: const [
                       DropdownMenuItem(value: 'fixed', child: Text('ثابت')),
                       DropdownMenuItem(value: 'rolling', child: Text('متجدّد')),
@@ -739,12 +739,12 @@ class _PlanPicker extends ConsumerWidget {
           Row(
             children: [
               const Icon(Icons.warning_amber_rounded,
-                  size: 14, color: AppTokens.orange),
+                  size: 14, color: AppTokens.orange,),
               const SizedBox(width: 4),
-              Expanded(
+              const Expanded(
                 child: Text(
                   'تعذّر جلب قائمة الباقات — أدخل المعرّف يدويًا',
-                  style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
+                  style: TextStyle(color: AppTokens.textMuted, fontSize: 12),
                 ),
               ),
               TextButton(
@@ -835,10 +835,10 @@ class _ActionMenu extends StatelessWidget {
           value: 'toggle',
           child: Row(children: [
             Icon(isDisabled ? Icons.check_circle_outline : Icons.block,
-                size: 18, color: isDisabled ? AppTokens.green : AppTokens.orange),
+                size: 18, color: isDisabled ? AppTokens.green : AppTokens.orange,),
             const SizedBox(width: 8),
             Text(isDisabled ? 'تفعيل' : 'تعطيل'),
-          ]),
+          ],),
         ),
         const PopupMenuItem(
           value: 'extend',
@@ -846,7 +846,7 @@ class _ActionMenu extends StatelessWidget {
             Icon(Icons.timer_outlined, size: 18, color: AppTokens.cyan500),
             SizedBox(width: 8),
             Text('تمديد الوقت'),
-          ]),
+          ],),
         ),
         const PopupMenuItem(
           value: 'reset',
@@ -854,7 +854,7 @@ class _ActionMenu extends StatelessWidget {
             Icon(Icons.password, size: 18, color: AppTokens.navy700),
             SizedBox(width: 8),
             Text('إعادة كلمة المرور'),
-          ]),
+          ],),
         ),
         const PopupMenuDivider(),
         const PopupMenuItem(
@@ -863,7 +863,7 @@ class _ActionMenu extends StatelessWidget {
             Icon(Icons.delete_outline, size: 18, color: AppTokens.red),
             SizedBox(width: 8),
             Text('حذف', style: TextStyle(color: AppTokens.red)),
-          ]),
+          ],),
         ),
       ],
     );

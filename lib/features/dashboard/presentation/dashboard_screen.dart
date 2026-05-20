@@ -172,7 +172,7 @@ class _MetricTile extends StatelessWidget {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: tone.withOpacity(0.12),
+                color: tone.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: tone, size: 22),
