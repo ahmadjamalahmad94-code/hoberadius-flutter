@@ -33,6 +33,7 @@ import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
+import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
 import '../../features/subscribers/presentation/subscribers_list_screen.dart';
@@ -244,6 +245,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/operational-reports',
             name: 'operational-reports',
             builder: (ctx, st) => const OperationalReportsScreen(),
+          ),
+          GoRoute(
+            path: '/saas-modules',
+            name: 'saas-modules',
+            builder: (ctx, st) => const SaasModulesScreen(),
           ),
           GoRoute(
             path: '/recycle-bin',

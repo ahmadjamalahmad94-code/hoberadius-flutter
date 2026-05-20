@@ -63,6 +63,12 @@ const _items = <_MoreItem>[
     sub: 'جلسات، محاولات فاشلة، MAC وأحداث المدراء',
   ),
   _MoreItem(
+    Icons.business_center_outlined,
+    'الوحدات التجارية',
+    'saas-modules',
+    sub: 'قسائم، فواتير، خدمات، مجموعات مشاركة، Pools وبروفايلات سرعة',
+  ),
+  _MoreItem(
     Icons.inventory_2_outlined,
     'سلة المحذوفات',
     'recycle-bin',
