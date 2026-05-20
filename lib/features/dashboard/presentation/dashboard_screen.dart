@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../data/dashboard_repository.dart';
 import '../domain/dashboard_model.dart';
 
-final dashboardFutureProvider = FutureProvider.autoDispose<DashboardMetrics>((ref) {
+final dashboardFutureProvider =
+    FutureProvider.autoDispose<DashboardMetrics>((ref) {
   return ref.watch(dashboardRepositoryProvider).fetch();
 });
 
@@ -20,16 +22,9 @@ class DashboardScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Text(
-              'لوحة التحكم',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
-                  ),
-            ),
-            const Spacer(),
+        PageHeader(
+          title: 'لوحة التحكم',
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               onPressed: () => ref.invalidate(dashboardFutureProvider),
@@ -66,7 +61,9 @@ class _DashboardBody extends StatelessWidget {
       children: [
         _MetricGrid(metrics: metrics),
         const SizedBox(height: AppTokens.s20),
-        if (metrics.cpuPct != null || metrics.ramPct != null || metrics.diskPct != null)
+        if (metrics.cpuPct != null ||
+            metrics.ramPct != null ||
+            metrics.diskPct != null)
           _SystemHealth(metrics: metrics),
         const SizedBox(height: AppTokens.s20),
         AppCard(
@@ -128,18 +125,16 @@ class _MetricGrid extends StatelessWidget {
       builder: (ctx, c) {
         final cols = c.maxWidth >= 1100
             ? 5
-            : c.maxWidth >= 800
+            : c.maxWidth >= 760
                 ? 3
-                : c.maxWidth >= 540
-                    ? 2
-                    : 1;
+                : 2;
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: cols,
-          mainAxisSpacing: AppTokens.s16,
-          crossAxisSpacing: AppTokens.s16,
-          childAspectRatio: 2.2,
+          mainAxisSpacing: AppTokens.s12,
+          crossAxisSpacing: AppTokens.s12,
+          childAspectRatio: c.maxWidth < 520 ? 1.45 : 2.2,
           children: tiles,
         );
       },
@@ -164,55 +159,76 @@ class _MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppTokens.s16),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: tone.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: tone, size: 22),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 180;
+          final iconBox = Container(
+            width: compact ? 36 : 44,
+            height: compact ? 36 : 44,
+            decoration: BoxDecoration(
+              color: tone.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(width: AppTokens.s12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: AppTokens.textMuted,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: AppTokens.navy900,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  if (sub != null)
-                    Text(
-                      sub!,
-                      style: const TextStyle(
-                        color: AppTokens.textMuted,
-                        fontSize: 11,
-                      ),
-                    ),
-                ],
+            child: Icon(icon, color: tone, size: compact ? 20 : 22),
+          );
+          final textBlock = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                maxLines: compact ? 2 : 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTokens.textMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTokens.navy900,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (sub != null)
+                Text(
+                  sub!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTokens.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
+            ],
+          );
+          return Padding(
+            padding: const EdgeInsets.all(AppTokens.s12),
+            child: compact
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      iconBox,
+                      const Spacer(),
+                      textBlock,
+                    ],
+                  )
+                : Row(
+                    children: [
+                      iconBox,
+                      const SizedBox(width: AppTokens.s12),
+                      Expanded(child: textBlock),
+                    ],
+                  ),
+          );
+        },
       ),
     );
   }
@@ -301,16 +317,54 @@ class _EventRow extends StatelessWidget {
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(
-              '${event.action} — ${event.targetType}',
+              '${_dashboardActionLabel(event.action)} — ${_dashboardTargetLabel(event.targetType)}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: AppTokens.textPrimary),
             ),
           ),
           Text(
-            event.actor,
+            _dashboardActorLabel(event.actor),
             style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
           ),
         ],
       ),
     );
   }
+}
+
+String _dashboardActionLabel(String value) {
+  final a = value.toLowerCase();
+  if (a.contains('payment')) return 'دفعة مالية';
+  if (a.contains('loan')) return 'سلفة';
+  if (a.contains('archive')) return 'أرشفة';
+  if (a.contains('restore')) return 'استعادة';
+  if (a.contains('disable')) return 'تعطيل';
+  if (a.contains('enable')) return 'تفعيل';
+  if (a.contains('delete')) return 'حذف';
+  if (a.contains('create')) return 'إنشاء';
+  if (a.contains('update')) return 'تعديل';
+  if (a.contains('disconnect')) return 'قطع جلسة';
+  return value.replaceAll('_', ' ');
+}
+
+String _dashboardTargetLabel(String value) {
+  final t = value.toLowerCase();
+  if (t.contains('subscriber') || t.contains('user')) return 'مستفيد';
+  if (t.contains('card_batch')) return 'حزمة بطاقات';
+  if (t.contains('card')) return 'بطاقة';
+  if (t.contains('plan') || t.contains('profile')) return 'باقة';
+  if (t.contains('nas')) return 'جهاز شبكة';
+  if (t.contains('admin')) return 'مدير';
+  if (t.contains('distributor')) return 'موزع';
+  return value.replaceAll('_', ' ');
+}
+
+String _dashboardActorLabel(String value) {
+  if (value.isEmpty) return '';
+  if (value.startsWith('api-token')) return 'رمز تكامل';
+  if (value.startsWith('actor:')) {
+    return value.replaceFirst('actor:', '').trim();
+  }
+  return value;
 }

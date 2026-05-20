@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
@@ -154,7 +155,7 @@ class CardsListScreen extends ConsumerWidget {
       );
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تنزيل ملف CSV للحزم المعروضة')),
+        const SnackBar(content: Text('تم تنزيل ملف الحزم المعروضة')),
       );
     } catch (e) {
       if (!context.mounted) return;
@@ -235,39 +236,20 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'مركز عمليات حزم البطاقات',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTokens.navy900,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'فلاتر، إحصائيات، أرشفة آمنة، وتصدير CSV من API الحقيقي.',
-                style: TextStyle(color: AppTokens.textMuted),
-              ),
-            ],
-          ),
-        ),
+    return PageHeader(
+      title: 'مركز عمليات حزم البطاقات',
+      subtitle: 'فلاتر، إحصائيات، أرشفة آمنة، وتصدير ملف من الخادم الحقيقي.',
+      actions: [
         IconButton(
           tooltip: 'تحديث',
           icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
           onPressed: onRefresh,
         ),
-        const SizedBox(width: AppTokens.s4),
         OutlinedButton.icon(
           onPressed: () => context.goNamed('card-checker'),
           icon: const Icon(Icons.manage_search_outlined),
           label: const Text('فحص بطاقة'),
         ),
-        const SizedBox(width: AppTokens.s8),
         ElevatedButton.icon(
           onPressed: () => context.goNamed('card-batch-new'),
           icon: const Icon(Icons.add),
@@ -334,75 +316,85 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      padding: const EdgeInsets.all(AppTokens.s16),
-      child: Wrap(
-        spacing: AppTokens.s12,
-        runSpacing: AppTokens.s12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: 280,
-            child: TextField(
-              controller: _queryController,
-              textInputAction: TextInputAction.search,
-              decoration: const InputDecoration(
-                labelText: 'بحث',
-                hintText: 'اسم الحزمة، العرض، المدير...',
-                prefixIcon: Icon(Icons.search),
+      padding: const EdgeInsets.all(AppTokens.s12),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 520;
+          final controlWidth = compact ? constraints.maxWidth : 280.0;
+          final statusWidth = compact ? constraints.maxWidth : 190.0;
+          return Wrap(
+            spacing: AppTokens.s12,
+            runSpacing: AppTokens.s12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: controlWidth,
+                child: TextField(
+                  controller: _queryController,
+                  textInputAction: TextInputAction.search,
+                  decoration: const InputDecoration(
+                    labelText: 'بحث',
+                    hintText: 'اسم الحزمة، العرض، المدير...',
+                    prefixIcon: Icon(Icons.search),
+                  ),
+                  onSubmitted: (_) => _applySearch(),
+                ),
               ),
-              onSubmitted: (_) => _applySearch(),
-            ),
-          ),
-          SizedBox(
-            width: 190,
-            child: DropdownButtonFormField<String>(
-              initialValue: widget.filters.status,
-              decoration: const InputDecoration(labelText: 'الحالة'),
-              items: [
-                for (final item in _statuses.entries)
-                  DropdownMenuItem(value: item.key, child: Text(item.value)),
+              SizedBox(
+                width: statusWidth,
+                child: DropdownButtonFormField<String>(
+                  initialValue: widget.filters.status,
+                  decoration: const InputDecoration(labelText: 'الحالة'),
+                  items: [
+                    for (final item in _statuses.entries)
+                      DropdownMenuItem(
+                        value: item.key,
+                        child: Text(item.value),
+                      ),
+                  ],
+                  onChanged: (value) => widget.onFiltersChanged(
+                    widget.filters.copyWith(status: value ?? '', page: 1),
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _applySearch,
+                icon: const Icon(Icons.filter_alt_outlined),
+                label: const Text('تطبيق'),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.onExport,
+                icon: const Icon(Icons.file_download_outlined),
+                label: const Text('تصدير ملف'),
+              ),
+              if (widget.selectedCount > 0) ...[
+                const SizedBox(width: AppTokens.s8),
+                Text(
+                  'محدد: ${widget.selectedCount}',
+                  style: const TextStyle(
+                    color: AppTokens.navy900,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => widget.onBulkAction('archive'),
+                  icon: const Icon(Icons.archive_outlined),
+                  label: const Text('أرشفة'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => widget.onBulkAction('restore'),
+                  icon: const Icon(Icons.restore_outlined),
+                  label: const Text('استعادة'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => widget.onBulkAction('refresh'),
+                  icon: const Icon(Icons.sync),
+                  label: const Text('تحديث'),
+                ),
               ],
-              onChanged: (value) => widget.onFiltersChanged(
-                widget.filters.copyWith(status: value ?? '', page: 1),
-              ),
-            ),
-          ),
-          ElevatedButton.icon(
-            onPressed: _applySearch,
-            icon: const Icon(Icons.filter_alt_outlined),
-            label: const Text('تطبيق'),
-          ),
-          OutlinedButton.icon(
-            onPressed: widget.onExport,
-            icon: const Icon(Icons.file_download_outlined),
-            label: const Text('CSV'),
-          ),
-          if (widget.selectedCount > 0) ...[
-            const SizedBox(width: AppTokens.s8),
-            Text(
-              'محدد: ${widget.selectedCount}',
-              style: const TextStyle(
-                color: AppTokens.navy900,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => widget.onBulkAction('archive'),
-              icon: const Icon(Icons.archive_outlined),
-              label: const Text('أرشفة'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => widget.onBulkAction('restore'),
-              icon: const Icon(Icons.restore_outlined),
-              label: const Text('استعادة'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => widget.onBulkAction('refresh'),
-              icon: const Icon(Icons.sync),
-              label: const Text('تحديث'),
-            ),
-          ],
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -420,38 +412,43 @@ class _TotalsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: MediaQuery.sizeOf(context).width > 900 ? 4 : 2,
-      crossAxisSpacing: AppTokens.s12,
-      mainAxisSpacing: AppTokens.s12,
-      childAspectRatio: 3.2,
-      children: [
-        _StatCard(
-          icon: Icons.inventory_2_outlined,
-          label: 'الحزم المعروضة',
-          value: '${totals.batchCount}',
-        ),
-        _StatCard(
-          icon: Icons.today_outlined,
-          label: 'بطاقات مستخدمة اليوم',
-          value: '${totals.usedToday}',
-          footnote: _money(totals.valueToday),
-        ),
-        _StatCard(
-          icon: Icons.calendar_month_outlined,
-          label: 'بطاقات مستخدمة هذا الشهر',
-          value: '${totals.usedMonth}',
-          footnote: _money(totals.valueMonth),
-        ),
-        _StatCard(
-          icon: Icons.payments_outlined,
-          label: 'قيمة تشغيلية تقديرية',
-          value: _money(totals.configuredValue),
-          footnote: 'ليست تقرير Ledger رسمي',
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth >= 900 ? 4 : 2;
+        return GridView.count(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          crossAxisCount: cols,
+          crossAxisSpacing: AppTokens.s12,
+          mainAxisSpacing: AppTokens.s12,
+          childAspectRatio: constraints.maxWidth < 520 ? 1.65 : 3.2,
+          children: [
+            _StatCard(
+              icon: Icons.inventory_2_outlined,
+              label: 'الحزم المعروضة',
+              value: '${totals.batchCount}',
+            ),
+            _StatCard(
+              icon: Icons.today_outlined,
+              label: 'بطاقات اليوم',
+              value: '${totals.usedToday}',
+              footnote: _money(totals.valueToday),
+            ),
+            _StatCard(
+              icon: Icons.calendar_month_outlined,
+              label: 'بطاقات الشهر',
+              value: '${totals.usedMonth}',
+              footnote: _money(totals.valueMonth),
+            ),
+            _StatCard(
+              icon: Icons.payments_outlined,
+              label: 'قيمة تقديرية',
+              value: _money(totals.configuredValue),
+              footnote: 'ليست تقريرًا ماليًا',
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -473,49 +470,69 @@ class _StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       padding: const EdgeInsets.all(14),
-      child: Row(
-        children: [
-          CircleAvatar(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 170;
+          final iconWidget = CircleAvatar(
+            radius: compact ? 18 : 20,
             backgroundColor: AppTokens.cyan100,
-            child: Icon(icon, color: AppTokens.cyan500),
-          ),
-          const SizedBox(width: AppTokens.s12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: AppTokens.textMuted,
-                    fontSize: 12,
-                  ),
+            child:
+                Icon(icon, color: AppTokens.cyan500, size: compact ? 18 : 20),
+          );
+          final textWidget = Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTokens.textMuted,
+                  fontSize: 12,
+                  height: 1.15,
                 ),
+              ),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppTokens.navy900,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
+                ),
+              ),
+              if (footnote.isNotEmpty)
                 Text(
-                  value,
+                  footnote,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: AppTokens.navy900,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
+                    color: AppTokens.textMuted,
+                    fontSize: 11,
                   ),
                 ),
-                if (footnote.isNotEmpty)
-                  Text(
-                    footnote,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: AppTokens.textMuted,
-                      fontSize: 11,
-                    ),
-                  ),
+            ],
+          );
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                iconWidget,
+                const Spacer(),
+                textWidget,
               ],
-            ),
-          ),
-        ],
+            );
+          }
+          return Row(
+            children: [
+              iconWidget,
+              const SizedBox(width: AppTokens.s12),
+              Expanded(child: textWidget),
+            ],
+          );
+        },
       ),
     );
   }

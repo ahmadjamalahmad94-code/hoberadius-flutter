@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../data/admins_repository.dart';
 import '../domain/admin_model.dart';
 
@@ -44,7 +45,16 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [_username, _fullName, _email, _mobile, _phone, _password, _passwordConfirm, _tags]) {
+    for (final c in [
+      _username,
+      _fullName,
+      _email,
+      _mobile,
+      _phone,
+      _password,
+      _passwordConfirm,
+      _tags,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -53,7 +63,8 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
   Future<void> _loadExisting() async {
     setState(() => _loading = true);
     try {
-      final a = await ref.read(adminsRepositoryProvider).getAdmin(widget.adminId!);
+      final a =
+          await ref.read(adminsRepositoryProvider).getAdmin(widget.adminId!);
       _populate(a);
     } catch (e) {
       setState(() => _error = '$e');
@@ -164,40 +175,29 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => context.goNamed('admins'),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Expanded(
-                child: Text(
-                  widget.isEdit ? 'تعديل مدير' : 'مدير جديد',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
-                      ),
-                ),
-              ),
+          PageHeader(
+            title: widget.isEdit ? 'تعديل مدير' : 'مدير جديد',
+            leading: IconButton(
+              onPressed: () => context.goNamed('admins'),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            actions: [
               if (_loading)
                 const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit && !isProtectedSuper) ...[
-                const SizedBox(width: AppTokens.s8),
+              if (widget.isEdit && !isProtectedSuper)
                 IconButton(
-                  tooltip: 'حذف',
+                  tooltip: '???',
                   onPressed: _loading ? null : _delete,
                   icon: const Icon(Icons.delete_outline, color: AppTokens.red),
                 ),
-              ],
-              const SizedBox(width: AppTokens.s8),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('حفظ'),
+                label: const Text('???'),
               ),
             ],
           ),
@@ -209,7 +209,8 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                 color: const Color(0xFFFDE9E9),
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child: Text(_error!, style: const TextStyle(color: AppTokens.red)),
+              child:
+                  Text(_error!, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           const SizedBox(height: AppTokens.s16),
@@ -229,10 +230,22 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                         (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
                   ),
                 ),
-                FormFieldRow(label: 'الاسم الكامل', child: TextFormField(controller: _fullName)),
-                FormFieldRow(label: 'البريد', child: TextFormField(controller: _email)),
-                FormFieldRow(label: 'الجوال', child: TextFormField(controller: _mobile)),
-                FormFieldRow(label: 'هاتف إضافي', child: TextFormField(controller: _phone)),
+                FormFieldRow(
+                  label: 'الاسم الكامل',
+                  child: TextFormField(controller: _fullName),
+                ),
+                FormFieldRow(
+                  label: 'البريد',
+                  child: TextFormField(controller: _email),
+                ),
+                FormFieldRow(
+                  label: 'الجوال',
+                  child: TextFormField(controller: _mobile),
+                ),
+                FormFieldRow(
+                  label: 'هاتف إضافي',
+                  child: TextFormField(controller: _phone),
+                ),
                 FormFieldRow(
                   label: 'الوسوم',
                   hint: 'قِيَم مفصولة بفواصل',
@@ -244,10 +257,12 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                     loading: () => const LinearProgressIndicator(minHeight: 4),
                     error: (e, _) => TextFormField(
                       enabled: false,
-                      decoration: InputDecoration(labelText: 'تعذّر جلب الأدوار: $e'),
+                      decoration:
+                          InputDecoration(labelText: 'تعذّر جلب الأدوار: $e'),
                     ),
                     data: (roles) => DropdownButtonFormField<int?>(
-                      initialValue: roles.any((r) => r.id == _roleId) ? _roleId : null,
+                      initialValue:
+                          roles.any((r) => r.id == _roleId) ? _roleId : null,
                       isExpanded: true,
                       items: [
                         const DropdownMenuItem<int?>(
@@ -266,7 +281,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                   ),
                 ),
                 FormFieldRow(
-                  label: 'مدير عام (super_admin)',
+                  label: 'مدير عام كامل الصلاحيات',
                   child: Switch(
                     value: _isSuperAdmin,
                     onChanged: isProtectedSuper
@@ -288,9 +303,8 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
           CollapsibleSection(
             storageKey: 'admin.password',
             icon: Icons.password,
-            title: widget.isEdit
-                ? 'تغيير كلمة المرور (اختياري)'
-                : 'كلمة المرور',
+            title:
+                widget.isEdit ? 'تغيير كلمة المرور (اختياري)' : 'كلمة المرور',
             child: Column(
               children: [
                 FormFieldRow(
@@ -300,7 +314,9 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                     controller: _password,
                     obscureText: true,
                     validator: (v) {
-                      if (widget.isEdit && (v == null || v.isEmpty)) return null;
+                      if (widget.isEdit && (v == null || v.isEmpty)) {
+                        return null;
+                      }
                       if (v == null || v.length < 4) return '4 أحرف على الأقل';
                       return null;
                     },
@@ -313,7 +329,9 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                     controller: _passwordConfirm,
                     obscureText: true,
                     validator: (v) {
-                      if (widget.isEdit && (v == null || v.isEmpty)) return null;
+                      if (widget.isEdit && (v == null || v.isEmpty)) {
+                        return null;
+                      }
                       if (v != _password.text) return 'غير متطابقة';
                       return null;
                     },

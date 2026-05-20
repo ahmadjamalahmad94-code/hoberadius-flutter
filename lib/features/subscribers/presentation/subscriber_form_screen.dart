@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../plans/data/plans_repository.dart';
 import '../../plans/domain/plan_model.dart';
 import '../data/subscribers_repository.dart';
@@ -21,7 +22,8 @@ class SubscriberFormScreen extends ConsumerStatefulWidget {
   bool get isEdit => username != null;
 
   @override
-  ConsumerState<SubscriberFormScreen> createState() => _SubscriberFormScreenState();
+  ConsumerState<SubscriberFormScreen> createState() =>
+      _SubscriberFormScreenState();
 }
 
 class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
@@ -39,7 +41,15 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   bool _loading = false;
   String? _error;
 
-  static const _daysAr = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+  static const _daysAr = [
+    'أحد',
+    'إثنين',
+    'ثلاثاء',
+    'أربعاء',
+    'خميس',
+    'جمعة',
+    'سبت',
+  ];
   static const _daysKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   @override
@@ -47,12 +57,32 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
     super.initState();
     _c = {
       for (final k in [
-        'username', 'password', 'full_name', 'mobile', 'email', 'beneficiary_ref',
-        'remark', 'mac_lock', 'static_ip', 'plan_id',
-        'mt_profile', 'mt_rate_limit', 'mt_ip_pool', 'mt_comment',
-        'dns1', 'dns2', 'simultaneous_use', 'session_timeout', 'idle_timeout',
-        'called_station_id', 'allowed_hours',
-        'notify_email', 'notify_mobile', 'subscription_days', 'notes', 'tags',
+        'username',
+        'password',
+        'full_name',
+        'mobile',
+        'email',
+        'beneficiary_ref',
+        'remark',
+        'mac_lock',
+        'static_ip',
+        'plan_id',
+        'mt_profile',
+        'mt_rate_limit',
+        'mt_ip_pool',
+        'mt_comment',
+        'dns1',
+        'dns2',
+        'simultaneous_use',
+        'session_timeout',
+        'idle_timeout',
+        'called_station_id',
+        'allowed_hours',
+        'notify_email',
+        'notify_mobile',
+        'subscription_days',
+        'notes',
+        'tags',
       ])
         k: TextEditingController(),
     };
@@ -70,7 +100,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   Future<void> _loadExisting() async {
     setState(() => _loading = true);
     try {
-      final s = await ref.read(subscribersRepositoryProvider).get(widget.username!);
+      final s =
+          await ref.read(subscribersRepositoryProvider).get(widget.username!);
       _populate(s);
     } catch (e) {
       setState(() => _error = '$e');
@@ -136,7 +167,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         remark: _c['remark']!.text.trim(),
         primaryDnsPpp: _c['dns1']!.text.trim(),
         secondaryDnsPpp: _c['dns2']!.text.trim(),
-        overrideConcurrent: int.tryParse(_c['simultaneous_use']!.text.trim()) ?? 0,
+        overrideConcurrent:
+            int.tryParse(_c['simultaneous_use']!.text.trim()) ?? 0,
         workingDaysCsv: _workingDays.join(','),
         autoRenewal: _autoRenew,
         mtProfile: _c['mt_profile']!.text.trim(),
@@ -155,7 +187,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         subscriptionType: _subscriptionType,
         subscriptionDays: int.tryParse(_c['subscription_days']!.text.trim()),
         notes: _c['notes']!.text.trim(),
-        tags: _c['tags']!.text
+        tags: _c['tags']!
+            .text
             .split(',')
             .map((e) => e.trim())
             .where((e) => e.isNotEmpty)
@@ -225,8 +258,14 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تمديد')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('تمديد'),
+          ),
         ],
       ),
     );
@@ -238,7 +277,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       _error = null;
     });
     try {
-      final newExpire = await ref.read(subscribersRepositoryProvider)
+      final newExpire = await ref
+          .read(subscribersRepositoryProvider)
           .extendTime(widget.username!, mins);
       if (mounted) setState(() => _expireAt = newExpire);
       _snack('تم التمديد $mins دقيقة');
@@ -262,8 +302,14 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('تعيين')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('تعيين'),
+          ),
         ],
       ),
     );
@@ -275,7 +321,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       _error = null;
     });
     try {
-      await ref.read(subscribersRepositoryProvider)
+      await ref
+          .read(subscribersRepositoryProvider)
           .resetPassword(widget.username!, pw);
       _snack('تمّ تحديث كلمة المرور');
     } catch (e) {
@@ -292,7 +339,10 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         title: const Text('حذف المشترك'),
         content: Text('سيُحذف "${widget.username}" نهائيًا. متأكّد؟'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTokens.red),
             onPressed: () => Navigator.pop(ctx, true),
@@ -328,39 +378,14 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => context.goNamed('subscribers'),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Expanded(
-                child: Text(
-                  widget.isEdit ? 'تعديل مشترك' : 'مشترك جديد',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
-                      ),
-                ),
-              ),
-              if (_loading)
-                const SizedBox(
-                  width: 20, height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              if (widget.isEdit) ...[
-                const SizedBox(width: AppTokens.s8),
-                OutlinedButton.icon(
-                  onPressed: _loading
-                      ? null
-                      : () => context.goNamed(
-                            'subscriber-finance',
-                            pathParameters: {'username': widget.username!},
-                          ),
-                  icon: const Icon(Icons.account_balance_wallet_outlined),
-                  label: const Text('الدفعات والسلف'),
-                ),
-                const SizedBox(width: AppTokens.s8),
+          PageHeader(
+            title: widget.isEdit ? 'تعديل مشترك' : 'مشترك جديد',
+            leading: IconButton(
+              onPressed: () => context.goNamed('subscribers'),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            actions: [
+              if (widget.isEdit)
                 _ActionMenu(
                   isDisabled: _status == 'disabled',
                   onToggle: _loading ? null : _toggleStatus,
@@ -368,12 +393,19 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                   onResetPw: _loading ? null : _showResetPwDialog,
                   onDelete: _loading ? null : _showDeleteConfirm,
                 ),
-              ],
-              const SizedBox(width: AppTokens.s8),
+              if (widget.isEdit)
+                OutlinedButton.icon(
+                  onPressed: () => context.goNamed(
+                    'subscriber-finance',
+                    pathParameters: {'username': _c['username']!.text.trim()},
+                  ),
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: const Text('الدفعات والسلف'),
+                ),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('حفظ'),
+                label: const Text('???'),
               ),
             ],
           ),
@@ -385,7 +417,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 color: const Color(0xFFFDE9E9),
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child: Text(_error!, style: const TextStyle(color: AppTokens.red)),
+              child:
+                  Text(_error!, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           const SizedBox(height: AppTokens.s16),
@@ -416,10 +449,22 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                           (v == null || v.isEmpty) ? 'مطلوب' : null,
                     ),
                   ),
-                FormFieldRow(label: 'الاسم الكامل', child: TextFormField(controller: _c['full_name'])),
-                FormFieldRow(label: 'الجوال', child: TextFormField(controller: _c['mobile'])),
-                FormFieldRow(label: 'البريد', child: TextFormField(controller: _c['email'])),
-                FormFieldRow(label: 'مرجع المستفيد', child: TextFormField(controller: _c['beneficiary_ref'])),
+                FormFieldRow(
+                  label: 'الاسم الكامل',
+                  child: TextFormField(controller: _c['full_name']),
+                ),
+                FormFieldRow(
+                  label: 'الجوال',
+                  child: TextFormField(controller: _c['mobile']),
+                ),
+                FormFieldRow(
+                  label: 'البريد',
+                  child: TextFormField(controller: _c['email']),
+                ),
+                FormFieldRow(
+                  label: 'مرجع المستفيد',
+                  child: TextFormField(controller: _c['beneficiary_ref']),
+                ),
                 FormFieldRow(
                   label: 'الحالة',
                   child: DropdownButtonFormField<String>(
@@ -437,11 +482,15 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _userType,
                     items: const [
-                      DropdownMenuItem(value: 'subscriber', child: Text('مشترك')),
+                      DropdownMenuItem(
+                        value: 'subscriber',
+                        child: Text('مشترك'),
+                      ),
                       DropdownMenuItem(value: 'card', child: Text('كرت')),
                       DropdownMenuItem(value: 'employee', child: Text('موظف')),
                     ],
-                    onChanged: (v) => setState(() => _userType = v ?? 'subscriber'),
+                    onChanged: (v) =>
+                        setState(() => _userType = v ?? 'subscriber'),
                   ),
                 ),
                 FormFieldRow(
@@ -458,7 +507,10 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                     onChange: (d) => setState(() => _expireAt = d),
                   ),
                 ),
-                FormFieldRow(label: 'ملاحظات', child: TextFormField(controller: _c['remark'], maxLines: 2)),
+                FormFieldRow(
+                  label: 'ملاحظات',
+                  child: TextFormField(controller: _c['remark'], maxLines: 2),
+                ),
               ],
             ),
           ),
@@ -469,14 +521,23 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             title: 'إعدادات الراوتر (MikroTik / PPP)',
             child: Column(
               children: [
-                FormFieldRow(label: 'الـ profile', child: TextFormField(controller: _c['mt_profile'])),
+                FormFieldRow(
+                  label: 'الـ profile',
+                  child: TextFormField(controller: _c['mt_profile']),
+                ),
                 FormFieldRow(
                   label: 'الخدمة',
                   child: DropdownButtonFormField<String>(
                     initialValue: _mtService,
                     items: const [
-                      DropdownMenuItem(value: 'pppoe', child: Text('PPPoE')),
-                      DropdownMenuItem(value: 'hotspot', child: Text('Hotspot')),
+                      DropdownMenuItem(
+                        value: 'pppoe',
+                        child: Text('اتصال PPPoE'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'hotspot',
+                        child: Text('هوتسبوت'),
+                      ),
                       DropdownMenuItem(value: 'l2tp', child: Text('L2TP')),
                       DropdownMenuItem(value: 'pptp', child: Text('PPTP')),
                       DropdownMenuItem(value: 'sstp', child: Text('SSTP')),
@@ -490,8 +551,14 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                   hint: 'مثال: 5M/10M أو 5M/10M 6M/12M 4M/8M 30/30',
                   child: TextFormField(controller: _c['mt_rate_limit']),
                 ),
-                FormFieldRow(label: 'IP Pool', child: TextFormField(controller: _c['mt_ip_pool'])),
-                FormFieldRow(label: 'تعليق', child: TextFormField(controller: _c['mt_comment'])),
+                FormFieldRow(
+                  label: 'مجموعة عناوين IP',
+                  child: TextFormField(controller: _c['mt_ip_pool']),
+                ),
+                FormFieldRow(
+                  label: 'تعليق',
+                  child: TextFormField(controller: _c['mt_comment']),
+                ),
               ],
             ),
           ),
@@ -502,8 +569,14 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             title: 'سمات RADIUS / DNS',
             child: Column(
               children: [
-                FormFieldRow(label: 'DNS1', child: TextFormField(controller: _c['dns1'])),
-                FormFieldRow(label: 'DNS2', child: TextFormField(controller: _c['dns2'])),
+                FormFieldRow(
+                  label: 'خادم DNS الأول',
+                  child: TextFormField(controller: _c['dns1']),
+                ),
+                FormFieldRow(
+                  label: 'خادم DNS الثاني',
+                  child: TextFormField(controller: _c['dns2']),
+                ),
                 FormFieldRow(
                   label: 'الجلسات المتزامنة',
                   child: TextFormField(
@@ -525,7 +598,10 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                     keyboardType: TextInputType.number,
                   ),
                 ),
-                FormFieldRow(label: 'Called-Station-Id', child: TextFormField(controller: _c['called_station_id'])),
+                FormFieldRow(
+                  label: 'معرّف نقطة الاتصال',
+                  child: TextFormField(controller: _c['called_station_id']),
+                ),
               ],
             ),
           ),
@@ -542,7 +618,10 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                   hint: 'AA:BB:CC:DD:EE:FF',
                   child: TextFormField(controller: _c['mac_lock']),
                 ),
-                FormFieldRow(label: 'IP ثابت', child: TextFormField(controller: _c['static_ip'])),
+                FormFieldRow(
+                  label: 'IP ثابت',
+                  child: TextFormField(controller: _c['static_ip']),
+                ),
               ],
             ),
           ),
@@ -562,7 +641,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 FormFieldRow(
                   label: 'أيام العمل',
                   child: Wrap(
-                    spacing: 6, runSpacing: 6,
+                    spacing: 6,
+                    runSpacing: 6,
                     children: List.generate(_daysAr.length, (i) {
                       final k = _daysKey[i];
                       final selected = _workingDays.contains(k);
@@ -605,8 +685,14 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                     onChanged: (v) => setState(() => _notifyOnLogin = v),
                   ),
                 ),
-                FormFieldRow(label: 'بريد التنبيهات', child: TextFormField(controller: _c['notify_email'])),
-                FormFieldRow(label: 'جوال التنبيهات', child: TextFormField(controller: _c['notify_mobile'])),
+                FormFieldRow(
+                  label: 'بريد التنبيهات',
+                  child: TextFormField(controller: _c['notify_email']),
+                ),
+                FormFieldRow(
+                  label: 'جوال التنبيهات',
+                  child: TextFormField(controller: _c['notify_mobile']),
+                ),
               ],
             ),
           ),
@@ -625,9 +711,13 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                     items: const [
                       DropdownMenuItem(value: 'fixed', child: Text('ثابت')),
                       DropdownMenuItem(value: 'rolling', child: Text('متجدّد')),
-                      DropdownMenuItem(value: 'prepaid', child: Text('مدفوع مسبقًا')),
+                      DropdownMenuItem(
+                        value: 'prepaid',
+                        child: Text('مدفوع مسبقًا'),
+                      ),
                     ],
-                    onChanged: (v) => setState(() => _subscriptionType = v ?? 'fixed'),
+                    onChanged: (v) =>
+                        setState(() => _subscriptionType = v ?? 'fixed'),
                   ),
                 ),
                 FormFieldRow(
@@ -655,7 +745,10 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             initiallyExpanded: false,
             child: Column(
               children: [
-                FormFieldRow(label: 'ملاحظات', child: TextFormField(controller: _c['notes'], maxLines: 3)),
+                FormFieldRow(
+                  label: 'ملاحظات',
+                  child: TextFormField(controller: _c['notes'], maxLines: 3),
+                ),
                 FormFieldRow(
                   label: 'وسوم',
                   hint: 'قِيَم مفصولة بفواصل',
@@ -692,7 +785,8 @@ class _ExpirePicker extends StatelessWidget {
           onPressed: () async {
             final picked = await showDatePicker(
               context: context,
-              initialDate: value ?? DateTime.now().add(const Duration(days: 30)),
+              initialDate:
+                  value ?? DateTime.now().add(const Duration(days: 30)),
               firstDate: DateTime(2020),
               lastDate: DateTime(2100),
             );
@@ -738,8 +832,11 @@ class _PlanPicker extends ConsumerWidget {
           const SizedBox(height: 4),
           Row(
             children: [
-              const Icon(Icons.warning_amber_rounded,
-                  size: 14, color: AppTokens.orange,),
+              const Icon(
+                Icons.warning_amber_rounded,
+                size: 14,
+                color: AppTokens.orange,
+              ),
               const SizedBox(width: 4),
               const Expanded(
                 child: Text(
@@ -824,46 +921,61 @@ class _ActionMenu extends StatelessWidget {
       icon: const Icon(Icons.more_vert),
       onSelected: (v) {
         switch (v) {
-          case 'toggle': onToggle?.call();
-          case 'extend': onExtend?.call();
-          case 'reset': onResetPw?.call();
-          case 'delete': onDelete?.call();
+          case 'toggle':
+            onToggle?.call();
+          case 'extend':
+            onExtend?.call();
+          case 'reset':
+            onResetPw?.call();
+          case 'delete':
+            onDelete?.call();
         }
       },
       itemBuilder: (ctx) => [
         PopupMenuItem(
           value: 'toggle',
-          child: Row(children: [
-            Icon(isDisabled ? Icons.check_circle_outline : Icons.block,
-                size: 18, color: isDisabled ? AppTokens.green : AppTokens.orange,),
-            const SizedBox(width: 8),
-            Text(isDisabled ? 'تفعيل' : 'تعطيل'),
-          ],),
+          child: Row(
+            children: [
+              Icon(
+                isDisabled ? Icons.check_circle_outline : Icons.block,
+                size: 18,
+                color: isDisabled ? AppTokens.green : AppTokens.orange,
+              ),
+              const SizedBox(width: 8),
+              Text(isDisabled ? 'تفعيل' : 'تعطيل'),
+            ],
+          ),
         ),
         const PopupMenuItem(
           value: 'extend',
-          child: Row(children: [
-            Icon(Icons.timer_outlined, size: 18, color: AppTokens.cyan500),
-            SizedBox(width: 8),
-            Text('تمديد الوقت'),
-          ],),
+          child: Row(
+            children: [
+              Icon(Icons.timer_outlined, size: 18, color: AppTokens.cyan500),
+              SizedBox(width: 8),
+              Text('تمديد الوقت'),
+            ],
+          ),
         ),
         const PopupMenuItem(
           value: 'reset',
-          child: Row(children: [
-            Icon(Icons.password, size: 18, color: AppTokens.navy700),
-            SizedBox(width: 8),
-            Text('إعادة كلمة المرور'),
-          ],),
+          child: Row(
+            children: [
+              Icon(Icons.password, size: 18, color: AppTokens.navy700),
+              SizedBox(width: 8),
+              Text('إعادة كلمة المرور'),
+            ],
+          ),
         ),
         const PopupMenuDivider(),
         const PopupMenuItem(
           value: 'delete',
-          child: Row(children: [
-            Icon(Icons.delete_outline, size: 18, color: AppTokens.red),
-            SizedBox(width: 8),
-            Text('حذف', style: TextStyle(color: AppTokens.red)),
-          ],),
+          child: Row(
+            children: [
+              Icon(Icons.delete_outline, size: 18, color: AppTokens.red),
+              SizedBox(width: 8),
+              Text('حذف', style: TextStyle(color: AppTokens.red)),
+            ],
+          ),
         ),
       ],
     );

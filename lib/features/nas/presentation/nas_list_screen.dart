@@ -32,14 +32,16 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
       ref.invalidate(nasListProvider);
       if (!mounted) return;
       final color = r.ok ? AppTokens.green : AppTokens.red;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: color,
-        content: Text(
-          r.ok
-              ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
-              : '${r.status}: ${r.message}',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: color,
+          content: Text(
+            r.ok
+                ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
+                : '${r.status}: ${r.message}',
+          ),
         ),
-      ),);
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -110,7 +112,8 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
             }
             return AppCard(
               padding: EdgeInsets.zero,
-              child: _NasTable(items: items, testing: _testing, onTest: _runTest),
+              child:
+                  _NasTable(items: items, testing: _testing, onTest: _runTest),
             );
           },
         ),
@@ -172,8 +175,9 @@ class _NasTable extends StatelessWidget {
           subtitle: Text(
             [
               d.address,
-              d.vendor,
-              if (d.lastCheckAt != null) 'آخر فحص: ${df.format(d.lastCheckAt!)}',
+              _nasVendorLabel(d.vendor),
+              if (d.lastCheckAt != null)
+                'آخر فحص: ${df.format(d.lastCheckAt!)}',
             ].join(' • '),
             style: const TextStyle(color: AppTokens.textMuted),
           ),
@@ -181,7 +185,7 @@ class _NasTable extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               StatusPill(
-                text: d.lastCheckStatus.isEmpty ? '—' : d.lastCheckStatus,
+                text: _nasCheckStatusLabel(d.lastCheckStatus),
                 tone: tone,
               ),
               const SizedBox(width: AppTokens.s4),
@@ -204,9 +208,32 @@ class _NasTable extends StatelessWidget {
           ),
           onTap: d.id == null
               ? null
-              : () => ctx.goNamed('nas-edit', pathParameters: {'id': '${d.id}'}),
+              : () =>
+                  ctx.goNamed('nas-edit', pathParameters: {'id': '${d.id}'}),
         );
       },
     );
   }
+}
+
+String _nasVendorLabel(String value) {
+  final v = value.toLowerCase();
+  if (v == 'mikrotik') return 'MikroTik';
+  if (v == 'cisco') return 'Cisco';
+  if (v == 'huawei') return 'Huawei';
+  if (v == 'ubiquiti') return 'Ubiquiti';
+  if (v == 'other') return 'أخرى';
+  return value.isEmpty ? 'غير محدد' : value;
+}
+
+String _nasCheckStatusLabel(String value) {
+  final v = value.toLowerCase();
+  return switch (v) {
+    '' => '—',
+    'reachable' => 'متصل',
+    'timeout' => 'انتهت المهلة',
+    'unreachable' => 'غير متاح',
+    'failed' => 'فشل الفحص',
+    _ => value,
+  };
 }

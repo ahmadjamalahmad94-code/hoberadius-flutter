@@ -140,7 +140,10 @@ class AuthController extends StateNotifier<AuthState> {
       final d = (res['data'] ?? {}) as Map<String, dynamic>;
       final token = (d['token'] ?? '').toString();
       if (token.isEmpty) {
-        throw ApiException(code: 'empty_token', message: 'استجابة بلا token');
+        throw ApiException(
+          code: 'empty_token',
+          message: 'استجابة تسجيل الدخول غير مكتملة.',
+        );
       }
       await _ref.read(tokenStorageProvider).write(token);
       state = AuthState(

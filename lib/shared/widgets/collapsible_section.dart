@@ -63,15 +63,17 @@ class _CollapsibleSectionState extends State<CollapsibleSection> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           InkWell(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(AppTokens.r14)),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(AppTokens.r14),
+            ),
             onTap: () {
               setState(() => _expanded = !_expanded);
               _persist(_expanded);
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(
-                horizontal: AppTokens.s20,
-                vertical: AppTokens.s16,
+                horizontal: AppTokens.s16,
+                vertical: AppTokens.s12,
               ),
               child: Row(
                 children: [
@@ -85,25 +87,33 @@ class _CollapsibleSectionState extends State<CollapsibleSection> {
                       children: [
                         Text(
                           widget.title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: AppTokens.navy800,
-                              ),
+                          softWrap: true,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTokens.navy800,
+                                    height: 1.25,
+                                  ),
                         ),
                         if (widget.subtitle != null) ...[
                           const SizedBox(height: 2),
                           Text(
                             widget.subtitle!,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTokens.textMuted,
-                                ),
+                            softWrap: true,
+                            style:
+                                Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTokens.textMuted,
+                                      height: 1.35,
+                                    ),
                           ),
                         ],
                       ],
                     ),
                   ),
                   Icon(
-                    _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
                     color: AppTokens.textMuted,
                   ),
                 ],
@@ -112,9 +122,13 @@ class _CollapsibleSectionState extends State<CollapsibleSection> {
           ),
           if (_expanded) ...[
             const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.all(AppTokens.s20),
-              child: widget.child,
+            LayoutBuilder(
+              builder: (context, constraints) => Padding(
+                padding: EdgeInsets.all(
+                  constraints.maxWidth < 520 ? AppTokens.s12 : AppTokens.s20,
+                ),
+                child: widget.child,
+              ),
             ),
           ],
         ],

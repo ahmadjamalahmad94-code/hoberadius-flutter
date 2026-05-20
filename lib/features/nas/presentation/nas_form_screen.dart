@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../data/nas_repository.dart';
 import '../domain/nas_model.dart';
 import 'nas_list_screen.dart';
@@ -35,10 +36,23 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
   String? _error;
 
   static const _fields = <String>[
-    'name', 'address', 'shortname', 'location', 'coordinates', 'description',
-    'snmp_community', 'tags',
-    'api_user', 'secret', 'api_password',
-    'auth_port', 'acct_port', 'coa_port', 'api_port', 'ssh_port', 'ports',
+    'name',
+    'address',
+    'shortname',
+    'location',
+    'coordinates',
+    'description',
+    'snmp_community',
+    'tags',
+    'api_user',
+    'secret',
+    'api_password',
+    'auth_port',
+    'acct_port',
+    'coa_port',
+    'api_port',
+    'ssh_port',
+    'ports',
   ];
 
   @override
@@ -165,14 +179,16 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     try {
       final r = await ref.read(nasRepositoryProvider).test(widget.nasId!);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: r.ok ? AppTokens.green : AppTokens.red,
-        content: Text(
-          r.ok
-              ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
-              : '${r.status}: ${r.message}',
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: r.ok ? AppTokens.green : AppTokens.red,
+          content: Text(
+            r.ok
+                ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
+                : '${r.status}: ${r.message}',
+          ),
         ),
-      ),);
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -225,29 +241,20 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => context.goNamed('nas'),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Expanded(
-                child: Text(
-                  widget.isEdit ? 'تعديل جهاز' : 'جهاز جديد',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
-                      ),
-                ),
-              ),
+          PageHeader(
+            title: widget.isEdit ? 'تعديل جهاز' : 'جهاز جديد',
+            leading: IconButton(
+              onPressed: () => context.goNamed('nas'),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            actions: [
               if (_loading)
                 const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit) ...[
-                const SizedBox(width: AppTokens.s8),
+              if (widget.isEdit)
                 OutlinedButton.icon(
                   onPressed: (_loading || _testing) ? null : _test,
                   icon: _testing
@@ -259,18 +266,16 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                       : const Icon(Icons.network_check),
                   label: const Text('اختبار'),
                 ),
-                const SizedBox(width: AppTokens.s8),
+              if (widget.isEdit)
                 IconButton(
-                  tooltip: 'حذف',
+                  tooltip: '???',
                   onPressed: _loading ? null : _delete,
                   icon: const Icon(Icons.delete_outline, color: AppTokens.red),
                 ),
-              ],
-              const SizedBox(width: AppTokens.s8),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('حفظ'),
+                label: const Text('???'),
               ),
             ],
           ),
@@ -282,7 +287,8 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                 color: const Color(0xFFFDE9E9),
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child: Text(_error!, style: const TextStyle(color: AppTokens.red)),
+              child:
+                  Text(_error!, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           const SizedBox(height: AppTokens.s16),
@@ -304,7 +310,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                 FormFieldRow(
                   label: 'العنوان',
                   required: true,
-                  hint: 'IP أو hostname',
+                  hint: 'عنوان IP أو اسم الخادم',
                   child: TextFormField(
                     controller: _c['address'],
                     validator: (v) =>
@@ -312,14 +318,20 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   ),
                 ),
                 FormFieldRow(
-                  label: 'الـ vendor',
+                  label: 'الشركة أو النوع',
                   child: DropdownButtonFormField<String>(
                     initialValue: _vendor,
                     items: const [
-                      DropdownMenuItem(value: 'mikrotik', child: Text('MikroTik')),
+                      DropdownMenuItem(
+                        value: 'mikrotik',
+                        child: Text('MikroTik'),
+                      ),
                       DropdownMenuItem(value: 'cisco', child: Text('Cisco')),
                       DropdownMenuItem(value: 'huawei', child: Text('Huawei')),
-                      DropdownMenuItem(value: 'ubiquiti', child: Text('Ubiquiti')),
+                      DropdownMenuItem(
+                        value: 'ubiquiti',
+                        child: Text('Ubiquiti'),
+                      ),
                       DropdownMenuItem(value: 'other', child: Text('أخرى')),
                     ],
                     onChanged: (v) => setState(() => _vendor = v ?? 'mikrotik'),
@@ -330,9 +342,18 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _nasType,
                     items: const [
-                      DropdownMenuItem(value: 'hotspot', child: Text('Hotspot')),
-                      DropdownMenuItem(value: 'pppoe', child: Text('PPPoE')),
-                      DropdownMenuItem(value: 'wireless', child: Text('Wireless')),
+                      DropdownMenuItem(
+                        value: 'hotspot',
+                        child: Text('هوتسبوت'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'pppoe',
+                        child: Text('اتصال PPPoE'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'wireless',
+                        child: Text('لاسلكي'),
+                      ),
                       DropdownMenuItem(value: 'other', child: Text('أخرى')),
                     ],
                     onChanged: (v) => setState(() => _nasType = v ?? 'hotspot'),
@@ -358,7 +379,8 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                 ),
                 FormFieldRow(
                   label: 'الوصف',
-                  child: TextFormField(controller: _c['description'], maxLines: 2),
+                  child:
+                      TextFormField(controller: _c['description'], maxLines: 2),
                 ),
                 FormFieldRow(
                   label: 'مفعّل',
@@ -434,12 +456,12 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
           CollapsibleSection(
             storageKey: 'nas.api',
             icon: Icons.api,
-            title: 'API الراوتر',
+            title: 'واجهة الراوتر البرمجية',
             initiallyExpanded: false,
             child: Column(
               children: [
                 FormFieldRow(
-                  label: 'منفذ API',
+                  label: 'منفذ واجهة الراوتر',
                   hint: 'MikroTik افتراضي: 8728',
                   child: TextFormField(
                     controller: _c['api_port'],
@@ -447,20 +469,20 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   ),
                 ),
                 FormFieldRow(
-                  label: 'مستخدم API',
+                  label: 'مستخدم واجهة الراوتر',
                   child: TextFormField(controller: _c['api_user']),
                 ),
                 FormFieldRow(
                   label: widget.isEdit
-                      ? 'تحديث كلمة API (اتركه فارغًا للإبقاء)'
-                      : 'كلمة مرور API',
+                      ? 'تحديث كلمة واجهة الراوتر (اتركه فارغًا للإبقاء)'
+                      : 'كلمة مرور واجهة الراوتر',
                   child: TextFormField(
                     controller: _c['api_password'],
                     obscureText: true,
                   ),
                 ),
                 FormFieldRow(
-                  label: 'TLS',
+                  label: 'اتصال مشفّر',
                   child: Switch(
                     value: _apiUseTls,
                     onChanged: (v) => setState(() => _apiUseTls = v),
@@ -473,12 +495,12 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
           CollapsibleSection(
             storageKey: 'nas.snmp',
             icon: Icons.settings_remote,
-            title: 'SNMP / SSH',
+            title: 'المراقبة والدخول الآمن',
             initiallyExpanded: false,
             child: Column(
               children: [
                 FormFieldRow(
-                  label: 'SNMP Community',
+                  label: 'مجتمع SNMP',
                   child: TextFormField(controller: _c['snmp_community']),
                 ),
                 FormFieldRow(

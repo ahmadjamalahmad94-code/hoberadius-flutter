@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/audit_repository.dart';
 import '../domain/audit_model.dart';
@@ -41,16 +42,9 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Text(
-              'سجل التدقيق',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
-                  ),
-            ),
-            const Spacer(),
+        PageHeader(
+          title: 'سجل التدقيق',
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
@@ -61,47 +55,66 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
         const SizedBox(height: AppTokens.s16),
         AppCard(
           padding: const EdgeInsets.all(AppTokens.s12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _searchCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'فلتر بالـ actor (مثال: admin)…',
-                    prefixIcon: Icon(Icons.search),
-                    isDense: true,
-                  ),
-                  onSubmitted: (_) => _applyFilters(),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 560;
+              final search = TextField(
+                controller: _searchCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'ابحث باسم المنفذ أو المدير...',
+                  prefixIcon: Icon(Icons.search),
+                  isDense: true,
                 ),
-              ),
-              const SizedBox(width: AppTokens.s12),
-              DropdownButton<String?>(
+                onSubmitted: (_) => _applyFilters(),
+              );
+              final type = DropdownButton<String?>(
                 value: _targetType,
                 hint: const Text('النوع'),
                 underline: const SizedBox(),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('كل الأنواع')),
-                  DropdownMenuItem(value: 'admin', child: Text('admin')),
-                  DropdownMenuItem(value: 'role', child: Text('role')),
-                  DropdownMenuItem(value: 'user', child: Text('user')),
-                  DropdownMenuItem(value: 'plan', child: Text('plan')),
-                  DropdownMenuItem(value: 'card_batch', child: Text('card_batch')),
-                  DropdownMenuItem(value: 'card', child: Text('card')),
-                  DropdownMenuItem(value: 'nas', child: Text('nas')),
-                  DropdownMenuItem(value: 'session', child: Text('session')),
+                  DropdownMenuItem(value: 'admin', child: Text('مدير')),
+                  DropdownMenuItem(value: 'role', child: Text('دور')),
+                  DropdownMenuItem(value: 'user', child: Text('مستفيد')),
+                  DropdownMenuItem(value: 'plan', child: Text('باقة')),
+                  DropdownMenuItem(
+                    value: 'card_batch',
+                    child: Text('حزمة بطاقات'),
+                  ),
+                  DropdownMenuItem(value: 'card', child: Text('بطاقة')),
+                  DropdownMenuItem(value: 'nas', child: Text('جهاز شبكة')),
+                  DropdownMenuItem(value: 'session', child: Text('جلسة')),
                 ],
                 onChanged: (v) {
                   setState(() => _targetType = v);
                   _applyFilters();
                 },
-              ),
-              const SizedBox(width: AppTokens.s8),
-              IconButton(
+              );
+              final button = IconButton(
                 tooltip: 'تطبيق',
                 onPressed: _applyFilters,
                 icon: const Icon(Icons.filter_alt_outlined),
-              ),
-            ],
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    search,
+                    const SizedBox(height: AppTokens.s12),
+                    Row(children: [Expanded(child: type), button]),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: AppTokens.s12),
+                  type,
+                  const SizedBox(width: AppTokens.s8),
+                  button,
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: AppTokens.s16),
@@ -151,7 +164,9 @@ class _AuditTile extends StatelessWidget {
 
   PillTone _toneFor(String action) {
     final a = action.toLowerCase();
-    if (a.contains('delete') || a.contains('revoke') || a.contains('disconnect')) {
+    if (a.contains('delete') ||
+        a.contains('revoke') ||
+        a.contains('disconnect')) {
       return PillTone.red;
     }
     if (a.contains('create')) return PillTone.green;
@@ -176,25 +191,32 @@ class _AuditTile extends StatelessWidget {
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: AppTokens.cyan100,
-        child: Icon(_iconFor(event.targetType), color: AppTokens.cyan500, size: 18),
+        child: Icon(
+          _iconFor(event.targetType),
+          color: AppTokens.cyan500,
+          size: 18,
+        ),
       ),
       title: Row(
         children: [
           Expanded(
             child: Text(
-              '${event.action}  •  ${event.targetType}${event.targetId.isNotEmpty ? "#${event.targetId}" : ""}',
+              '${_actionLabel(event.action)}  •  ${_targetLabel(event.targetType)}${event.targetId.isNotEmpty ? " #${event.targetId}" : ""}',
               style: const TextStyle(fontWeight: FontWeight.w700),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          StatusPill(text: event.action, tone: _toneFor(event.action)),
+          StatusPill(
+            text: _shortActionLabel(event.action),
+            tone: _toneFor(event.action),
+          ),
         ],
       ),
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4),
         child: Text(
           [
-            'actor: ${event.actor.isEmpty ? "-" : event.actor}',
+            'المنفذ: ${_actorLabel(event.actor)}',
             if (event.ipAddress.isNotEmpty) event.ipAddress,
             if (event.createdAt != null) df.format(event.createdAt!.toLocal()),
           ].join(' • '),
@@ -204,17 +226,14 @@ class _AuditTile extends StatelessWidget {
       trailing: event.payload.isEmpty
           ? null
           : IconButton(
-              tooltip: 'عرض الـ payload',
+              tooltip: 'عرض التفاصيل',
               icon: const Icon(Icons.info_outline, color: AppTokens.textMuted),
               onPressed: () => showDialog<void>(
                 context: context,
                 builder: (d) => AlertDialog(
-                  title: Text('payload — ${event.action}'),
+                  title: Text('تفاصيل العملية — ${_actionLabel(event.action)}'),
                   content: SingleChildScrollView(
-                    child: SelectableText(
-                      event.payload.toString(),
-                      style: const TextStyle(fontFamily: 'monospace'),
-                    ),
+                    child: SelectableText(_payloadText(event.payload)),
                   ),
                   actions: [
                     TextButton(
@@ -227,4 +246,85 @@ class _AuditTile extends StatelessWidget {
             ),
     );
   }
+}
+
+String _actorLabel(String value) {
+  if (value.isEmpty) return '-';
+  if (value.startsWith('api-token')) return 'رمز تكامل';
+  if (value == 'admin') return 'المدير';
+  return value.replaceAll('actor:', '').trim();
+}
+
+String _targetLabel(String value) => switch (value) {
+      'admin' => 'مدير',
+      'role' => 'دور',
+      'user' => 'مستفيد',
+      'subscriber' => 'مستفيد',
+      'plan' => 'باقة',
+      'card_batch' => 'حزمة بطاقات',
+      'card' => 'بطاقة',
+      'nas' => 'جهاز شبكة',
+      'session' => 'جلسة',
+      'payment' => 'دفعة',
+      'loan' => 'سلفة',
+      'ledger' => 'قيد مالي',
+      _ => value.isEmpty ? 'عنصر' : value.replaceAll('_', ' '),
+    };
+
+String _shortActionLabel(String action) {
+  final a = action.toLowerCase();
+  if (a.contains('create')) return 'إنشاء';
+  if (a.contains('update') || a.contains('patch')) return 'تعديل';
+  if (a.contains('archive')) return 'أرشفة';
+  if (a.contains('restore')) return 'استعادة';
+  if (a.contains('disable')) return 'تعطيل';
+  if (a.contains('enable')) return 'تفعيل';
+  if (a.contains('disconnect')) return 'طرد';
+  if (a.contains('delete')) return 'حذف';
+  if (a.contains('login')) return 'دخول';
+  if (a.contains('logout')) return 'خروج';
+  return action.replaceAll('_', ' ');
+}
+
+String _actionLabel(String action) {
+  final parts = action.split('.');
+  if (parts.length >= 2) {
+    return '${_targetLabel(parts.first)} - ${_shortActionLabel(parts.last)}';
+  }
+  return _shortActionLabel(action);
+}
+
+String _payloadText(Map<String, dynamic> payload) {
+  if (payload.isEmpty) return 'لا توجد تفاصيل إضافية.';
+  return payload.entries
+      .map(
+        (entry) => '${_payloadKey(entry.key)}: ${_payloadValue(entry.value)}',
+      )
+      .join('\n');
+}
+
+String _payloadKey(String key) => switch (key) {
+      'mode' => 'طريقة التنفيذ',
+      'reason' => 'السبب',
+      'status' => 'الحالة',
+      'username' => 'اسم الدخول',
+      'batch_id' => 'رقم الحزمة',
+      'card_id' => 'رقم البطاقة',
+      'subscriber_id' => 'رقم المستفيد',
+      'amount' => 'المبلغ',
+      'currency' => 'العملة',
+      _ => key.replaceAll('_', ' '),
+    };
+
+String _payloadValue(Object? value) {
+  if (value == null) return '-';
+  final text = value.toString();
+  return switch (text) {
+    'soft_delete' => 'أرشفة آمنة',
+    'archive' => 'أرشفة',
+    'restore' => 'استعادة',
+    'active' => 'مفعّل',
+    'disabled' => 'معطّل',
+    _ => text,
+  };
 }

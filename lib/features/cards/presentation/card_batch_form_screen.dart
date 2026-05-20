@@ -388,7 +388,7 @@ class _BatchResult extends StatelessWidget {
                 OutlinedButton.icon(
                   onPressed: onExportCsv,
                   icon: const Icon(Icons.file_download_outlined),
-                  label: const Text('تصدير CSV'),
+                  label: const Text('تصدير ملف'),
                 ),
               ],
             ),

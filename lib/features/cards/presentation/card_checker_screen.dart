@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
@@ -135,17 +136,9 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'منصة عمليات البطاقة',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTokens.navy900,
-                    ),
-              ),
-            ),
+        PageHeader(
+          title: 'منصة عمليات البطاقة',
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               onPressed:
@@ -156,22 +149,21 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
         ),
         const SizedBox(height: AppTokens.s16),
         AppCard(
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _query,
-                  textInputAction: TextInputAction.search,
-                  onSubmitted: (_) => _search(),
-                  decoration: const InputDecoration(
-                    labelText: 'رقم البطاقة أو اسم الدخول',
-                    helperText: 'ابحث بدون كشف كلمة مرور البطاقة.',
-                    prefixIcon: Icon(Icons.search),
-                  ),
+          padding: const EdgeInsets.all(AppTokens.s12),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 520;
+              final field = TextField(
+                controller: _query,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _search(),
+                decoration: const InputDecoration(
+                  labelText: 'رقم البطاقة أو اسم الدخول',
+                  helperText: 'ابحث بدون كشف كلمة مرور البطاقة.',
+                  prefixIcon: Icon(Icons.search),
                 ),
-              ),
-              const SizedBox(width: AppTokens.s12),
-              ElevatedButton.icon(
+              );
+              final button = ElevatedButton.icon(
                 onPressed: _loading ? null : _search,
                 icon: _loading
                     ? const SizedBox(
@@ -181,8 +173,25 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
                       )
                     : const Icon(Icons.manage_search),
                 label: const Text('فحص'),
-              ),
-            ],
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    field,
+                    const SizedBox(height: AppTokens.s12),
+                    button,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: field),
+                  const SizedBox(width: AppTokens.s12),
+                  button,
+                ],
+              );
+            },
           ),
         ),
         if (_error != null) ...[
@@ -329,41 +338,51 @@ class _SummaryHeader extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppTokens.s16),
-          Wrap(
-            spacing: AppTokens.s12,
-            runSpacing: AppTokens.s12,
-            children: [
-              _Metric(
-                icon: Icons.devices_outlined,
-                label: 'أجهزة مختلفة',
-                value: '${summary.uniqueMacs}',
-              ),
-              _Metric(
-                icon: Icons.history,
-                label: 'عدد الجلسات',
-                value: '${summary.sessionsCount}',
-              ),
-              _Metric(
-                icon: Icons.wifi_tethering,
-                label: 'جلسات نشطة',
-                value: '${summary.onlineSessions}',
-              ),
-              _Metric(
-                icon: Icons.timer_outlined,
-                label: 'الوقت الكلي',
-                value: _formatDuration(summary.totalSessionSeconds),
-              ),
-              _Metric(
-                icon: Icons.cloud_upload_outlined,
-                label: 'رفع',
-                value: _formatBytes(summary.totalUploadBytes),
-              ),
-              _Metric(
-                icon: Icons.cloud_download_outlined,
-                label: 'تنزيل',
-                value: _formatBytes(summary.totalDownloadBytes),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final items = [
+                _Metric(
+                  icon: Icons.devices_outlined,
+                  label: 'أجهزة مختلفة',
+                  value: '${summary.uniqueMacs}',
+                ),
+                _Metric(
+                  icon: Icons.history,
+                  label: 'عدد الجلسات',
+                  value: '${summary.sessionsCount}',
+                ),
+                _Metric(
+                  icon: Icons.wifi_tethering,
+                  label: 'جلسات نشطة',
+                  value: '${summary.onlineSessions}',
+                ),
+                _Metric(
+                  icon: Icons.timer_outlined,
+                  label: 'الوقت الكلي',
+                  value: _formatDuration(summary.totalSessionSeconds),
+                ),
+                _Metric(
+                  icon: Icons.cloud_upload_outlined,
+                  label: 'رفع',
+                  value: _formatBytes(summary.totalUploadBytes),
+                ),
+                _Metric(
+                  icon: Icons.cloud_download_outlined,
+                  label: 'تنزيل',
+                  value: _formatBytes(summary.totalDownloadBytes),
+                ),
+              ];
+              final cols = constraints.maxWidth >= 780 ? 3 : 2;
+              return GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: cols,
+                mainAxisSpacing: AppTokens.s8,
+                crossAxisSpacing: AppTokens.s8,
+                childAspectRatio: constraints.maxWidth < 520 ? 1.65 : 2.5,
+                children: items,
+              );
+            },
           ),
         ],
       ),
@@ -475,13 +494,12 @@ class _DetailsGrid extends StatelessWidget {
       _InfoItem('MAC مثبت', card.lockedMac ?? 'غير مثبت'),
       _InfoItem('IP', card.ipAddress ?? 'غير معروف'),
       _InfoItem('NAS', card.nasAddress ?? 'غير معروف'),
-      _InfoItem(
-        'مصادر البيانات',
-        card.dataSources.isEmpty ? 'غير متوفر' : card.dataSources.join(', '),
-      ),
+      _InfoItem('مصادر البيانات', _joinLocalized(card.dataSources)),
       _InfoItem(
         'حقول ناقصة',
-        card.missingFields.isEmpty ? 'لا يوجد' : card.missingFields.join(', '),
+        card.missingFields.isEmpty
+            ? 'لا يوجد'
+            : _joinLocalized(card.missingFields),
       ),
     ];
     return AppCard(
@@ -489,11 +507,7 @@ class _DetailsGrid extends StatelessWidget {
       icon: Icons.info_outline,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final columns = constraints.maxWidth > 900
-              ? 3
-              : constraints.maxWidth > 560
-                  ? 2
-                  : 1;
+          final columns = constraints.maxWidth > 900 ? 3 : 2;
           return GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -502,7 +516,7 @@ class _DetailsGrid extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: AppTokens.s8,
               crossAxisSpacing: AppTokens.s8,
-              childAspectRatio: 4.2,
+              childAspectRatio: constraints.maxWidth < 520 ? 2.45 : 4.2,
             ),
             itemBuilder: (_, i) => _InfoTile(item: items[i]),
           );
@@ -649,7 +663,7 @@ class _Metric extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 170,
+      width: double.infinity,
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
@@ -663,16 +677,21 @@ class _Metric extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTokens.textMuted,
                     fontSize: 11,
+                    height: 1.15,
                   ),
                 ),
                 Text(
                   value,
+                  maxLines: 1,
                   style: const TextStyle(
                     color: AppTokens.navy900,
                     fontWeight: FontWeight.w900,
@@ -820,3 +839,22 @@ String _formatBytes(int bytes) {
   }
   return '${value.toStringAsFixed(value < 10 ? 1 : 0)} ${units[unit]}';
 }
+
+String _joinLocalized(List<String> values) {
+  if (values.isEmpty) return 'غير متوفر';
+  return values.map(_fieldLabel).join('، ');
+}
+
+String _fieldLabel(String value) => switch (value) {
+      'assigned_to' => 'المسؤول عن البطاقة',
+      'cancelled_at' => 'وقت الإلغاء',
+      'deleted_at' => 'وقت الأرشفة',
+      'sold_by' => 'البائع',
+      'cards' => 'بيانات البطاقات',
+      'card_batches' => 'حزم البطاقات',
+      'radacct' => 'جلسات الاتصال',
+      'profiles' => 'العروض',
+      'nas' => 'أجهزة الشبكة',
+      'accounting' => 'المحاسبة',
+      _ => value.replaceAll('_', ' '),
+    };

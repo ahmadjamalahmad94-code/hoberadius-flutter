@@ -71,9 +71,12 @@ class ApiClient {
       final data = res.data;
       if (data is Map<String, dynamic>) {
         if (data['ok'] == false) {
+          final code = (data['error']?['code'] ?? 'error').toString();
+          final rawMessage =
+              (data['error']?['message'] ?? 'Request failed').toString();
           throw ApiException(
-            code: (data['error']?['code'] ?? 'error').toString(),
-            message: (data['error']?['message'] ?? 'Request failed').toString(),
+            code: code,
+            message: _apiErrorMessage(code, rawMessage),
             status: res.statusCode,
             details: data['error']?['details'],
           );
@@ -104,6 +107,23 @@ class ApiClient {
       return 'شهادة HTTPS غير مقبولة. استخدم شهادة صحيحة أو جرّب HTTP إذا كان الخادم داخليًا.';
     }
     return e.message ?? 'تعذّر الاتصال بالخادم.';
+  }
+
+  String _apiErrorMessage(String code, String rawMessage) {
+    final normalized = code.trim().toLowerCase();
+    return switch (normalized) {
+      'rate_limited' =>
+        'تم إرسال طلبات كثيرة بسرعة. انتظر دقيقة ثم حاول مرة أخرى.',
+      'not_implemented' => 'هذه الميزة غير مفعّلة بعد على الخادم الحالي.',
+      'forbidden' || 'permission_denied' => 'لا تملك صلاحية تنفيذ هذا الإجراء.',
+      'unauthorized' ||
+      'invalid_token' =>
+        'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول مرة أخرى.',
+      'validation_error' ||
+      'bad_request' =>
+        rawMessage.isEmpty ? 'تأكد من البيانات المدخلة.' : rawMessage,
+      _ => rawMessage.isEmpty ? 'تعذّر تنفيذ الطلب.' : rawMessage,
+    };
   }
 }
 

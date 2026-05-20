@@ -482,11 +482,17 @@ class _FormCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _NumberField(controller: cirDown, label: 'CIR تنزيل'),
+                  child: _NumberField(
+                    controller: cirDown,
+                    label: 'الحد الأدنى للتنزيل',
+                  ),
                 ),
                 const SizedBox(width: AppTokens.s8),
                 Expanded(
-                  child: _NumberField(controller: cirUp, label: 'CIR رفع'),
+                  child: _NumberField(
+                    controller: cirUp,
+                    label: 'الحد الأدنى للرفع',
+                  ),
                 ),
               ],
             ),
@@ -666,8 +672,8 @@ class _ScheduleTile extends StatelessWidget {
           children: [
             _Metric(label: 'تنزيل', value: '${item.speedDownKbps} Kbps'),
             _Metric(label: 'رفع', value: '${item.speedUpKbps} Kbps'),
-            _Metric(label: 'CIR تنزيل', value: '${item.cirDownKbps}'),
-            _Metric(label: 'CIR رفع', value: '${item.cirUpKbps}'),
+            _Metric(label: 'حد تنزيل أدنى', value: '${item.cirDownKbps}'),
+            _Metric(label: 'حد رفع أدنى', value: '${item.cirUpKbps}'),
           ],
         ),
         if (item.notes.isNotEmpty) ...[

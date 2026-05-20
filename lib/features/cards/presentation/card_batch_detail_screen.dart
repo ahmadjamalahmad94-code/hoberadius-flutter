@@ -116,7 +116,7 @@ class CardBatchDetailScreen extends ConsumerWidget {
                     ? null
                     : () => _exportCsv(batchAsync.valueOrNull, cards),
                 icon: const Icon(Icons.file_download_outlined),
-                label: const Text('تصدير CSV'),
+                label: const Text('تصدير ملف'),
               ),
               orElse: () => const SizedBox.shrink(),
             ),

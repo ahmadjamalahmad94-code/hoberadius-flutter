@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../data/plans_repository.dart';
 import '../domain/plan_model.dart';
 import 'plans_list_screen.dart';
@@ -35,29 +36,63 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   bool _singleUseOnce = false;
   bool _prepaid = true;
   String _planTier = 'Personal';
-  final Set<String> _allowedDays = {'sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'};
+  final Set<String> _allowedDays = {
+    'sun',
+    'mon',
+    'tue',
+    'wed',
+    'thu',
+    'fri',
+    'sat',
+  };
 
   bool _loading = false;
   String? _error;
   Plan? _loaded;
 
-  static const _daysAr = ['أحد', 'إثنين', 'ثلاثاء', 'أربعاء', 'خميس', 'جمعة', 'سبت'];
+  static const _daysAr = [
+    'أحد',
+    'إثنين',
+    'ثلاثاء',
+    'أربعاء',
+    'خميس',
+    'جمعة',
+    'سبت',
+  ];
   static const _daysKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   // The fields below are surfaced in the form. Anything not listed here
   // stays at its default (or, in edit mode, at its previously-saved value
   // from `_loaded`) so we never lose server-side state on PATCH.
   static const _fields = <String>[
-    'name', 'code', 'description', 'color',
-    'priority', 'validity_days', 'duration_minutes',
-    'session_timeout_sec', 'idle_timeout_sec',
-    'quota_total_mb', 'quota_daily_mb', 'quota_monthly_mb',
-    'speed_down_kbps', 'speed_up_kbps',
-    'cir_down_kbps', 'cir_up_kbps',
-    'burst_down_kbps', 'burst_up_kbps', 'burst_threshold_kbps', 'burst_time_sec',
-    'concurrent_sessions', 'address_pool', 'framed_pool', 'vlan_id',
-    'allowed_hours_from', 'allowed_hours_to',
-    'price', 'currency',
+    'name',
+    'code',
+    'description',
+    'color',
+    'priority',
+    'validity_days',
+    'duration_minutes',
+    'session_timeout_sec',
+    'idle_timeout_sec',
+    'quota_total_mb',
+    'quota_daily_mb',
+    'quota_monthly_mb',
+    'speed_down_kbps',
+    'speed_up_kbps',
+    'cir_down_kbps',
+    'cir_up_kbps',
+    'burst_down_kbps',
+    'burst_up_kbps',
+    'burst_threshold_kbps',
+    'burst_time_sec',
+    'concurrent_sessions',
+    'address_pool',
+    'framed_pool',
+    'vlan_id',
+    'allowed_hours_from',
+    'allowed_hours_to',
+    'price',
+    'currency',
   ];
 
   @override
@@ -260,40 +295,29 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: () => context.goNamed('plans'),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Expanded(
-                child: Text(
-                  widget.isEdit ? 'تعديل باقة' : 'باقة جديدة',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
-                      ),
-                ),
-              ),
+          PageHeader(
+            title: widget.isEdit ? 'تعديل باقة' : 'باقة جديدة',
+            leading: IconButton(
+              onPressed: () => context.goNamed('plans'),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            actions: [
               if (_loading)
                 const SizedBox(
                   width: 20,
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit) ...[
-                const SizedBox(width: AppTokens.s8),
+              if (widget.isEdit)
                 IconButton(
-                  tooltip: 'حذف',
+                  tooltip: '???',
                   onPressed: _loading ? null : _delete,
                   icon: const Icon(Icons.delete_outline, color: AppTokens.red),
                 ),
-              ],
-              const SizedBox(width: AppTokens.s8),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('حفظ'),
+                label: const Text('???'),
               ),
             ],
           ),
@@ -305,7 +329,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                 color: const Color(0xFFFDE9E9),
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child: Text(_error!, style: const TextStyle(color: AppTokens.red)),
+              child:
+                  Text(_error!, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           const SizedBox(height: AppTokens.s16),
@@ -336,9 +361,18 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                     items: const [
                       DropdownMenuItem(value: 'time', child: Text('وقت')),
                       DropdownMenuItem(value: 'quota', child: Text('حصة')),
-                      DropdownMenuItem(value: 'hybrid', child: Text('وقت وحصة')),
-                      DropdownMenuItem(value: 'unlimited', child: Text('غير محدود')),
-                      DropdownMenuItem(value: 'recurring', child: Text('متجدّد')),
+                      DropdownMenuItem(
+                        value: 'hybrid',
+                        child: Text('وقت وحصة'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'unlimited',
+                        child: Text('غير محدود'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'recurring',
+                        child: Text('متجدّد'),
+                      ),
                     ],
                     onChanged: (v) => setState(() => _planType = v ?? 'time'),
                   ),
@@ -348,13 +382,20 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _serviceType,
                     items: const [
-                      DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
-                      DropdownMenuItem(value: 'PPPoE', child: Text('PPPoE')),
+                      DropdownMenuItem(
+                        value: 'Hotspot',
+                        child: Text('هوتسبوت'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'PPPoE',
+                        child: Text('اتصال PPPoE'),
+                      ),
                       DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
                       DropdownMenuItem(value: 'Voucher', child: Text('قسيمة')),
                       DropdownMenuItem(value: 'Others', child: Text('أخرى')),
                     ],
-                    onChanged: (v) => setState(() => _serviceType = v ?? 'Hotspot'),
+                    onChanged: (v) =>
+                        setState(() => _serviceType = v ?? 'Hotspot'),
                   ),
                 ),
                 FormFieldRow(
@@ -450,7 +491,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
           CollapsibleSection(
             storageKey: 'plan.speed',
             icon: Icons.speed,
-            title: 'السرعة (Speed / CIR / Burst)',
+            title: 'السرعة والتحكم المتقدم',
             child: Column(
               children: [
                 FormFieldRow(
@@ -475,49 +516,49 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                   ),
                 ),
                 FormFieldRow(
-                  label: 'CIR تنزيل',
+                  label: 'الحد الأدنى للتنزيل',
                   child: TextFormField(
                     controller: _c['cir_down_kbps'],
                     keyboardType: TextInputType.number,
                   ),
                 ),
                 FormFieldRow(
-                  label: 'CIR رفع',
+                  label: 'الحد الأدنى للرفع',
                   child: TextFormField(
                     controller: _c['cir_up_kbps'],
                     keyboardType: TextInputType.number,
                   ),
                 ),
                 FormFieldRow(
-                  label: 'تفعيل Burst',
+                  label: 'تفعيل دفعة السرعة المؤقتة',
                   child: Switch(
                     value: _burstEnabled,
                     onChanged: (v) => setState(() => _burstEnabled = v),
                   ),
                 ),
                 FormFieldRow(
-                  label: 'Burst تنزيل',
+                  label: 'دفعة تنزيل مؤقتة',
                   child: TextFormField(
                     controller: _c['burst_down_kbps'],
                     keyboardType: TextInputType.number,
                   ),
                 ),
                 FormFieldRow(
-                  label: 'Burst رفع',
+                  label: 'دفعة رفع مؤقتة',
                   child: TextFormField(
                     controller: _c['burst_up_kbps'],
                     keyboardType: TextInputType.number,
                   ),
                 ),
                 FormFieldRow(
-                  label: 'حد Burst',
+                  label: 'حد دفعة السرعة',
                   child: TextFormField(
                     controller: _c['burst_threshold_kbps'],
                     keyboardType: TextInputType.number,
                   ),
                 ),
                 FormFieldRow(
-                  label: 'زمن Burst (ث)',
+                  label: 'مدة دفعة السرعة (ثانية)',
                   child: TextFormField(
                     controller: _c['burst_time_sec'],
                     keyboardType: TextInputType.number,
@@ -549,15 +590,15 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                   ),
                 ),
                 FormFieldRow(
-                  label: 'IP Pool',
+                  label: 'مجموعة عناوين IP',
                   child: TextFormField(controller: _c['address_pool']),
                 ),
                 FormFieldRow(
-                  label: 'Framed Pool',
+                  label: 'مجموعة الاتصال',
                   child: TextFormField(controller: _c['framed_pool']),
                 ),
                 FormFieldRow(
-                  label: 'VLAN',
+                  label: '??? VLAN',
                   child: TextFormField(
                     controller: _c['vlan_id'],
                     keyboardType: TextInputType.number,
@@ -635,7 +676,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                   label: 'السعر',
                   child: TextFormField(
                     controller: _c['price'],
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
                   ),
                 ),
                 FormFieldRow(
@@ -650,7 +692,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                       DropdownMenuItem(value: 'Personal', child: Text('شخصي')),
                       DropdownMenuItem(value: 'Business', child: Text('تجاري')),
                     ],
-                    onChanged: (v) => setState(() => _planTier = v ?? 'Personal'),
+                    onChanged: (v) =>
+                        setState(() => _planTier = v ?? 'Personal'),
                   ),
                 ),
                 FormFieldRow(
@@ -679,14 +722,14 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             child: Column(
               children: [
                 FormFieldRow(
-                  label: 'Hotspot',
+                  label: 'هوتسبوت',
                   child: Switch(
                     value: _hotspotEnabled,
                     onChanged: (v) => setState(() => _hotspotEnabled = v),
                   ),
                 ),
                 FormFieldRow(
-                  label: 'PPPoE',
+                  label: 'اتصال PPPoE',
                   child: Switch(
                     value: _pppEnabled,
                     onChanged: (v) => setState(() => _pppEnabled = v),
@@ -712,7 +755,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
               children: [
                 FormFieldRow(
                   label: 'الوصف',
-                  child: TextFormField(controller: _c['description'], maxLines: 3),
+                  child:
+                      TextFormField(controller: _c['description'], maxLines: 3),
                 ),
                 FormFieldRow(
                   label: 'لون',

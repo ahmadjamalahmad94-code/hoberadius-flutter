@@ -5,7 +5,12 @@ import '../../core/theme/tokens.dart';
 enum PillTone { green, orange, red, cyan, purple, navy, neutral }
 
 class StatusPill extends StatelessWidget {
-  const StatusPill({super.key, required this.text, this.tone = PillTone.cyan, this.icon});
+  const StatusPill({
+    super.key,
+    required this.text,
+    this.tone = PillTone.cyan,
+    this.icon,
+  });
 
   final String text;
   final PillTone tone;
@@ -37,7 +42,10 @@ class StatusPill extends StatelessWidget {
           ],
           Text(
             text,
-            style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w700),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style:
+                TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w700),
           ),
         ],
       ),
