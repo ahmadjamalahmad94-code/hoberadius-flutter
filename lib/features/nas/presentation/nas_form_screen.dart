@@ -268,14 +268,14 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                 ),
               if (widget.isEdit)
                 IconButton(
-                  tooltip: '???',
+                  tooltip: 'أرشفة الجهاز',
                   onPressed: _loading ? null : _delete,
                   icon: const Icon(Icons.delete_outline, color: AppTokens.red),
                 ),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('???'),
+                label: const Text('حفظ'),
               ),
             ],
           ),

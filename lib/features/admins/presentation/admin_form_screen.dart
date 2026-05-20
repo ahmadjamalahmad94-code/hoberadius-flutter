@@ -190,14 +190,14 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                 ),
               if (widget.isEdit && !isProtectedSuper)
                 IconButton(
-                  tooltip: '???',
+                  tooltip: 'أرشفة المدير',
                   onPressed: _loading ? null : _delete,
                   icon: const Icon(Icons.delete_outline, color: AppTokens.red),
                 ),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('???'),
+                label: const Text('حفظ'),
               ),
             ],
           ),

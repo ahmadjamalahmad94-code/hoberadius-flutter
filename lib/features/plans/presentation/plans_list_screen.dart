@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/plans_repository.dart';
 import '../domain/plan_model.dart';
@@ -21,22 +22,14 @@ class PlansListScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Text(
-              'الباقات',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
-                  ),
-            ),
-            const Spacer(),
+        PageHeader(
+          title: 'الباقات',
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(plansListProvider),
             ),
-            const SizedBox(width: AppTokens.s4),
             ElevatedButton.icon(
               onPressed: () => context.goNamed('plan-new'),
               icon: const Icon(Icons.add),
@@ -141,7 +134,11 @@ class _PlanCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     alignment: Alignment.center,
-                    child: Icon(Icons.workspace_premium_outlined, color: accent, size: 18),
+                    child: Icon(
+                      Icons.workspace_premium_outlined,
+                      color: accent,
+                      size: 18,
+                    ),
                   ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
@@ -164,7 +161,10 @@ class _PlanCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
-                  StatusPill(text: _typeLabel(plan.planType), tone: PillTone.cyan),
+                  StatusPill(
+                    text: _typeLabel(plan.planType),
+                    tone: PillTone.cyan,
+                  ),
                   StatusPill(text: plan.serviceType, tone: PillTone.navy),
                   if (plan.autoRenew)
                     const StatusPill(text: 'متجدّد', tone: PillTone.purple),
@@ -174,12 +174,19 @@ class _PlanCard extends StatelessWidget {
               if (plan.speedDownKbps > 0 || plan.speedUpKbps > 0)
                 Row(
                   children: [
-                    const Icon(Icons.speed, size: 14, color: AppTokens.textMuted),
+                    const Icon(
+                      Icons.speed,
+                      size: 14,
+                      color: AppTokens.textMuted,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         'تنزيل ${plan.speedDownKbps} • رفع ${plan.speedUpKbps} kbps',
-                        style: const TextStyle(color: AppTokens.textSecondary, fontSize: 13),
+                        style: const TextStyle(
+                          color: AppTokens.textSecondary,
+                          fontSize: 13,
+                        ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -189,11 +196,18 @@ class _PlanCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.timer_outlined, size: 14, color: AppTokens.textMuted),
+                    const Icon(
+                      Icons.timer_outlined,
+                      size: 14,
+                      color: AppTokens.textMuted,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'صلاحية: ${plan.validityDays} يوم',
-                      style: const TextStyle(color: AppTokens.textSecondary, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppTokens.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -202,11 +216,18 @@ class _PlanCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.data_usage, size: 14, color: AppTokens.textMuted),
+                    const Icon(
+                      Icons.data_usage,
+                      size: 14,
+                      color: AppTokens.textMuted,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       'حصة: ${plan.quotaTotalMb} MB',
-                      style: const TextStyle(color: AppTokens.textSecondary, fontSize: 13),
+                      style: const TextStyle(
+                        color: AppTokens.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),

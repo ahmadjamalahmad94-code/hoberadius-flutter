@@ -20,7 +20,13 @@ class PageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 620;
+        // Phones and narrow tablets often report widths above 620 logical
+        // pixels. Keep the title and action cluster stacked until there is
+        // genuinely enough room for Arabic headings plus buttons.
+        final compact = constraints.maxWidth < 820;
+        final titleStyle = compact
+            ? Theme.of(context).textTheme.titleLarge
+            : Theme.of(context).textTheme.headlineSmall;
         final titleBlock = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -35,11 +41,13 @@ class PageHeader extends StatelessWidget {
                   Text(
                     title,
                     softWrap: true,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppTokens.navy900,
-                          height: 1.15,
-                        ),
+                    maxLines: compact ? 3 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: titleStyle?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTokens.navy900,
+                      height: 1.15,
+                    ),
                   ),
                   if (subtitle != null && subtitle!.trim().isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -73,7 +81,10 @@ class PageHeader extends StatelessWidget {
             children: [
               titleBlock,
               const SizedBox(height: AppTokens.s12),
-              actionsWrap,
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: actionsWrap,
+              ),
             ],
           );
         }

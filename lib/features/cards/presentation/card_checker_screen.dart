@@ -379,7 +379,7 @@ class _SummaryHeader extends StatelessWidget {
                 crossAxisCount: cols,
                 mainAxisSpacing: AppTokens.s8,
                 crossAxisSpacing: AppTokens.s8,
-                childAspectRatio: constraints.maxWidth < 520 ? 1.65 : 2.5,
+                childAspectRatio: constraints.maxWidth < 520 ? 2.0 : 2.5,
                 children: items,
               );
             },
@@ -507,7 +507,11 @@ class _DetailsGrid extends StatelessWidget {
       icon: Icons.info_outline,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final columns = constraints.maxWidth > 900 ? 3 : 2;
+          final columns = constraints.maxWidth > 900
+              ? 3
+              : constraints.maxWidth < 620
+                  ? 1
+                  : 2;
           return GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -516,7 +520,7 @@ class _DetailsGrid extends StatelessWidget {
               crossAxisCount: columns,
               mainAxisSpacing: AppTokens.s8,
               crossAxisSpacing: AppTokens.s8,
-              childAspectRatio: constraints.maxWidth < 520 ? 2.45 : 4.2,
+              childAspectRatio: constraints.maxWidth < 620 ? 4.1 : 4.2,
             ),
             itemBuilder: (_, i) => _InfoTile(item: items[i]),
           );
@@ -737,7 +741,7 @@ class _InfoTile extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             item.value,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppTokens.navy900,

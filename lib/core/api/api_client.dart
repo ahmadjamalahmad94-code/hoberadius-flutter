@@ -80,6 +80,19 @@ class ApiClient {
       );
       final data = res.data;
       if (data is Map<String, dynamic>) {
+        if ((res.statusCode ?? 200) >= 400) {
+          final code =
+              (data['error']?['code'] ?? _statusCodeToError(res.statusCode))
+                  .toString();
+          final rawMessage =
+              (data['error']?['message'] ?? 'Request failed').toString();
+          throw ApiException(
+            code: code,
+            message: _apiErrorMessage(code, rawMessage),
+            status: res.statusCode,
+            details: data['error']?['details'],
+          );
+        }
         if (data['ok'] == false) {
           final code = (data['error']?['code'] ?? 'error').toString();
           final rawMessage =
@@ -92,6 +105,14 @@ class ApiClient {
           );
         }
         return data;
+      }
+      if ((res.statusCode ?? 200) >= 400) {
+        final code = _statusCodeToError(res.statusCode);
+        throw ApiException(
+          code: code,
+          message: _apiErrorMessage(code, data?.toString() ?? ''),
+          status: res.statusCode,
+        );
       }
       return {'ok': true, 'data': data};
     } on DioException catch (e) {
@@ -112,6 +133,17 @@ class ApiClient {
       ..sort((a, b) => a.key.compareTo(b.key));
     return '$path?${parts.map((e) => '${e.key}=${e.value}').join('&')}';
   }
+
+  String _statusCodeToError(int? statusCode) => switch (statusCode) {
+        400 => 'bad_request',
+        401 => 'unauthorized',
+        403 => 'forbidden',
+        404 => 'not_found',
+        409 => 'conflict',
+        422 => 'validation_error',
+        429 => 'rate_limited',
+        _ => 'request_failed',
+      };
 
   String _networkMessage(DioException e) {
     if (e.type == DioExceptionType.connectionTimeout) {

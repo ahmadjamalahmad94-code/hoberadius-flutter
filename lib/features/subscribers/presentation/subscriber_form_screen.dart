@@ -405,7 +405,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('???'),
+                label: const Text('حفظ'),
               ),
             ],
           ),

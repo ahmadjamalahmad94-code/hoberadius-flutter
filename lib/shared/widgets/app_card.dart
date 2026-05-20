@@ -39,45 +39,42 @@ class AppCard extends StatelessWidget {
                 runSpacing: AppTokens.s8,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 180),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (icon != null) ...[
-                          // Icon chip with brand-soft background — matches
-                          // the .hub-section-head-icon look on the web.
-                          Container(
-                            width: 28,
-                            height: 28,
-                            margin: const EdgeInsetsDirectional.only(
-                              end: AppTokens.s8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTokens.brandSoft,
-                              borderRadius: BorderRadius.circular(AppTokens.r6),
-                            ),
-                            alignment: Alignment.center,
-                            child:
-                                Icon(icon, size: 14, color: AppTokens.brandInk),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (icon != null) ...[
+                        // Icon chip with brand-soft background — matches
+                        // the .hub-section-head-icon look on the web.
+                        Container(
+                          width: 28,
+                          height: 28,
+                          margin: const EdgeInsetsDirectional.only(
+                            end: AppTokens.s8,
                           ),
-                        ],
-                        Flexible(
-                          child: Text(
-                            title!,
-                            softWrap: true,
-                            style: Theme.of(context)
-                                .textTheme
-                                .titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppTokens.textPrimary,
-                                  height: 1.25,
-                                ),
+                          decoration: BoxDecoration(
+                            color: AppTokens.brandSoft,
+                            borderRadius: BorderRadius.circular(AppTokens.r6),
                           ),
+                          alignment: Alignment.center,
+                          child:
+                              Icon(icon, size: 14, color: AppTokens.brandInk),
                         ),
                       ],
-                    ),
+                      Flexible(
+                        child: Text(
+                          title!,
+                          softWrap: true,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                          style:
+                              Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTokens.textPrimary,
+                                    height: 1.25,
+                                  ),
+                        ),
+                      ),
+                    ],
                   ),
                   if (actions != null) ...actions!,
                 ],

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/nas_repository.dart';
 import '../domain/nas_model.dart';
@@ -58,22 +59,14 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Text(
-              'أجهزة الشبكة',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
-                  ),
-            ),
-            const Spacer(),
+        PageHeader(
+          title: 'أجهزة الشبكة',
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(nasListProvider),
             ),
-            const SizedBox(width: AppTokens.s4),
             ElevatedButton.icon(
               onPressed: () => context.goNamed('nas-new'),
               icon: const Icon(Icons.add),

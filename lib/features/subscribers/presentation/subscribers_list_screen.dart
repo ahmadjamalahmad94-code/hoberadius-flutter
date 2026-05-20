@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
@@ -33,16 +34,9 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Text(
-              'المشتركون',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
-                  ),
-            ),
-            const Spacer(),
+        PageHeader(
+          title: 'المشتركون',
+          actions: [
             ElevatedButton.icon(
               onPressed: () => context.goNamed('subscriber-new'),
               icon: const Icon(Icons.add),
@@ -53,22 +47,21 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
         const SizedBox(height: AppTokens.s16),
         AppCard(
           padding: const EdgeInsets.all(AppTokens.s12),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  decoration: const InputDecoration(
-                    hintText: 'بحث بالاسم أو رقم الجوال…',
-                    prefixIcon: Icon(Icons.search),
-                    isDense: true,
-                  ),
-                  onChanged: (v) =>
-                      setState(() => _query = v.trim().toLowerCase()),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final compact = constraints.maxWidth < 560;
+              final search = TextField(
+                decoration: const InputDecoration(
+                  hintText: 'بحث بالاسم أو رقم الجوال…',
+                  prefixIcon: Icon(Icons.search),
+                  isDense: true,
                 ),
-              ),
-              const SizedBox(width: AppTokens.s12),
-              DropdownButton<String?>(
-                value: _status,
+                onChanged: (v) =>
+                    setState(() => _query = v.trim().toLowerCase()),
+              );
+              final status = DropdownButtonFormField<String?>(
+                initialValue: _status,
+                decoration: const InputDecoration(labelText: 'الحالة'),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('كل الحالات')),
                   DropdownMenuItem(value: 'enabled', child: Text('مفعّل')),
@@ -76,9 +69,25 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
                   DropdownMenuItem(value: 'expired', child: Text('منتهي')),
                 ],
                 onChanged: (v) => setState(() => _status = v),
-                underline: const SizedBox(),
-              ),
-            ],
+              );
+              if (compact) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    search,
+                    const SizedBox(height: AppTokens.s12),
+                    status,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: AppTokens.s12),
+                  SizedBox(width: 180, child: status),
+                ],
+              );
+            },
           ),
         ),
         const SizedBox(height: AppTokens.s16),

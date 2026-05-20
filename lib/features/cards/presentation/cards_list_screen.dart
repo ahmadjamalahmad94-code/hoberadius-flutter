@@ -414,14 +414,18 @@ class _TotalsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = constraints.maxWidth >= 900 ? 4 : 2;
+        final cols = constraints.maxWidth >= 980
+            ? 4
+            : constraints.maxWidth >= 640
+                ? 3
+                : 2;
         return GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: cols,
           crossAxisSpacing: AppTokens.s12,
           mainAxisSpacing: AppTokens.s12,
-          childAspectRatio: constraints.maxWidth < 520 ? 1.65 : 3.2,
+          childAspectRatio: constraints.maxWidth < 520 ? 2.05 : 2.8,
           children: [
             _StatCard(
               icon: Icons.inventory_2_outlined,
@@ -472,7 +476,7 @@ class _StatCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 170;
+          final compact = constraints.maxWidth < 145;
           final iconWidget = CircleAvatar(
             radius: compact ? 18 : 20,
             backgroundColor: AppTokens.cyan100,
@@ -520,7 +524,7 @@ class _StatCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 iconWidget,
-                const Spacer(),
+                const SizedBox(height: AppTokens.s8),
                 textWidget,
               ],
             );

@@ -310,14 +310,14 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                 ),
               if (widget.isEdit)
                 IconButton(
-                  tooltip: '???',
+                  tooltip: 'أرشفة الباقة',
                   onPressed: _loading ? null : _delete,
                   icon: const Icon(Icons.delete_outline, color: AppTokens.red),
                 ),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
-                label: const Text('???'),
+                label: const Text('حفظ'),
               ),
             ],
           ),
@@ -598,7 +598,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                   child: TextFormField(controller: _c['framed_pool']),
                 ),
                 FormFieldRow(
-                  label: '??? VLAN',
+                  label: 'معرّف VLAN',
                   child: TextFormField(
                     controller: _c['vlan_id'],
                     keyboardType: TextInputType.number,
