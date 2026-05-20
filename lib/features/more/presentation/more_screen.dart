@@ -93,6 +93,12 @@ const _items = <_MoreItem>[
     sub: 'الإعدادات، مفاتيح API، المستأجرون وWebhooks',
   ),
   _MoreItem(
+    Icons.construction_outlined,
+    'الأدوات',
+    'tools',
+    sub: 'تعديل سرعات، اختبار دخول، سجل RADIUS وصيانة آمنة',
+  ),
+  _MoreItem(
     Icons.speed_outlined,
     'جدولة السرعات',
     'bandwidth-schedules',

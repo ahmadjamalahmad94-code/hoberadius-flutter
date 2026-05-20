@@ -13,6 +13,7 @@ import '../../features/admin_control/presentation/admin_control_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
 import '../../features/system_operations/presentation/system_operations_screen.dart';
+import '../../features/tools/presentation/tools_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/backups/presentation/backups_screen.dart';
 import '../../features/bandwidth_schedules/presentation/bandwidth_schedules_screen.dart';
@@ -280,6 +281,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/admin-control',
             name: 'admin-control',
             builder: (ctx, st) => const AdminControlScreen(),
+          ),
+          GoRoute(
+            path: '/tools',
+            name: 'tools',
+            builder: (ctx, st) => const ToolsScreen(),
           ),
           GoRoute(
             path: '/more',
