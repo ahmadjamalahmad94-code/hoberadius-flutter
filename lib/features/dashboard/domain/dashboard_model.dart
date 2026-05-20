@@ -35,7 +35,7 @@ class DashboardMetrics {
     final systemMap = _m(j['system']);
     return DashboardMetrics(
       subscribers: subscribersMap == null
-          ? _i(j['subscribers'])
+          ? _firstInt([j['subscribers'], j['total_subscribers']])
           : _i(subscribersMap['total']),
       activeSubscribers: _firstInt([
         j['active_subscribers'],
@@ -47,11 +47,22 @@ class DashboardMetrics {
         subscribersMap?['online'],
         j['online'],
       ]),
-      plans: plansMap == null ? _i(j['plans']) : _i(plansMap['total']),
-      totalCards: _firstInt([j['total_cards'], cardsMap?['total']]),
+      plans: plansMap == null
+          ? _firstInt([j['plans'], j['plans_total'], j['profiles_total']])
+          : _i(plansMap['total']),
+      totalCards: _firstInt([
+        j['total_cards'],
+        j['cards_total'],
+        cardsMap?['total'],
+      ]),
       usedCards: _firstInt([j['used_cards'], cardsMap?['used']]),
-      totalBatches: _firstInt([j['total_batches'], cardsMap?['batches']]),
-      nasDevices: _firstInt([j['nas_devices'], nasMap?['total']]),
+      totalBatches: _firstInt([
+        j['total_batches'],
+        j['batches_total'],
+        cardsMap?['batches'],
+      ]),
+      nasDevices:
+          _firstInt([j['nas_devices'], j['nas_total'], nasMap?['total']]),
       cpuPct: _firstDouble([j['cpu_pct'], systemMap?['cpu_pct']]),
       ramPct: _firstDouble([j['ram_pct'], systemMap?['ram_pct']]),
       diskPct: _firstDouble([j['disk_pct'], systemMap?['disk_pct']]),

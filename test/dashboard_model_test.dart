@@ -51,4 +51,26 @@ void main() {
     expect(metrics.totalBatches, 2);
     expect(metrics.nasDevices, 1);
   });
+
+  test('DashboardMetrics reads stable API counter aliases', () {
+    final metrics = DashboardMetrics.fromJson({
+      'total_subscribers': 44,
+      'active_subscribers': 40,
+      'online_now': 6,
+      'plans_total': 5,
+      'total_cards': 900,
+      'used_cards': 88,
+      'total_batches': 11,
+      'nas_devices': 3,
+    });
+
+    expect(metrics.subscribers, 44);
+    expect(metrics.activeSubscribers, 40);
+    expect(metrics.onlineNow, 6);
+    expect(metrics.plans, 5);
+    expect(metrics.totalCards, 900);
+    expect(metrics.usedCards, 88);
+    expect(metrics.totalBatches, 11);
+    expect(metrics.nasDevices, 3);
+  });
 }
