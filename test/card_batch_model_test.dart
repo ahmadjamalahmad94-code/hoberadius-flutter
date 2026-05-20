@@ -72,4 +72,62 @@ void main() {
     expect(body['on_quota_exhaust'], 'reduce_speed');
     expect(body.containsKey('cards'), isFalse);
   });
+
+  test('CardBatchOperationsPage parses operational counters and totals', () {
+    final page = CardBatchOperationsPage.fromJson({
+      'data': {
+        'items': [
+          {
+            'id': 9,
+            'batch_code': 'B-OPS-9',
+            'package_name': 'Cards 4h',
+            'plan_name': 'Hotspot Plus',
+            'operational_status': 'active',
+            'generated': 100,
+            'used': 20,
+            'available_count': 70,
+            'active_count': 12,
+            'expired_count': 6,
+            'revoked_count': 2,
+            'remaining_count': 70,
+            'sessions_count': 44,
+            'unique_macs': 11,
+            'online_sessions': 3,
+            'speed_rules_count': 2,
+            'active_speed_rules': 1,
+            'estimated_unit_price': '2.5',
+            'distributor_display_name': 'North reseller',
+            'plan_speed_down_kbps': 5000,
+            'plan_speed_up_kbps': 1000,
+          },
+        ],
+        'total': 1,
+        'count': 1,
+        'page': 1,
+        'per_page': 25,
+        'pages': 1,
+        'totals': {
+          'batch_count': 1,
+          'configured_value': 250,
+          'used_today': 3,
+          'used_month': 20,
+          'used_year': 50,
+          'value_today': 7.5,
+          'value_month': 50,
+          'value_year': 125,
+        },
+      },
+    });
+
+    final batch = page.items.single;
+    expect(page.total, 1);
+    expect(page.totals.usedToday, 3);
+    expect(batch.planName, 'Hotspot Plus');
+    expect(batch.available, 70);
+    expect(batch.activeCount, 12);
+    expect(batch.uniqueMacs, 11);
+    expect(batch.activeSpeedRules, 1);
+    expect(batch.estimatedValue, 250);
+    expect(batch.distributorDisplayName, 'North reseller');
+  });
 }

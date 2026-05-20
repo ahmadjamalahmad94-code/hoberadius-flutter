@@ -40,6 +40,25 @@ class CardBatch {
     this.totalPrice = 0,
     this.totalQuotaMb = 0,
     this.managerId = 0,
+    this.distributorId,
+    this.distributorName = '',
+    this.distributorDisplayName = '',
+    this.planName = '',
+    this.planCurrency = '',
+    this.planSpeedDownKbps,
+    this.planSpeedUpKbps,
+    this.operationalStatus = '',
+    this.availableCount = 0,
+    this.activeCount = 0,
+    this.expiredCount = 0,
+    this.revokedCount = 0,
+    this.remainingCount = 0,
+    this.sessionsCount = 0,
+    this.uniqueMacs = 0,
+    this.onlineSessions = 0,
+    this.speedRulesCount = 0,
+    this.activeSpeedRules = 0,
+    this.estimatedUnitPrice = 0,
   });
 
   final int? id;
@@ -82,8 +101,41 @@ class CardBatch {
   final num totalPrice;
   final int totalQuotaMb;
   final int managerId;
+  final int? distributorId;
+  final String distributorName;
+  final String distributorDisplayName;
+  final String planName;
+  final String planCurrency;
+  final int? planSpeedDownKbps;
+  final int? planSpeedUpKbps;
+  final String operationalStatus;
+  final int availableCount;
+  final int activeCount;
+  final int expiredCount;
+  final int revokedCount;
+  final int remainingCount;
+  final int sessionsCount;
+  final int uniqueMacs;
+  final int onlineSessions;
+  final int speedRulesCount;
+  final int activeSpeedRules;
+  final num estimatedUnitPrice;
 
-  int get available => (count - used).clamp(0, count);
+  int get available => availableCount;
+
+  num get estimatedValue {
+    if (totalPrice > 0) return totalPrice;
+    return estimatedUnitPrice * (generated > 0 ? generated : count);
+  }
+
+  String get displayName {
+    if (packageName.isNotEmpty) return packageName;
+    if (planName.isNotEmpty) return planName;
+    return batchCode;
+  }
+
+  String get displayStatus =>
+      operationalStatus.isNotEmpty ? operationalStatus : status;
 
   factory CardBatch.fromJson(Map<String, dynamic> j) => CardBatch(
         id: j['id'] as int?,
@@ -132,6 +184,26 @@ class CardBatch {
         totalPrice: _num(j['total_price']) ?? 0,
         totalQuotaMb: _int(j['total_quota_mb']) ?? 0,
         managerId: _int(j['manager_id']) ?? 0,
+        distributorId: _int(j['distributor_id']),
+        distributorName: (j['distributor_name'] ?? '').toString(),
+        distributorDisplayName:
+            (j['distributor_display_name'] ?? '').toString(),
+        planName: (j['plan_name'] ?? '').toString(),
+        planCurrency: (j['plan_currency'] ?? '').toString(),
+        planSpeedDownKbps: _int(j['plan_speed_down_kbps']),
+        planSpeedUpKbps: _int(j['plan_speed_up_kbps']),
+        operationalStatus: (j['operational_status'] ?? '').toString(),
+        availableCount: _int(j['available_count']) ?? _availableFallback(j),
+        activeCount: _int(j['active_count']) ?? 0,
+        expiredCount: _int(j['expired_count']) ?? 0,
+        revokedCount: _int(j['revoked_count']) ?? 0,
+        remainingCount: _int(j['remaining_count']) ?? _availableFallback(j),
+        sessionsCount: _int(j['sessions_count']) ?? 0,
+        uniqueMacs: _int(j['unique_macs']) ?? 0,
+        onlineSessions: _int(j['online_sessions']) ?? 0,
+        speedRulesCount: _int(j['speed_rules_count']) ?? 0,
+        activeSpeedRules: _int(j['active_speed_rules']) ?? 0,
+        estimatedUnitPrice: _num(j['estimated_unit_price']) ?? 0,
       );
 
   static int? _int(Object? v) =>
@@ -141,6 +213,12 @@ class CardBatch {
     if (v == null) return null;
     if (v is num) return v;
     return num.tryParse(v.toString());
+  }
+
+  static int _availableFallback(Map<String, dynamic> j) {
+    final total = _int(j['count']) ?? 0;
+    final consumed = _int(j['used']) ?? 0;
+    return (total - consumed).clamp(0, total).toInt();
   }
 
   static bool _bool(Object? v) =>
@@ -153,6 +231,111 @@ class CardBatch {
     } catch (_) {
       return null;
     }
+  }
+}
+
+class CardBatchOperationsPage {
+  CardBatchOperationsPage({
+    required this.items,
+    required this.totals,
+    this.total = 0,
+    this.count = 0,
+    this.page = 1,
+    this.perPage = 25,
+    this.pages = 1,
+  });
+
+  final List<CardBatch> items;
+  final CardBatchOperationsTotals totals;
+  final int total;
+  final int count;
+  final int page;
+  final int perPage;
+  final int pages;
+
+  factory CardBatchOperationsPage.fromJson(Map<String, dynamic> json) {
+    final data = (json['data'] is Map<String, dynamic>)
+        ? json['data'] as Map<String, dynamic>
+        : json;
+    return CardBatchOperationsPage(
+      items: (data['items'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(CardBatch.fromJson)
+          .toList(),
+      totals: CardBatchOperationsTotals.fromJson(
+        data['totals'] is Map<String, dynamic>
+            ? data['totals'] as Map<String, dynamic>
+            : const {},
+      ),
+      total: _intValue(data['total']) ?? 0,
+      count: _intValue(data['count']) ?? 0,
+      page: _intValue(data['page']) ?? 1,
+      perPage: _intValue(data['per_page']) ?? 25,
+      pages: _intValue(data['pages']) ?? 1,
+    );
+  }
+}
+
+class CardBatchOperationsTotals {
+  CardBatchOperationsTotals({
+    this.batchCount = 0,
+    this.configuredValue = 0,
+    this.usedToday = 0,
+    this.usedMonth = 0,
+    this.usedYear = 0,
+    this.valueToday = 0,
+    this.valueMonth = 0,
+    this.valueYear = 0,
+  });
+
+  final int batchCount;
+  final num configuredValue;
+  final int usedToday;
+  final int usedMonth;
+  final int usedYear;
+  final num valueToday;
+  final num valueMonth;
+  final num valueYear;
+
+  factory CardBatchOperationsTotals.fromJson(Map<String, dynamic> json) =>
+      CardBatchOperationsTotals(
+        batchCount: _intValue(json['batch_count']) ?? 0,
+        configuredValue: _numValue(json['configured_value']) ?? 0,
+        usedToday: _intValue(json['used_today']) ?? 0,
+        usedMonth: _intValue(json['used_month']) ?? 0,
+        usedYear: _intValue(json['used_year']) ?? 0,
+        valueToday: _numValue(json['value_today']) ?? 0,
+        valueMonth: _numValue(json['value_month']) ?? 0,
+        valueYear: _numValue(json['value_year']) ?? 0,
+      );
+}
+
+class CardBatchBulkResult {
+  CardBatchBulkResult({
+    this.action = '',
+    this.requested = 0,
+    this.changed = 0,
+    this.batchIds = const [],
+  });
+
+  final String action;
+  final int requested;
+  final int changed;
+  final List<int> batchIds;
+
+  factory CardBatchBulkResult.fromJson(Map<String, dynamic> json) {
+    final data = (json['data'] is Map<String, dynamic>)
+        ? json['data'] as Map<String, dynamic>
+        : json;
+    return CardBatchBulkResult(
+      action: (data['action'] ?? '').toString(),
+      requested: _intValue(data['requested']) ?? 0,
+      changed: _intValue(data['changed']) ?? 0,
+      batchIds: (data['batch_ids'] as List? ?? const [])
+          .map(_intValue)
+          .whereType<int>()
+          .toList(),
+    );
   }
 }
 
@@ -785,6 +968,12 @@ int? _intValue(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value.toString());
+}
+
+num? _numValue(Object? value) {
+  if (value == null) return null;
+  if (value is num) return value;
+  return num.tryParse(value.toString());
 }
 
 bool _boolValue(Object? value) =>

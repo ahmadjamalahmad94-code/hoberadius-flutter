@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -28,15 +31,70 @@ class CardsRepository {
   }
 
   Future<List<CardBatch>> listBatches({int limit = 100, int offset = 0}) async {
+    final page = (offset ~/ limit) + 1;
+    final result = await listBatchOperations(page: page, perPage: limit);
+    return result.items;
+  }
+
+  Future<CardBatchOperationsPage> listBatchOperations({
+    String query = '',
+    String status = '',
+    int? planId,
+    String manager = '',
+    int? distributorId,
+    int page = 1,
+    int perPage = 25,
+  }) async {
     final res = await _api.get(
       '/api/v1/cards/batches',
-      query: {'limit': limit, 'offset': offset},
+      query: {
+        if (query.trim().isNotEmpty) 'q': query.trim(),
+        if (status.isNotEmpty) 'status': status,
+        if (planId != null) 'plan_id': planId,
+        if (manager.trim().isNotEmpty) 'manager': manager.trim(),
+        if (distributorId != null) 'distributor_id': distributorId,
+        'page': page,
+        'per_page': perPage,
+      },
     );
-    final items = (res['data']?['items'] ?? const []) as List;
-    return items
-        .whereType<Map<String, dynamic>>()
-        .map(CardBatch.fromJson)
-        .toList();
+    return CardBatchOperationsPage.fromJson(res);
+  }
+
+  Future<CardBatchBulkResult> bulkBatches({
+    required String action,
+    required List<int> batchIds,
+    String reason = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/cards/batches/bulk',
+      body: {
+        'action': action,
+        'batch_ids': batchIds,
+        if (reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+    );
+    return CardBatchBulkResult.fromJson(res);
+  }
+
+  Future<Uint8List> exportBatchesCsv({
+    String query = '',
+    String status = '',
+    int? planId,
+    String manager = '',
+    int? distributorId,
+  }) async {
+    final res = await _api.dio.get<List<int>>(
+      '/api/v1/cards/batches/export.csv',
+      queryParameters: {
+        if (query.trim().isNotEmpty) 'q': query.trim(),
+        if (status.isNotEmpty) 'status': status,
+        if (planId != null) 'plan_id': planId,
+        if (manager.trim().isNotEmpty) 'manager': manager.trim(),
+        if (distributorId != null) 'distributor_id': distributorId,
+      },
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
   }
 
   Future<CardBatch> getBatch(int batchId) async {
