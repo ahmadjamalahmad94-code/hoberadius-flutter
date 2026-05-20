@@ -27,6 +27,12 @@ const _items = <_MoreItem>[
     sub: 'المتّصلون الآن + قطع',
   ),
   _MoreItem(
+    Icons.manage_search_outlined,
+    'فحص بطاقة',
+    'card-checker',
+    sub: 'حالة البطاقة والجلسات وعمليات التشغيل',
+  ),
+  _MoreItem(
     Icons.admin_panel_settings_outlined,
     'المدراء',
     'admins',

@@ -79,6 +79,52 @@ class CardsRepository {
   }
 
   Future<void> revoke(int cardId) => _api.post('/api/v1/cards/$cardId/revoke');
+
+  Future<CardCheckResult> checkCard(String query) async {
+    final res = await _api.get('/api/v1/cards/check', query: {'query': query});
+    final data = (res['data'] ?? res) as Map<String, dynamic>;
+    final card = data['card'] as Map<String, dynamic>? ?? {};
+    return CardCheckResult.fromJson(card);
+  }
+
+  Future<CardCheckResult> enableCard(int cardId) =>
+      _cardAction(cardId, 'enable');
+
+  Future<CardCheckResult> disableCard(int cardId, {String reason = ''}) =>
+      _cardAction(cardId, 'disable', body: {'reason': reason});
+
+  Future<CardCheckResult> lockCardMac(int cardId, String mac) =>
+      _cardAction(cardId, 'lock-mac', body: {'mac': mac});
+
+  Future<CardCheckResult> unlockCardMac(int cardId) =>
+      _cardAction(cardId, 'unlock-mac');
+
+  Future<CardCheckResult> resetCardUsage(int cardId) =>
+      _cardAction(cardId, 'reset-usage');
+
+  Future<CardCheckResult> disconnectCard(int cardId, {String sessionId = ''}) =>
+      _cardAction(cardId, 'disconnect', body: {'session_id': sessionId});
+
+  Future<CardCheckResult> deleteCardPermanently(
+    int cardId, {
+    required String username,
+  }) =>
+      _cardAction(
+        cardId,
+        'delete-permanent',
+        body: {'confirm': 'DELETE:$username'},
+      );
+
+  Future<CardCheckResult> _cardAction(
+    int cardId,
+    String action, {
+    Map<String, dynamic>? body,
+  }) async {
+    final res = await _api.post('/api/v1/cards/$cardId/$action', body: body);
+    final data = (res['data'] ?? res) as Map<String, dynamic>;
+    final card = data['card'] as Map<String, dynamic>? ?? {};
+    return CardCheckResult.fromJson(card);
+  }
 }
 
 final cardsRepositoryProvider = Provider<CardsRepository>((ref) {

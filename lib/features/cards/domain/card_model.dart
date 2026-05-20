@@ -370,3 +370,444 @@ class UpdateBatchRequest {
         'notes': notes,
       };
 }
+
+class CardCheckResult {
+  CardCheckResult({
+    required this.exists,
+    required this.status,
+    this.query = '',
+    this.id,
+    this.username = '',
+    this.hasPassword = false,
+    this.used = false,
+    this.revoked = false,
+    this.lockedMac,
+    this.disabledReason = '',
+    this.createdAt,
+    this.startedAt,
+    this.expiresAt,
+    this.remainingSeconds,
+    this.batch,
+    this.profile,
+    this.assignedTo,
+    this.lastSeenAt,
+    this.macAddress,
+    this.ipAddress,
+    this.nasAddress,
+    this.activeSession,
+    this.lastSessionSeconds,
+    CardOperations? operations,
+    CardAccountingSummary? accountingSummary,
+    List<String>? dataSources,
+    List<String>? availableFields,
+    List<String>? missingFields,
+  })  : operations = operations ?? CardOperations(),
+        accountingSummary = accountingSummary ?? CardAccountingSummary(),
+        dataSources = dataSources ?? const [],
+        availableFields = availableFields ?? const [],
+        missingFields = missingFields ?? const [];
+
+  final bool exists;
+  final String status;
+  final String query;
+  final int? id;
+  final String username;
+  final bool hasPassword;
+  final bool used;
+  final bool revoked;
+  final String? lockedMac;
+  final String disabledReason;
+  final DateTime? createdAt;
+  final DateTime? startedAt;
+  final DateTime? expiresAt;
+  final int? remainingSeconds;
+  final CardCheckBatch? batch;
+  final CardCheckProfile? profile;
+  final CardAssignedTo? assignedTo;
+  final DateTime? lastSeenAt;
+  final String? macAddress;
+  final String? ipAddress;
+  final String? nasAddress;
+  final bool? activeSession;
+  final int? lastSessionSeconds;
+  final CardOperations operations;
+  final CardAccountingSummary accountingSummary;
+  final List<String> dataSources;
+  final List<String> availableFields;
+  final List<String> missingFields;
+
+  factory CardCheckResult.fromJson(Map<String, dynamic> json) {
+    final batch = json['batch'];
+    final profile = json['profile'];
+    final assignedTo = json['assigned_to'];
+    return CardCheckResult(
+      exists: _boolValue(json['exists']),
+      status: (json['status'] ?? 'unknown').toString(),
+      query: (json['query'] ?? '').toString(),
+      id: _intValue(json['id']),
+      username: (json['username'] ?? '').toString(),
+      hasPassword: _boolValue(json['has_password']),
+      used: _boolValue(json['used']),
+      revoked: _boolValue(json['revoked']),
+      lockedMac: _stringOrNull(json['locked_mac']),
+      disabledReason: (json['disabled_reason'] ?? '').toString(),
+      createdAt: _dateValue(json['created_at']),
+      startedAt: _dateValue(json['started_at']),
+      expiresAt: _dateValue(json['expires_at']),
+      remainingSeconds: _intValue(json['remaining_seconds']),
+      batch:
+          batch is Map<String, dynamic> ? CardCheckBatch.fromJson(batch) : null,
+      profile: profile is Map<String, dynamic>
+          ? CardCheckProfile.fromJson(profile)
+          : null,
+      assignedTo: assignedTo is Map<String, dynamic>
+          ? CardAssignedTo.fromJson(assignedTo)
+          : null,
+      lastSeenAt: _dateValue(json['last_seen_at']),
+      macAddress: _stringOrNull(json['mac_address']),
+      ipAddress: _stringOrNull(json['ip_address']),
+      nasAddress: _stringOrNull(json['nas_address']),
+      activeSession: json.containsKey('active_session')
+          ? _boolValue(json['active_session'])
+          : null,
+      lastSessionSeconds: _intValue(json['last_session_seconds']),
+      operations: json['operations'] is Map<String, dynamic>
+          ? CardOperations.fromJson(json['operations'] as Map<String, dynamic>)
+          : CardOperations(),
+      accountingSummary: json['accounting_summary'] is Map<String, dynamic>
+          ? CardAccountingSummary.fromJson(
+              json['accounting_summary'] as Map<String, dynamic>,
+            )
+          : CardAccountingSummary(),
+      dataSources: _stringList(json['data_sources']),
+      availableFields: _stringList(json['available_fields']),
+      missingFields: _stringList(json['missing_fields']),
+    );
+  }
+}
+
+class CardCheckBatch {
+  CardCheckBatch({
+    this.id,
+    this.batchCode = '',
+    this.packageName = '',
+    this.status = '',
+    this.count = 0,
+    this.generated = 0,
+    this.used = 0,
+    this.managerId,
+    this.createdBy,
+    this.createdAt,
+    this.expiresAt,
+    this.deletedAt,
+  });
+
+  final int? id;
+  final String batchCode;
+  final String packageName;
+  final String status;
+  final int count;
+  final int generated;
+  final int used;
+  final int? managerId;
+  final String? createdBy;
+  final DateTime? createdAt;
+  final DateTime? expiresAt;
+  final DateTime? deletedAt;
+
+  factory CardCheckBatch.fromJson(Map<String, dynamic> json) => CardCheckBatch(
+        id: _intValue(json['id']),
+        batchCode: (json['batch_code'] ?? '').toString(),
+        packageName: (json['package_name'] ?? '').toString(),
+        status: (json['status'] ?? '').toString(),
+        count: _intValue(json['count']) ?? 0,
+        generated: _intValue(json['generated']) ?? 0,
+        used: _intValue(json['used']) ?? 0,
+        managerId: _intValue(json['manager_id']),
+        createdBy: _stringOrNull(json['created_by']),
+        createdAt: _dateValue(json['created_at']),
+        expiresAt: _dateValue(json['expires_at']),
+        deletedAt: _dateValue(json['deleted_at']),
+      );
+}
+
+class CardCheckProfile {
+  CardCheckProfile({
+    this.id,
+    this.name = '',
+    this.code = '',
+    this.serviceType,
+    this.planType,
+    this.speedDownKbps,
+    this.speedUpKbps,
+    this.quotaTotalMb,
+    this.quotaDailyMb,
+    this.quotaMonthlyMb,
+    this.durationMinutes,
+    this.validityDays,
+  });
+
+  final int? id;
+  final String name;
+  final String code;
+  final String? serviceType;
+  final String? planType;
+  final int? speedDownKbps;
+  final int? speedUpKbps;
+  final int? quotaTotalMb;
+  final int? quotaDailyMb;
+  final int? quotaMonthlyMb;
+  final int? durationMinutes;
+  final int? validityDays;
+
+  factory CardCheckProfile.fromJson(Map<String, dynamic> json) =>
+      CardCheckProfile(
+        id: _intValue(json['id']),
+        name: (json['name'] ?? '').toString(),
+        code: (json['code'] ?? '').toString(),
+        serviceType: _stringOrNull(json['service_type']),
+        planType: _stringOrNull(json['plan_type']),
+        speedDownKbps: _intValue(json['speed_down_kbps']),
+        speedUpKbps: _intValue(json['speed_up_kbps']),
+        quotaTotalMb: _intValue(json['quota_total_mb']),
+        quotaDailyMb: _intValue(json['quota_daily_mb']),
+        quotaMonthlyMb: _intValue(json['quota_monthly_mb']),
+        durationMinutes: _intValue(json['duration_minutes']),
+        validityDays: _intValue(json['validity_days']),
+      );
+}
+
+class CardAssignedTo {
+  CardAssignedTo({
+    this.subscriberId,
+    this.username = '',
+    this.fullName = '',
+    this.mobile = '',
+    this.status,
+  });
+
+  final int? subscriberId;
+  final String username;
+  final String fullName;
+  final String mobile;
+  final String? status;
+
+  factory CardAssignedTo.fromJson(Map<String, dynamic> json) => CardAssignedTo(
+        subscriberId: _intValue(json['subscriber_id']),
+        username: (json['username'] ?? '').toString(),
+        fullName: (json['full_name'] ?? '').toString(),
+        mobile: (json['mobile'] ?? '').toString(),
+        status: _stringOrNull(json['status']),
+      );
+}
+
+class CardOperations {
+  CardOperations({
+    this.canDisconnect = false,
+    this.canLockMac = false,
+    this.canResetUsage = false,
+    this.canDisable = false,
+    this.canEnable = false,
+    this.canDeletePermanently = false,
+  });
+
+  final bool canDisconnect;
+  final bool canLockMac;
+  final bool canResetUsage;
+  final bool canDisable;
+  final bool canEnable;
+  final bool canDeletePermanently;
+
+  factory CardOperations.fromJson(Map<String, dynamic> json) => CardOperations(
+        canDisconnect: _boolValue(json['can_disconnect']),
+        canLockMac: _boolValue(json['can_lock_mac']),
+        canResetUsage: _boolValue(json['can_reset_usage']),
+        canDisable: _boolValue(json['can_disable']),
+        canEnable: _boolValue(json['can_enable']),
+        canDeletePermanently: _boolValue(json['can_delete_permanently']),
+      );
+}
+
+class CardAccountingSummary {
+  CardAccountingSummary({
+    this.sessionsCount = 0,
+    this.onlineSessions = 0,
+    this.uniqueMacs = 0,
+    this.uniqueIps = 0,
+    this.uniqueNas = 0,
+    this.totalSessionSeconds = 0,
+    this.totalUploadBytes = 0,
+    this.totalDownloadBytes = 0,
+    this.firstSessionAt,
+    this.lastSessionAt,
+    List<CardMacSummary>? macs,
+    List<CardSession>? latestSessions,
+  })  : macs = macs ?? const [],
+        latestSessions = latestSessions ?? const [];
+
+  final int sessionsCount;
+  final int onlineSessions;
+  final int uniqueMacs;
+  final int uniqueIps;
+  final int uniqueNas;
+  final int totalSessionSeconds;
+  final int totalUploadBytes;
+  final int totalDownloadBytes;
+  final DateTime? firstSessionAt;
+  final DateTime? lastSessionAt;
+  final List<CardMacSummary> macs;
+  final List<CardSession> latestSessions;
+
+  factory CardAccountingSummary.fromJson(Map<String, dynamic> json) =>
+      CardAccountingSummary(
+        sessionsCount: _intValue(json['sessions_count']) ?? 0,
+        onlineSessions: _intValue(json['online_sessions']) ?? 0,
+        uniqueMacs: _intValue(json['unique_macs']) ?? 0,
+        uniqueIps: _intValue(json['unique_ips']) ?? 0,
+        uniqueNas: _intValue(json['unique_nas']) ?? 0,
+        totalSessionSeconds: _intValue(json['total_session_seconds']) ?? 0,
+        totalUploadBytes: _intValue(json['total_upload_bytes']) ?? 0,
+        totalDownloadBytes: _intValue(json['total_download_bytes']) ?? 0,
+        firstSessionAt: _dateValue(json['first_session_at']),
+        lastSessionAt: _dateValue(json['last_session_at']),
+        macs: (json['macs'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(CardMacSummary.fromJson)
+            .toList(),
+        latestSessions: (json['latest_sessions'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(CardSession.fromJson)
+            .toList(),
+      );
+}
+
+class CardMacSummary {
+  CardMacSummary({
+    this.mac = '',
+    this.sessionsCount = 0,
+    this.onlineSessions = 0,
+    this.lastSeenAt,
+  });
+
+  final String mac;
+  final int sessionsCount;
+  final int onlineSessions;
+  final DateTime? lastSeenAt;
+
+  factory CardMacSummary.fromJson(Map<String, dynamic> json) => CardMacSummary(
+        mac: (json['mac'] ?? '').toString(),
+        sessionsCount: _intValue(json['sessions_count']) ?? 0,
+        onlineSessions: _intValue(json['online_sessions']) ?? 0,
+        lastSeenAt: _dateValue(json['last_seen_at']),
+      );
+}
+
+class CardSession {
+  CardSession({
+    this.id,
+    this.sessionId = '',
+    this.uniqueId = '',
+    this.startedAt,
+    this.updatedAt,
+    this.stoppedAt,
+    this.online = false,
+    this.durationSeconds = 0,
+    this.uploadBytes = 0,
+    this.downloadBytes = 0,
+    this.macAddress,
+    this.calledStation,
+    this.ipAddress,
+    this.ipv6Address,
+    this.nasAddress,
+    this.nasPort,
+    this.nasPortType,
+    this.serviceType,
+    this.framedProtocol,
+    this.connectInfoStart,
+    this.connectInfoStop,
+    this.terminateCause,
+    this.deviceHint,
+  });
+
+  final int? id;
+  final String sessionId;
+  final String uniqueId;
+  final DateTime? startedAt;
+  final DateTime? updatedAt;
+  final DateTime? stoppedAt;
+  final bool online;
+  final int durationSeconds;
+  final int uploadBytes;
+  final int downloadBytes;
+  final String? macAddress;
+  final String? calledStation;
+  final String? ipAddress;
+  final String? ipv6Address;
+  final String? nasAddress;
+  final String? nasPort;
+  final String? nasPortType;
+  final String? serviceType;
+  final String? framedProtocol;
+  final String? connectInfoStart;
+  final String? connectInfoStop;
+  final String? terminateCause;
+  final String? deviceHint;
+
+  factory CardSession.fromJson(Map<String, dynamic> json) => CardSession(
+        id: _intValue(json['id']),
+        sessionId: (json['session_id'] ?? '').toString(),
+        uniqueId: (json['unique_id'] ?? '').toString(),
+        startedAt: _dateValue(json['started_at']),
+        updatedAt: _dateValue(json['updated_at']),
+        stoppedAt: _dateValue(json['stopped_at']),
+        online: _boolValue(json['online']),
+        durationSeconds: _intValue(json['duration_seconds']) ?? 0,
+        uploadBytes: _intValue(json['upload_bytes']) ?? 0,
+        downloadBytes: _intValue(json['download_bytes']) ?? 0,
+        macAddress: _stringOrNull(json['mac_address']),
+        calledStation: _stringOrNull(json['called_station']),
+        ipAddress: _stringOrNull(json['ip_address']),
+        ipv6Address: _stringOrNull(json['ipv6_address']),
+        nasAddress: _stringOrNull(json['nas_address']),
+        nasPort: _stringOrNull(json['nas_port']),
+        nasPortType: _stringOrNull(json['nas_port_type']),
+        serviceType: _stringOrNull(json['service_type']),
+        framedProtocol: _stringOrNull(json['framed_protocol']),
+        connectInfoStart: _stringOrNull(json['connect_info_start']),
+        connectInfoStop: _stringOrNull(json['connect_info_stop']),
+        terminateCause: _stringOrNull(json['terminate_cause']),
+        deviceHint: _stringOrNull(json['device_hint']),
+      );
+}
+
+int? _intValue(Object? value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
+}
+
+bool _boolValue(Object? value) =>
+    value == true || value == 1 || value == '1' || value == 'true';
+
+DateTime? _dateValue(Object? value) {
+  if (value == null || value.toString().isEmpty) return null;
+  try {
+    return DateTime.parse(value.toString().replaceAll('Z', ''));
+  } catch (_) {
+    return null;
+  }
+}
+
+String? _stringOrNull(Object? value) {
+  if (value == null) return null;
+  final text = value.toString();
+  return text.isEmpty ? null : text;
+}
+
+List<String> _stringList(Object? value) {
+  return (value as List? ?? const [])
+      .map((item) => item.toString())
+      .where((item) => item.isNotEmpty)
+      .toList();
+}

@@ -17,6 +17,7 @@ import '../../features/bandwidth_schedules/presentation/bandwidth_schedules_scre
 import '../../features/cards/presentation/card_batch_detail_screen.dart';
 import '../../features/cards/presentation/card_batch_edit_screen.dart';
 import '../../features/cards/presentation/card_batch_form_screen.dart';
+import '../../features/cards/presentation/card_checker_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/distributors/presentation/distributor_detail_screen.dart';
@@ -98,6 +99,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: 'new',
                 name: 'card-batch-new',
                 builder: (ctx, st) => const CardBatchFormScreen(),
+              ),
+              GoRoute(
+                path: 'checker',
+                name: 'card-checker',
+                builder: (ctx, st) => const CardCheckerScreen(),
               ),
               GoRoute(
                 path: 'batches/:id',

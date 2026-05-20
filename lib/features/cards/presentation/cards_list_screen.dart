@@ -39,6 +39,12 @@ class CardsListScreen extends ConsumerWidget {
               onPressed: () => ref.invalidate(batchesListProvider),
             ),
             const SizedBox(width: AppTokens.s4),
+            OutlinedButton.icon(
+              onPressed: () => context.goNamed('card-checker'),
+              icon: const Icon(Icons.manage_search_outlined),
+              label: const Text('فحص بطاقة'),
+            ),
+            const SizedBox(width: AppTokens.s8),
             ElevatedButton.icon(
               onPressed: () => context.goNamed('card-batch-new'),
               icon: const Icon(Icons.add),
@@ -144,7 +150,8 @@ class _BatchesTable extends StatelessWidget {
                   'المتاح: ${b.available}',
                   if (b.createdAt != null) df.format(b.createdAt!),
                 ].join(' • '),
-                style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
+                style:
+                    const TextStyle(color: AppTokens.textMuted, fontSize: 12),
               ),
               if (b.count > 0) ...[
                 const SizedBox(height: 6),
