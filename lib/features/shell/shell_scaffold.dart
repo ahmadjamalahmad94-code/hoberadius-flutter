@@ -49,7 +49,8 @@ int _indexOfRoute(String location) {
       location == '/plans' ||
       location == '/admins' ||
       location == '/roles' ||
-      location == '/bandwidth-schedules') {
+      location == '/bandwidth-schedules' ||
+      location == '/print-templates') {
     return _destinations.length - 1;
   }
   return 0;

@@ -26,6 +26,7 @@ import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
+import '../../features/print_templates/presentation/print_templates_screen.dart';
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
@@ -236,6 +237,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/bandwidth-schedules',
             name: 'bandwidth-schedules',
             builder: (ctx, st) => const BandwidthSchedulesScreen(),
+          ),
+          GoRoute(
+            path: '/print-templates',
+            name: 'print-templates',
+            builder: (ctx, st) => const PrintTemplatesScreen(),
           ),
           GoRoute(
             path: '/more',
