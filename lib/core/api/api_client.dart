@@ -84,10 +84,26 @@ class ApiClient {
     } on DioException catch (e) {
       throw ApiException(
         code: e.type.name,
-        message: e.message ?? 'Network error',
+        message: _networkMessage(e),
         status: e.response?.statusCode,
       );
     }
+  }
+
+  String _networkMessage(DioException e) {
+    if (e.type == DioExceptionType.connectionTimeout) {
+      return 'انتهت مهلة الاتصال. تأكد من عنوان الخادم والمنفذ.';
+    }
+    if (e.type == DioExceptionType.receiveTimeout) {
+      return 'الخادم تأخر في الرد. جرّب مرة أخرى أو افحص حالة الـ VPS.';
+    }
+    if (e.type == DioExceptionType.connectionError) {
+      return 'تعذّر الوصول للخادم. تأكد من IP والمنفذ، وأن HTTP/HTTPS صحيح، وأن لوحة HobeRadius تعمل على الخادم.';
+    }
+    if (e.type == DioExceptionType.badCertificate) {
+      return 'شهادة HTTPS غير مقبولة. استخدم شهادة صحيحة أو جرّب HTTP إذا كان الخادم داخليًا.';
+    }
+    return e.message ?? 'تعذّر الاتصال بالخادم.';
   }
 }
 

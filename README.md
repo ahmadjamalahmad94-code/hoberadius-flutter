@@ -34,6 +34,12 @@ flutter pub get
 > ```
 >
 > لبناء Windows يجب تفعيل Developer Mode في النظام لأن Flutter plugins تحتاج symlink support.
+>
+> للأندرويد، بعد توليد `android/` شغّل هذا الأمر مرة واحدة حتى تُضاف صلاحية الإنترنت ودعم HTTP عند اختيار `HTTP` من شاشة الدخول:
+>
+> ```powershell
+> .\tools\patch_android_network.ps1
+> ```
 
 ### 3. الـ backend
 
