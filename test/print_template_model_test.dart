@@ -32,17 +32,36 @@ void main() {
 
   test('PrintTemplatePreview makes export status explicit', () {
     final preview = PrintTemplatePreview.fromJson({
+      'template': {
+        'id': 5,
+        'name': 'small',
+        'cards_per_row': 2,
+        'cards_per_column': 5,
+        'show_qr': true,
+      },
       'preview': {
-        'renderer': 'json_layout_preview',
+        'renderer': 'visual_card_preview',
         'cards_per_page': '12',
         'qr_supported': true,
+        'card': {
+          'width_mm': 85,
+          'height_mm': 54,
+          'font_size': 12,
+          'color': '#1f2937',
+        },
+        'placements': {
+          'username': {'x_percent': 12, 'y_percent': 28},
+        },
         'sample': {'username': 'QA123'},
       },
       'export_generated': false,
     });
 
-    expect(preview.renderer, 'json_layout_preview');
+    expect(preview.template.name, 'small');
+    expect(preview.renderer, 'visual_card_preview');
     expect(preview.cardsPerPage, 12);
+    expect(preview.card['width_mm'], 85);
+    expect((preview.placements['username'] as Map)['x_percent'], 12);
     expect(preview.exportGenerated, isFalse);
     expect(preview.sample['username'], 'QA123');
   });

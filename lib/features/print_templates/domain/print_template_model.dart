@@ -67,16 +67,22 @@ class CardPrintTemplate {
 
 class PrintTemplatePreview {
   const PrintTemplatePreview({
+    required this.template,
     required this.cardsPerPage,
     required this.renderer,
     required this.qrSupported,
+    required this.card,
+    required this.placements,
     required this.sample,
     required this.exportGenerated,
   });
 
+  final CardPrintTemplate template;
   final int cardsPerPage;
   final String renderer;
   final bool qrSupported;
+  final Map<String, dynamic> card;
+  final Map<String, dynamic> placements;
   final Map<String, dynamic> sample;
   final bool exportGenerated;
 
@@ -86,10 +92,24 @@ class PrintTemplatePreview {
         ? preview.map((key, value) => MapEntry(key.toString(), value))
         : const <String, dynamic>{};
     final sample = previewMap['sample'];
+    final template = json['template'];
+    final card = previewMap['card'];
+    final placements = previewMap['placements'];
     return PrintTemplatePreview(
+      template: CardPrintTemplate.fromJson(
+        template is Map
+            ? template.map((key, value) => MapEntry(key.toString(), value))
+            : const {},
+      ),
       cardsPerPage: _asInt(previewMap['cards_per_page']),
       renderer: (previewMap['renderer'] ?? '').toString(),
       qrSupported: _asBool(previewMap['qr_supported']),
+      card: card is Map
+          ? card.map((key, value) => MapEntry(key.toString(), value))
+          : const {},
+      placements: placements is Map
+          ? placements.map((key, value) => MapEntry(key.toString(), value))
+          : const {},
       sample: sample is Map
           ? sample.map((key, value) => MapEntry(key.toString(), value))
           : const {},
