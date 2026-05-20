@@ -66,7 +66,12 @@ class _Mobile extends ConsumerWidget {
     final idx = _indexOfRoute(location);
     return Scaffold(
       appBar: _MobileAppBar(title: _destinations[idx].label),
-      body: SafeArea(child: child),
+      body: SafeArea(
+        child: _ContentArea(
+          padding: const EdgeInsets.all(AppTokens.s12),
+          child: child,
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: idx,
         onDestinationSelected: (i) => _onTap(context, i),
@@ -302,9 +307,14 @@ class _Sidebar extends StatelessWidget {
 }
 
 class _ContentArea extends StatelessWidget {
-  const _ContentArea({required this.child, this.showTopBar = false});
+  const _ContentArea({
+    required this.child,
+    this.showTopBar = false,
+    this.padding = const EdgeInsets.all(AppTokens.s20),
+  });
   final Widget child;
   final bool showTopBar;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {
@@ -315,7 +325,7 @@ class _ContentArea extends StatelessWidget {
           if (showTopBar) const _DesktopTopBar(),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AppTokens.s20),
+              padding: padding,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1280),
                 child: child,

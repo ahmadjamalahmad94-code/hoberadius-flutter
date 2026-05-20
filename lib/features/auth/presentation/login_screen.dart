@@ -71,153 +71,207 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final auth = ref.watch(authControllerProvider);
     return Scaffold(
       backgroundColor: AppTokens.bg,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppTokens.s24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(AppTokens.s24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const _Brand(),
-                      const SizedBox(height: AppTokens.s24),
-                      Text(
-                        'تسجيل دخول الإدارة',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: AppTokens.navy900,
-                            ),
-                      ),
-                      const SizedBox(height: AppTokens.s8),
-                      Text(
-                        'اكتب عنوان VPS ثم بيانات مدير النظام. نفس التطبيق يعمل مع أكثر من خادم.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTokens.textMuted,
-                            ),
-                      ),
-                      const SizedBox(height: AppTokens.s20),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          SizedBox(
-                            width: 124,
-                            child: DropdownButtonFormField<String>(
-                              key: ValueKey(_scheme),
-                              initialValue: _scheme,
-                              isExpanded: true,
-                              decoration: const InputDecoration(
-                                labelText: 'الاتصال',
-                              ),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'https',
-                                  child: Text('HTTPS'),
-                                ),
-                                DropdownMenuItem(
-                                  value: 'http',
-                                  child: Text('HTTP'),
-                                ),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) setState(() => _scheme = v);
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: AppTokens.s12),
-                          Expanded(
-                            child: TextFormField(
-                              controller: _server,
-                              keyboardType: TextInputType.url,
-                              textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: 'IP أو دومين الخادم',
-                                hintText: '125.161.1.5 أو radius.example.com',
-                                prefixIcon: Icon(Icons.dns_outlined),
-                                helperText:
-                                    'بدون /api، ويمكن وضع منفذ مثل :5050',
-                              ),
-                              validator: _validateServer,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppTokens.s12),
-                      TextFormField(
-                        controller: _username,
-                        textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'اسم المستخدم',
-                          prefixIcon: Icon(Icons.person_outline),
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, viewport) {
+            return SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.all(AppTokens.s16),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: viewport.maxHeight),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 460),
+                    child: Card(
+                      child: Padding(
+                        padding: EdgeInsets.all(
+                          viewport.maxWidth < 380
+                              ? AppTokens.s16
+                              : AppTokens.s24,
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-                      ),
-                      const SizedBox(height: AppTokens.s12),
-                      TextFormField(
-                        controller: _password,
-                        obscureText: _obscure,
-                        textInputAction: TextInputAction.done,
-                        decoration: InputDecoration(
-                          labelText: 'كلمة المرور',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscure
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                            ),
-                            onPressed: () =>
-                                setState(() => _obscure = !_obscure),
-                          ),
-                        ),
-                        validator: (v) =>
-                            (v == null || v.isEmpty) ? 'مطلوب' : null,
-                        onFieldSubmitted: (_) => _submit(),
-                      ),
-                      if (auth.error != null) ...[
-                        const SizedBox(height: AppTokens.s12),
-                        _ErrorBanner(message: auth.error!),
-                      ],
-                      const SizedBox(height: AppTokens.s20),
-                      SizedBox(
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: auth.loading ? null : _submit,
-                          child: auth.loading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              const _Brand(),
+                              const SizedBox(height: AppTokens.s24),
+                              Text(
+                                'تسجيل دخول الإدارة',
+                                textAlign: TextAlign.center,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTokens.navy900,
+                                    ),
+                              ),
+                              const SizedBox(height: AppTokens.s8),
+                              Text(
+                                'اكتب عنوان VPS ثم بيانات مدير النظام. نفس التطبيق يعمل مع أكثر من خادم.',
+                                textAlign: TextAlign.center,
+                                softWrap: true,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(color: AppTokens.textMuted),
+                              ),
+                              const SizedBox(height: AppTokens.s20),
+                              _ServerFields(
+                                server: _server,
+                                scheme: _scheme,
+                                onSchemeChanged: (value) {
+                                  if (value != null) {
+                                    setState(() => _scheme = value);
+                                  }
+                                },
+                                validator: _validateServer,
+                              ),
+                              const SizedBox(height: AppTokens.s12),
+                              TextFormField(
+                                controller: _username,
+                                textInputAction: TextInputAction.next,
+                                decoration: const InputDecoration(
+                                  labelText: 'اسم المستخدم',
+                                  prefixIcon: Icon(Icons.person_outline),
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.trim().isEmpty)
+                                        ? 'مطلوب'
+                                        : null,
+                              ),
+                              const SizedBox(height: AppTokens.s12),
+                              TextFormField(
+                                controller: _password,
+                                obscureText: _obscure,
+                                textInputAction: TextInputAction.done,
+                                decoration: InputDecoration(
+                                  labelText: 'كلمة المرور',
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscure
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                    ),
+                                    onPressed: () =>
+                                        setState(() => _obscure = !_obscure),
                                   ),
-                                )
-                              : const Text('دخول'),
+                                ),
+                                validator: (v) =>
+                                    (v == null || v.isEmpty) ? 'مطلوب' : null,
+                                onFieldSubmitted: (_) => _submit(),
+                              ),
+                              if (auth.error != null) ...[
+                                const SizedBox(height: AppTokens.s12),
+                                _ErrorBanner(message: auth.error!),
+                              ],
+                              const SizedBox(height: AppTokens.s20),
+                              SizedBox(
+                                height: 48,
+                                child: ElevatedButton(
+                                  onPressed: auth.loading ? null : _submit,
+                                  child: auth.loading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Text('دخول'),
+                                ),
+                              ),
+                              const SizedBox(height: AppTokens.s12),
+                              Text(
+                                'سيتم حفظ عنوان الخادم على هذا الجهاز فقط، ويمكن تغييره من شاشة الدخول عند الحاجة.',
+                                textAlign: TextAlign.center,
+                                softWrap: true,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(color: AppTokens.textMuted),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: AppTokens.s12),
-                      Text(
-                        'سيتم حفظ عنوان الخادم على هذا الجهاز فقط، ويمكن تغييره من شاشة الدخول عند الحاجة.',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTokens.textMuted,
-                            ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ),
+    );
+  }
+}
+
+class _ServerFields extends StatelessWidget {
+  const _ServerFields({
+    required this.server,
+    required this.scheme,
+    required this.onSchemeChanged,
+    required this.validator,
+  });
+
+  final TextEditingController server;
+  final String scheme;
+  final ValueChanged<String?> onSchemeChanged;
+  final FormFieldValidator<String> validator;
+
+  @override
+  Widget build(BuildContext context) {
+    final protocolField = DropdownButtonFormField<String>(
+      key: ValueKey(scheme),
+      initialValue: scheme,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'الاتصال'),
+      items: const [
+        DropdownMenuItem(value: 'https', child: Text('HTTPS')),
+        DropdownMenuItem(value: 'http', child: Text('HTTP')),
+      ],
+      onChanged: onSchemeChanged,
+    );
+
+    final serverField = TextFormField(
+      controller: server,
+      keyboardType: TextInputType.url,
+      textInputAction: TextInputAction.next,
+      decoration: const InputDecoration(
+        labelText: 'IP أو دومين الخادم',
+        hintText: '125.161.1.5 أو radius.example.com',
+        prefixIcon: Icon(Icons.dns_outlined),
+        helperText: 'بدون /api، ويمكن وضع منفذ مثل :5050',
+      ),
+      validator: validator,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 360;
+        if (compact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              protocolField,
+              const SizedBox(height: AppTokens.s12),
+              serverField,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 124, child: protocolField),
+            const SizedBox(width: AppTokens.s12),
+            Expanded(child: serverField),
+          ],
+        );
+      },
     );
   }
 }
@@ -267,12 +321,14 @@ class _ErrorBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTokens.r10),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.error_outline, color: AppTokens.red, size: 18),
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(
               message,
+              softWrap: true,
               style: const TextStyle(
                 color: AppTokens.red,
                 fontWeight: FontWeight.w600,
