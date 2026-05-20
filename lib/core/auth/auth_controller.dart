@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
+import '../api/api_endpoint_storage.dart';
 import '../api/api_exception.dart';
 import 'token_storage.dart';
 
@@ -37,6 +38,7 @@ class AuthState {
     this.admin,
     this.tenantId,
     this.permissions = const [],
+    this.serverBaseUrl,
     this.loading = false,
     this.error,
   });
@@ -45,6 +47,7 @@ class AuthState {
   final AuthAdmin? admin;
   final int? tenantId;
   final List<String> permissions;
+  final String? serverBaseUrl;
   final bool loading;
   final String? error;
 
@@ -55,20 +58,23 @@ class AuthState {
     AuthAdmin? admin,
     int? tenantId,
     List<String>? permissions,
+    String? serverBaseUrl,
     bool? loading,
     String? error,
     bool clear = false,
     bool clearError = false,
-  }) => clear
-      ? const AuthState()
-      : AuthState(
-          token: token ?? this.token,
-          admin: admin ?? this.admin,
-          tenantId: tenantId ?? this.tenantId,
-          permissions: permissions ?? this.permissions,
-          loading: loading ?? this.loading,
-          error: clearError ? null : (error ?? this.error),
-        );
+  }) =>
+      clear
+          ? const AuthState()
+          : AuthState(
+              token: token ?? this.token,
+              admin: admin ?? this.admin,
+              tenantId: tenantId ?? this.tenantId,
+              permissions: permissions ?? this.permissions,
+              serverBaseUrl: serverBaseUrl ?? this.serverBaseUrl,
+              loading: loading ?? this.loading,
+              error: clearError ? null : (error ?? this.error),
+            );
 }
 
 class AuthController extends StateNotifier<AuthState> {
@@ -80,8 +86,17 @@ class AuthController extends StateNotifier<AuthState> {
 
   Future<void> _restore() async {
     final stored = await _ref.read(tokenStorageProvider).read();
-    if (stored == null || stored.isEmpty) return;
-    state = state.copyWith(token: stored, loading: true);
+    final serverBaseUrl =
+        await _ref.read(apiEndpointStorageProvider).readBaseUrl();
+    if (stored == null || stored.isEmpty) {
+      state = AuthState(serverBaseUrl: serverBaseUrl);
+      return;
+    }
+    state = state.copyWith(
+      token: stored,
+      serverBaseUrl: serverBaseUrl,
+      loading: true,
+    );
     try {
       final res = await _ref.read(apiClientProvider).get('/api/admin/me');
       final d = (res['data'] ?? {}) as Map<String, dynamic>;
@@ -94,19 +109,30 @@ class AuthController extends StateNotifier<AuthState> {
         permissions: ((d['permissions'] as List?) ?? const [])
             .map((e) => e.toString())
             .toList(),
+        serverBaseUrl: serverBaseUrl,
       );
     } on ApiException {
       await _ref.read(tokenStorageProvider).clear();
-      state = const AuthState();
+      state = AuthState(serverBaseUrl: serverBaseUrl);
     } catch (_) {
-      // Network glitch — keep the token, app stays "loading" until next try.
+      // Network glitch: keep the token so the next refresh can recover.
       state = state.copyWith(loading: false);
     }
   }
 
-  Future<void> login({required String username, required String password}) async {
-    state = state.copyWith(loading: true, clearError: true);
+  Future<void> login({
+    required String baseUrl,
+    required String username,
+    required String password,
+  }) async {
+    state = state.copyWith(
+      loading: true,
+      serverBaseUrl: baseUrl,
+      clearError: true,
+    );
     try {
+      await _ref.read(tokenStorageProvider).clear();
+      await _ref.read(apiEndpointStorageProvider).writeBaseUrl(baseUrl);
       final res = await _ref.read(apiClientProvider).post(
         '/api/admin/login',
         body: {'username': username, 'password': password},
@@ -126,11 +152,15 @@ class AuthController extends StateNotifier<AuthState> {
         permissions: ((d['permissions'] as List?) ?? const [])
             .map((e) => e.toString())
             .toList(),
+        serverBaseUrl: baseUrl,
       );
     } on ApiException catch (e) {
-      state = AuthState(error: e.message);
-    } catch (e) {
-      state = const AuthState(error: 'تعذّر الاتصال بالخادم');
+      state = AuthState(serverBaseUrl: baseUrl, error: e.message);
+    } catch (_) {
+      state = AuthState(
+        serverBaseUrl: baseUrl,
+        error: 'تعذّر الاتصال بالخادم. تأكد من العنوان والبروتوكول.',
+      );
     }
   }
 
@@ -139,9 +169,12 @@ class AuthController extends StateNotifier<AuthState> {
       await _ref.read(apiClientProvider).post('/api/admin/logout');
     } catch (_) {/* best-effort */}
     await _ref.read(tokenStorageProvider).clear();
-    state = const AuthState();
+    final serverBaseUrl =
+        await _ref.read(apiEndpointStorageProvider).readBaseUrl();
+    state = AuthState(serverBaseUrl: serverBaseUrl);
   }
 }
 
-final authControllerProvider =
-    StateNotifierProvider<AuthController, AuthState>((ref) => AuthController(ref));
+final authControllerProvider = StateNotifierProvider<AuthController, AuthState>(
+  (ref) => AuthController(ref),
+);

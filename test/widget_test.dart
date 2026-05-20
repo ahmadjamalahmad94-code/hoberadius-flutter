@@ -13,5 +13,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(MaterialApp), findsOneWidget);
     expect(find.text('دخول'), findsOneWidget);
+    expect(find.text('IP أو دومين الخادم'), findsOneWidget);
   });
 }

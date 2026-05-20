@@ -2,19 +2,18 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/token_storage.dart';
+import 'api_endpoint_storage.dart';
 import 'api_exception.dart';
 
 /// Single Dio instance, configured once.
 ///
-/// Base URL is read from env via --dart-define=API_BASE_URL=...; defaults to
-/// http://localhost:5000 (the radius-module Flask dev server). The Bearer
-/// token is pulled lazily from secure storage on each request so login state
-/// updates don't require a Dio rebuild.
+/// Base URL is selected on the login screen and stored locally so one Flutter
+/// binary can manage different customer VPS installations.
 class ApiClient {
-  ApiClient(this._tokenStorage) {
+  ApiClient(this._tokenStorage, this._endpointStorage) {
     _dio = Dio(
       BaseOptions(
-        baseUrl: _baseUrl,
+        baseUrl: defaultApiBaseUrl,
         connectTimeout: const Duration(seconds: 10),
         receiveTimeout: const Duration(seconds: 30),
         headers: {'Accept': 'application/json'},
@@ -24,7 +23,9 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final tok = await _tokenStorage.read();
+          options.baseUrl = await _endpointStorage.readBaseUrl();
+          final isLogin = options.path == '/api/admin/login';
+          final tok = isLogin ? null : await _tokenStorage.read();
           if (tok != null && tok.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $tok';
           }
@@ -34,17 +35,16 @@ class ApiClient {
     );
   }
 
-  static const String _baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: 'http://localhost:5000',
-  );
-
   final TokenStorage _tokenStorage;
+  final ApiEndpointStorage _endpointStorage;
   late final Dio _dio;
 
   Dio get dio => _dio;
 
-  Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) =>
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, dynamic>? query,
+  }) =>
       _send('GET', path, query: query);
 
   Future<Map<String, dynamic>> post(String path, {Object? body}) =>
@@ -93,5 +93,6 @@ class ApiClient {
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final storage = ref.watch(tokenStorageProvider);
-  return ApiClient(storage);
+  final endpointStorage = ref.watch(apiEndpointStorageProvider);
+  return ApiClient(storage, endpointStorage);
 });

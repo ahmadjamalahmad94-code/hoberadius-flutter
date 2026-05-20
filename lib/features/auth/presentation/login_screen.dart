@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/api_endpoint_storage.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/tokens.dart';
 
@@ -12,21 +13,54 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  final _server = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  String _scheme = 'https';
   bool _obscure = true;
 
   @override
+  void initState() {
+    super.initState();
+    _loadServer();
+  }
+
+  Future<void> _loadServer() async {
+    final saved = await ref.read(apiEndpointStorageProvider).readBaseUrl();
+    final uri = Uri.tryParse(saved);
+    if (!mounted || uri == null || uri.host.isEmpty) return;
+    setState(() {
+      _scheme = uri.scheme == 'http' ? 'http' : 'https';
+      _server.text = uri.authority;
+    });
+  }
+
+  @override
   void dispose() {
+    _server.dispose();
     _username.dispose();
     _password.dispose();
     super.dispose();
   }
 
+  String? _validateServer(String? value) {
+    try {
+      normalizeApiBaseUrl(scheme: _scheme, host: value ?? '');
+      return null;
+    } on FormatException {
+      return 'اكتب IP أو دومين صحيح بدون /api';
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final baseUrl = normalizeApiBaseUrl(
+      scheme: _scheme,
+      host: _server.text,
+    );
     await ref.read(authControllerProvider.notifier).login(
+          baseUrl: baseUrl,
           username: _username.text.trim(),
           password: _password.text,
         );
@@ -41,7 +75,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(AppTokens.s24),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
+            constraints: const BoxConstraints(maxWidth: 460),
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(AppTokens.s24),
@@ -62,13 +96,59 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                       const SizedBox(height: AppTokens.s8),
                       Text(
-                        'استخدم نفس بيانات لوحة الإدارة على VPS.',
+                        'اكتب عنوان VPS ثم بيانات مدير النظام. نفس التطبيق يعمل مع أكثر من خادم.',
                         textAlign: TextAlign.center,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               color: AppTokens.textMuted,
                             ),
                       ),
                       const SizedBox(height: AppTokens.s20),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SizedBox(
+                            width: 124,
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey(_scheme),
+                              initialValue: _scheme,
+                              isExpanded: true,
+                              decoration: const InputDecoration(
+                                labelText: 'الاتصال',
+                              ),
+                              items: const [
+                                DropdownMenuItem(
+                                  value: 'https',
+                                  child: Text('HTTPS'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'http',
+                                  child: Text('HTTP'),
+                                ),
+                              ],
+                              onChanged: (v) {
+                                if (v != null) setState(() => _scheme = v);
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: AppTokens.s12),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _server,
+                              keyboardType: TextInputType.url,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: 'IP أو دومين الخادم',
+                                hintText: '125.161.1.5 أو radius.example.com',
+                                prefixIcon: Icon(Icons.dns_outlined),
+                                helperText:
+                                    'بدون /api، ويمكن وضع منفذ مثل :5050',
+                              ),
+                              validator: _validateServer,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AppTokens.s12),
                       TextFormField(
                         controller: _username,
                         textInputAction: TextInputAction.next,
@@ -88,10 +168,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           labelText: 'كلمة المرور',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscure
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,),
-                            onPressed: () => setState(() => _obscure = !_obscure),
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
                           ),
                         ),
                         validator: (v) =>
@@ -118,6 +201,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 )
                               : const Text('دخول'),
                         ),
+                      ),
+                      const SizedBox(height: AppTokens.s12),
+                      Text(
+                        'سيتم حفظ عنوان الخادم على هذا الجهاز فقط، ويمكن تغييره من شاشة الدخول عند الحاجة.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTokens.textMuted,
+                            ),
                       ),
                     ],
                   ),
@@ -146,7 +237,8 @@ class _Brand extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.center,
-          child: const Icon(Icons.wifi_tethering, color: Colors.white, size: 28),
+          child:
+              const Icon(Icons.wifi_tethering, color: Colors.white, size: 28),
         ),
         const SizedBox(height: AppTokens.s12),
         const Text(

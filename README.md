@@ -37,9 +37,9 @@ flutter pub get
 
 ### 3. الـ backend
 
-التطبيق يتكلّم مع `radius-module` Flask عبر `/api/v1/*` بـ Bearer token. وَلِّد token من لوحة الإدارة، ثم الصقه في شاشة الدخول.
+التطبيق يتكلّم مع `radius-module` Flask عبر `/api/v1/*`. من شاشة الدخول اكتب البروتوكول (`HTTP` أو `HTTPS`) ثم IP أو دومين الـ VPS، وبعدها اسم المستخدم وكلمة المرور. التطبيق يستدعي `/api/admin/login` ويحفظ عنوان الخادم والـ token على الجهاز.
 
-عند التشغيل، حدّد عنوان الـ API:
+عند التشغيل المحلي يمكن ترك العنوان الافتراضي، أو تحديده مسبقًا للتطوير:
 
 ```powershell
 # للويب (Flask محلي)
@@ -91,7 +91,7 @@ lib/
 
 | الميزة | الـ UI | الـ API |
 |---|---|---|
-| Login (paste token) | ✅ | `GET /api/v1/health` |
+| Login by VPS IP/domain + username/password | ✅ | `POST /api/admin/login`, `GET /api/admin/me` |
 | Dashboard | ✅ | يقع back على endpoints منفصلة |
 | Subscribers list/form | ✅ | `/api/v1/accounts` (CRUD كاملة) |
 | Plans list/form + speed rules | ✅ | `/api/v1/profiles`, `/api/v1/bandwidth-schedules` |
