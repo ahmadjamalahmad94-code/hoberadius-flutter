@@ -115,12 +115,16 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
           kind: _kind,
           searchController: _searchController,
           onKindChanged: (kind) {
+            if (_kind == kind) return;
             setState(() => _kind = kind);
-            ref.invalidate(onlineSessionsProvider(_query));
           },
           onSearch: () {
-            setState(() => _search = _searchController.text.trim());
-            ref.invalidate(onlineSessionsProvider(_query));
+            final next = _searchController.text.trim();
+            if (next == _search) {
+              ref.invalidate(onlineSessionsProvider(_query));
+              return;
+            }
+            setState(() => _search = next);
           },
         ),
         const SizedBox(height: AppTokens.s12),

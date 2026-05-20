@@ -38,14 +38,21 @@ class ApiClient {
   final TokenStorage _tokenStorage;
   final ApiEndpointStorage _endpointStorage;
   late final Dio _dio;
+  final Map<String, Future<Map<String, dynamic>>> _inFlightGets = {};
 
   Dio get dio => _dio;
 
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
-  }) =>
-      _send('GET', path, query: query);
+  }) {
+    final key = _requestKey(path, query);
+    final existing = _inFlightGets[key];
+    if (existing != null) return existing;
+    final pending = _send('GET', path, query: query);
+    _inFlightGets[key] = pending;
+    return pending.whenComplete(() => _inFlightGets.remove(key));
+  }
 
   Future<Map<String, dynamic>> post(String path, {Object? body}) =>
       _send('POST', path, body: body);
@@ -91,6 +98,16 @@ class ApiClient {
         status: e.response?.statusCode,
       );
     }
+  }
+
+  String _requestKey(String path, Map<String, dynamic>? query) {
+    if (query == null || query.isEmpty) return path;
+    final parts = query.entries
+        .where((entry) => entry.value != null)
+        .map((entry) => MapEntry(entry.key, entry.value.toString()))
+        .toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    return '$path?${parts.map((e) => '${e.key}=${e.value}').join('&')}';
   }
 
   String _networkMessage(DioException e) {
