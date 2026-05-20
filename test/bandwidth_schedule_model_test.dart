@@ -6,6 +6,9 @@ void main() {
     final schedule = BandwidthSchedule.fromJson({
       'id': '9',
       'plan_id': '1',
+      'target_type': 'subscriber',
+      'subscriber_username': 'user123',
+      'priority': '10',
       'name': 'Night speed',
       'starts_at_time': '22:00',
       'ends_at_time': '06:00',
@@ -21,6 +24,9 @@ void main() {
 
     expect(schedule.id, 9);
     expect(schedule.planId, 1);
+    expect(schedule.targetType, 'subscriber');
+    expect(schedule.subscriberUsername, 'user123');
+    expect(schedule.priority, 10);
     expect(schedule.speedDownKbps, 3000);
     expect(schedule.speedUpKbps, 1000);
     expect(schedule.enabled, isTrue);

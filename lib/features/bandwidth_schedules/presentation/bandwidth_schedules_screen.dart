@@ -5,8 +5,12 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../cards/data/cards_repository.dart';
+import '../../cards/domain/card_model.dart';
 import '../../plans/data/plans_repository.dart';
 import '../../plans/domain/plan_model.dart';
+import '../../subscribers/data/subscribers_repository.dart';
+import '../../subscribers/domain/subscriber_model.dart';
 import '../data/bandwidth_schedules_repository.dart';
 import '../domain/bandwidth_schedule_model.dart';
 
@@ -17,6 +21,16 @@ final bandwidthSchedulesProvider =
 
 final bandwidthPlansProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
   return ref.watch(plansRepositoryProvider).list();
+});
+
+final bandwidthSubscribersProvider =
+    FutureProvider.autoDispose<List<Subscriber>>((ref) {
+  return ref.watch(subscribersRepositoryProvider).list(limit: 500);
+});
+
+final bandwidthCardBatchesProvider =
+    FutureProvider.autoDispose<List<CardBatch>>((ref) {
+  return ref.watch(cardsRepositoryProvider).listBatches(limit: 500);
 });
 
 class BandwidthSchedulesScreen extends ConsumerStatefulWidget {
@@ -35,11 +49,15 @@ class _BandwidthSchedulesScreenState
   final _up = TextEditingController(text: '1000');
   final _cirDown = TextEditingController(text: '0');
   final _cirUp = TextEditingController(text: '0');
+  final _priority = TextEditingController(text: '100');
   final _notes = TextEditingController();
+  String _targetType = 'plan';
   String _starts = '22:00';
   String _ends = '06:00';
   String _restoreMode = 'profile_default';
   int? _planId;
+  String? _subscriberUsername;
+  int? _cardBatchId;
   bool _enabled = true;
   bool _saving = false;
   bool _applying = false;
@@ -51,6 +69,7 @@ class _BandwidthSchedulesScreenState
     _up.dispose();
     _cirDown.dispose();
     _cirUp.dispose();
+    _priority.dispose();
     _notes.dispose();
     super.dispose();
   }
@@ -59,10 +78,21 @@ class _BandwidthSchedulesScreenState
   Widget build(BuildContext context) {
     final schedules = ref.watch(bandwidthSchedulesProvider);
     final plans = ref.watch(bandwidthPlansProvider);
+    final subscribers = ref.watch(bandwidthSubscribersProvider);
+    final batches = ref.watch(bandwidthCardBatchesProvider);
     final planItems = plans.valueOrNull ?? const <Plan>[];
+    final subscriberItems = subscribers.valueOrNull ?? const <Subscriber>[];
+    final batchItems = batches.valueOrNull ?? const <CardBatch>[];
     final planNames = {
       for (final plan in planItems)
         if (plan.id != null) plan.id!: plan.name,
+    };
+    final batchNames = {
+      for (final batch in batchItems)
+        if (batch.id != null)
+          batch.id!: batch.packageName.isNotEmpty
+              ? '${batch.batchCode} - ${batch.packageName}'
+              : batch.batchCode,
     };
 
     return Column(
@@ -84,6 +114,8 @@ class _BandwidthSchedulesScreenState
               onPressed: () {
                 ref.invalidate(bandwidthSchedulesProvider);
                 ref.invalidate(bandwidthPlansProvider);
+                ref.invalidate(bandwidthSubscribersProvider);
+                ref.invalidate(bandwidthCardBatchesProvider);
               },
               icon: const Icon(Icons.refresh),
             ),
@@ -113,19 +145,34 @@ class _BandwidthSchedulesScreenState
               _FormCard(
                 formKey: _formKey,
                 plans: planItems,
+                subscribers: subscriberItems,
+                batches: batchItems,
+                targetType: _targetType,
                 planId: _planId,
+                subscriberUsername: _subscriberUsername,
+                cardBatchId: _cardBatchId,
                 name: _name,
                 down: _down,
                 up: _up,
                 cirDown: _cirDown,
                 cirUp: _cirUp,
+                priority: _priority,
                 notes: _notes,
                 starts: _starts,
                 ends: _ends,
                 restoreMode: _restoreMode,
                 enabled: _enabled,
                 saving: _saving,
+                onTargetTypeChanged: (v) => setState(() {
+                  _targetType = v;
+                  _planId = null;
+                  _subscriberUsername = null;
+                  _cardBatchId = null;
+                }),
                 onPlanChanged: (v) => setState(() => _planId = v),
+                onSubscriberChanged: (v) =>
+                    setState(() => _subscriberUsername = v),
+                onCardBatchChanged: (v) => setState(() => _cardBatchId = v),
                 onStartsChanged: (v) => setState(() => _starts = v),
                 onEndsChanged: (v) => setState(() => _ends = v),
                 onRestoreChanged: (v) => setState(() => _restoreMode = v),
@@ -142,6 +189,7 @@ class _BandwidthSchedulesScreenState
                 data: (items) => _SchedulesList(
                   items: items,
                   planNames: planNames,
+                  batchNames: batchNames,
                   applying: _applying,
                   onApply: _applySchedule,
                 ),
@@ -176,7 +224,12 @@ class _BandwidthSchedulesScreenState
     setState(() => _saving = true);
     try {
       await ref.read(bandwidthSchedulesRepositoryProvider).create(
-            planId: _planId!,
+            targetType: _targetType,
+            planId: _targetType == 'plan' ? _planId : null,
+            subscriberUsername:
+                _targetType == 'subscriber' ? (_subscriberUsername ?? '') : '',
+            cardBatchId: _targetType == 'card_batch' ? _cardBatchId : null,
+            priority: _toInt(_priority.text),
             name: _name.text.trim(),
             startsAtTime: _starts,
             endsAtTime: _ends,
@@ -228,19 +281,28 @@ class _FormCard extends StatelessWidget {
   const _FormCard({
     required this.formKey,
     required this.plans,
+    required this.subscribers,
+    required this.batches,
+    required this.targetType,
     required this.planId,
+    required this.subscriberUsername,
+    required this.cardBatchId,
     required this.name,
     required this.down,
     required this.up,
     required this.cirDown,
     required this.cirUp,
+    required this.priority,
     required this.notes,
     required this.starts,
     required this.ends,
     required this.restoreMode,
     required this.enabled,
     required this.saving,
+    required this.onTargetTypeChanged,
     required this.onPlanChanged,
+    required this.onSubscriberChanged,
+    required this.onCardBatchChanged,
     required this.onStartsChanged,
     required this.onEndsChanged,
     required this.onRestoreChanged,
@@ -250,19 +312,28 @@ class _FormCard extends StatelessWidget {
 
   final GlobalKey<FormState> formKey;
   final List<Plan> plans;
+  final List<Subscriber> subscribers;
+  final List<CardBatch> batches;
+  final String targetType;
   final int? planId;
+  final String? subscriberUsername;
+  final int? cardBatchId;
   final TextEditingController name;
   final TextEditingController down;
   final TextEditingController up;
   final TextEditingController cirDown;
   final TextEditingController cirUp;
+  final TextEditingController priority;
   final TextEditingController notes;
   final String starts;
   final String ends;
   final String restoreMode;
   final bool enabled;
   final bool saving;
+  final ValueChanged<String> onTargetTypeChanged;
   final ValueChanged<int?> onPlanChanged;
+  final ValueChanged<String?> onSubscriberChanged;
+  final ValueChanged<int?> onCardBatchChanged;
   final ValueChanged<String> onStartsChanged;
   final ValueChanged<String> onEndsChanged;
   final ValueChanged<String> onRestoreChanged;
@@ -289,20 +360,88 @@ class _FormCard extends StatelessWidget {
                   (v ?? '').trim().isEmpty ? 'اكتب اسم الجدول' : null,
             ),
             const SizedBox(height: AppTokens.s12),
-            DropdownButtonFormField<int>(
-              initialValue: planId,
-              items: [
-                for (final plan in plans)
-                  if (plan.id != null)
-                    DropdownMenuItem(value: plan.id, child: Text(plan.name)),
+            DropdownButtonFormField<String>(
+              initialValue: targetType,
+              items: const [
+                DropdownMenuItem(
+                  value: 'plan',
+                  child: Text('عرض / باقة خدمة'),
+                ),
+                DropdownMenuItem(
+                  value: 'subscriber',
+                  child: Text('مشترك محدد'),
+                ),
+                DropdownMenuItem(
+                  value: 'card_batch',
+                  child: Text('باقة كروت / دفعة'),
+                ),
               ],
-              onChanged: onPlanChanged,
+              onChanged: (v) => onTargetTypeChanged(v ?? 'plan'),
               decoration: const InputDecoration(
-                labelText: 'الباقة',
-                helperText: 'اختر الباقة التي سيُحفظ عليها الجدول.',
+                labelText: 'نطاق القاعدة',
+                helperText: 'المشترك أو باقة الكروت يتقدمان على قاعدة العرض.',
               ),
-              validator: (v) => v == null ? 'اختر باقة' : null,
             ),
+            const SizedBox(height: AppTokens.s12),
+            if (targetType == 'plan')
+              DropdownButtonFormField<int>(
+                initialValue: planId,
+                items: [
+                  for (final plan in plans)
+                    if (plan.id != null)
+                      DropdownMenuItem(value: plan.id, child: Text(plan.name)),
+                ],
+                onChanged: onPlanChanged,
+                decoration: const InputDecoration(
+                  labelText: 'الباقة',
+                  helperText:
+                      'تُستخدم إذا لم توجد قاعدة خاصة بالمشترك أو الكروت.',
+                ),
+                validator: (v) => v == null ? 'اختر باقة' : null,
+              )
+            else if (targetType == 'subscriber')
+              DropdownButtonFormField<String>(
+                initialValue: subscriberUsername,
+                items: [
+                  for (final sub in subscribers)
+                    DropdownMenuItem(
+                      value: sub.username,
+                      child: Text(
+                        sub.fullName.isEmpty
+                            ? sub.username
+                            : '${sub.username} - ${sub.fullName}',
+                      ),
+                    ),
+                ],
+                onChanged: onSubscriberChanged,
+                decoration: const InputDecoration(
+                  labelText: 'المشترك',
+                  helperText: 'هذه القاعدة لها أعلى أولوية عند تسجيل الدخول.',
+                ),
+                validator: (v) => (v ?? '').isEmpty ? 'اختر مشتركًا' : null,
+              )
+            else
+              DropdownButtonFormField<int>(
+                initialValue: cardBatchId,
+                items: [
+                  for (final batch in batches)
+                    if (batch.id != null)
+                      DropdownMenuItem(
+                        value: batch.id,
+                        child: Text(
+                          batch.packageName.isEmpty
+                              ? batch.batchCode
+                              : '${batch.batchCode} - ${batch.packageName}',
+                        ),
+                      ),
+                ],
+                onChanged: onCardBatchChanged,
+                decoration: const InputDecoration(
+                  labelText: 'باقة الكروت / الدفعة',
+                  helperText: 'تطبق على بطاقات هذه الدفعة وتتقدم على العرض.',
+                ),
+                validator: (v) => v == null ? 'اختر دفعة كروت' : null,
+              ),
             const SizedBox(height: AppTokens.s12),
             Row(
               children: [
@@ -346,6 +485,11 @@ class _FormCard extends StatelessWidget {
                   child: _NumberField(controller: cirUp, label: 'CIR رفع'),
                 ),
               ],
+            ),
+            const SizedBox(height: AppTokens.s12),
+            _NumberField(
+              controller: priority,
+              label: 'الأولوية داخل نفس النطاق',
             ),
             const SizedBox(height: AppTokens.s12),
             DropdownButtonFormField<String>(
@@ -406,12 +550,14 @@ class _SchedulesList extends StatelessWidget {
   const _SchedulesList({
     required this.items,
     required this.planNames,
+    required this.batchNames,
     required this.applying,
     required this.onApply,
   });
 
   final List<BandwidthSchedule> items;
   final Map<int, String> planNames;
+  final Map<int, String> batchNames;
   final bool applying;
   final ValueChanged<BandwidthSchedule> onApply;
 
@@ -434,7 +580,7 @@ class _SchedulesList extends StatelessWidget {
           for (final item in items) ...[
             _ScheduleTile(
               item: item,
-              planName: planNames[item.planId] ?? 'باقة #${item.planId}',
+              targetName: _targetName(item, planNames, batchNames),
               applying: applying,
               onApply: () => onApply(item),
             ),
@@ -444,18 +590,33 @@ class _SchedulesList extends StatelessWidget {
       ),
     );
   }
+
+  static String _targetName(
+    BandwidthSchedule item,
+    Map<int, String> planNames,
+    Map<int, String> batchNames,
+  ) {
+    if (item.targetType == 'subscriber') {
+      return 'مشترك: ${item.subscriberUsername}';
+    }
+    if (item.targetType == 'card_batch') {
+      final id = item.cardBatchId;
+      return 'باقة كروت: ${id == null ? 'غير محددة' : batchNames[id] ?? '#$id'}';
+    }
+    return 'عرض: ${planNames[item.planId] ?? '#${item.planId}'}';
+  }
 }
 
 class _ScheduleTile extends StatelessWidget {
   const _ScheduleTile({
     required this.item,
-    required this.planName,
+    required this.targetName,
     required this.applying,
     required this.onApply,
   });
 
   final BandwidthSchedule item;
-  final String planName;
+  final String targetName;
   final bool applying;
   final VoidCallback onApply;
 
@@ -486,7 +647,7 @@ class _ScheduleTile extends StatelessWidget {
         ),
         const SizedBox(height: AppTokens.s8),
         Text(
-          '$planName • ${item.startsAtTime} → ${item.endsAtTime}',
+          '$targetName • ${item.startsAtTime} → ${item.endsAtTime} • أولوية ${item.priority}',
           style: const TextStyle(color: AppTokens.textMuted),
         ),
         const SizedBox(height: AppTokens.s8),

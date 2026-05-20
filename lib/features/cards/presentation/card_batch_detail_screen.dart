@@ -1,3 +1,5 @@
+// ignore_for_file: require_trailing_commas
+
 import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
@@ -91,6 +93,23 @@ class CardBatchDetailScreen extends ConsumerWidget {
               },
             ),
             const SizedBox(width: AppTokens.s4),
+            IconButton(
+              tooltip: 'تعديل الباقة',
+              onPressed: () => context.goNamed(
+                'card-batch-edit',
+                pathParameters: {'id': '$batchId'},
+              ),
+              icon: const Icon(Icons.edit_outlined,
+                  color: AppTokens.textSecondary),
+            ),
+            const SizedBox(width: AppTokens.s4),
+            IconButton(
+              tooltip: 'سرعات متعددة',
+              onPressed: () => context.goNamed('bandwidth-schedules'),
+              icon: const Icon(Icons.speed_outlined,
+                  color: AppTokens.textSecondary),
+            ),
+            const SizedBox(width: AppTokens.s4),
             cardsAsync.maybeWhen(
               data: (cards) => OutlinedButton.icon(
                 onPressed: cards.isEmpty
@@ -182,7 +201,8 @@ class _BatchSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd HH:mm');
-    final usedPct = batch.count == 0 ? 0.0 : (batch.used / batch.count).clamp(0.0, 1.0);
+    final usedPct =
+        batch.count == 0 ? 0.0 : (batch.used / batch.count).clamp(0.0, 1.0);
     return AppCard(
       padding: const EdgeInsets.all(AppTokens.s16),
       child: Column(
@@ -235,17 +255,26 @@ class _BatchSummary extends StatelessWidget {
             runSpacing: 6,
             children: [
               if (batch.packageName.isNotEmpty)
-                _MetaLine(icon: Icons.workspace_premium_outlined, text: batch.packageName),
+                _MetaLine(
+                    icon: Icons.workspace_premium_outlined,
+                    text: batch.packageName),
               if (batch.createdAt != null)
-                _MetaLine(icon: Icons.event, text: 'أُنشئت: ${df.format(batch.createdAt!)}'),
+                _MetaLine(
+                    icon: Icons.event,
+                    text: 'أُنشئت: ${df.format(batch.createdAt!)}'),
               if (batch.expireAt != null)
-                _MetaLine(icon: Icons.timer_outlined, text: 'تنتهي: ${df.format(batch.expireAt!)}'),
+                _MetaLine(
+                    icon: Icons.timer_outlined,
+                    text: 'تنتهي: ${df.format(batch.expireAt!)}'),
               if (batch.createdBy.isNotEmpty)
                 _MetaLine(icon: Icons.person_outline, text: batch.createdBy),
               if (batch.timeValue > 0)
-                _MetaLine(icon: Icons.access_time, text: '${batch.timeValue} ${batch.timeUnit}'),
+                _MetaLine(
+                    icon: Icons.access_time,
+                    text: '${batch.timeValue} ${batch.timeUnit}'),
               if (batch.deviceCount > 0)
-                _MetaLine(icon: Icons.devices, text: '${batch.deviceCount} جهاز'),
+                _MetaLine(
+                    icon: Icons.devices, text: '${batch.deviceCount} جهاز'),
             ],
           ),
           if (batch.notes.isNotEmpty) ...[

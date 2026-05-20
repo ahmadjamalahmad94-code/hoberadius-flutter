@@ -2,6 +2,10 @@ class BandwidthSchedule {
   const BandwidthSchedule({
     required this.id,
     required this.planId,
+    required this.targetType,
+    required this.subscriberUsername,
+    required this.cardBatchId,
+    required this.priority,
     required this.name,
     required this.startsAtTime,
     required this.endsAtTime,
@@ -17,6 +21,10 @@ class BandwidthSchedule {
 
   final int id;
   final int planId;
+  final String targetType;
+  final String subscriberUsername;
+  final int? cardBatchId;
+  final int priority;
   final String name;
   final String startsAtTime;
   final String endsAtTime;
@@ -33,6 +41,10 @@ class BandwidthSchedule {
     return BandwidthSchedule(
       id: _asInt(json['id']),
       planId: _asInt(json['plan_id']),
+      targetType: (json['target_type'] ?? 'plan').toString(),
+      subscriberUsername: (json['subscriber_username'] ?? '').toString(),
+      cardBatchId: _nullableInt(json['card_batch_id']),
+      priority: _asInt(json['priority'], fallback: 100),
       name: (json['name'] ?? '').toString(),
       startsAtTime: (json['starts_at_time'] ?? '').toString(),
       endsAtTime: (json['ends_at_time'] ?? '').toString(),
@@ -79,10 +91,17 @@ class BandwidthApplyResult {
   }
 }
 
-int _asInt(Object? value) {
+int _asInt(Object? value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.toInt();
-  return int.tryParse(value?.toString() ?? '') ?? 0;
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
+}
+
+int? _nullableInt(Object? value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
 }
 
 bool _asBool(Object? value) {

@@ -24,7 +24,11 @@ class BandwidthSchedulesRepository {
   }
 
   Future<BandwidthSchedule> create({
-    required int planId,
+    required String targetType,
+    int? planId,
+    String subscriberUsername = '',
+    int? cardBatchId,
+    int priority = 100,
     required String name,
     required String startsAtTime,
     required String endsAtTime,
@@ -39,7 +43,12 @@ class BandwidthSchedulesRepository {
     final res = await _api.post(
       '/api/v1/bandwidth-schedules',
       body: {
-        'plan_id': planId,
+        'target_type': targetType,
+        if (planId != null) 'plan_id': planId,
+        if (subscriberUsername.isNotEmpty)
+          'subscriber_username': subscriberUsername,
+        if (cardBatchId != null) 'card_batch_id': cardBatchId,
+        'priority': priority,
         'name': name,
         'starts_at_time': startsAtTime,
         'ends_at_time': endsAtTime,
@@ -65,6 +74,10 @@ class BandwidthSchedulesRepository {
     return const BandwidthSchedule(
       id: 0,
       planId: 0,
+      targetType: 'plan',
+      subscriberUsername: '',
+      cardBatchId: null,
+      priority: 100,
       name: '',
       startsAtTime: '',
       endsAtTime: '',

@@ -1,3 +1,5 @@
+// ignore_for_file: require_trailing_commas, deprecated_member_use
+
 import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
@@ -17,13 +19,19 @@ class CardBatchFormScreen extends ConsumerStatefulWidget {
   const CardBatchFormScreen({super.key});
 
   @override
-  ConsumerState<CardBatchFormScreen> createState() => _CardBatchFormScreenState();
+  ConsumerState<CardBatchFormScreen> createState() =>
+      _CardBatchFormScreenState();
 }
 
 class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _packageName = TextEditingController();
   final _plan = TextEditingController();
   final _count = TextEditingController(text: '10');
+  final _pricePerCard = TextEditingController(text: '0');
+  final _totalPrice = TextEditingController(text: '0');
+  final _totalQuota = TextEditingController(text: '0');
+  final _serviceName = TextEditingController();
   final _prefix = TextEditingController();
   final _ulen = TextEditingController(text: '8');
   final _plen = TextEditingController(text: '6');
@@ -41,7 +49,20 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
 
   @override
   void dispose() {
-    for (final c in [_plan, _count, _prefix, _ulen, _plen, _timeVal, _notes]) {
+    for (final c in [
+      _packageName,
+      _plan,
+      _count,
+      _pricePerCard,
+      _totalPrice,
+      _totalQuota,
+      _serviceName,
+      _prefix,
+      _ulen,
+      _plen,
+      _timeVal,
+      _notes,
+    ]) {
       c.dispose();
     }
     super.dispose();
@@ -52,6 +73,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     final req = GenerateBatchRequest(
       planId: int.parse(_plan.text.trim()),
       count: int.parse(_count.text.trim()),
+      packageName: _packageName.text.trim(),
       usernamePrefix: _prefix.text.trim(),
       startsWithOrEndsWith: _affixMode == 'none' ? '' : _affixMode,
       prefixOrSuffixValue: _affixMode == 'none' ? '' : _prefix.text.trim(),
@@ -61,6 +83,10 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       timeValue: int.tryParse(_timeVal.text) ?? 0,
       timeUnit: _timeUnit,
       deviceCount: _devices,
+      pricePerCard: num.tryParse(_pricePerCard.text.trim()) ?? 0,
+      totalPrice: num.tryParse(_totalPrice.text.trim()) ?? 0,
+      totalQuotaMb: int.tryParse(_totalQuota.text.trim()) ?? 0,
+      serviceName: _serviceName.text.trim(),
       notes: _notes.text.trim(),
     );
     setState(() {
@@ -118,6 +144,12 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                     ),
               ),
               const Spacer(),
+              OutlinedButton.icon(
+                onPressed: () => context.goNamed('bandwidth-schedules'),
+                icon: const Icon(Icons.speed_outlined),
+                label: const Text('سرعات متعددة'),
+              ),
+              const SizedBox(width: AppTokens.s8),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: _loading
@@ -142,7 +174,8 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 color: const Color(0xFFFDE9E9),
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child: Text(_error!, style: const TextStyle(color: AppTokens.red)),
+              child:
+                  Text(_error!, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           const SizedBox(height: AppTokens.s16),
@@ -153,13 +186,19 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
             child: Column(
               children: [
                 FormFieldRow(
+                  label: 'اسم باقة الكروت',
+                  child: TextFormField(controller: _packageName),
+                ),
+                FormFieldRow(
                   label: 'معرّف الباقة',
                   required: true,
                   child: TextFormField(
                     controller: _plan,
                     keyboardType: TextInputType.number,
                     validator: (v) =>
-                        (v == null || int.tryParse(v.trim()) == null) ? 'مطلوب' : null,
+                        (v == null || int.tryParse(v.trim()) == null)
+                            ? 'مطلوب'
+                            : null,
                   ),
                 ),
                 FormFieldRow(
@@ -176,7 +215,33 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                     },
                   ),
                 ),
-                FormFieldRow(label: 'ملاحظات', child: TextFormField(controller: _notes)),
+                FormFieldRow(
+                    label: 'ملاحظات', child: TextFormField(controller: _notes)),
+                FormFieldRow(
+                  label: 'سعر البطاقة',
+                  child: TextFormField(
+                    controller: _pricePerCard,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                FormFieldRow(
+                  label: 'السعر الإجمالي',
+                  child: TextFormField(
+                    controller: _totalPrice,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                FormFieldRow(
+                  label: 'الحصة الكلية MB',
+                  child: TextFormField(
+                    controller: _totalQuota,
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                FormFieldRow(
+                  label: 'اسم الخدمة',
+                  child: TextFormField(controller: _serviceName),
+                ),
               ],
             ),
           ),
@@ -206,7 +271,8 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 ),
                 FormFieldRow(
                   label: 'طول الاسم',
-                  child: TextFormField(controller: _ulen, keyboardType: TextInputType.number),
+                  child: TextFormField(
+                      controller: _ulen, keyboardType: TextInputType.number),
                 ),
               ],
             ),
@@ -220,19 +286,22 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
               children: [
                 FormFieldRow(
                   label: 'الطول',
-                  child: TextFormField(controller: _plen, keyboardType: TextInputType.number),
+                  child: TextFormField(
+                      controller: _plen, keyboardType: TextInputType.number),
                 ),
                 FormFieldRow(
                   label: 'مستوى التعقيد',
                   child: DropdownButtonFormField<String>(
                     value: _passwordType,
                     items: const [
-                      DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),
+                      DropdownMenuItem(
+                          value: 'digits', child: Text('أرقام فقط')),
                       DropdownMenuItem(value: 'weak', child: Text('ضعيف')),
                       DropdownMenuItem(value: 'medium', child: Text('متوسط')),
                       DropdownMenuItem(value: 'strong', child: Text('قوي')),
                     ],
-                    onChanged: (v) => setState(() => _passwordType = v ?? 'medium'),
+                    onChanged: (v) =>
+                        setState(() => _passwordType = v ?? 'medium'),
                   ),
                 ),
               ],
@@ -247,7 +316,8 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
               children: [
                 FormFieldRow(
                   label: 'القيمة',
-                  child: TextFormField(controller: _timeVal, keyboardType: TextInputType.number),
+                  child: TextFormField(
+                      controller: _timeVal, keyboardType: TextInputType.number),
                 ),
                 FormFieldRow(
                   label: 'الوحدة',
