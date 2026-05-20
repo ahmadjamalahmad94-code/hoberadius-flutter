@@ -1,0 +1,88 @@
+class BackupStatus {
+  const BackupStatus({
+    required this.job,
+    required this.recentRuns,
+  });
+
+  final BackupJob job;
+  final List<BackupRun> recentRuns;
+
+  factory BackupStatus.fromJson(Map<String, dynamic> json) {
+    final runs = (json['recent_runs'] ?? const []) as List;
+    return BackupStatus(
+      job: BackupJob.fromJson(
+        json['job'] is Map<String, dynamic>
+            ? json['job'] as Map<String, dynamic>
+            : const {},
+      ),
+      recentRuns: runs
+          .whereType<Map<String, dynamic>>()
+          .map(BackupRun.fromJson)
+          .toList(),
+    );
+  }
+}
+
+class BackupJob {
+  const BackupJob({
+    required this.id,
+    required this.name,
+    required this.schedule,
+    required this.target,
+    required this.lastStatus,
+    required this.lastMessage,
+    required this.lastRunAt,
+  });
+
+  final int id;
+  final String name;
+  final String schedule;
+  final String target;
+  final String lastStatus;
+  final String lastMessage;
+  final DateTime? lastRunAt;
+
+  factory BackupJob.fromJson(Map<String, dynamic> json) {
+    return BackupJob(
+      id: _asInt(json['id']),
+      name: (json['name'] ?? '').toString(),
+      schedule: (json['schedule'] ?? '').toString(),
+      target: (json['target'] ?? '').toString(),
+      lastStatus: (json['last_status'] ?? 'never_run').toString(),
+      lastMessage: (json['last_message'] ?? '').toString(),
+      lastRunAt: DateTime.tryParse((json['last_run_at'] ?? '').toString()),
+    );
+  }
+}
+
+class BackupRun {
+  const BackupRun({
+    required this.id,
+    required this.status,
+    required this.path,
+    required this.message,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String status;
+  final String path;
+  final String message;
+  final DateTime? createdAt;
+
+  factory BackupRun.fromJson(Map<String, dynamic> json) {
+    return BackupRun(
+      id: _asInt(json['id']),
+      status: (json['status'] ?? '').toString(),
+      path: (json['path'] ?? '').toString(),
+      message: (json['message'] ?? '').toString(),
+      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
+    );
+  }
+}
+
+int _asInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
