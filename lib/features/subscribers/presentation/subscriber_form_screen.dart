@@ -350,6 +350,17 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 ),
               if (widget.isEdit) ...[
                 const SizedBox(width: AppTokens.s8),
+                OutlinedButton.icon(
+                  onPressed: _loading
+                      ? null
+                      : () => context.goNamed(
+                            'subscriber-finance',
+                            pathParameters: {'username': widget.username!},
+                          ),
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: const Text('الدفعات والسلف'),
+                ),
+                const SizedBox(width: AppTokens.s8),
                 _ActionMenu(
                   isDisabled: _status == 'disabled',
                   onToggle: _loading ? null : _toggleStatus,

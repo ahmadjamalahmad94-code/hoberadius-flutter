@@ -38,6 +38,12 @@ const _items = <_MoreItem>[
     'distributors',
     sub: 'حزم مربوطة ونطاقات تشغيل',
   ),
+  _MoreItem(
+    Icons.account_balance_wallet_outlined,
+    'السجل المالي',
+    'ledger',
+    sub: 'دفعات وسلف وقيود عكسية',
+  ),
   _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles', sub: 'الصلاحيات'),
   _MoreItem(Icons.history, 'سجل التدقيق', 'audit', sub: 'الأحداث الإدارية'),
 ];

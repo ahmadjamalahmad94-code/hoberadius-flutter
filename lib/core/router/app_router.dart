@@ -6,6 +6,8 @@ import '../../features/admins/presentation/admin_form_screen.dart';
 import '../../features/admins/presentation/admins_list_screen.dart';
 import '../../features/admins/presentation/role_form_screen.dart';
 import '../../features/admins/presentation/roles_list_screen.dart';
+import '../../features/accounting/presentation/ledger_screen.dart';
+import '../../features/accounting/presentation/subscriber_finance_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
@@ -70,6 +72,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'subscriber-edit',
                 builder: (ctx, st) => SubscriberFormScreen(
                   username: st.pathParameters['username'],
+                ),
+              ),
+              GoRoute(
+                path: ':username/finance',
+                name: 'subscriber-finance',
+                builder: (ctx, st) => SubscriberFinanceScreen(
+                  username: st.pathParameters['username'] ?? '',
                 ),
               ),
             ],
@@ -198,6 +207,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/audit',
             name: 'audit',
             builder: (ctx, st) => const AuditListScreen(),
+          ),
+          GoRoute(
+            path: '/ledger',
+            name: 'ledger',
+            builder: (ctx, st) => const LedgerScreen(),
           ),
           GoRoute(
             path: '/more',

@@ -19,7 +19,8 @@ class SubscribersListScreen extends ConsumerStatefulWidget {
   const SubscribersListScreen({super.key});
 
   @override
-  ConsumerState<SubscribersListScreen> createState() => _SubscribersListScreenState();
+  ConsumerState<SubscribersListScreen> createState() =>
+      _SubscribersListScreenState();
 }
 
 class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
@@ -61,7 +62,8 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
                     prefixIcon: Icon(Icons.search),
                     isDense: true,
                   ),
-                  onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
+                  onChanged: (v) =>
+                      setState(() => _query = v.trim().toLowerCase()),
                 ),
               ),
               const SizedBox(width: AppTokens.s12),
@@ -138,9 +140,9 @@ class _Table extends StatelessWidget {
             horizontal: AppTokens.s16,
             vertical: AppTokens.s8,
           ),
-          leading: CircleAvatar(
+          leading: const CircleAvatar(
             backgroundColor: AppTokens.cyan100,
-            child: const Icon(Icons.person, color: AppTokens.cyan500),
+            child: Icon(Icons.person, color: AppTokens.cyan500),
           ),
           title: Text(
             s.fullName.isEmpty ? s.username : s.fullName,
@@ -154,8 +156,25 @@ class _Table extends StatelessWidget {
             ].join(' • '),
             style: const TextStyle(color: AppTokens.textMuted),
           ),
-          trailing: StatusPill(text: _statusLabel(s.status), tone: tone),
-          onTap: () => ctx.goNamed('subscriber-edit', pathParameters: {'username': s.username}),
+          trailing: Wrap(
+            spacing: AppTokens.s8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              StatusPill(text: _statusLabel(s.status), tone: tone),
+              IconButton(
+                tooltip: 'الدفعات والسلف',
+                onPressed: () => ctx.goNamed(
+                  'subscriber-finance',
+                  pathParameters: {'username': s.username},
+                ),
+                icon: const Icon(Icons.account_balance_wallet_outlined),
+              ),
+            ],
+          ),
+          onTap: () => ctx.goNamed(
+            'subscriber-edit',
+            pathParameters: {'username': s.username},
+          ),
         );
       },
     );

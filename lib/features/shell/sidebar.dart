@@ -18,6 +18,7 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.router_outlined, 'أجهزة الشبكة', 'nas'),
   _NavItem(Icons.admin_panel_settings_outlined, 'المدراء', 'admins'),
   _NavItem(Icons.people_alt_outlined, 'الموزعون', 'distributors'),
+  _NavItem(Icons.account_balance_wallet_outlined, 'السجل المالي', 'ledger'),
   _NavItem(Icons.shield_outlined, 'الأدوار', 'roles'),
 ];
 
@@ -76,6 +77,7 @@ class AppSidebar extends StatelessWidget {
       'nas': '/nas',
       'admins': '/admins',
       'distributors': '/distributors',
+      'ledger': '/ledger',
       'roles': '/roles',
     };
     final base = pathMap[routeName];
