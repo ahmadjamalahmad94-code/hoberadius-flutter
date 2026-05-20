@@ -57,6 +57,7 @@ int _indexOfRoute(String location) {
       location == '/recycle-bin' ||
       location == '/backups' ||
       location == '/system-operations' ||
+      location == '/admin-control' ||
       location == '/bandwidth-schedules' ||
       location == '/print-templates') {
     return _destinations.length - 1;

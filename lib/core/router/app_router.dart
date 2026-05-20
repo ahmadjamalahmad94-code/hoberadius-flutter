@@ -9,6 +9,7 @@ import '../../features/admins/presentation/roles_list_screen.dart';
 import '../../features/accounting/presentation/financial_reports_screen.dart';
 import '../../features/accounting/presentation/ledger_screen.dart';
 import '../../features/accounting/presentation/subscriber_finance_screen.dart';
+import '../../features/admin_control/presentation/admin_control_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
 import '../../features/system_operations/presentation/system_operations_screen.dart';
@@ -262,6 +263,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/system-operations',
             name: 'system-operations',
             builder: (ctx, st) => const SystemOperationsScreen(),
+          ),
+          GoRoute(
+            path: '/admin-control',
+            name: 'admin-control',
+            builder: (ctx, st) => const AdminControlScreen(),
           ),
           GoRoute(
             path: '/more',

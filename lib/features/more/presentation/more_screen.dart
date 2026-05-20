@@ -75,6 +75,12 @@ const _items = <_MoreItem>[
     sub: 'حالة الخادم، التشخيص، طابور المزامنة والمطابقة',
   ),
   _MoreItem(
+    Icons.manage_accounts_outlined,
+    'التحكم الإداري',
+    'admin-control',
+    sub: 'الإعدادات، مفاتيح API، المستأجرون وWebhooks',
+  ),
+  _MoreItem(
     Icons.speed_outlined,
     'جدولة السرعات',
     'bandwidth-schedules',
