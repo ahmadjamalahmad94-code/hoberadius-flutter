@@ -47,6 +47,7 @@ int _indexOfRoute(String location) {
   }
   if (location == '/more' ||
       location == '/nas' ||
+      location == '/mikrotik' ||
       location == '/plans' ||
       location == '/admins' ||
       location == '/roles' ||

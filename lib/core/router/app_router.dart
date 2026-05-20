@@ -27,6 +27,7 @@ import '../../features/distributors/presentation/distributor_detail_screen.dart'
 import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
+import '../../features/mikrotik/presentation/mikrotik_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
 import '../../features/operational_reports/presentation/operational_reports_screen.dart';
@@ -144,6 +145,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/mikrotik',
+            name: 'mikrotik',
+            builder: (ctx, st) => const MikrotikScreen(),
           ),
           GoRoute(
             path: '/plans',

@@ -39,6 +39,12 @@ const _items = <_MoreItem>[
     sub: 'حسابات الإدارة',
   ),
   _MoreItem(
+    Icons.router_outlined,
+    'MikroTik',
+    'mikrotik',
+    sub: 'إعداد اتصال API واختبار الراوترات',
+  ),
+  _MoreItem(
     Icons.people_alt_outlined,
     'الموزعون',
     'distributors',
