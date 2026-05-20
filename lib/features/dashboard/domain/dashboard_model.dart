@@ -27,35 +27,79 @@ class DashboardMetrics {
   final double? diskPct;
   final List<DashboardEvent> recentEvents;
 
-  factory DashboardMetrics.fromJson(Map<String, dynamic> j) => DashboardMetrics(
-        subscribers: _i(j['subscribers']),
-        activeSubscribers: _i(j['active_subscribers']),
-        onlineNow: _i(j['online_now']),
-        plans: _i(j['plans']),
-        totalCards: _i(j['total_cards']),
-        usedCards: _i(j['used_cards']),
-        totalBatches: _i(j['total_batches']),
-        nasDevices: _i(j['nas_devices']),
-        cpuPct: _d(j['cpu_pct']),
-        ramPct: _d(j['ram_pct']),
-        diskPct: _d(j['disk_pct']),
-        recentEvents: ((j['recent'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(DashboardEvent.fromJson)
-            .toList(),
-      );
+  factory DashboardMetrics.fromJson(Map<String, dynamic> j) {
+    final subscribersMap = _m(j['subscribers']);
+    final cardsMap = _m(j['cards']);
+    final plansMap = _m(j['plans']);
+    final nasMap = _m(j['nas']);
+    final systemMap = _m(j['system']);
+    return DashboardMetrics(
+      subscribers: subscribersMap == null
+          ? _i(j['subscribers'])
+          : _i(subscribersMap['total']),
+      activeSubscribers: _firstInt([
+        j['active_subscribers'],
+        subscribersMap?['active'],
+        subscribersMap?['enabled'],
+      ]),
+      onlineNow: _firstInt([
+        j['online_now'],
+        subscribersMap?['online'],
+        j['online'],
+      ]),
+      plans: plansMap == null ? _i(j['plans']) : _i(plansMap['total']),
+      totalCards: _firstInt([j['total_cards'], cardsMap?['total']]),
+      usedCards: _firstInt([j['used_cards'], cardsMap?['used']]),
+      totalBatches: _firstInt([j['total_batches'], cardsMap?['batches']]),
+      nasDevices: _firstInt([j['nas_devices'], nasMap?['total']]),
+      cpuPct: _firstDouble([j['cpu_pct'], systemMap?['cpu_pct']]),
+      ramPct: _firstDouble([j['ram_pct'], systemMap?['ram_pct']]),
+      diskPct: _firstDouble([j['disk_pct'], systemMap?['disk_pct']]),
+      recentEvents:
+          ((j['recent'] ?? j['audit'] ?? const []) as List? ?? const [])
+              .whereType<Map<String, dynamic>>()
+              .map(DashboardEvent.fromJson)
+              .toList(),
+    );
+  }
 
   static int _i(Object? v) =>
       v == null ? 0 : (v is int ? v : int.tryParse(v.toString()) ?? 0);
+  static int _firstInt(List<Object?> values) {
+    for (final value in values) {
+      if (value != null) return _i(value);
+    }
+    return 0;
+  }
+
   static double? _d(Object? v) {
     if (v == null) return null;
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString());
   }
+
+  static double? _firstDouble(List<Object?> values) {
+    for (final value in values) {
+      final parsed = _d(value);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _m(Object? v) {
+    if (v is Map<String, dynamic>) return v;
+    if (v is Map) return Map<String, dynamic>.from(v);
+    return null;
+  }
 }
 
 class DashboardEvent {
-  DashboardEvent({required this.action, this.actor = '', this.targetType = '', this.at});
+  DashboardEvent({
+    required this.action,
+    this.actor = '',
+    this.targetType = '',
+    this.at,
+  });
   final String action;
   final String actor;
   final String targetType;

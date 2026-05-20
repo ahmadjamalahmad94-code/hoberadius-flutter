@@ -17,7 +17,7 @@ const _destinations = <_NavDest>[
   _NavDest(Icons.dashboard_outlined, 'الرئيسية', 'dashboard', '/'),
   _NavDest(Icons.person_outline, 'المشتركون', 'subscribers', '/subscribers'),
   _NavDest(Icons.credit_card_outlined, 'الكروت', 'cards', '/cards'),
-  _NavDest(Icons.router_outlined, 'الأجهزة', 'nas', '/nas'),
+  _NavDest(Icons.online_prediction, 'المتصلون', 'sessions', '/sessions'),
   _NavDest(Icons.more_horiz, 'المزيد', 'more', '/more'),
 ];
 
@@ -46,9 +46,16 @@ int _indexOfRoute(String location) {
     }
   }
   if (location == '/more' ||
+      location == '/nas' ||
       location == '/plans' ||
       location == '/admins' ||
       location == '/roles' ||
+      location == '/audit' ||
+      location == '/ledger' ||
+      location == '/reports' ||
+      location == '/distributors' ||
+      location == '/recycle-bin' ||
+      location == '/backups' ||
       location == '/bandwidth-schedules' ||
       location == '/print-templates') {
     return _destinations.length - 1;
