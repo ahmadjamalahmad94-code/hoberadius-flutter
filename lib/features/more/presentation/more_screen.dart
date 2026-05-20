@@ -50,6 +50,12 @@ const _items = <_MoreItem>[
     'financial-reports',
     sub: 'مبيعات ودفعات وسلف من Ledger',
   ),
+  _MoreItem(
+    Icons.inventory_2_outlined,
+    'سلة المحذوفات',
+    'recycle-bin',
+    sub: 'استعادة العناصر المؤرشفة بأمان',
+  ),
   _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles', sub: 'الصلاحيات'),
   _MoreItem(Icons.history, 'سجل التدقيق', 'audit', sub: 'الأحداث الإدارية'),
 ];

@@ -24,6 +24,7 @@ import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
+import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
 import '../../features/subscribers/presentation/subscribers_list_screen.dart';
@@ -218,6 +219,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/reports',
             name: 'financial-reports',
             builder: (ctx, st) => const FinancialReportsScreen(),
+          ),
+          GoRoute(
+            path: '/recycle-bin',
+            name: 'recycle-bin',
+            builder: (ctx, st) => const RecycleBinScreen(),
           ),
           GoRoute(
             path: '/more',
