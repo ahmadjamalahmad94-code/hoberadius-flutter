@@ -50,13 +50,16 @@ class AppCard extends StatelessWidget {
                           Container(
                             width: 28,
                             height: 28,
-                            margin: const EdgeInsets.only(end: AppTokens.s8),
+                            margin: const EdgeInsetsDirectional.only(
+                              end: AppTokens.s8,
+                            ),
                             decoration: BoxDecoration(
                               color: AppTokens.brandSoft,
                               borderRadius: BorderRadius.circular(AppTokens.r6),
                             ),
                             alignment: Alignment.center,
-                            child: Icon(icon, size: 14, color: AppTokens.brandInk),
+                            child:
+                                Icon(icon, size: 14, color: AppTokens.brandInk),
                           ),
                         ],
                         Flexible(

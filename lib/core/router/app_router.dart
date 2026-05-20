@@ -28,6 +28,7 @@ import '../../features/distributors/presentation/distributors_list_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
+import '../../features/operational_reports/presentation/operational_reports_screen.dart';
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
@@ -238,6 +239,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/reports',
             name: 'financial-reports',
             builder: (ctx, st) => const FinancialReportsScreen(),
+          ),
+          GoRoute(
+            path: '/operational-reports',
+            name: 'operational-reports',
+            builder: (ctx, st) => const OperationalReportsScreen(),
           ),
           GoRoute(
             path: '/recycle-bin',

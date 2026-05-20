@@ -57,6 +57,12 @@ const _items = <_MoreItem>[
     sub: 'مبيعات ودفعات وسلف من Ledger',
   ),
   _MoreItem(
+    Icons.query_stats_outlined,
+    'تقارير التشغيل',
+    'operational-reports',
+    sub: 'جلسات، محاولات فاشلة، MAC وأحداث المدراء',
+  ),
+  _MoreItem(
     Icons.inventory_2_outlined,
     'سلة المحذوفات',
     'recycle-bin',

@@ -53,6 +53,7 @@ int _indexOfRoute(String location) {
       location == '/audit' ||
       location == '/ledger' ||
       location == '/reports' ||
+      location == '/operational-reports' ||
       location == '/distributors' ||
       location == '/recycle-bin' ||
       location == '/backups' ||
