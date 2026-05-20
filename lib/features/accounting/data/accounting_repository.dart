@@ -51,6 +51,17 @@ class AccountingRepository {
     return PaymentTransaction.fromJson(_object(res, 'payment'));
   }
 
+  Future<LedgerEntry> voidPayment({
+    required int paymentId,
+    required String reason,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/payments/$paymentId/void',
+      body: {'reason': reason},
+    );
+    return LedgerEntry.fromJson(_object(res, 'entry'));
+  }
+
   Future<List<LoanEntry>> listLoans({
     int? subscriberId,
     String status = '',

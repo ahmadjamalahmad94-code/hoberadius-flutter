@@ -146,6 +146,40 @@ class _SubscriberFinanceScreenState
     });
   }
 
+  Future<void> _voidPayment(PaymentTransaction payment) async {
+    final approved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('عكس الدفعة؟'),
+        content: const Text(
+          'سيتم إنشاء قيد عكسي في السجل المالي بدون حذف الدفعة الأصلية.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('تأكيد العكس'),
+          ),
+        ],
+      ),
+    );
+    if (approved != true) return;
+    return _run(() async {
+      await ref.read(accountingRepositoryProvider).voidPayment(
+            paymentId: payment.id,
+            reason: 'تصحيح من تطبيق الإدارة',
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم إنشاء قيد عكسي للدفعة')),
+        );
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<_FinanceData>(
@@ -244,7 +278,10 @@ class _SubscriberFinanceScreenState
               onSettle: _busy ? null : _settleLoan,
             ),
             const SizedBox(height: AppTokens.s16),
-            _PaymentsTable(items: data.payments),
+            _PaymentsTable(
+              items: data.payments,
+              onVoid: _busy ? null : _voidPayment,
+            ),
             const SizedBox(height: AppTokens.s16),
             _LedgerTable(items: data.ledger),
           ],
@@ -414,9 +451,10 @@ class _LoanCard extends StatelessWidget {
 }
 
 class _PaymentsTable extends StatelessWidget {
-  const _PaymentsTable({required this.items});
+  const _PaymentsTable({required this.items, required this.onVoid});
 
   final List<PaymentTransaction> items;
+  final Future<void> Function(PaymentTransaction payment)? onVoid;
 
   @override
   Widget build(BuildContext context) {
@@ -426,20 +464,56 @@ class _PaymentsTable extends StatelessWidget {
         title: 'لا توجد دفعات بعد',
       );
     }
-    return _SectionTable(
-      title: 'آخر الدفعات',
-      columns: const ['#', 'المبلغ', 'المدة', 'الحالة', 'التاريخ'],
-      rows: items
-          .map(
-            (p) => [
-              '${p.id}',
-              '${p.amount} ${p.currency}',
-              '${p.earnedMinutes} دقيقة',
-              p.status,
-              _fmt(p.createdAt),
-            ],
-          )
-          .toList(),
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(AppTokens.s16),
+            child: Text(
+              'آخر الدفعات',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              columns: const [
+                DataColumn(label: Text('#')),
+                DataColumn(label: Text('المبلغ')),
+                DataColumn(label: Text('المدة')),
+                DataColumn(label: Text('الحالة')),
+                DataColumn(label: Text('التاريخ')),
+                DataColumn(label: Text('إجراء')),
+              ],
+              rows: items
+                  .map(
+                    (p) => DataRow(
+                      cells: [
+                        DataCell(Text('${p.id}')),
+                        DataCell(Text('${p.amount} ${p.currency}')),
+                        DataCell(Text('${p.earnedMinutes} دقيقة')),
+                        DataCell(Text(p.status)),
+                        DataCell(Text(_fmt(p.createdAt))),
+                        DataCell(
+                          p.status == 'voided'
+                              ? const Text('معكوسة')
+                              : TextButton.icon(
+                                  onPressed:
+                                      onVoid == null ? null : () => onVoid!(p),
+                                  icon: const Icon(Icons.undo, size: 18),
+                                  label: const Text('عكس'),
+                                ),
+                        ),
+                      ],
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
