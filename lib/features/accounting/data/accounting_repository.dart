@@ -136,6 +136,11 @@ class AccountingRepository {
     );
     return LedgerEntry.fromJson(_object(res, 'entry'));
   }
+
+  Future<List<Map<String, dynamic>>> financialReport(String slug) async {
+    final res = await _api.get('/api/v1/reports/$slug');
+    return _items(res);
+  }
 }
 
 final accountingRepositoryProvider = Provider<AccountingRepository>((ref) {

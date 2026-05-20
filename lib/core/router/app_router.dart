@@ -6,6 +6,7 @@ import '../../features/admins/presentation/admin_form_screen.dart';
 import '../../features/admins/presentation/admins_list_screen.dart';
 import '../../features/admins/presentation/role_form_screen.dart';
 import '../../features/admins/presentation/roles_list_screen.dart';
+import '../../features/accounting/presentation/financial_reports_screen.dart';
 import '../../features/accounting/presentation/ledger_screen.dart';
 import '../../features/accounting/presentation/subscriber_finance_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
@@ -212,6 +213,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/ledger',
             name: 'ledger',
             builder: (ctx, st) => const LedgerScreen(),
+          ),
+          GoRoute(
+            path: '/reports',
+            name: 'financial-reports',
+            builder: (ctx, st) => const FinancialReportsScreen(),
           ),
           GoRoute(
             path: '/more',

@@ -44,6 +44,12 @@ const _items = <_MoreItem>[
     'ledger',
     sub: 'دفعات وسلف وقيود عكسية',
   ),
+  _MoreItem(
+    Icons.insert_chart_outlined,
+    'التقارير المالية',
+    'financial-reports',
+    sub: 'مبيعات ودفعات وسلف من Ledger',
+  ),
   _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles', sub: 'الصلاحيات'),
   _MoreItem(Icons.history, 'سجل التدقيق', 'audit', sub: 'الأحداث الإدارية'),
 ];
