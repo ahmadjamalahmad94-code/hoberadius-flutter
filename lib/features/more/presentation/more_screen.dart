@@ -69,6 +69,12 @@ const _items = <_MoreItem>[
     sub: 'حالة النسخ المحلي وGoogle Drive لاحقًا',
   ),
   _MoreItem(
+    Icons.monitor_heart_outlined,
+    'عمليات النظام',
+    'system-operations',
+    sub: 'حالة الخادم، التشخيص، طابور المزامنة والمطابقة',
+  ),
+  _MoreItem(
     Icons.speed_outlined,
     'جدولة السرعات',
     'bandwidth-schedules',

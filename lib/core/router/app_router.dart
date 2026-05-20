@@ -11,6 +11,7 @@ import '../../features/accounting/presentation/ledger_screen.dart';
 import '../../features/accounting/presentation/subscriber_finance_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
+import '../../features/system_operations/presentation/system_operations_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/backups/presentation/backups_screen.dart';
 import '../../features/bandwidth_schedules/presentation/bandwidth_schedules_screen.dart';
@@ -256,6 +257,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/print-templates',
             name: 'print-templates',
             builder: (ctx, st) => const PrintTemplatesScreen(),
+          ),
+          GoRoute(
+            path: '/system-operations',
+            name: 'system-operations',
+            builder: (ctx, st) => const SystemOperationsScreen(),
           ),
           GoRoute(
             path: '/more',
