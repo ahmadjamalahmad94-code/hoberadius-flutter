@@ -14,16 +14,32 @@ class _MoreItem {
 }
 
 const _items = <_MoreItem>[
-  _MoreItem(Icons.workspace_premium_outlined, 'الباقات', 'plans',
-      sub: 'عرض الباقات والأسعار'),
-  _MoreItem(Icons.signal_wifi_4_bar, 'الجلسات الحيّة', 'sessions',
-      sub: 'المتّصلون الآن + قطع'),
-  _MoreItem(Icons.admin_panel_settings_outlined, 'المدراء', 'admins',
-      sub: 'حسابات الإدارة'),
-  _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles',
-      sub: 'الصلاحيات'),
-  _MoreItem(Icons.history, 'سجل التدقيق', 'audit',
-      sub: 'الأحداث الإدارية'),
+  _MoreItem(
+    Icons.workspace_premium_outlined,
+    'الباقات',
+    'plans',
+    sub: 'عرض الباقات والأسعار',
+  ),
+  _MoreItem(
+    Icons.signal_wifi_4_bar,
+    'الجلسات الحيّة',
+    'sessions',
+    sub: 'المتّصلون الآن + قطع',
+  ),
+  _MoreItem(
+    Icons.admin_panel_settings_outlined,
+    'المدراء',
+    'admins',
+    sub: 'حسابات الإدارة',
+  ),
+  _MoreItem(
+    Icons.people_alt_outlined,
+    'الموزعون',
+    'distributors',
+    sub: 'حزم مربوطة ونطاقات تشغيل',
+  ),
+  _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles', sub: 'الصلاحيات'),
+  _MoreItem(Icons.history, 'سجل التدقيق', 'audit', sub: 'الأحداث الإدارية'),
 ];
 
 class MoreScreen extends ConsumerWidget {
@@ -46,7 +62,9 @@ class MoreScreen extends ConsumerWidget {
                     radius: 24,
                     backgroundColor: AppTokens.cyan500,
                     child: Text(
-                      admin.username.isEmpty ? '?' : admin.username[0].toUpperCase(),
+                      admin.username.isEmpty
+                          ? '?'
+                          : admin.username[0].toUpperCase(),
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -60,7 +78,9 @@ class MoreScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          admin.fullName.isEmpty ? admin.username : admin.fullName,
+                          admin.fullName.isEmpty
+                              ? admin.username
+                              : admin.fullName,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             color: AppTokens.navy900,
@@ -69,7 +89,9 @@ class MoreScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          admin.email.isEmpty ? '@${admin.username}' : admin.email,
+                          admin.email.isEmpty
+                              ? '@${admin.username}'
+                              : admin.email,
                           style: const TextStyle(
                             color: AppTokens.textMuted,
                             fontSize: 13,
@@ -119,7 +141,8 @@ class MoreScreen extends ConsumerWidget {
             leading: const Icon(Icons.logout, color: AppTokens.red),
             title: const Text(
               'تسجيل خروج',
-              style: TextStyle(color: AppTokens.red, fontWeight: FontWeight.w700),
+              style:
+                  TextStyle(color: AppTokens.red, fontWeight: FontWeight.w700),
             ),
             onTap: () => ref.read(authControllerProvider.notifier).logout(),
           ),

@@ -13,6 +13,9 @@ import '../../features/cards/presentation/card_batch_detail_screen.dart';
 import '../../features/cards/presentation/card_batch_form_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/distributors/presentation/distributor_detail_screen.dart';
+import '../../features/distributors/presentation/distributor_form_screen.dart';
+import '../../features/distributors/presentation/distributors_list_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
@@ -162,6 +165,26 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'role-edit',
                 builder: (ctx, st) => RoleFormScreen(
                   roleId: int.tryParse(st.pathParameters['id'] ?? ''),
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/distributors',
+            name: 'distributors',
+            builder: (ctx, st) => const DistributorsListScreen(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'distributor-new',
+                builder: (ctx, st) => const DistributorFormScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'distributor-detail',
+                builder: (ctx, st) => DistributorDetailScreen(
+                  distributorId:
+                      int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
                 ),
               ),
             ],

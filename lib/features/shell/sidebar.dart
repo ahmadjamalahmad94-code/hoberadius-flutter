@@ -17,6 +17,7 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.credit_card_outlined, 'الكروت', 'cards'),
   _NavItem(Icons.router_outlined, 'أجهزة الشبكة', 'nas'),
   _NavItem(Icons.admin_panel_settings_outlined, 'المدراء', 'admins'),
+  _NavItem(Icons.people_alt_outlined, 'الموزعون', 'distributors'),
   _NavItem(Icons.shield_outlined, 'الأدوار', 'roles'),
 ];
 
@@ -40,10 +41,14 @@ class AppSidebar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
               children: _navItems.map((it) {
                 final active = _isActive(route, it.routeName);
-                return _SidebarTile(item: it, active: active, onTap: () {
-                  context.goNamed(it.routeName);
-                  onTap?.call();
-                });
+                return _SidebarTile(
+                  item: it,
+                  active: active,
+                  onTap: () {
+                    context.goNamed(it.routeName);
+                    onTap?.call();
+                  },
+                );
               }).toList(),
             ),
           ),
@@ -70,6 +75,7 @@ class AppSidebar extends StatelessWidget {
       'cards': '/cards',
       'nas': '/nas',
       'admins': '/admins',
+      'distributors': '/distributors',
       'roles': '/roles',
     };
     final base = pathMap[routeName];
@@ -101,7 +107,8 @@ class _Brand extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
-            child: const Icon(Icons.wifi_tethering, color: Colors.white, size: 18),
+            child:
+                const Icon(Icons.wifi_tethering, color: Colors.white, size: 18),
           ),
           const SizedBox(width: AppTokens.s12),
           const Text(
@@ -119,7 +126,11 @@ class _Brand extends StatelessWidget {
 }
 
 class _SidebarTile extends StatelessWidget {
-  const _SidebarTile({required this.item, required this.active, required this.onTap});
+  const _SidebarTile({
+    required this.item,
+    required this.active,
+    required this.onTap,
+  });
   final _NavItem item;
   final bool active;
   final VoidCallback onTap;
@@ -141,10 +152,10 @@ class _SidebarTile extends StatelessWidget {
             vertical: AppTokens.s12,
           ),
           decoration: BoxDecoration(
-            color: active ? AppTokens.cyan500.withOpacity(0.18) : null,
+            color: active ? AppTokens.cyan500.withValues(alpha: 0.18) : null,
             borderRadius: BorderRadius.circular(AppTokens.r10),
             border: active
-                ? Border.all(color: AppTokens.cyan500.withOpacity(0.3))
+                ? Border.all(color: AppTokens.cyan500.withValues(alpha: 0.3))
                 : null,
           ),
           child: Row(
