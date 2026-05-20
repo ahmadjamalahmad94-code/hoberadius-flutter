@@ -45,6 +45,12 @@ const _items = <_MoreItem>[
     sub: 'إعداد اتصال API واختبار الراوترات',
   ),
   _MoreItem(
+    Icons.devices_other_outlined,
+    'بصمات الأجهزة',
+    'device-fingerprints',
+    sub: 'MAC، نظام الجهاز، آخر ظهور ومزامنة DHCP',
+  ),
+  _MoreItem(
     Icons.people_alt_outlined,
     'الموزعون',
     'distributors',

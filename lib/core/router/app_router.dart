@@ -23,6 +23,7 @@ import '../../features/cards/presentation/card_batch_form_screen.dart';
 import '../../features/cards/presentation/card_checker_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/device_fingerprints/presentation/device_fingerprints_screen.dart';
 import '../../features/distributors/presentation/distributor_detail_screen.dart';
 import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
@@ -150,6 +151,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/mikrotik',
             name: 'mikrotik',
             builder: (ctx, st) => const MikrotikScreen(),
+          ),
+          GoRoute(
+            path: '/device-fingerprints',
+            name: 'device-fingerprints',
+            builder: (ctx, st) => const DeviceFingerprintsScreen(),
           ),
           GoRoute(
             path: '/plans',
