@@ -45,8 +45,19 @@ class AppCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (icon != null) ...[
-                          Icon(icon, size: 18, color: AppTokens.cyan500),
-                          const SizedBox(width: AppTokens.s8),
+                          // Icon chip with brand-soft background — matches
+                          // the .hub-section-head-icon look on the web.
+                          Container(
+                            width: 28,
+                            height: 28,
+                            margin: const EdgeInsets.only(end: AppTokens.s8),
+                            decoration: BoxDecoration(
+                              color: AppTokens.brandSoft,
+                              borderRadius: BorderRadius.circular(AppTokens.r6),
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(icon, size: 14, color: AppTokens.brandInk),
+                          ),
                         ],
                         Flexible(
                           child: Text(
@@ -56,8 +67,8 @@ class AppCard extends StatelessWidget {
                                 .textTheme
                                 .titleMedium
                                 ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTokens.navy800,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTokens.textPrimary,
                                   height: 1.25,
                                 ),
                           ),

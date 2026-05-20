@@ -1,42 +1,91 @@
 import 'package:flutter/material.dart';
 
-/// Design tokens copied from radius-module/static/css.
-/// Source of truth: navy/cyan palette + Cairo font + RTL.
+/// Design tokens — synced with the web `hub_v2.css` palette.
+///
+/// Brand is now PURPLE (#6B5AED) to match the Card Checker visual
+/// language and the overnight UI rebuild. The legacy navy/cyan
+/// names are kept as backwards-compatible aliases so existing
+/// widgets compile without churn while we migrate.
 class AppTokens {
   AppTokens._();
 
-  // ── Brand ────────────────────────────────────────────────────────────
-  static const Color navy900 = Color(0xFF0E1B2F);
-  static const Color navy800 = Color(0xFF132340);
-  static const Color navy700 = Color(0xFF1A2D52);
-  static const Color navy600 = Color(0xFF223863);
+  // ─────────────────────────────────────────────────────────────
+  //  HUB v2 — Purple brand (new canonical)
+  // ─────────────────────────────────────────────────────────────
+  /// Primary brand purple
+  static const Color brand        = Color(0xFF6B5AED);
+  /// Darker ink for headings / hover
+  static const Color brandInk     = Color(0xFF5B4BD6);
+  /// Even darker for pressed buttons
+  static const Color brandDeep    = Color(0xFF4836B8);
+  /// Soft purple tint for surfaces / hover backgrounds
+  static const Color brandSoft    = Color(0xFFF4F1FE);
+  /// Mid-tone purple line for borders on tinted surfaces
+  static const Color brandLine    = Color(0xFFE5E0F5);
 
-  static const Color cyan500 = Color(0xFF2BAACC);
-  static const Color cyan400 = Color(0xFF49BFDE);
-  static const Color cyan100 = Color(0xFFE6F6FB);
+  // ─────────────────────────────────────────────────────────────
+  //  Surfaces
+  // ─────────────────────────────────────────────────────────────
+  static const Color bg           = Color(0xFFFAFBFF);
+  static const Color card         = Color(0xFFFFFFFF);
+  static const Color soft         = Color(0xFFF8F9FE);
+  static const Color border       = Color(0xFFE8E7F0);
+  static const Color borderSoft   = Color(0xFFEFEEF6);
+  static const Color borderStrong = Color(0xFFD5CCF5);
 
-  // ── Surfaces ─────────────────────────────────────────────────────────
-  static const Color bg = Color(0xFFF4F6FA);
-  static const Color card = Color(0xFFFFFFFF);
-  static const Color border = Color(0xFFE3E7EE);
-  static const Color sidebarBg = navy900;
-  static const Color sidebarText = Color(0xFFB8C7E0);
-  static const Color sidebarActive = Color(0xFFFFFFFF);
+  // ─────────────────────────────────────────────────────────────
+  //  Text
+  // ─────────────────────────────────────────────────────────────
+  static const Color textPrimary   = Color(0xFF1F2937);
+  static const Color textSecondary = Color(0xFF475569);
+  static const Color textMuted     = Color(0xFF94A3B8);
+  static const Color textFaint     = Color(0xFFC7CBD6);
 
-  // ── Text ─────────────────────────────────────────────────────────────
-  static const Color textPrimary = Color(0xFF1B2434);
-  static const Color textSecondary = Color(0xFF55617A);
-  static const Color textMuted = Color(0xFF8A95AB);
+  // ─────────────────────────────────────────────────────────────
+  //  Semantic
+  // ─────────────────────────────────────────────────────────────
+  static const Color green     = Color(0xFF22C55E);
+  static const Color greenSoft = Color(0xFFDCFCE7);
+  static const Color greenInk  = Color(0xFF15803D);
 
-  // ── Status ───────────────────────────────────────────────────────────
-  static const Color green = Color(0xFF26A65B);
-  static const Color orange = Color(0xFFE48B1B);
-  static const Color purple = Color(0xFF7E55D6);
-  static const Color red = Color(0xFFD04949);
+  static const Color amber     = Color(0xFFF59E0B);
+  static const Color amberSoft = Color(0xFFFEF3C7);
+  static const Color amberInk  = Color(0xFF92400E);
 
-  // ── Spacing ──────────────────────────────────────────────────────────
-  static const double s4 = 4;
-  static const double s8 = 8;
+  static const Color red       = Color(0xFFEF4444);
+  static const Color redSoft   = Color(0xFFFEE2E2);
+  static const Color redInk    = Color(0xFFB91C1C);
+
+  static const Color blue      = Color(0xFF3B82F6);
+  static const Color blueSoft  = Color(0xFFDBEAFE);
+  static const Color blueInk   = Color(0xFF1D4ED8);
+
+  // ─────────────────────────────────────────────────────────────
+  //  Sidebar / topbar (purple-tinted dark)
+  // ─────────────────────────────────────────────────────────────
+  static const Color sidebarBg      = Color(0xFF1A1530);
+  static const Color sidebarText    = Color(0xFFC8C2EA);
+  static const Color sidebarActive  = Color(0xFFFFFFFF);
+
+  // ─────────────────────────────────────────────────────────────
+  //  Backwards-compat aliases — DO NOT remove until all widgets
+  //  have migrated to the new names above.
+  // ─────────────────────────────────────────────────────────────
+  static const Color navy900 = sidebarBg;
+  static const Color navy800 = Color(0xFF211B40);
+  static const Color navy700 = Color(0xFF2A2350);
+  static const Color navy600 = Color(0xFF332B60);
+  static const Color cyan500 = brand;
+  static const Color cyan400 = Color(0xFF8674F1);
+  static const Color cyan100 = brandSoft;
+  static const Color orange  = amber;
+  static const Color purple  = brand;
+
+  // ─────────────────────────────────────────────────────────────
+  //  Spacing scale
+  // ─────────────────────────────────────────────────────────────
+  static const double s4  = 4;
+  static const double s8  = 8;
   static const double s12 = 12;
   static const double s16 = 16;
   static const double s20 = 20;
@@ -44,19 +93,40 @@ class AppTokens {
   static const double s32 = 32;
   static const double s40 = 40;
 
-  // ── Radii ────────────────────────────────────────────────────────────
-  static const double r6 = 6;
+  // ─────────────────────────────────────────────────────────────
+  //  Radii (matches hub-v2)
+  // ─────────────────────────────────────────────────────────────
+  static const double r6  = 6;
   static const double r10 = 10;
   static const double r14 = 14;
+  static const double r18 = 18;
   static const double r20 = 20;
 
-  // ── Breakpoints (responsive) ─────────────────────────────────────────
-  static const double bpMobile = 600;
-  static const double bpTablet = 960;
+  // ─────────────────────────────────────────────────────────────
+  //  Breakpoints (responsive)
+  // ─────────────────────────────────────────────────────────────
+  static const double bpMobile  = 600;
+  static const double bpTablet  = 960;
   static const double bpDesktop = 1280;
 
-  // ── Sidebar ──────────────────────────────────────────────────────────
-  static const double sidebarWidth = 248;
+  // ─────────────────────────────────────────────────────────────
+  //  Sidebar geometry
+  // ─────────────────────────────────────────────────────────────
+  static const double sidebarWidth          = 260;
   static const double sidebarWidthCollapsed = 72;
-  static const double topbarHeight = 64;
+  static const double topbarHeight          = 64;
+
+  // ─────────────────────────────────────────────────────────────
+  //  Box shadows (matches hub-v2 sh-card / sh-md / sh-lg)
+  // ─────────────────────────────────────────────────────────────
+  static const List<BoxShadow> shCard = [
+    BoxShadow(color: Color(0x0A0F172A), blurRadius: 2,  offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0D5B4BD6), blurRadius: 24, offset: Offset(0, 8)),
+  ];
+  static const List<BoxShadow> shMd = [
+    BoxShadow(color: Color(0x100F172A), blurRadius: 8,  offset: Offset(0, 2)),
+  ];
+  static const List<BoxShadow> shLg = [
+    BoxShadow(color: Color(0x145B4BD6), blurRadius: 25, offset: Offset(0, 10)),
+  ];
 }
