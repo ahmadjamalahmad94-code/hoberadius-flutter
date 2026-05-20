@@ -13,6 +13,7 @@ import '../../features/audit/presentation/audit_list_screen.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/backups/presentation/backups_screen.dart';
+import '../../features/bandwidth_schedules/presentation/bandwidth_schedules_screen.dart';
 import '../../features/cards/presentation/card_batch_detail_screen.dart';
 import '../../features/cards/presentation/card_batch_form_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
@@ -230,6 +231,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/backups',
             name: 'backups',
             builder: (ctx, st) => const BackupsScreen(),
+          ),
+          GoRoute(
+            path: '/bandwidth-schedules',
+            name: 'bandwidth-schedules',
+            builder: (ctx, st) => const BandwidthSchedulesScreen(),
           ),
           GoRoute(
             path: '/more',

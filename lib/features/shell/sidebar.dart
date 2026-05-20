@@ -26,6 +26,7 @@ const _navItems = <_NavItem>[
   ),
   _NavItem(Icons.inventory_2_outlined, 'سلة المحذوفات', 'recycle-bin'),
   _NavItem(Icons.storage_outlined, 'النسخ الاحتياطي', 'backups'),
+  _NavItem(Icons.speed_outlined, 'جدولة السرعات', 'bandwidth-schedules'),
   _NavItem(Icons.shield_outlined, 'الأدوار', 'roles'),
 ];
 
@@ -88,6 +89,7 @@ class AppSidebar extends StatelessWidget {
       'financial-reports': '/reports',
       'recycle-bin': '/recycle-bin',
       'backups': '/backups',
+      'bandwidth-schedules': '/bandwidth-schedules',
       'roles': '/roles',
     };
     final base = pathMap[routeName];

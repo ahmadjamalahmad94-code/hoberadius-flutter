@@ -62,6 +62,12 @@ const _items = <_MoreItem>[
     'backups',
     sub: 'حالة النسخ المحلي وGoogle Drive لاحقًا',
   ),
+  _MoreItem(
+    Icons.speed_outlined,
+    'جدولة السرعات',
+    'bandwidth-schedules',
+    sub: 'جداول وقتية مع تجربة تطبيق فقط',
+  ),
   _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles', sub: 'الصلاحيات'),
   _MoreItem(Icons.history, 'سجل التدقيق', 'audit', sub: 'الأحداث الإدارية'),
 ];

@@ -39,11 +39,17 @@ class ShellScaffold extends ConsumerWidget {
 int _indexOfRoute(String location) {
   for (var i = 0; i < _destinations.length - 1; i++) {
     final p = _destinations[i].path;
-    if (p == '/' ? location == '/' : (location == p || location.startsWith('$p/'))) {
+    if (p == '/'
+        ? location == '/'
+        : (location == p || location.startsWith('$p/'))) {
       return i;
     }
   }
-  if (location == '/more' || location == '/plans' || location == '/admins' || location == '/roles') {
+  if (location == '/more' ||
+      location == '/plans' ||
+      location == '/admins' ||
+      location == '/roles' ||
+      location == '/bandwidth-schedules') {
     return _destinations.length - 1;
   }
   return 0;
@@ -64,11 +70,13 @@ class _Mobile extends ConsumerWidget {
         selectedIndex: idx,
         onDestinationSelected: (i) => _onTap(context, i),
         destinations: _destinations
-            .map((d) => NavigationDestination(
-                  icon: Icon(d.icon),
-                  selectedIcon: Icon(d.icon, color: AppTokens.cyan500),
-                  label: d.label,
-                ))
+            .map(
+              (d) => NavigationDestination(
+                icon: Icon(d.icon),
+                selectedIcon: Icon(d.icon, color: AppTokens.cyan500),
+                label: d.label,
+              ),
+            )
             .toList(),
       ),
     );
@@ -94,17 +102,21 @@ class _Rail extends StatelessWidget {
               labelType: NavigationRailLabelType.all,
               backgroundColor: AppTokens.sidebarBg,
               selectedIconTheme: const IconThemeData(color: AppTokens.cyan500),
-              unselectedIconTheme: const IconThemeData(color: AppTokens.sidebarText),
+              unselectedIconTheme:
+                  const IconThemeData(color: AppTokens.sidebarText),
               selectedLabelTextStyle: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
               ),
-              unselectedLabelTextStyle: const TextStyle(color: AppTokens.sidebarText),
+              unselectedLabelTextStyle:
+                  const TextStyle(color: AppTokens.sidebarText),
               destinations: _destinations
-                  .map((d) => NavigationRailDestination(
-                        icon: Icon(d.icon),
-                        label: Text(d.label),
-                      ))
+                  .map(
+                    (d) => NavigationRailDestination(
+                      icon: Icon(d.icon),
+                      label: Text(d.label),
+                    ),
+                  )
                   .toList(),
             ),
             const VerticalDivider(width: 1),
@@ -129,7 +141,9 @@ class _Wide extends ConsumerWidget {
       body: Row(
         children: [
           _Sidebar(activeIndex: idx, admin: auth.admin),
-          Expanded(child: _ContentArea(child: child, showTopBar: true)),
+          Expanded(
+            child: _ContentArea(showTopBar: true, child: child),
+          ),
         ],
       ),
     );
@@ -166,7 +180,11 @@ class _Sidebar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   alignment: Alignment.center,
-                  child: const Icon(Icons.wifi_tethering, color: Colors.white, size: 18),
+                  child: const Icon(
+                    Icons.wifi_tethering,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                 ),
                 const SizedBox(width: AppTokens.s12),
                 const Text(
@@ -195,12 +213,16 @@ class _Sidebar extends StatelessWidget {
                     onTap: () => _onTap(ctx, i),
                     child: Container(
                       margin: const EdgeInsets.symmetric(
-                          horizontal: AppTokens.s8, vertical: 2),
+                        horizontal: AppTokens.s8,
+                        vertical: 2,
+                      ),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: AppTokens.s12, vertical: AppTokens.s12),
+                        horizontal: AppTokens.s12,
+                        vertical: AppTokens.s12,
+                      ),
                       decoration: BoxDecoration(
                         color: active
-                            ? AppTokens.cyan500.withOpacity(0.18)
+                            ? AppTokens.cyan500.withValues(alpha: 0.18)
                             : null,
                         borderRadius: BorderRadius.circular(AppTokens.r10),
                       ),
@@ -246,7 +268,9 @@ class _Sidebar extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          admin!.fullName.isEmpty ? admin!.username : admin!.fullName,
+                          admin!.fullName.isEmpty
+                              ? admin!.username
+                              : admin!.fullName,
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -255,7 +279,9 @@ class _Sidebar extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          admin!.email.isEmpty ? '@${admin!.username}' : admin!.email,
+                          admin!.email.isEmpty
+                              ? '@${admin!.username}'
+                              : admin!.email,
                           style: const TextStyle(
                             color: AppTokens.sidebarText,
                             fontSize: 11,
