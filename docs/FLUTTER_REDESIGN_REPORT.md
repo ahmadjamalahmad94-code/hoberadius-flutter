@@ -137,4 +137,57 @@ $ flutter test
 All tests passed! (60 tests)
 ```
 
-— end of report —
+## J8 — Windows ⇄ Web parity (added after `f33bad1`)
+
+Phase J8 implements `docs/FLUTTER_WINDOWS_PARITY_PLAN.md` —
+bringing the Windows build of the Flutter admin to 100 % visual
+and behavioural parity with the radius-module web admin at its
+current HEAD (which gained the unified card render engine, the
+3-column print-templates page, default-template + cleanup-fixtures,
+strict bg-image picker, fit-to-viewport designer canvas, and
+Arabic-aware PDF via Almarai).
+
+### What landed
+
+| Phase | Commit prefix | Surface |
+|-------|---------------|---------|
+| A1 | `A1: freeze mobile baseline + parity plan` | Mobile golden harness, `MOBILE_BASELINE.md`, `freeze_mobile_baseline.sh`. |
+| A2 | `A2: web reference snapshot tooling` | `tools/diff_web_admin.sh` + `web_snapshots/` scaffold. |
+| A3 | `A3: pin desktop deps + Almarai font + platform capabilities` | `flutter_svg`, `qr`, `printing`, `desktop_drop`, `file_picker` pinned. Almarai TTFs bundled. `PlatformCapabilities` flags. |
+| B1 | `B1: port card render model to Dart` | `CardRenderModel`, `CardElement` sealed hierarchy, `CardDefaultPositions` mirror. |
+| B2 | `B2: builder + position resolver in Dart` | `buildCardRenderModel(...)` — direct port of `build_card_render_model` in card_renderer.py. 11 unit tests. |
+| B3 | `B3: SVG adapter + flutter_svg display widget` | `renderCardSvg(...)`. Three-layer LTR defence. QR via the `qr` package (ISO/IEC 18004). |
+| B4 | `B4: PDF preview powered by backend export (Windows-only window)` | Repository gained `setDefault`, `delete`, `cleanupFixtures`, `previewFragmentHtml`. `PdfPreviewLauncher` chooses Windows PDF dialog vs mobile file_saver. |
+| B5 | `B5: regression suite for the Dart SVG adapter` | 12 tests mirroring `test_card_renderer.py`. |
+| B6 | `B6: golden gallery of every web preset` | `CardRendererGalleryScreen` + 10 preset SVGs verified. |
+| C1–C6 | `C1–C6: Windows export room (3-column) + star + cleanup` | Settings · Preview · Chips columns, `ExportRoomController`, star → default, cleanup-fixtures, optimistic UI. |
+| C7 | `C7: strict bg-image picker matching the web component` | `BgImagePicker` + `desktop_drop` drag-target (Windows-only). Same MIME + 1.5 MB cap as the server. |
+| C8 | `C8: designer form defaults match renderer canonical positions` | Form mm-position fields default to `'0'` so the renderer's canonical `_DEFAULT_POSITIONS` fallback fires for new templates. |
+| D1–D5 | `D1–D5: cross-cutting polish` | Almarai theme fallback, RTL pin, viewport contain, PDF window, Windows keyboard shortcuts (Ctrl+P, Ctrl+Shift+X, Esc). |
+| E1–E3 | `E1–E3: parity + mobile-safety regression suite` | Renderer determinism, web contract replay, manifest-level mobile-safety guards. |
+| F1–F3 | this commit | Report + README + onboarding refresh. |
+
+### Mobile-safety contract upheld
+
+- `pubspec.yaml` adds desktop deps but they are never imported on
+  mobile (all use-sites sit behind `PlatformCapabilities` flags).
+- The only new UI surface is `lib/features/print_templates/presentation/desktop/`,
+  rendered only when `supportsDesktopLayout && width >= bpDesktop`.
+- Almarai TTFs ship as assets but are not auto-loaded on mobile —
+  consumed only by the SVG adapter (web-paths) and the backend
+  PDF embed (server-side).
+- `flutter test test/parity/mobile_safety_test.dart` pins all
+  three rules at the manifest level.
+
+### Verification at HEAD
+
+```
+$ flutter analyze
+No issues found!
+
+$ flutter test
+All tests passed! (95+ tests, including 33 renderer +
+                   parity tests added in J8)
+```
+
+— end of J8 report —

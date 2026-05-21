@@ -129,11 +129,61 @@ lib/
   الأربعة (light/dark × LTR/RTL).
 - اختبارات goldens لكل widget مهم في `test/widgets/goldens/`.
 
-تقرير إعادة التصميم الشامل (J0 → J6) موجود في
+تقرير إعادة التصميم الشامل (J0 → J6 ثم J8 Windows-parity) موجود في
 [docs/FLUTTER_REDESIGN_REPORT.md](docs/FLUTTER_REDESIGN_REPORT.md).
+
+## بناء Windows مع تطابق الويب 100 %
+
+الـ Windows build بيشغّل نسخة كاملة من غرفة عمليات قوالب الطباعة
+(3 أعمدة: إعدادات / معاينة حية / قوالب) — نفس تطبيق الويب
+بالضبط، نفس الـ SVG، نفس الـ PDF (يصدر من الباك إند).
+
+```powershell
+flutter pub get
+flutter build windows --dart-define=API_BASE_URL=https://radius.your-vps.com
+```
+
+### Dependencies الـ desktop (مُغلَّفة خلف Platform guards)
+
+| Package | لِما | يتم استيراده فقط على |
+|---|---|---|
+| `flutter_svg` | عرض SVG البطاقة من المُحرّك الموحّد | كل المنصات (pure-Dart، خفيف) |
+| `qr` | بناء مصفوفة QR ISO/IEC 18004 | كل المنصات |
+| `printing` | شاشة معاينة PDF + Print dialog | Windows فقط (`PdfPreviewLauncher` يفحص `PlatformCapabilities.isWindows`) |
+| `desktop_drop` | drag-drop صورة الخلفية في الـ designer | Desktop فقط (conditional import) |
+| `file_picker` | اختيار صورة الخلفية | كل المنصات |
+
+### Almarai font
+
+Almarai TTF (Regular + Bold) مُضمّن في `assets/fonts/` تحت رخصة SIL
+OFL (`OFL.txt`). يُستخدم في:
+- معاينة الـ designer (HTML/SVG): font-family includes "Almarai".
+- المعاينة الحية في غرفة التصدير (SVG): same.
+- ملف PDF المُصدَّر من الباك إند: backend يُضمّن Almarai في نفس الـ
+  bytes (ر. `radius-module/app/static/fonts/`).
+
+### اختصارات لوحة المفاتيح (Windows فقط)
+
+| الاختصار | الإجراء |
+|---|---|
+| `Ctrl + P` | تصدير PDF للحزمة المختارة + القالب المختار |
+| `Ctrl + Shift + X` | تنظيف قوالب الاختبار |
+| `Esc` | إغلاق المعاينة / الـ drawer / أي حوار مفتوح |
+
+### الـ mobile build غير متأثر
+
+ملف [docs/MOBILE_BASELINE.md](docs/MOBILE_BASELINE.md) يوثّق العقد:
+- لا تتغيّر أي شاشة موبايل.
+- لا تُحمَّل أي dependency desktop وقت التشغيل.
+- لا تُضاف أي أصول إلى الـ APK.
+- `flutter test test/parity/mobile_safety_test.dart` يُمسك أي
+  تجاوز تلقائيًا.
 
 ## الخطوة التالية
 
-- تفعيل Developer Mode على Windows ثم تشغيل `flutter build windows`.
-- تحويل Google Drive من حالة معطلة إلى OAuth حقيقي عندما نقرر مزود الحسابات.
-- إضافة PDF renderer حقيقي لقوالب الطباعة بدل الاكتفاء بالمعاينة البصرية.
+- إعادة توليد screenshots المقارنة (Windows vs Web) عبر
+  `tools/diff_web_admin.sh` بعد كل تغيير في الـ backend renderer.
+- نقل بقية الشاشات (subscribers / cards / nas / plans) لنفس نمط
+  الـ 3-column desktop عند الحاجة.
+- تحويل Google Drive من حالة معطلة إلى OAuth حقيقي عندما نقرر
+  مزود الحسابات.
