@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -128,6 +129,7 @@ class _NasTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd HH:mm');
+    final p = AppPalette.of(context);
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -141,13 +143,29 @@ class _NasTable extends StatelessWidget {
           '' => PillTone.neutral,
           _ => PillTone.orange,
         };
+        final pulseOk = d.lastCheckStatus == 'reachable' && d.enabled;
         return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: AppTokens.brandSoft,
-            child: Icon(
-              d.enabled ? Icons.router : Icons.router_outlined,
-              color: AppTokens.brand,
-            ),
+          leading: Stack(
+            alignment: Alignment.bottomLeft,
+            children: [
+              CircleAvatar(
+                backgroundColor: p.brandSoft,
+                child: Icon(
+                  d.enabled ? Icons.router : Icons.router_outlined,
+                  color: p.brand,
+                ),
+              ),
+              if (pulseOk)
+                Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: p.successStrong,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: p.card, width: 2),
+                  ),
+                ),
+            ],
           ),
           title: Row(
             children: [
