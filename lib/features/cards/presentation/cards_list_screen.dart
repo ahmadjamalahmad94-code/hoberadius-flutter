@@ -250,6 +250,11 @@ class _Header extends StatelessWidget {
           icon: const Icon(Icons.manage_search_outlined),
           label: const Text('فحص بطاقة'),
         ),
+        OutlinedButton.icon(
+          onPressed: () => context.goNamed('card-batch-import'),
+          icon: const Icon(Icons.file_upload_outlined),
+          label: const Text('استيراد ملف'),
+        ),
         ElevatedButton.icon(
           onPressed: () => context.goNamed('card-batch-new'),
           icon: const Icon(Icons.add),

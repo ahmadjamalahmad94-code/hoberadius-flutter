@@ -130,4 +130,46 @@ void main() {
     expect(batch.estimatedValue, 250);
     expect(batch.distributorDisplayName, 'North reseller');
   });
+
+  test('CardBatchImport request and result keep external imports safe', () {
+    final request = CardBatchImportRequest(
+      planId: 3,
+      sourceType: 'external',
+      csvText: 'username,password\nc1,p1\n',
+      packageName: 'External file',
+      syncToRadius: true,
+      pricePerCard: 1.5,
+    );
+
+    final body = request.toBody();
+    expect(body['plan_id'], 3);
+    expect(body['source_type'], 'external');
+    expect(body['csv_text'], contains('c1,p1'));
+    expect(body['sync_to_radius'], isFalse);
+
+    final result = CardBatchImportResult.fromJson({
+      'data': {
+        'batch': {
+          'id': 44,
+          'batch_code': 'B-EXT-44',
+          'source_type': 'external',
+          'original_count': 2,
+          'generated': 2,
+        },
+        'inserted_count': 2,
+        'skipped_count': 1,
+        'radius_sync_enabled': false,
+        'radius_synced_count': 0,
+        'skipped': [
+          {'row': '3', 'username': 'dup', 'reason': 'duplicate'},
+        ],
+      },
+    });
+
+    expect(result.batch.sourceType, 'external');
+    expect(result.batch.originalCount, 2);
+    expect(result.insertedCount, 2);
+    expect(result.radiusSyncEnabled, isFalse);
+    expect(result.skipped.single.reason, 'duplicate');
+  });
 }

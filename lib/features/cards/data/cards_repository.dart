@@ -30,6 +30,16 @@ class CardsRepository {
     );
   }
 
+  Future<CardBatchImportResult> importBatch(
+    CardBatchImportRequest req,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/cards/batches/import',
+      body: req.toBody(),
+    );
+    return CardBatchImportResult.fromJson(res);
+  }
+
   Future<List<CardBatch>> listBatches({int limit = 100, int offset = 0}) async {
     final page = (offset ~/ limit) + 1;
     final result = await listBatchOperations(page: page, perPage: limit);
