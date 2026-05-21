@@ -9,6 +9,7 @@ import '../application/subscriber_finance_data.dart';
 import '../data/accounting_repository.dart';
 import '../domain/accounting_model.dart';
 import 'widgets/finance_forms.dart';
+import 'widgets/finance_summary_card.dart';
 import 'widgets/finance_tables.dart';
 
 class SubscriberFinanceScreen extends ConsumerStatefulWidget {
@@ -224,6 +225,14 @@ class _SubscriberFinanceScreenState
                   icon: const Icon(Icons.refresh),
                 ),
               ],
+            ),
+            const SizedBox(height: AppTokens.s12),
+            FinanceSummaryCard(
+              payments: data.payments,
+              loans: data.loans,
+              currency: data.payments.isNotEmpty
+                  ? data.payments.first.currency
+                  : (data.loans.isNotEmpty ? data.loans.first.currency : ''),
             ),
             const SizedBox(height: AppTokens.s12),
             const FinanceNotice(),
