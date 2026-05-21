@@ -203,18 +203,12 @@ class _FinancialReportsScreenState
                 'التقرير:',
                 style: TextStyle(fontWeight: FontWeight.w700),
               ),
-              DropdownButton<String>(
-                value: _slug,
-                items: _reports.entries
-                    .map(
-                      (entry) => DropdownMenuItem(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _slug = v ?? 'sales/daily'),
-              ),
+              for (final entry in _reports.entries)
+                ChoiceChip(
+                  label: Text(entry.value),
+                  selected: _slug == entry.key,
+                  onSelected: (_) => setState(() => _slug = entry.key),
+                ),
               FilledButton.icon(
                 onPressed: _savingSnapshot ? null : _saveSnapshot,
                 icon: _savingSnapshot
