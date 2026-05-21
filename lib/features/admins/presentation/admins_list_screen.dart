@@ -98,11 +98,35 @@ class _AdminsTable extends StatelessWidget {
         final a = admins[i];
         final role = a.roleId == null ? null : roles[a.roleId];
         return ListTile(
-          leading: CircleAvatar(
-            backgroundColor: a.isSuperAdmin ? AppTokens.brand : AppTokens.sidebarBgElev1,
+          leading: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: a.isSuperAdmin
+                  ? AppTokens.brandGradient
+                  : LinearGradient(
+                      colors: [
+                        AppTokens.sidebarBgElev1,
+                        AppTokens.sidebarBgElev2,
+                      ],
+                    ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppTokens.brand.withValues(alpha: 0.18),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            alignment: Alignment.center,
             child: Text(
               a.username.isEmpty ? '?' : a.username[0].toUpperCase(),
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
             ),
           ),
           title: Row(
