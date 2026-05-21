@@ -250,11 +250,16 @@ class _Tile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Container(
-        width: 40,
-        height: 40,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
-          color: AppTokens.brandSoft,
-          borderRadius: BorderRadius.circular(10),
+          gradient: const LinearGradient(
+            colors: [AppTokens.brandSoft, Color(0xFFFFFFFF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTokens.brandLine),
         ),
         alignment: Alignment.center,
         child: Icon(item.icon, color: AppTokens.brand, size: 20),
