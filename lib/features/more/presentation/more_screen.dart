@@ -126,7 +126,7 @@ const _items = <_MoreItem>[
     Icons.print_outlined,
     'قوالب الطباعة',
     'print-templates',
-    sub: 'تخطيط الكروت ومعاينة JSON بدون PDF',
+    sub: 'تخطيط الكروت ومعاينة وتنزيل PDF',
   ),
   _MoreItem(Icons.shield_outlined, 'الأدوار', 'roles', sub: 'الصلاحيات'),
   _MoreItem(Icons.history, 'سجل التدقيق', 'audit', sub: 'الأحداث الإدارية'),

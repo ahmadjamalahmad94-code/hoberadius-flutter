@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -118,6 +121,18 @@ class PrintTemplatesRepository {
               ? data.map((key, value) => MapEntry(key.toString(), value))
               : const {},
     );
+  }
+
+  Future<Uint8List> exportPdf(
+    int templateId, {
+    String sampleUsername = 'CARD1234',
+  }) async {
+    final res = await _api.dio.get<List<int>>(
+      '/api/v1/print-templates/$templateId/export.pdf',
+      queryParameters: {'sample_username': sampleUsername},
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
   }
 }
 

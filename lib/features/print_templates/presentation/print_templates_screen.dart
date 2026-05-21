@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_saver/file_saver.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -41,6 +42,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
   bool _showQr = true;
   bool _saving = false;
   bool _previewing = false;
+  bool _exportingPdf = false;
   PrintTemplatePreview? _preview;
 
   @override
@@ -98,7 +100,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
-                  'القوالب محفوظة وقابلة لإعادة الاستخدام، والمعاينة الآن بصرية للمواضع والألوان. لا يتم إنشاء PDF أو ملف طباعة نهائي.',
+                  'القوالب محفوظة وقابلة لإعادة الاستخدام، والمعاينة بصرية للمواضع والألوان، ويمكن تنزيل PDF حقيقي لنموذج القالب.',
                   style: TextStyle(color: AppTokens.textMuted),
                 ),
               ),
@@ -147,7 +149,9 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
               data: (items) => _TemplateList(
                 items: items,
                 previewing: _previewing,
+                exportingPdf: _exportingPdf,
                 onPreview: _previewTemplate,
+                onExportPdf: _exportPdf,
               ),
             );
             if (!wide) {
@@ -220,6 +224,33 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _previewing = false);
+    }
+  }
+
+  Future<void> _exportPdf(CardPrintTemplate item) async {
+    setState(() => _exportingPdf = true);
+    try {
+      final bytes = await ref.read(printTemplatesRepositoryProvider).exportPdf(
+            item.id,
+            sampleUsername: 'CARD1234',
+          );
+      await FileSaver.instance.saveFile(
+        name: 'print-template-${item.id}',
+        bytes: bytes,
+        ext: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تنزيل PDF لنموذج القالب')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذّر تصدير PDF: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _exportingPdf = false);
     }
   }
 }
@@ -384,12 +415,16 @@ class _TemplateList extends StatelessWidget {
   const _TemplateList({
     required this.items,
     required this.previewing,
+    required this.exportingPdf,
     required this.onPreview,
+    required this.onExportPdf,
   });
 
   final List<CardPrintTemplate> items;
   final bool previewing;
+  final bool exportingPdf;
   final ValueChanged<CardPrintTemplate> onPreview;
+  final ValueChanged<CardPrintTemplate> onExportPdf;
 
   @override
   Widget build(BuildContext context) {
@@ -411,7 +446,9 @@ class _TemplateList extends StatelessWidget {
             _TemplateTile(
               item: item,
               previewing: previewing,
+              exportingPdf: exportingPdf,
               onPreview: () => onPreview(item),
+              onExportPdf: () => onExportPdf(item),
             ),
             if (item != items.last) const Divider(height: AppTokens.s24),
           ],
@@ -425,12 +462,16 @@ class _TemplateTile extends StatelessWidget {
   const _TemplateTile({
     required this.item,
     required this.previewing,
+    required this.exportingPdf,
     required this.onPreview,
+    required this.onExportPdf,
   });
 
   final CardPrintTemplate item;
   final bool previewing;
+  final bool exportingPdf;
   final VoidCallback onPreview;
+  final VoidCallback onExportPdf;
 
   @override
   Widget build(BuildContext context) {
@@ -479,10 +520,27 @@ class _TemplateTile extends StatelessWidget {
         const SizedBox(height: AppTokens.s12),
         Align(
           alignment: AlignmentDirectional.centerEnd,
-          child: OutlinedButton.icon(
-            onPressed: previewing ? null : onPreview,
-            icon: const Icon(Icons.visibility_outlined),
-            label: const Text('معاينة بصرية'),
+          child: Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: previewing ? null : onPreview,
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text('معاينة بصرية'),
+              ),
+              ElevatedButton.icon(
+                onPressed: exportingPdf ? null : onExportPdf,
+                icon: exportingPdf
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.picture_as_pdf_outlined),
+                label: Text(exportingPdf ? 'جاري التصدير...' : 'PDF'),
+              ),
+            ],
           ),
         ),
       ],
@@ -562,13 +620,13 @@ class _PreviewCard extends StatelessWidget {
               _Metric(label: 'cards/page', value: '${preview.cardsPerPage}'),
               _Metric(
                 label: 'export',
-                value: preview.exportGenerated ? 'generated' : 'not generated',
+                value: preview.exportGenerated ? 'generated' : 'PDF available',
               ),
             ],
           ),
           const SizedBox(height: AppTokens.s8),
           Text(
-            'العينة: $username. التصدير النهائي PDF غير مولد في هذه المرحلة.',
+            'العينة: $username. PDF متاح لنموذج القالب من زر التصدير.',
             style: const TextStyle(color: AppTokens.textMuted),
           ),
         ],
