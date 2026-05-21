@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../core/theme/typography.dart';
-import '../../../../shared/widgets/app_card.dart';
 import '../../domain/accounting_model.dart';
 
 /// Top-of-screen summary card for the finance view — sums payments,
