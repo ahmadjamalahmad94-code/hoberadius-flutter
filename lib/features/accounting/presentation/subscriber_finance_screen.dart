@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../../../core/theme/tokens.dart';
-import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../subscribers/data/subscribers_repository.dart';
-import '../../subscribers/domain/subscriber_model.dart';
+import '../application/subscriber_finance_data.dart';
 import '../data/accounting_repository.dart';
 import '../domain/accounting_model.dart';
+import 'widgets/finance_forms.dart';
+import 'widgets/finance_tables.dart';
 
 class SubscriberFinanceScreen extends ConsumerStatefulWidget {
   const SubscriberFinanceScreen({super.key, required this.username});
@@ -23,7 +23,7 @@ class SubscriberFinanceScreen extends ConsumerStatefulWidget {
 
 class _SubscriberFinanceScreenState
     extends ConsumerState<SubscriberFinanceScreen> {
-  late Future<_FinanceData> _future;
+  late Future<SubscriberFinanceData> _future;
   final _paymentAmount = TextEditingController();
   final _paymentNotes = TextEditingController();
   final _loanHours = TextEditingController(text: '2');
@@ -51,7 +51,7 @@ class _SubscriberFinanceScreenState
     super.dispose();
   }
 
-  Future<_FinanceData> _load() async {
+  Future<SubscriberFinanceData> _load() async {
     final sub =
         await ref.read(subscribersRepositoryProvider).get(widget.username);
     final repo = ref.read(accountingRepositoryProvider);
@@ -59,7 +59,7 @@ class _SubscriberFinanceScreenState
     final payments = await repo.listPayments(subscriberId: sid);
     final loans = await repo.listLoans(subscriberId: sid);
     final ledger = await repo.listLedger(subscriberId: sid);
-    return _FinanceData(sub, payments, loans, ledger);
+    return SubscriberFinanceData(sub, payments, loans, ledger);
   }
 
   void _refresh() {
@@ -76,7 +76,8 @@ class _SubscriberFinanceScreenState
       _refresh();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('$e')));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -182,7 +183,7 @@ class _SubscriberFinanceScreenState
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<_FinanceData>(
+    return FutureBuilder<SubscriberFinanceData>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -225,433 +226,66 @@ class _SubscriberFinanceScreenState
               ],
             ),
             const SizedBox(height: AppTokens.s12),
-            _Notice(),
+            const FinanceNotice(),
             const SizedBox(height: AppTokens.s16),
             LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth > 900;
-                final forms = [
-                  _PaymentCard(
-                    amount: _paymentAmount,
-                    notes: _paymentNotes,
-                    applyToRadius: _applyPayment,
-                    dryRun: _dryRunPayment,
-                    busy: _busy,
-                    onApplyChanged: (v) => setState(() => _applyPayment = v),
-                    onDryRunChanged: (v) => setState(() => _dryRunPayment = v),
-                    onSubmit: _createPayment,
-                  ),
-                  _LoanCard(
-                    hours: _loanHours,
-                    amount: _loanAmount,
-                    reason: _loanReason,
-                    applyToRadius: _applyLoan,
-                    dryRun: _dryRunLoan,
-                    busy: _busy,
-                    onApplyChanged: (v) => setState(() => _applyLoan = v),
-                    onDryRunChanged: (v) => setState(() => _dryRunLoan = v),
-                    onSubmit: _createLoan,
-                  ),
-                ];
+                final payment = PaymentFormCard(
+                  amount: _paymentAmount,
+                  notes: _paymentNotes,
+                  applyToRadius: _applyPayment,
+                  dryRun: _dryRunPayment,
+                  busy: _busy,
+                  onApplyChanged: (v) => setState(() => _applyPayment = v),
+                  onDryRunChanged: (v) => setState(() => _dryRunPayment = v),
+                  onSubmit: _createPayment,
+                );
+                final loan = LoanFormCard(
+                  hours: _loanHours,
+                  amount: _loanAmount,
+                  reason: _loanReason,
+                  applyToRadius: _applyLoan,
+                  dryRun: _dryRunLoan,
+                  busy: _busy,
+                  onApplyChanged: (v) => setState(() => _applyLoan = v),
+                  onDryRunChanged: (v) => setState(() => _dryRunLoan = v),
+                  onSubmit: _createLoan,
+                );
                 if (!wide) {
                   return Column(
                     children: [
-                      forms[0],
+                      payment,
                       const SizedBox(height: AppTokens.s12),
-                      forms[1],
+                      loan,
                     ],
                   );
                 }
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: forms[0]),
+                    Expanded(child: payment),
                     const SizedBox(width: AppTokens.s12),
-                    Expanded(child: forms[1]),
+                    Expanded(child: loan),
                   ],
                 );
               },
             ),
             const SizedBox(height: AppTokens.s16),
-            _LoansTable(
+            LoansTable(
               items: data.loans,
               onSettle: _busy ? null : _settleLoan,
             ),
             const SizedBox(height: AppTokens.s16),
-            _PaymentsTable(
+            PaymentsTable(
               items: data.payments,
               onVoid: _busy ? null : _voidPayment,
             ),
             const SizedBox(height: AppTokens.s16),
-            _LedgerTable(items: data.ledger),
+            LedgerTable(items: data.ledger),
           ],
         );
       },
     );
   }
-}
-
-class _Notice extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const AppCard(
-      child: Row(
-        children: [
-          Icon(Icons.info_outline, color: AppTokens.brand),
-          SizedBox(width: AppTokens.s8),
-          Expanded(
-            child: Text(
-              'تجربة فقط لا تغير حساب RADIUS. التطبيق الفعلي يمدد/يفعل الحساب حسب نتيجة الخادم.',
-              style: TextStyle(color: AppTokens.textMuted),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentCard extends StatelessWidget {
-  const _PaymentCard({
-    required this.amount,
-    required this.notes,
-    required this.applyToRadius,
-    required this.dryRun,
-    required this.busy,
-    required this.onApplyChanged,
-    required this.onDryRunChanged,
-    required this.onSubmit,
-  });
-
-  final TextEditingController amount;
-  final TextEditingController notes;
-  final bool applyToRadius;
-  final bool dryRun;
-  final bool busy;
-  final ValueChanged<bool> onApplyChanged;
-  final ValueChanged<bool> onDryRunChanged;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'تسجيل دفعة',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-          ),
-          const SizedBox(height: AppTokens.s12),
-          TextField(
-            controller: amount,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'المبلغ'),
-          ),
-          const SizedBox(height: AppTokens.s8),
-          TextField(
-            controller: notes,
-            decoration: const InputDecoration(labelText: 'ملاحظات'),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('تطبيق على RADIUS'),
-            subtitle: const Text('يمدد الحساب حسب المدة المستحقة'),
-            value: applyToRadius,
-            onChanged: busy ? null : onApplyChanged,
-          ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('تجربة فقط'),
-            value: dryRun,
-            onChanged: busy ? null : (v) => onDryRunChanged(v ?? true),
-          ),
-          ElevatedButton.icon(
-            onPressed: busy ? null : onSubmit,
-            icon: const Icon(Icons.add),
-            label: const Text('تسجيل الدفعة'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoanCard extends StatelessWidget {
-  const _LoanCard({
-    required this.hours,
-    required this.amount,
-    required this.reason,
-    required this.applyToRadius,
-    required this.dryRun,
-    required this.busy,
-    required this.onApplyChanged,
-    required this.onDryRunChanged,
-    required this.onSubmit,
-  });
-
-  final TextEditingController hours;
-  final TextEditingController amount;
-  final TextEditingController reason;
-  final bool applyToRadius;
-  final bool dryRun;
-  final bool busy;
-  final ValueChanged<bool> onApplyChanged;
-  final ValueChanged<bool> onDryRunChanged;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'منح سلفة',
-            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-          ),
-          const SizedBox(height: AppTokens.s12),
-          TextField(
-            controller: hours,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'عدد الساعات'),
-          ),
-          const SizedBox(height: AppTokens.s8),
-          TextField(
-            controller: amount,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'قيمة السلفة'),
-          ),
-          const SizedBox(height: AppTokens.s8),
-          TextField(
-            controller: reason,
-            decoration: const InputDecoration(labelText: 'سبب السلفة'),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('تطبيق مؤقت على RADIUS'),
-            value: applyToRadius,
-            onChanged: busy ? null : onApplyChanged,
-          ),
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('تجربة فقط'),
-            value: dryRun,
-            onChanged: busy ? null : (v) => onDryRunChanged(v ?? true),
-          ),
-          ElevatedButton.icon(
-            onPressed: busy ? null : onSubmit,
-            icon: const Icon(Icons.schedule),
-            label: const Text('منح السلفة'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PaymentsTable extends StatelessWidget {
-  const _PaymentsTable({required this.items, required this.onVoid});
-
-  final List<PaymentTransaction> items;
-  final Future<void> Function(PaymentTransaction payment)? onVoid;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const EmptyState(
-        icon: Icons.receipt_long,
-        title: 'لا توجد دفعات بعد',
-      );
-    }
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(AppTokens.s16),
-            child: Text(
-              'آخر الدفعات',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-          ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('#')),
-                DataColumn(label: Text('المبلغ')),
-                DataColumn(label: Text('المدة')),
-                DataColumn(label: Text('الحالة')),
-                DataColumn(label: Text('التاريخ')),
-                DataColumn(label: Text('إجراء')),
-              ],
-              rows: items
-                  .map(
-                    (p) => DataRow(
-                      cells: [
-                        DataCell(Text('${p.id}')),
-                        DataCell(Text('${p.amount} ${p.currency}')),
-                        DataCell(Text('${p.earnedMinutes} دقيقة')),
-                        DataCell(Text(p.status)),
-                        DataCell(Text(_fmt(p.createdAt))),
-                        DataCell(
-                          p.status == 'voided'
-                              ? const Text('معكوسة')
-                              : TextButton.icon(
-                                  onPressed:
-                                      onVoid == null ? null : () => onVoid!(p),
-                                  icon: const Icon(Icons.undo, size: 18),
-                                  label: const Text('عكس'),
-                                ),
-                        ),
-                      ],
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LoansTable extends StatelessWidget {
-  const _LoansTable({required this.items, required this.onSettle});
-
-  final List<LoanEntry> items;
-  final Future<void> Function(LoanEntry loan)? onSettle;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const EmptyState(
-        icon: Icons.handshake_outlined,
-        title: 'لا توجد سلف بعد',
-      );
-    }
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Padding(
-            padding: EdgeInsets.all(AppTokens.s16),
-            child: Text(
-              'السلف والتسويات',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-          ),
-          const Divider(height: 1),
-          ...items.map(
-            (loan) => ListTile(
-              title: Text(
-                '${loan.durationMinutes} دقيقة • ${loan.amount} ${loan.currency}',
-              ),
-              subtitle:
-                  Text(loan.reason.isEmpty ? 'بدون سبب مسجل' : loan.reason),
-              trailing: loan.status == 'open'
-                  ? TextButton(
-                      onPressed:
-                          onSettle == null ? null : () => onSettle!(loan),
-                      child: const Text('تسوية'),
-                    )
-                  : const Text('تمت التسوية'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LedgerTable extends StatelessWidget {
-  const _LedgerTable({required this.items});
-
-  final List<LedgerEntry> items;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const EmptyState(
-        icon: Icons.scale_outlined,
-        title: 'لا توجد قيود مالية',
-      );
-    }
-    return _SectionTable(
-      title: 'سجل القيود',
-      columns: const ['#', 'النوع', 'المبلغ', 'المصدر', 'التاريخ'],
-      rows: items
-          .map(
-            (e) => [
-              '${e.id}',
-              e.entryType,
-              '${e.amount} ${e.currency}',
-              e.sourceType.isEmpty ? '—' : e.sourceType,
-              _fmt(e.createdAt),
-            ],
-          )
-          .toList(),
-    );
-  }
-}
-
-class _SectionTable extends StatelessWidget {
-  const _SectionTable({
-    required this.title,
-    required this.columns,
-    required this.rows,
-  });
-
-  final String title;
-  final List<String> columns;
-  final List<List<String>> rows;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(AppTokens.s16),
-            child: Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-          ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: columns.map((c) => DataColumn(label: Text(c))).toList(),
-              rows: rows
-                  .map(
-                    (r) => DataRow(
-                      cells: r.map((cell) => DataCell(Text(cell))).toList(),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _FinanceData {
-  _FinanceData(this.subscriber, this.payments, this.loans, this.ledger);
-
-  final Subscriber subscriber;
-  final List<PaymentTransaction> payments;
-  final List<LoanEntry> loans;
-  final List<LedgerEntry> ledger;
-}
-
-String _fmt(DateTime? value) {
-  if (value == null) return '—';
-  return DateFormat('yyyy-MM-dd').format(value);
 }
