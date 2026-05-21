@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'dark_tokens.dart';
 import 'tokens.dart';
 
 /// Premium-purple ThemeData matching the web `hub_v2` design system.
@@ -266,8 +267,66 @@ class AppTheme {
     );
   }
 
+  /// Production-grade dark mode (J1.5).
+  ///
+  /// Mirrors [light]'s ColorScheme + typography but uses the [DarkTokens]
+  /// palette so canonical widgets that read from
+  /// `Theme.of(context).colorScheme` or `AppPalette.of(context)` recolor
+  /// correctly.
+  ///
+  /// Note: existing widgets that reference `AppTokens.X` directly still
+  /// render with their light values under this theme — those will get
+  /// their context-aware lookups added during J3 (decomposition) and
+  /// J4 (per-feature redesign). See FLUTTER_REDESIGN_PLAN.md §J1.5.
   static ThemeData dark() {
-    // Placeholder — RTL admin is light by spec, leave dark minimal.
-    return light();
+    final base = ThemeData.dark(useMaterial3: true);
+    final textTheme = GoogleFonts.cairoTextTheme(base.textTheme).apply(
+      bodyColor: DarkTokens.textPrimary,
+      displayColor: DarkTokens.textPrimary,
+    );
+    return base.copyWith(
+      colorScheme: const ColorScheme.dark(
+        primary: DarkTokens.brand,
+        onPrimary: Colors.white,
+        primaryContainer: DarkTokens.brandSoft,
+        onPrimaryContainer: DarkTokens.brandInk,
+        secondary: DarkTokens.brandInk,
+        onSecondary: Colors.white,
+        surface: DarkTokens.card,
+        onSurface: DarkTokens.textPrimary,
+        surfaceContainerHighest: DarkTokens.soft,
+        outline: DarkTokens.border,
+        outlineVariant: DarkTokens.borderSoft,
+        error: DarkTokens.red,
+        onError: Colors.white,
+      ),
+      scaffoldBackgroundColor: DarkTokens.bg,
+      textTheme: textTheme.copyWith(
+        titleLarge:  textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        titleMedium: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        titleSmall:  textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        labelLarge:  textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        bodyLarge:   textTheme.bodyLarge?.copyWith(color: DarkTokens.textPrimary),
+        bodyMedium:  textTheme.bodyMedium?.copyWith(color: DarkTokens.textSecondary),
+        bodySmall:   textTheme.bodySmall?.copyWith(color: DarkTokens.textMuted),
+      ),
+      cardTheme: CardThemeData(
+        color: DarkTokens.card,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.r14),
+          side: const BorderSide(color: DarkTokens.border),
+        ),
+      ),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: DarkTokens.card,
+        foregroundColor: DarkTokens.textPrimary,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerTheme: const DividerThemeData(color: DarkTokens.borderSoft, thickness: 1),
+      iconTheme: const IconThemeData(color: DarkTokens.textSecondary),
+    );
   }
 }
