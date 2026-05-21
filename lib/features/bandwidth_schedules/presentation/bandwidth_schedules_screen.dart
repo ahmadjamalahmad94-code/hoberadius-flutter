@@ -5,6 +5,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../../shared/widgets/wheel_picker_fields.dart';
 import '../../cards/data/cards_repository.dart';
 import '../../cards/domain/card_model.dart';
 import '../../plans/data/plans_repository.dart';
@@ -447,24 +448,15 @@ class _FormCard extends StatelessWidget {
                 validator: (v) => v == null ? 'اختر دفعة كروت' : null,
               ),
             const SizedBox(height: AppTokens.s12),
-            Row(
-              children: [
-                Expanded(
-                  child: _TimeDropDown(
-                    label: 'من',
-                    value: starts,
-                    onChanged: onStartsChanged,
-                  ),
-                ),
-                const SizedBox(width: AppTokens.s8),
-                Expanded(
-                  child: _TimeDropDown(
-                    label: 'إلى',
-                    value: ends,
-                    onChanged: onEndsChanged,
-                  ),
-                ),
-              ],
+            WheelTimeRangeField(
+              fromLabel: 'من',
+              toLabel: 'إلى',
+              fromValue: starts,
+              toValue: ends,
+              onChanged: (from, to) {
+                onStartsChanged(from);
+                onEndsChanged(to);
+              },
             ),
             const SizedBox(height: AppTokens.s12),
             Row(
@@ -758,34 +750,6 @@ class _NumberField extends StatelessWidget {
         if (value == null || value < 0) return 'رقم صحيح';
         return null;
       },
-    );
-  }
-}
-
-class _TimeDropDown extends StatelessWidget {
-  const _TimeDropDown({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final String value;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final hours = [
-      for (var h = 0; h < 24; h++) '${h.toString().padLeft(2, '0')}:00',
-    ];
-    return DropdownButtonFormField<String>(
-      initialValue: value,
-      items: [
-        for (final hour in hours)
-          DropdownMenuItem(value: hour, child: Text(hour)),
-      ],
-      onChanged: (v) => onChanged(v ?? value),
-      decoration: InputDecoration(labelText: label),
     );
   }
 }

@@ -7,6 +7,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../../../shared/widgets/page_header.dart';
+import '../../../shared/widgets/wheel_picker_fields.dart';
 import '../../plans/data/plans_repository.dart';
 import '../../plans/domain/plan_model.dart';
 import '../data/subscribers_repository.dart';
@@ -40,17 +41,6 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   bool _autoRenew = false;
   bool _loading = false;
   String? _error;
-
-  static const _daysAr = [
-    'أحد',
-    'إثنين',
-    'ثلاثاء',
-    'أربعاء',
-    'خميس',
-    'جمعة',
-    'سبت',
-  ];
-  static const _daysKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   @override
   void initState() {
@@ -95,6 +85,24 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       ctrl.dispose();
     }
     super.dispose();
+  }
+
+  String get _allowedFrom {
+    final parts = _c['allowed_hours']!.text.split('-');
+    return parts.isNotEmpty && parts.first.trim().isNotEmpty
+        ? parts.first.trim()
+        : '08:00';
+  }
+
+  String get _allowedTo {
+    final parts = _c['allowed_hours']!.text.split('-');
+    return parts.length > 1 && parts[1].trim().isNotEmpty
+        ? parts[1].trim()
+        : '22:00';
+  }
+
+  void _setAllowedHours(String from, String to) {
+    _c['allowed_hours']!.text = '$from-$to';
   }
 
   Future<void> _loadExisting() async {
@@ -635,28 +643,24 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
               children: [
                 FormFieldRow(
                   label: 'ساعات السماح',
-                  hint: 'مثال: 08:00-22:00',
-                  child: TextFormField(controller: _c['allowed_hours']),
+                  child: WheelTimeRangeField(
+                    fromLabel: 'من',
+                    toLabel: 'إلى',
+                    fromValue: _allowedFrom,
+                    toValue: _allowedTo,
+                    onChanged: (from, to) => setState(
+                      () => _setAllowedHours(from, to),
+                    ),
+                  ),
                 ),
                 FormFieldRow(
                   label: 'أيام العمل',
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: List.generate(_daysAr.length, (i) {
-                      final k = _daysKey[i];
-                      final selected = _workingDays.contains(k);
-                      return FilterChip(
-                        label: Text(_daysAr[i]),
-                        selected: selected,
-                        onSelected: (v) => setState(() {
-                          if (v) {
-                            _workingDays.add(k);
-                          } else {
-                            _workingDays.remove(k);
-                          }
-                        }),
-                      );
+                  child: WheelDaysPickerField(
+                    selectedKeys: _workingDays,
+                    onChanged: (days) => setState(() {
+                      _workingDays
+                        ..clear()
+                        ..addAll(days);
                     }),
                   ),
                 ),

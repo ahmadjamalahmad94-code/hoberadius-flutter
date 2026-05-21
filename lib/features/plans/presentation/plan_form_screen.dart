@@ -6,6 +6,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../../../shared/widgets/page_header.dart';
+import '../../../shared/widgets/wheel_picker_fields.dart';
 import '../data/plans_repository.dart';
 import '../domain/plan_model.dart';
 import 'plans_list_screen.dart';
@@ -49,17 +50,6 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   bool _loading = false;
   String? _error;
   Plan? _loaded;
-
-  static const _daysAr = [
-    'أحد',
-    'إثنين',
-    'ثلاثاء',
-    'أربعاء',
-    'خميس',
-    'جمعة',
-    'سبت',
-  ];
-  static const _daysKey = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
   // The fields below are surfaced in the form. Anything not listed here
   // stays at its default (or, in edit mode, at its previously-saved value
@@ -173,7 +163,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       _planTier = p.planTier;
       _allowedDays
         ..clear()
-        ..addAll(p.allowedDays.isEmpty ? _daysKey : p.allowedDays);
+        ..addAll(p.allowedDays.isEmpty ? wheelDayKeys : p.allowedDays);
     });
   }
 
@@ -214,7 +204,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       addressPool: _s('address_pool'),
       framedPool: _s('framed_pool'),
       vlanId: _i('vlan_id'),
-      allowedDays: _allowedDays.isEmpty ? _daysKey : _allowedDays.toList(),
+      allowedDays: _allowedDays.isEmpty ? wheelDayKeys : _allowedDays.toList(),
       allowedHoursFrom: _s('allowed_hours_from'),
       allowedHoursTo: _s('allowed_hours_to'),
       price: _n('price'),
@@ -631,35 +621,38 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
               children: [
                 FormFieldRow(
                   label: 'أيام مسموح بها',
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: List.generate(_daysAr.length, (i) {
-                      final k = _daysKey[i];
-                      final selected = _allowedDays.contains(k);
-                      return FilterChip(
-                        label: Text(_daysAr[i]),
-                        selected: selected,
-                        onSelected: (v) => setState(() {
-                          if (v) {
-                            _allowedDays.add(k);
-                          } else {
-                            _allowedDays.remove(k);
-                          }
-                        }),
-                      );
+                  child: WheelDaysPickerField(
+                    selectedKeys: _allowedDays,
+                    onChanged: (days) => setState(() {
+                      _allowedDays
+                        ..clear()
+                        ..addAll(days);
                     }),
                   ),
                 ),
                 FormFieldRow(
                   label: 'من الساعة',
-                  hint: 'مثال: 08:00',
-                  child: TextFormField(controller: _c['allowed_hours_from']),
+                  child: WheelTimePickerField(
+                    label: 'من',
+                    value: _c['allowed_hours_from']!.text.isEmpty
+                        ? '08:00'
+                        : _c['allowed_hours_from']!.text,
+                    onChanged: (value) => setState(
+                      () => _c['allowed_hours_from']!.text = value,
+                    ),
+                  ),
                 ),
                 FormFieldRow(
                   label: 'حتى الساعة',
-                  hint: 'مثال: 22:00',
-                  child: TextFormField(controller: _c['allowed_hours_to']),
+                  child: WheelTimePickerField(
+                    label: 'إلى',
+                    value: _c['allowed_hours_to']!.text.isEmpty
+                        ? '22:00'
+                        : _c['allowed_hours_to']!.text,
+                    onChanged: (value) => setState(
+                      () => _c['allowed_hours_to']!.text = value,
+                    ),
+                  ),
                 ),
               ],
             ),
