@@ -150,8 +150,8 @@ class _Table extends StatelessWidget {
             vertical: AppTokens.s8,
           ),
           leading: const CircleAvatar(
-            backgroundColor: AppTokens.cyan100,
-            child: Icon(Icons.person, color: AppTokens.cyan500),
+            backgroundColor: AppTokens.brandSoft,
+            child: Icon(Icons.person, color: AppTokens.brand),
           ),
           title: Text(
             s.fullName.isEmpty ? s.username : s.fullName,

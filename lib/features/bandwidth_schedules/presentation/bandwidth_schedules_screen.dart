@@ -105,7 +105,7 @@ class _BandwidthSchedulesScreenState
               child: Text(
                 'جدولة السرعات',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -127,7 +127,7 @@ class _BandwidthSchedulesScreenState
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline, color: AppTokens.orange),
+              Icon(Icons.info_outline, color: AppTokens.amber),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
@@ -640,7 +640,7 @@ class _ScheduleTile extends StatelessWidget {
             Text(
               item.name,
               style: const TextStyle(
-                color: AppTokens.navy900,
+                color: AppTokens.sidebarBg,
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
               ),
@@ -724,7 +724,7 @@ class _Metric extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: AppTokens.navy900,
+              color: AppTokens.sidebarBg,
               fontWeight: FontWeight.w800,
             ),
           ),

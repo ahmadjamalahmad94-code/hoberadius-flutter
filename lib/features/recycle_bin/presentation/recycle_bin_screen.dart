@@ -47,7 +47,7 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
               child: Text(
                 'سلة المحذوفات',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -63,7 +63,7 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
         const AppCard(
           child: Row(
             children: [
-              Icon(Icons.info_outline, color: AppTokens.cyan500),
+              Icon(Icons.info_outline, color: AppTokens.brand),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
@@ -270,7 +270,7 @@ class _RecycleCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.inventory_2_outlined, color: AppTokens.cyan500),
+              const Icon(Icons.inventory_2_outlined, color: AppTokens.brand),
               const SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(

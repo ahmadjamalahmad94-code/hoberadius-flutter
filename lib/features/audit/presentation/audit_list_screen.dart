@@ -190,10 +190,10 @@ class _AuditTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppTokens.cyan100,
+        backgroundColor: AppTokens.brandSoft,
         child: Icon(
           _iconFor(event.targetType),
-          color: AppTokens.cyan500,
+          color: AppTokens.brand,
           size: 18,
         ),
       ),

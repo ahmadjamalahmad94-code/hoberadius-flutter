@@ -35,7 +35,7 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
               child: Text(
                 'النسخ الاحتياطي',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -51,7 +51,7 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
         const AppCard(
           child: Row(
             children: [
-              Icon(Icons.info_outline, color: AppTokens.cyan500),
+              Icon(Icons.info_outline, color: AppTokens.brand),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
@@ -261,7 +261,7 @@ class _StatCard extends StatelessWidget {
     return AppCard(
       child: Row(
         children: [
-          Icon(icon, color: AppTokens.cyan500),
+          Icon(icon, color: AppTokens.brand),
           const SizedBox(width: AppTokens.s12),
           Expanded(
             child: Column(
@@ -279,7 +279,7 @@ class _StatCard extends StatelessWidget {
                 Text(
                   value,
                   style: const TextStyle(
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                     fontWeight: FontWeight.w900,
                     fontSize: 18,
                   ),

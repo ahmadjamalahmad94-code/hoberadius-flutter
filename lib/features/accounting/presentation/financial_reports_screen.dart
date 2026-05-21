@@ -161,7 +161,7 @@ class _FinancialReportsScreenState
               child: Text(
                 'التقارير المالية',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -180,7 +180,7 @@ class _FinancialReportsScreenState
         const AppCard(
           child: Row(
             children: [
-              Icon(Icons.lock_clock_outlined, color: AppTokens.cyan500),
+              Icon(Icons.lock_clock_outlined, color: AppTokens.brand),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
@@ -337,7 +337,7 @@ class _SnapshotStrip extends StatelessWidget {
       return const AppCard(
         child: Row(
           children: [
-            Icon(Icons.lock_clock_outlined, color: AppTokens.cyan500),
+            Icon(Icons.lock_clock_outlined, color: AppTokens.brand),
             SizedBox(width: AppTokens.s8),
             Expanded(
               child: Text(
@@ -358,7 +358,7 @@ class _SnapshotStrip extends StatelessWidget {
             'آخر اللقطات الثابتة',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                 ),
           ),
           const SizedBox(height: AppTokens.s8),
@@ -370,7 +370,7 @@ class _SnapshotStrip extends StatelessWidget {
                   const Icon(
                     Icons.archive_outlined,
                     size: 18,
-                    color: AppTokens.cyan500,
+                    color: AppTokens.brand,
                   ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(

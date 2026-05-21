@@ -839,7 +839,7 @@ class _PlanPicker extends ConsumerWidget {
               const Icon(
                 Icons.warning_amber_rounded,
                 size: 14,
-                color: AppTokens.orange,
+                color: AppTokens.amber,
               ),
               const SizedBox(width: 4),
               const Expanded(
@@ -943,7 +943,7 @@ class _ActionMenu extends StatelessWidget {
               Icon(
                 isDisabled ? Icons.check_circle_outline : Icons.block,
                 size: 18,
-                color: isDisabled ? AppTokens.green : AppTokens.orange,
+                color: isDisabled ? AppTokens.green : AppTokens.amber,
               ),
               const SizedBox(width: 8),
               Text(isDisabled ? 'تفعيل' : 'تعطيل'),
@@ -954,7 +954,7 @@ class _ActionMenu extends StatelessWidget {
           value: 'extend',
           child: Row(
             children: [
-              Icon(Icons.timer_outlined, size: 18, color: AppTokens.cyan500),
+              Icon(Icons.timer_outlined, size: 18, color: AppTokens.brand),
               SizedBox(width: 8),
               Text('تمديد الوقت'),
             ],
@@ -964,7 +964,7 @@ class _ActionMenu extends StatelessWidget {
           value: 'reset',
           child: Row(
             children: [
-              Icon(Icons.password, size: 18, color: AppTokens.navy700),
+              Icon(Icons.password, size: 18, color: AppTokens.sidebarBgElev2),
               SizedBox(width: 8),
               Text('إعادة كلمة المرور'),
             ],

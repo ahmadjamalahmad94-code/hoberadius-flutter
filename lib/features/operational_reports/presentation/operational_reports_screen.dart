@@ -95,7 +95,7 @@ class _OperationalReportsScreenState
               child: Text(
                 'تقارير التشغيل',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -111,7 +111,7 @@ class _OperationalReportsScreenState
         const AppCard(
           child: Row(
             children: [
-              Icon(Icons.privacy_tip_outlined, color: AppTokens.cyan500),
+              Icon(Icons.privacy_tip_outlined, color: AppTokens.brand),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(

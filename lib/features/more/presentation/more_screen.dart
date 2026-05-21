@@ -150,7 +150,7 @@ class MoreScreen extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: AppTokens.cyan500,
+                    backgroundColor: AppTokens.brand,
                     child: Text(
                       admin.username.isEmpty
                           ? '?'
@@ -173,7 +173,7 @@ class MoreScreen extends ConsumerWidget {
                               : admin.fullName,
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
-                            color: AppTokens.navy900,
+                            color: AppTokens.sidebarBg,
                             fontSize: 16,
                           ),
                         ),
@@ -197,13 +197,13 @@ class MoreScreen extends ConsumerWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTokens.cyan100,
+                        color: AppTokens.brandSoft,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: const Text(
                         'مدير عام',
                         style: TextStyle(
-                          color: AppTokens.cyan500,
+                          color: AppTokens.brand,
                           fontWeight: FontWeight.w700,
                           fontSize: 12,
                         ),
@@ -253,11 +253,11 @@ class _Tile extends StatelessWidget {
         width: 40,
         height: 40,
         decoration: BoxDecoration(
-          color: AppTokens.cyan100,
+          color: AppTokens.brandSoft,
           borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.center,
-        child: Icon(item.icon, color: AppTokens.cyan500, size: 20),
+        child: Icon(item.icon, color: AppTokens.brand, size: 20),
       ),
       title: Text(
         item.label,

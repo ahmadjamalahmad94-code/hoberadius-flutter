@@ -216,7 +216,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                       style:
                           Theme.of(context).textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w800,
-                                color: AppTokens.navy900,
+                                color: AppTokens.sidebarBg,
                               ),
                     ),
                   ),

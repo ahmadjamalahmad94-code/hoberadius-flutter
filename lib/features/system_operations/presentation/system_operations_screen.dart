@@ -385,7 +385,7 @@ class _MetricTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(metric.icon, color: AppTokens.cyan500),
+          Icon(metric.icon, color: AppTokens.brand),
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(
@@ -398,7 +398,7 @@ class _MetricTile extends StatelessWidget {
           Text(
             '${metric.value}',
             style: const TextStyle(
-              color: AppTokens.navy900,
+              color: AppTokens.sidebarBg,
               fontWeight: FontWeight.w900,
               fontSize: 20,
             ),
@@ -420,7 +420,7 @@ class _DiagnosticRow extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       leading: Icon(
         ok ? Icons.check_circle_outline : Icons.error_outline,
-        color: ok ? AppTokens.green : AppTokens.orange,
+        color: ok ? AppTokens.green : AppTokens.amber,
       ),
       title: Text(router.name.isEmpty ? router.host : router.name),
       subtitle: Text(

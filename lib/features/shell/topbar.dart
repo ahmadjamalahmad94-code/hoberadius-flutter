@@ -26,7 +26,7 @@ class AppTopbar extends ConsumerWidget implements PreferredSizeWidget {
           children: [
             if (onMenuTap != null)
               IconButton(
-                icon: const Icon(Icons.menu, color: AppTokens.navy800),
+                icon: const Icon(Icons.menu, color: AppTokens.sidebarBgElev1),
                 onPressed: onMenuTap,
               ),
             const Spacer(),
@@ -48,7 +48,7 @@ class AppTopbar extends ConsumerWidget implements PreferredSizeWidget {
               ],
               child: const CircleAvatar(
                 radius: 18,
-                backgroundColor: AppTokens.navy800,
+                backgroundColor: AppTokens.sidebarBgElev1,
                 child: Icon(Icons.person, color: Colors.white, size: 18),
               ),
             ),

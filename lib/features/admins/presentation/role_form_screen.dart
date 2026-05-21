@@ -150,7 +150,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                   widget.isEdit ? 'تعديل دور' : 'دور جديد',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                       ),
                 ),
               ),
@@ -197,12 +197,12 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.lock_outline, color: AppTokens.orange, size: 18),
+                  Icon(Icons.lock_outline, color: AppTokens.amber, size: 18),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       'هذا دور نظامي — لا يمكن إعادة تسميته أو حذفه. تعديل الصلاحيات مسموح.',
-                      style: TextStyle(color: AppTokens.navy800),
+                      style: TextStyle(color: AppTokens.sidebarBgElev1),
                     ),
                   ),
                 ],
@@ -270,7 +270,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                               g.label,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
-                                color: AppTokens.navy800,
+                                color: AppTokens.sidebarBgElev1,
                               ),
                             ),
                             const SizedBox(width: AppTokens.s8),

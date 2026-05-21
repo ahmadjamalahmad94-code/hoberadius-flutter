@@ -29,7 +29,7 @@ class DistributorsListScreen extends ConsumerWidget {
                 'الموزعون والصلاحيات',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                     ),
               ),
             ),
@@ -171,7 +171,7 @@ class _DistributorCard extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.people_alt_outlined,
-                    color: AppTokens.cyan500,
+                    color: AppTokens.brand,
                   ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(child: _NameCell(distributor: distributor)),

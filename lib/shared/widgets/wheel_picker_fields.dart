@@ -44,7 +44,7 @@ class WheelTimePickerField extends StatelessWidget {
         child: Text(
           _normalizeTime(value),
           style: const TextStyle(
-            color: AppTokens.navy900,
+            color: AppTokens.sidebarBg,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -125,7 +125,7 @@ class WheelDaysPickerField extends StatelessWidget {
         child: Text(
           labels.isEmpty ? 'لا توجد أيام محددة' : labels.join('، '),
           style: TextStyle(
-            color: labels.isEmpty ? AppTokens.textMuted : AppTokens.navy900,
+            color: labels.isEmpty ? AppTokens.textMuted : AppTokens.sidebarBg,
             fontWeight: FontWeight.w800,
           ),
         ),
@@ -152,7 +152,7 @@ Future<String?> showWheelTimePicker(BuildContext context, String initialValue) {
                 const Text(
                   'اختيار الوقت',
                   style: TextStyle(
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                     fontWeight: FontWeight.w900,
                     fontSize: 18,
                   ),
@@ -257,7 +257,7 @@ Future<Set<String>?> showWheelDaysPicker(
                     const Text(
                       'اختيار الأيام',
                       style: TextStyle(
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                         fontWeight: FontWeight.w900,
                         fontSize: 18,
                       ),

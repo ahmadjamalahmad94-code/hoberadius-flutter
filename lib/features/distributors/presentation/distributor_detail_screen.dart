@@ -51,7 +51,7 @@ class DistributorDetailScreen extends ConsumerWidget {
                 child: Text(
                   item.distributor.title,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                         fontWeight: FontWeight.w800,
                       ),
                 ),
@@ -185,7 +185,7 @@ class _Metric extends StatelessWidget {
               Text(
                 value,
                 style: const TextStyle(
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                   fontSize: 22,
                   fontWeight: FontWeight.w900,
                 ),

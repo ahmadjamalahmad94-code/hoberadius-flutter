@@ -326,7 +326,7 @@ class _SummaryHeader extends StatelessWidget {
                   card.username,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w900,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                         fontFamily: 'monospace',
                       ),
                 ),
@@ -555,7 +555,7 @@ class _MacsCard extends StatelessWidget {
             ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.devices, color: AppTokens.cyan500),
+              leading: const Icon(Icons.devices, color: AppTokens.brand),
               title: Text(
                 mac.mac,
                 style: const TextStyle(fontFamily: 'monospace'),
@@ -676,7 +676,7 @@ class _Metric extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppTokens.cyan500, size: 20),
+          Icon(icon, color: AppTokens.brand, size: 20),
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Column(
@@ -697,7 +697,7 @@ class _Metric extends StatelessWidget {
                   value,
                   maxLines: 1,
                   style: const TextStyle(
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                     fontWeight: FontWeight.w900,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -744,7 +744,7 @@ class _InfoTile extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppTokens.navy900,
+              color: AppTokens.sidebarBg,
               fontWeight: FontWeight.w700,
             ),
           ),

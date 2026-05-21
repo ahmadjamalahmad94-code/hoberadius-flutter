@@ -78,7 +78,7 @@ class _CollapsibleSectionState extends State<CollapsibleSection> {
               child: Row(
                 children: [
                   if (widget.icon != null) ...[
-                    Icon(widget.icon, size: 18, color: AppTokens.cyan500),
+                    Icon(widget.icon, size: 18, color: AppTokens.brand),
                     const SizedBox(width: AppTokens.s8),
                   ],
                   Expanded(
@@ -91,7 +91,7 @@ class _CollapsibleSectionState extends State<CollapsibleSection> {
                           style:
                               Theme.of(context).textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w700,
-                                    color: AppTokens.navy800,
+                                    color: AppTokens.sidebarBgElev1,
                                     height: 1.25,
                                   ),
                         ),

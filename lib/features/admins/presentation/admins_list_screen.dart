@@ -26,7 +26,7 @@ class AdminsListScreen extends ConsumerWidget {
               'المدراء',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                   ),
             ),
             const Spacer(),
@@ -99,7 +99,7 @@ class _AdminsTable extends StatelessWidget {
         final role = a.roleId == null ? null : roles[a.roleId];
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: a.isSuperAdmin ? AppTokens.purple : AppTokens.navy800,
+            backgroundColor: a.isSuperAdmin ? AppTokens.brand : AppTokens.sidebarBgElev1,
             child: Text(
               a.username.isEmpty ? '?' : a.username[0].toUpperCase(),
               style: const TextStyle(color: Colors.white),

@@ -70,7 +70,7 @@ class CardBatchDetailScreen extends ConsumerWidget {
                   b.batchCode,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                       ),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -78,7 +78,7 @@ class CardBatchDetailScreen extends ConsumerWidget {
                   'دفعة #$batchId',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                       ),
                 ),
               ),
@@ -245,7 +245,7 @@ class _BatchSummary extends StatelessWidget {
               minHeight: 8,
               backgroundColor: const Color(0xFFEFF2F7),
               valueColor: AlwaysStoppedAnimation(
-                usedPct >= 0.9 ? AppTokens.red : AppTokens.cyan500,
+                usedPct >= 0.9 ? AppTokens.red : AppTokens.brand,
               ),
             ),
           ),
@@ -300,12 +300,12 @@ class _Chip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTokens.cyan100,
+        color: AppTokens.brandSoft,
         borderRadius: BorderRadius.circular(999),
       ),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(color: AppTokens.navy900, fontSize: 13),
+          style: const TextStyle(color: AppTokens.sidebarBg, fontSize: 13),
           children: [
             TextSpan(
               text: '$label: ',

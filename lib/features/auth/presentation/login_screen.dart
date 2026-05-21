@@ -104,7 +104,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     .titleLarge
                                     ?.copyWith(
                                       fontWeight: FontWeight.w800,
-                                      color: AppTokens.navy900,
+                                      color: AppTokens.sidebarBg,
                                     ),
                               ),
                               const SizedBox(height: AppTokens.s8),
@@ -287,7 +287,7 @@ class _Brand extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: AppTokens.cyan500,
+            color: AppTokens.brand,
             borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.center,
@@ -298,7 +298,7 @@ class _Brand extends StatelessWidget {
         const Text(
           'HobeRadius',
           style: TextStyle(
-            color: AppTokens.navy900,
+            color: AppTokens.sidebarBg,
             fontWeight: FontWeight.w800,
             fontSize: 22,
           ),

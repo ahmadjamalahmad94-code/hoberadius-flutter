@@ -93,7 +93,7 @@ class _MetricGrid extends StatelessWidget {
         icon: Icons.person_outline,
         label: 'إجمالي المشتركين',
         value: '${metrics.subscribers}',
-        tone: AppTokens.cyan500,
+        tone: AppTokens.brand,
       ),
       _MetricTile(
         icon: Icons.online_prediction,
@@ -105,20 +105,20 @@ class _MetricGrid extends StatelessWidget {
         icon: Icons.workspace_premium_outlined,
         label: 'الباقات',
         value: '${metrics.plans}',
-        tone: AppTokens.purple,
+        tone: AppTokens.brand,
       ),
       _MetricTile(
         icon: Icons.credit_card_outlined,
         label: 'الكروت المُولَّدة',
         value: '${metrics.totalCards}',
         sub: '${metrics.usedCards} مُستخدَمة',
-        tone: AppTokens.orange,
+        tone: AppTokens.amber,
       ),
       _MetricTile(
         icon: Icons.router_outlined,
         label: 'أجهزة الشبكة',
         value: '${metrics.nasDevices}',
-        tone: AppTokens.navy700,
+        tone: AppTokens.sidebarBgElev2,
       ),
     ];
     return LayoutBuilder(
@@ -192,7 +192,7 @@ class _MetricTile extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                 ),
@@ -267,8 +267,8 @@ class _Bar extends StatelessWidget {
     final color = val >= 80
         ? AppTokens.red
         : val >= 60
-            ? AppTokens.orange
-            : AppTokens.cyan500;
+            ? AppTokens.amber
+            : AppTokens.brand;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -313,7 +313,7 @@ class _EventRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
       child: Row(
         children: [
-          const Icon(Icons.circle, size: 8, color: AppTokens.cyan500),
+          const Icon(Icons.circle, size: 8, color: AppTokens.brand),
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(

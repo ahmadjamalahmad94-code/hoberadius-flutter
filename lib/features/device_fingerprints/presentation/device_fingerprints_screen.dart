@@ -222,7 +222,7 @@ class _MetricCard extends StatelessWidget {
     return AppCard(
       child: Row(
         children: [
-          Icon(icon, color: AppTokens.cyan500),
+          Icon(icon, color: AppTokens.brand),
           const SizedBox(width: AppTokens.s12),
           Expanded(
             child: Text(
@@ -233,7 +233,7 @@ class _MetricCard extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: AppTokens.navy900,
+              color: AppTokens.sidebarBg,
               fontWeight: FontWeight.w900,
               fontSize: 20,
             ),
@@ -261,11 +261,11 @@ class _DeviceCard extends StatelessWidget {
             runSpacing: AppTokens.s8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(_osIcon(item.osFamily), color: AppTokens.cyan500),
+              Icon(_osIcon(item.osFamily), color: AppTokens.brand),
               Text(
                 item.title,
                 style: const TextStyle(
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                 ),

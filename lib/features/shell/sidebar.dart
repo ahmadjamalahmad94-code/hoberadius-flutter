@@ -143,7 +143,7 @@ class _Brand extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: AppTokens.cyan500,
+              color: AppTokens.brand,
               borderRadius: BorderRadius.circular(8),
             ),
             alignment: Alignment.center,
@@ -192,10 +192,10 @@ class _SidebarTile extends StatelessWidget {
             vertical: AppTokens.s12,
           ),
           decoration: BoxDecoration(
-            color: active ? AppTokens.cyan500.withValues(alpha: 0.18) : null,
+            color: active ? AppTokens.brand.withValues(alpha: 0.18) : null,
             borderRadius: BorderRadius.circular(AppTokens.r10),
             border: active
-                ? Border.all(color: AppTokens.cyan500.withValues(alpha: 0.3))
+                ? Border.all(color: AppTokens.brand.withValues(alpha: 0.3))
                 : null,
           ),
           child: Row(

@@ -68,18 +68,17 @@ class AppTokens {
   static const Color sidebarActive  = Color(0xFFFFFFFF);
 
   // ─────────────────────────────────────────────────────────────
-  //  Backwards-compat aliases — DO NOT remove until all widgets
-  //  have migrated to the new names above.
+  //  Sidebar elevation shades (extra-dark navy tones used by the
+  //  collapsed sidebar / picker dim layers). Standalone — not
+  //  aliases — they have no semantic counterpart on the canonical
+  //  palette so they keep their own names.
   // ─────────────────────────────────────────────────────────────
-  static const Color navy900 = sidebarBg;
-  static const Color navy800 = Color(0xFF211B40);
-  static const Color navy700 = Color(0xFF2A2350);
-  static const Color navy600 = Color(0xFF332B60);
-  static const Color cyan500 = brand;
-  static const Color cyan400 = Color(0xFF8674F1);
-  static const Color cyan100 = brandSoft;
-  static const Color orange  = amber;
-  static const Color purple  = brand;
+  static const Color sidebarBgElev1 = Color(0xFF211B40);
+  static const Color sidebarBgElev2 = Color(0xFF2A2350);
+  static const Color sidebarBgElev3 = Color(0xFF332B60);
+  /// Lighter purple accent (50% mix of brand + white) — used by chips
+  /// and pills that need a softer brand tone than `brand` itself.
+  static const Color brandLight     = Color(0xFF8674F1);
 
   // ─────────────────────────────────────────────────────────────
   //  Spacing scale

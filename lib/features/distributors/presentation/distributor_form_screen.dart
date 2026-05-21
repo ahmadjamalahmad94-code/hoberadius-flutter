@@ -58,7 +58,7 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                   'إضافة موزع',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                       ),
                 ),
               ),

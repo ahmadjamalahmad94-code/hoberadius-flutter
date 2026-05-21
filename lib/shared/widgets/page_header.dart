@@ -45,7 +45,7 @@ class PageHeader extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: titleStyle?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       height: 1.15,
                     ),
                   ),

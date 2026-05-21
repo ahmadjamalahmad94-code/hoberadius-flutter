@@ -42,7 +42,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
               child: Text(
                 'الأرشفة التلقائية',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w900,
                     ),
               ),
@@ -58,7 +58,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
         const AppCard(
           child: Row(
             children: [
-              Icon(Icons.info_outline, color: AppTokens.cyan500),
+              Icon(Icons.info_outline, color: AppTokens.brand),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
@@ -259,8 +259,8 @@ class _Metric extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor: AppTokens.cyan100,
-            child: Icon(icon, color: AppTokens.cyan500, size: 18),
+            backgroundColor: AppTokens.brandSoft,
+            child: Icon(icon, color: AppTokens.brand, size: 18),
           ),
           const SizedBox(width: AppTokens.s8),
           Expanded(
@@ -280,7 +280,7 @@ class _Metric extends StatelessWidget {
                 Text(
                   '$value',
                   style: const TextStyle(
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                     fontWeight: FontWeight.w900,
                     fontSize: 20,
                   ),
@@ -351,7 +351,7 @@ class _CreatePolicyCardState extends State<_CreatePolicyCard> {
               const Text(
                 'إضافة سياسة أرشفة',
                 style: TextStyle(
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                 ),
@@ -474,9 +474,9 @@ class _PolicyCard extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CircleAvatar(
-            backgroundColor: AppTokens.cyan100,
+            backgroundColor: AppTokens.brandSoft,
             child:
-                Icon(_entityIcon(policy.entityType), color: AppTokens.cyan500),
+                Icon(_entityIcon(policy.entityType), color: AppTokens.brand),
           ),
           const SizedBox(width: AppTokens.s12),
           Expanded(
@@ -491,7 +491,7 @@ class _PolicyCard extends ConsumerWidget {
                     Text(
                       _entityLabel(policy.entityType),
                       style: const TextStyle(
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                         fontWeight: FontWeight.w900,
                         fontSize: 16,
                       ),

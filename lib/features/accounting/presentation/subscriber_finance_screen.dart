@@ -212,7 +212,7 @@ class _SubscriberFinanceScreenState
                   child: Text(
                     'دفعات وسلف ${data.subscriber.username}',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: AppTokens.navy900,
+                          color: AppTokens.sidebarBg,
                           fontWeight: FontWeight.w800,
                         ),
                   ),
@@ -297,7 +297,7 @@ class _Notice extends StatelessWidget {
     return const AppCard(
       child: Row(
         children: [
-          Icon(Icons.info_outline, color: AppTokens.cyan500),
+          Icon(Icons.info_outline, color: AppTokens.brand),
           SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(

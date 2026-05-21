@@ -99,12 +99,12 @@ class _PlanCard extends StatelessWidget {
       };
 
   Color _typeTone(String t) => switch (t) {
-        'time' => AppTokens.cyan500,
-        'quota' => AppTokens.purple,
-        'hybrid' => AppTokens.navy700,
+        'time' => AppTokens.brand,
+        'quota' => AppTokens.brand,
+        'hybrid' => AppTokens.sidebarBgElev2,
         'unlimited' => AppTokens.green,
-        'recurring' => AppTokens.orange,
-        _ => AppTokens.cyan500,
+        'recurring' => AppTokens.amber,
+        _ => AppTokens.brand,
       };
 
   @override
@@ -147,7 +147,7 @@ class _PlanCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -238,7 +238,7 @@ class _PlanCard extends StatelessWidget {
                   '${plan.price.toStringAsFixed(2)} ${plan.currency}',
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
-                    color: AppTokens.navy800,
+                    color: AppTokens.sidebarBgElev1,
                   ),
                 ),
             ],

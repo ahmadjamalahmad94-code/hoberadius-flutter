@@ -35,7 +35,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
               child: Text(
                 'السجل المالي',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -51,7 +51,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
         const AppCard(
           child: Row(
             children: [
-              Icon(Icons.verified_outlined, color: AppTokens.cyan500),
+              Icon(Icons.verified_outlined, color: AppTokens.brand),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(

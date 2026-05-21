@@ -443,7 +443,7 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
                 Text(
                   'محدد: ${widget.selectedCount}',
                   style: const TextStyle(
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -550,9 +550,9 @@ class _StatCard extends StatelessWidget {
           final compact = constraints.maxWidth < 145;
           final iconWidget = CircleAvatar(
             radius: compact ? 18 : 20,
-            backgroundColor: AppTokens.cyan100,
+            backgroundColor: AppTokens.brandSoft,
             child:
-                Icon(icon, color: AppTokens.cyan500, size: compact ? 18 : 20),
+                Icon(icon, color: AppTokens.brand, size: compact ? 18 : 20),
           );
           final textWidget = Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -573,7 +573,7 @@ class _StatCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                   fontWeight: FontWeight.w900,
                   fontSize: 18,
                 ),
@@ -706,7 +706,7 @@ class _BatchName extends StatelessWidget {
             batch.batchCode,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppTokens.navy900,
+              color: AppTokens.sidebarBg,
               fontWeight: FontWeight.w900,
             ),
           ),

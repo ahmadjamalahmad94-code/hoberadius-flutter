@@ -596,12 +596,12 @@ class _ConfigCard extends StatelessWidget {
             children: [
               Icon(
                 Icons.router_outlined,
-                color: config.enabled ? AppTokens.cyan500 : AppTokens.textMuted,
+                color: config.enabled ? AppTokens.brand : AppTokens.textMuted,
               ),
               Text(
                 config.name.isEmpty ? config.host : config.name,
                 style: const TextStyle(
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                 ),

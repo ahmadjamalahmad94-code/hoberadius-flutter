@@ -94,7 +94,7 @@ class _Mobile extends ConsumerWidget {
             .map(
               (d) => NavigationDestination(
                 icon: Icon(d.icon),
-                selectedIcon: Icon(d.icon, color: AppTokens.cyan500),
+                selectedIcon: Icon(d.icon, color: AppTokens.brand),
                 label: d.label,
               ),
             )
@@ -122,7 +122,7 @@ class _Rail extends StatelessWidget {
               onDestinationSelected: (i) => _onTap(context, i),
               labelType: NavigationRailLabelType.all,
               backgroundColor: AppTokens.sidebarBg,
-              selectedIconTheme: const IconThemeData(color: AppTokens.cyan500),
+              selectedIconTheme: const IconThemeData(color: AppTokens.brand),
               unselectedIconTheme:
                   const IconThemeData(color: AppTokens.sidebarText),
               selectedLabelTextStyle: const TextStyle(
@@ -197,7 +197,7 @@ class _Sidebar extends StatelessWidget {
                   width: 32,
                   height: 32,
                   decoration: BoxDecoration(
-                    color: AppTokens.cyan500,
+                    color: AppTokens.brand,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   alignment: Alignment.center,
@@ -243,7 +243,7 @@ class _Sidebar extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: active
-                            ? AppTokens.cyan500.withValues(alpha: 0.18)
+                            ? AppTokens.brand.withValues(alpha: 0.18)
                             : null,
                         borderRadius: BorderRadius.circular(AppTokens.r10),
                       ),
@@ -280,7 +280,7 @@ class _Sidebar extends StatelessWidget {
                 children: [
                   const CircleAvatar(
                     radius: 16,
-                    backgroundColor: AppTokens.cyan500,
+                    backgroundColor: AppTokens.brand,
                     child: Icon(Icons.person, color: Colors.white, size: 16),
                   ),
                   const SizedBox(width: AppTokens.s8),
@@ -364,7 +364,7 @@ class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: AppTokens.card,
-      foregroundColor: AppTokens.navy900,
+      foregroundColor: AppTokens.sidebarBg,
       elevation: 0,
       scrolledUnderElevation: 0,
       surfaceTintColor: Colors.transparent,
@@ -407,7 +407,7 @@ class _DesktopTopBar extends ConsumerWidget {
             ],
             child: const CircleAvatar(
               radius: 18,
-              backgroundColor: AppTokens.navy800,
+              backgroundColor: AppTokens.sidebarBgElev1,
               child: Icon(Icons.person, color: Colors.white, size: 18),
             ),
           ),

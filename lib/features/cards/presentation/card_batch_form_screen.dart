@@ -140,7 +140,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 'توليد دفعة كروت',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                     ),
               ),
               const Spacer(),
@@ -381,7 +381,7 @@ class _BatchResult extends StatelessWidget {
                     'تم توليد ${result.cards.length} كرت — الدفعة ${result.batch.batchCode}',
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                     ),
                   ),
                 ),

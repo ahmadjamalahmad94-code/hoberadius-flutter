@@ -432,7 +432,7 @@ class _ImportResultCard extends StatelessWidget {
                   'تم استيراد ${result.insertedCount} بطاقة',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                       ),
                 ),
               ),

@@ -131,7 +131,7 @@ class _SaasModulesScreenState extends ConsumerState<SaasModulesScreen> {
               child: Text(
                 'الوحدات التجارية',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -245,7 +245,7 @@ class _RecordsList extends ConsumerWidget {
         AppCard(
           child: Row(
             children: [
-              const Icon(Icons.dataset_outlined, color: AppTokens.cyan500),
+              const Icon(Icons.dataset_outlined, color: AppTokens.brand),
               const SizedBox(width: AppTokens.s8),
               Text(
                 '${snapshot.count} عنصر',
@@ -295,7 +295,7 @@ class _RecordCard extends ConsumerWidget {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                   ),
                 ),
               ),

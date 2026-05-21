@@ -312,10 +312,10 @@ class _SummaryTile extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: AppTokens.cyan100,
+                color: AppTokens.brandSoft,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: AppTokens.cyan500, size: 20),
+              child: Icon(icon, color: AppTokens.brand, size: 20),
             ),
             const SizedBox(width: AppTokens.s8),
             Expanded(
@@ -337,7 +337,7 @@ class _SummaryTile extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                     ),
@@ -378,11 +378,11 @@ class _SessionTile extends StatelessWidget {
             children: [
               CircleAvatar(
                 backgroundColor: session.isCard
-                    ? AppTokens.cyan100
+                    ? AppTokens.brandSoft
                     : const Color(0xFFE6F6EC),
                 child: Icon(
                   session.isCard ? Icons.credit_card : Icons.person_outline,
-                  color: session.isCard ? AppTokens.cyan500 : AppTokens.green,
+                  color: session.isCard ? AppTokens.brand : AppTokens.green,
                 ),
               ),
               const SizedBox(width: AppTokens.s8),
@@ -396,7 +396,7 @@ class _SessionTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w800,
-                        color: AppTokens.navy900,
+                        color: AppTokens.sidebarBg,
                         fontSize: 16,
                       ),
                     ),

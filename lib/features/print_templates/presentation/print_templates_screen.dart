@@ -79,7 +79,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
               child: Text(
                 'قوالب طباعة الكروت',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.navy900,
+                      color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
               ),
@@ -96,7 +96,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.info_outline, color: AppTokens.orange),
+              Icon(Icons.info_outline, color: AppTokens.amber),
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
@@ -486,7 +486,7 @@ class _TemplateTile extends StatelessWidget {
             Text(
               item.name,
               style: const TextStyle(
-                color: AppTokens.navy900,
+                color: AppTokens.sidebarBg,
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
               ),
@@ -577,7 +577,7 @@ class _PreviewCard extends StatelessWidget {
                 child: Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppTokens.r14),
-                    border: Border.all(color: AppTokens.cyan500),
+                    border: Border.all(color: AppTokens.brand),
                     gradient: const LinearGradient(
                       colors: [Colors.white, Color(0xFFEFF8FF)],
                     ),
@@ -778,7 +778,7 @@ class _Metric extends StatelessWidget {
           Text(
             value,
             style: const TextStyle(
-              color: AppTokens.navy900,
+              color: AppTokens.sidebarBg,
               fontWeight: FontWeight.w800,
             ),
           ),

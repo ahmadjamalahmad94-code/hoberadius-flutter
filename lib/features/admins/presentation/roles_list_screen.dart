@@ -23,7 +23,7 @@ class RolesListScreen extends ConsumerWidget {
               'الأدوار',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: AppTokens.navy900,
+                    color: AppTokens.sidebarBg,
                   ),
             ),
             const Spacer(),
@@ -117,7 +117,7 @@ class RolesListScreen extends ConsumerWidget {
       final cleaned = hex.replaceAll('#', '');
       return Color(int.parse('FF$cleaned', radix: 16));
     } catch (_) {
-      return AppTokens.cyan500;
+      return AppTokens.brand;
     }
   }
 }

@@ -143,10 +143,10 @@ class _NasTable extends StatelessWidget {
         };
         return ListTile(
           leading: CircleAvatar(
-            backgroundColor: AppTokens.cyan100,
+            backgroundColor: AppTokens.brandSoft,
             child: Icon(
               d.enabled ? Icons.router : Icons.router_outlined,
-              color: AppTokens.cyan500,
+              color: AppTokens.brand,
             ),
           ),
           title: Row(

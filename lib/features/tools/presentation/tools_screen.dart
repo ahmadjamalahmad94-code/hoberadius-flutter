@@ -644,7 +644,7 @@ class _PanelTitle extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: AppTokens.cyan500),
+        Icon(icon, color: AppTokens.brand),
         const SizedBox(width: AppTokens.s8),
         Expanded(
           child: Column(
@@ -653,7 +653,7 @@ class _PanelTitle extends StatelessWidget {
               Text(
                 title,
                 style: const TextStyle(
-                  color: AppTokens.navy900,
+                  color: AppTokens.sidebarBg,
                   fontWeight: FontWeight.w800,
                   fontSize: 16,
                 ),
