@@ -220,16 +220,76 @@ class PrintTemplatesRepository {
     int templateId, {
     String sampleUsername = 'CARD1234',
     int? batchId,
+    Map<String, String> overrides = const {},
   }) async {
     final res = await _api.dio.get<List<int>>(
       '/api/v1/print-templates/$templateId/export.pdf',
       queryParameters: {
         'sample_username': sampleUsername,
         if (batchId != null) 'batch_id': batchId,
+        ...overrides,
       },
       options: Options(responseType: ResponseType.bytes),
     );
     return Uint8List.fromList(res.data ?? const []);
+  }
+
+  /// Mark a template as the tenant default (web `set_default` action).
+  /// Returns the saved template row.
+  Future<CardPrintTemplate?> setDefault(int templateId) async {
+    final res = await _api.post(
+      '/api/v1/print-templates/$templateId/set-default',
+      body: const {},
+    );
+    final data = res['data'];
+    final template = data is Map ? data['template'] : null;
+    if (template is Map) {
+      return CardPrintTemplate.fromJson(
+        template.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    }
+    return null;
+  }
+
+  /// Soft-delete a single template (web `print_templates_delete`).
+  Future<void> delete(int templateId) async {
+    await _api.delete('/api/v1/print-templates/$templateId');
+  }
+
+  /// Bulk-delete every template whose name matches the auto-fixture
+  /// regex (Print UI / ops_room_ / template_<hex>).
+  ///
+  /// Returns the number of rows that were purged.
+  Future<int> cleanupFixtures() async {
+    final res = await _api.post(
+      '/api/v1/print-templates/cleanup-fixtures',
+      body: const {},
+    );
+    final data = res['data'];
+    final count = data is Map ? data['purged'] : null;
+    if (count is num) return count.toInt();
+    if (count is List) return count.length;
+    return 0;
+  }
+
+  /// Fetch the SAME HTML preview fragment the web's export center
+  /// renders. We only use this for parity tests / a fall-back path
+  /// when the backend ships a renderer change ahead of the Flutter
+  /// model — the Windows build's primary preview is the local SVG.
+  Future<String> previewFragmentHtml(
+    int templateId, {
+    int? batchId,
+    Map<String, String> overrides = const {},
+  }) async {
+    final res = await _api.dio.get<String>(
+      '/admin/radius/print-templates/$templateId/preview-fragment',
+      queryParameters: {
+        if (batchId != null) 'batch_id': batchId,
+        ...overrides,
+      },
+      options: Options(responseType: ResponseType.plain),
+    );
+    return res.data ?? '';
   }
 }
 
