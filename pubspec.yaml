@@ -33,6 +33,31 @@ dependencies:
   csv: ^6.0.0
   file_saver: ^0.2.13
 
+  # card-renderer SVG + QR (Phase B of the Windows parity plan)
+  # ---------------------------------------------------------------
+  # flutter_svg is a pure-Dart plugin (no native code), so it is
+  # safe to pull in for every platform — mobile pays a small bundle
+  # cost (~70 KB) but does not need a guard.
+  # qr (low-level QR matrix) is a small pure-Dart lib used by the
+  # SVG adapter to walk the dark-module grid exactly the way the
+  # web's `QrCodeWidget.qr.modules` does.
+  flutter_svg: ^2.0.10
+  qr: ^3.0.2
+
+  # Windows-only extras — pulled in across all platforms because
+  # pubspec.yaml does not support per-platform dependencies. The
+  # IMPORT sites (lib/core/platform/*.dart) guard every usage
+  # behind `Platform.isWindows`, and the mobile entry point never
+  # reaches those imports. See docs/MOBILE_BASELINE.md for the
+  # contract enforced by tests/parity/.
+  #   - printing: PDF preview + system print dialog
+  #   - desktop_drop: drag-and-drop background image on the
+  #     bg-image picker
+  #   - file_picker: existing dep, kept for completeness
+  printing: ^5.13.0
+  desktop_drop: ^0.4.4
+  file_picker: ^8.0.0+1
+
   cupertino_icons: ^1.0.6
 
 dev_dependencies:
@@ -42,3 +67,16 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # Almarai (Google Fonts, OFL) — same file the web admin embeds in
+  # PDF exports. Bundled here so the designer canvas previews Arabic
+  # in a font visually identical to the exported PDF.
+  fonts:
+    - family: Almarai
+      fonts:
+        - asset: assets/fonts/Almarai-Regular.ttf
+        - asset: assets/fonts/Almarai-Bold.ttf
+          weight: 700
+
+  assets:
+    - assets/fonts/OFL.txt
