@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
+import '../../../../shared/widgets/hub_time_picker_circular.dart';
+import '../../../../shared/widgets/hub_toggle_switch.dart';
 import '../../../../shared/widgets/wheel_picker_fields.dart';
 import 'expire_picker.dart';
 import 'plan_picker.dart';
@@ -294,12 +296,22 @@ class SubscriberAdvancedSection extends StatelessWidget {
         children: [
           FormFieldRow(
             label: 'ساعات السماح',
-            child: WheelTimeRangeField(
-              fromLabel: 'من',
-              toLabel: 'إلى',
-              fromValue: allowedFrom,
-              toValue: allowedTo,
-              onChanged: onAllowedHoursChanged,
+            child: Row(
+              children: [
+                Expanded(
+                  child: HubTimePickerCircular(
+                    value: allowedFrom,
+                    onChanged: (from) => onAllowedHoursChanged(from, allowedTo),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: HubTimePickerCircular(
+                    value: allowedTo,
+                    onChanged: (to) => onAllowedHoursChanged(allowedFrom, to),
+                  ),
+                ),
+              ],
             ),
           ),
           FormFieldRow(
@@ -311,7 +323,7 @@ class SubscriberAdvancedSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'تعطيل تلقائي بعد أول استخدام',
-            child: Switch(
+            child: HubToggleSwitch(
               value: disableOnFirstUse,
               onChanged: onDisableOnFirstUseChanged,
             ),
@@ -346,7 +358,7 @@ class SubscriberNotificationsSection extends StatelessWidget {
         children: [
           FormFieldRow(
             label: 'تنبيه عند الدخول',
-            child: Switch(
+            child: HubToggleSwitch(
               value: notifyOnLogin,
               onChanged: onNotifyOnLoginChanged,
             ),
@@ -415,7 +427,7 @@ class SubscriberSubscriptionSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'تجديد تلقائي',
-            child: Switch(
+            child: HubToggleSwitch(
               value: autoRenew,
               onChanged: onAutoRenewChanged,
             ),
