@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
 
@@ -72,18 +73,20 @@ class CardCheckerInlineError extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: AppTokens.dangerBg,
+        color: p.dangerBg,
         borderRadius: BorderRadius.circular(AppTokens.r10),
+        border: Border.all(color: p.dangerStrong.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: AppTokens.red),
+          Icon(Icons.error_outline, color: p.dangerFg),
           const SizedBox(width: AppTokens.s8),
           Expanded(
-            child: Text(text, style: const TextStyle(color: AppTokens.red)),
+            child: Text(text, style: TextStyle(color: p.dangerFg)),
           ),
         ],
       ),
