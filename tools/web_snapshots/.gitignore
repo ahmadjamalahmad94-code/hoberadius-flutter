@@ -1,0 +1,6 @@
+# Binary captures (refresh locally; don't track in git)
+*.pdf
+*.png
+*.jpg
+*.webp
+.session
