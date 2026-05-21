@@ -26,6 +26,39 @@ class PrintTemplatesRepository {
         .toList();
   }
 
+  Future<List<PrintTemplatePreset>> presets() async {
+    final res = await _api.get('/api/v1/print-templates/presets');
+    final data = res['data'];
+    final items = data is Map ? data['items'] : null;
+    if (items is! List) return const [];
+    return items
+        .whereType<Map>()
+        .map(
+          (item) => PrintTemplatePreset.fromJson(
+            item.map((key, value) => MapEntry(key.toString(), value)),
+          ),
+        )
+        .toList();
+  }
+
+  Future<List<PrintJob>> jobs({int limit = 50}) async {
+    final res = await _api.get(
+      '/api/v1/print-jobs',
+      query: {'limit': limit},
+    );
+    final data = res['data'];
+    final items = data is Map ? data['items'] : null;
+    if (items is! List) return const [];
+    return items
+        .whereType<Map>()
+        .map(
+          (item) => PrintJob.fromJson(
+            item.map((key, value) => MapEntry(key.toString(), value)),
+          ),
+        )
+        .toList();
+  }
+
   Future<CardPrintTemplate> create({
     required String name,
     required String orientation,
@@ -43,6 +76,7 @@ class PrintTemplatesRepository {
     required String color,
     double cardWidthMm = 85,
     double cardHeightMm = 54,
+    Map<String, dynamic> layout = const {},
   }) async {
     final res = await _api.post(
       '/api/v1/print-templates',
@@ -65,6 +99,7 @@ class PrintTemplatesRepository {
           'preview_mode': 'json_layout_preview',
           'card_width_mm': cardWidthMm,
           'card_height_mm': cardHeightMm,
+          ...layout,
         },
       },
     );
@@ -99,6 +134,64 @@ class PrintTemplatesRepository {
     );
   }
 
+  Future<CardPrintTemplate> update({
+    required int templateId,
+    required String name,
+    required String orientation,
+    required int cardsPerRow,
+    required int cardsPerColumn,
+    required String pageSize,
+    required bool showQr,
+    required double usernameX,
+    required double usernameY,
+    required double passwordX,
+    required double passwordY,
+    required double qrX,
+    required double qrY,
+    required int fontSize,
+    required String color,
+    double cardWidthMm = 85,
+    double cardHeightMm = 54,
+    Map<String, dynamic> layout = const {},
+  }) async {
+    final res = await _api.patch(
+      '/api/v1/print-templates/$templateId',
+      body: {
+        'name': name,
+        'orientation': orientation,
+        'cards_per_row': cardsPerRow,
+        'cards_per_column': cardsPerColumn,
+        'page_size': pageSize,
+        'show_qr': showQr,
+        'username_x': usernameX,
+        'username_y': usernameY,
+        'password_x': passwordX,
+        'password_y': passwordY,
+        'qr_x': qrX,
+        'qr_y': qrY,
+        'font_size': fontSize,
+        'color': color,
+        'layout': {
+          'preview_mode': 'json_layout_preview',
+          'card_width_mm': cardWidthMm,
+          'card_height_mm': cardHeightMm,
+          ...layout,
+        },
+      },
+    );
+    final data = res['data'];
+    final template = data is Map ? data['template'] : null;
+    if (template is Map<String, dynamic>) {
+      return CardPrintTemplate.fromJson(template);
+    }
+    if (template is Map) {
+      return CardPrintTemplate.fromJson(
+        template.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    }
+    throw StateError('تعذر قراءة القالب من استجابة الخادم');
+  }
+
   Future<PrintTemplatePreview> preview(
     int templateId, {
     String sampleUsername = 'CARD1234',
@@ -126,15 +219,28 @@ class PrintTemplatesRepository {
   Future<Uint8List> exportPdf(
     int templateId, {
     String sampleUsername = 'CARD1234',
+    int? batchId,
   }) async {
     final res = await _api.dio.get<List<int>>(
       '/api/v1/print-templates/$templateId/export.pdf',
-      queryParameters: {'sample_username': sampleUsername},
+      queryParameters: {
+        'sample_username': sampleUsername,
+        if (batchId != null) 'batch_id': batchId,
+      },
       options: Options(responseType: ResponseType.bytes),
     );
     return Uint8List.fromList(res.data ?? const []);
   }
 }
+
+final printTemplatePresetsProvider =
+    FutureProvider.autoDispose<List<PrintTemplatePreset>>((ref) {
+  return ref.watch(printTemplatesRepositoryProvider).presets();
+});
+
+final printJobsProvider = FutureProvider.autoDispose<List<PrintJob>>((ref) {
+  return ref.watch(printTemplatesRepositoryProvider).jobs();
+});
 
 final printTemplatesRepositoryProvider =
     Provider<PrintTemplatesRepository>((ref) {

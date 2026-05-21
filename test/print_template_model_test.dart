@@ -19,7 +19,15 @@ void main() {
       'qr_y': 12,
       'font_size': '11',
       'color': '#1f2937',
-      'layout_json': {'card_width_mm': 85, 'card_height_mm': 54},
+      'layout_json': {
+        'card_width_mm': 85,
+        'card_height_mm': 54,
+        'design_preset': 'telecom',
+        'brand_name': 'HobeRadius',
+        'card_title': 'بطاقة إنترنت',
+        'gradient_start': '#0f172a',
+        'show_price': true,
+      },
       'created_at': '2026-05-20T12:00:00Z',
     });
 
@@ -28,6 +36,9 @@ void main() {
     expect(template.showQr, isTrue);
     expect(template.usernameX, 10.5);
     expect(template.layout['card_width_mm'], 85);
+    expect(template.designPreset, 'telecom');
+    expect(template.brandName, 'HobeRadius');
+    expect(template.showPrice, isTrue);
   });
 
   test('PrintTemplatePreview makes export status explicit', () {
@@ -64,5 +75,33 @@ void main() {
     expect((preview.placements['username'] as Map)['x_percent'], 12);
     expect(preview.exportGenerated, isFalse);
     expect(preview.sample['username'], 'QA123');
+  });
+
+  test('Print template presets and jobs parse operation data', () {
+    final preset = PrintTemplatePreset.fromJson({
+      'key': 'gold',
+      'name': 'ذهبي',
+      'description': 'بطاقة فخمة',
+      'layout': {'accent_color': '#f59e0b'},
+    });
+    expect(preset.key, 'gold');
+    expect(preset.layout['accent_color'], '#f59e0b');
+
+    final job = PrintJob.fromJson({
+      'id': '8',
+      'template_id': '4',
+      'batch_id': '2',
+      'export_type': 'batch_pdf',
+      'status': 'success',
+      'card_count': '25',
+      'file_name': 'cards.pdf',
+      'message': 'ok',
+      'created_by': 'api-token:1',
+      'created_at': '2026-05-20T12:00:00Z',
+    });
+    expect(job.id, 8);
+    expect(job.batchId, 2);
+    expect(job.succeeded, isTrue);
+    expect(job.cardCount, 25);
   });
 }

@@ -39,6 +39,41 @@ class CardPrintTemplate {
 
   int get cardsPerPage => cardsPerRow * cardsPerColumn;
 
+  String get designPreset => _layoutString('design_preset', 'modern');
+  String get brandName => _layoutString('brand_name', 'HobeRadius');
+  String get cardTitle => _layoutString('card_title', 'بطاقة إنترنت');
+  String get footerText =>
+      _layoutString('footer_text', 'احتفظ بالبطاقة حتى انتهاء الصلاحية');
+  String get hotspotAddress => _layoutString('hotspot_address', '');
+  String get priceText => _layoutString('price_text', '');
+  String get validityText => _layoutString('validity_text', '');
+  String get instructionsText => _layoutString('instructions_text', '');
+  String get gradientStart => _layoutString('gradient_start', '#0f172a');
+  String get gradientEnd => _layoutString('gradient_end', '#2563eb');
+  String get accentColor => _layoutString('accent_color', '#22d3ee');
+  String get textColor => _layoutString('text_color', '#ffffff');
+  String get surfaceColor => _layoutString('surface_color', '#ffffff');
+  String get qrStyle => _layoutString('qr_style', 'square');
+  String get backgroundStyle => _layoutString('background_style', 'gradient');
+  bool get showUsername => _layoutBool('show_username', true);
+  bool get showPassword => _layoutBool('show_password', true);
+  bool get showPrice => _layoutBool('show_price', true);
+  bool get showValidity => _layoutBool('show_validity', true);
+  bool get showPlanName => _layoutBool('show_plan_name', true);
+  bool get showSerial => _layoutBool('show_serial', true);
+  bool get showHotspot => _layoutBool('show_hotspot', true);
+
+  String _layoutString(String key, String fallback) {
+    final value = layout[key];
+    final text = value?.toString() ?? '';
+    return text.isEmpty ? fallback : text;
+  }
+
+  bool _layoutBool(String key, bool fallback) {
+    if (!layout.containsKey(key)) return fallback;
+    return _asBool(layout[key]);
+  }
+
   factory CardPrintTemplate.fromJson(Map<String, dynamic> json) {
     final layout = json['layout_json'] ?? json['layout'];
     return CardPrintTemplate(
@@ -63,6 +98,76 @@ class CardPrintTemplate {
       createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
     );
   }
+}
+
+class PrintTemplatePreset {
+  const PrintTemplatePreset({
+    required this.key,
+    required this.name,
+    required this.description,
+    required this.layout,
+  });
+
+  final String key;
+  final String name;
+  final String description;
+  final Map<String, dynamic> layout;
+
+  factory PrintTemplatePreset.fromJson(Map<String, dynamic> json) {
+    final layout = json['layout'];
+    return PrintTemplatePreset(
+      key: (json['key'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      description: (json['description'] ?? '').toString(),
+      layout: layout is Map
+          ? layout.map((key, value) => MapEntry(key.toString(), value))
+          : const {},
+    );
+  }
+}
+
+class PrintJob {
+  const PrintJob({
+    required this.id,
+    required this.templateId,
+    this.batchId,
+    required this.exportType,
+    required this.status,
+    required this.cardCount,
+    required this.fileName,
+    required this.message,
+    required this.createdBy,
+    this.createdAt,
+    this.completedAt,
+  });
+
+  final int id;
+  final int templateId;
+  final int? batchId;
+  final String exportType;
+  final String status;
+  final int cardCount;
+  final String fileName;
+  final String message;
+  final String createdBy;
+  final DateTime? createdAt;
+  final DateTime? completedAt;
+
+  bool get succeeded => status == 'success';
+
+  factory PrintJob.fromJson(Map<String, dynamic> json) => PrintJob(
+        id: _asInt(json['id']),
+        templateId: _asInt(json['template_id']),
+        batchId: _nullableInt(json['batch_id']),
+        exportType: (json['export_type'] ?? '').toString(),
+        status: (json['status'] ?? '').toString(),
+        cardCount: _asInt(json['card_count']),
+        fileName: (json['file_name'] ?? '').toString(),
+        message: (json['message'] ?? '').toString(),
+        createdBy: (json['created_by'] ?? '').toString(),
+        createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
+        completedAt: DateTime.tryParse((json['completed_at'] ?? '').toString()),
+      );
 }
 
 class PrintTemplatePreview {
@@ -122,6 +227,13 @@ int _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _nullableInt(Object? value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
 }
 
 double _asDouble(Object? value) {
