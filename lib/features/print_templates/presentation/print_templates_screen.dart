@@ -33,12 +33,18 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
   final _col = TextEditingController(text: '5');
   final _width = TextEditingController(text: '85');
   final _height = TextEditingController(text: '54');
-  final _ux = TextEditingController(text: '10');
-  final _uy = TextEditingController(text: '15');
-  final _px = TextEditingController(text: '10');
-  final _py = TextEditingController(text: '25');
-  final _qx = TextEditingController(text: '60');
-  final _qy = TextEditingController(text: '12');
+  // mm position defaults are 0 so the renderer falls back to
+  // `_DEFAULT_POSITIONS` in card_render_model.dart (web parity:
+  // commit P2 on the web side flipped these from 10/15/… to 0).
+  // The drag handles in the designer canvas write non-zero values
+  // here when the user customises positions; the renderer then
+  // honours the custom coords end-to-end.
+  final _ux = TextEditingController(text: '0');
+  final _uy = TextEditingController(text: '0');
+  final _px = TextEditingController(text: '0');
+  final _py = TextEditingController(text: '0');
+  final _qx = TextEditingController(text: '0');
+  final _qy = TextEditingController(text: '0');
   final _font = TextEditingController(text: '12');
   final _color = TextEditingController(text: '#1f2937');
   String _orientation = 'portrait';

@@ -99,7 +99,9 @@ void main() {
     test('XML escapes user-supplied text (XSS defence)', () {
       final svg = renderCardSvg(
         buildCardRenderModel(
-          template(layoutOverrides: {'brand_name': '<script>alert(1)</script>'}),
+          template(
+            layoutOverrides: {'brand_name': '<script>alert(1)</script>'},
+          ),
           card: {'id': 1, 'username': 'u', 'password': 'p'},
         ),
       );
@@ -149,10 +151,12 @@ void main() {
       const oneByOnePng = 'data:image/png;base64,'
           'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgAAIAAAUAAen63NgAAAAASUVORK5CYII=';
       final m = buildCardRenderModel(
-        template(layoutOverrides: {
-          'background_image_data_url': oneByOnePng,
-          'image_opacity': 0.6,
-        }),
+        template(
+          layoutOverrides: {
+            'background_image_data_url': oneByOnePng,
+            'image_opacity': 0.6,
+          },
+        ),
         card: {'id': 1, 'username': 'u', 'password': 'p'},
       );
       expect(m.background.imageDataUrl, startsWith('data:image/png;base64,'));

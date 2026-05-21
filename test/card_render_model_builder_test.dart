@@ -47,7 +47,8 @@ void main() {
     String username = 'CARD1234',
     String password = 'pw1234',
     Object id = 99,
-  }) => {'id': id, 'username': username, 'password': password};
+  }) =>
+      {'id': id, 'username': username, 'password': password};
 
   test('landscape canvas is 1000x600', () {
     final model = buildCardRenderModel(template(), card: sampleCard());
@@ -67,16 +68,22 @@ void main() {
   test('default element order matches the web', () {
     final model = buildCardRenderModel(template(), card: sampleCard());
     final ids = model.elements.map((e) => e.id).toList();
-    expect(ids, ['accent', 'brand', 'title', 'user', 'pass', 'qr', 'meta', 'footer']);
+    expect(
+      ids,
+      ['accent', 'brand', 'title', 'user', 'pass', 'qr', 'meta', 'footer'],
+    );
   });
 
-  test('USER pill carries the username, PASS pill carries the real password', () {
+  test('USER pill carries the username, PASS pill carries the real password',
+      () {
     final model = buildCardRenderModel(
       template(),
       card: sampleCard(username: 'd2-85104', password: 'Secret_9'),
     );
-    final user = model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
-    final pass = model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'pass');
+    final user =
+        model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
+    final pass =
+        model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'pass');
     expect(user.value, equals('d2-85104'));
     expect(user.isPassword, isFalse);
     expect(pass.value, equals('Secret_9'));
@@ -104,7 +111,8 @@ void main() {
 
   test('(0,0) legacy mm coords resolve to canonical default positions', () {
     final model = buildCardRenderModel(template(), card: sampleCard());
-    final user = model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
+    final user =
+        model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
     // _DEFAULT_POSITIONS['user'] = {x: 0.06, y: 0.50} on a 1000x600 canvas.
     expect(user.x, closeTo(60.0, 0.0001));
     expect(user.y, closeTo(300.0, 0.0001));
@@ -115,7 +123,8 @@ void main() {
       template(usernameX: 17, usernameY: 27),
       card: sampleCard(),
     );
-    final user = model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
+    final user =
+        model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
     // 17 / 85 = 0.2 → 0.2 * 1000 = 200
     expect(user.x, closeTo(200.0, 0.0001));
     // 27 / 54 = 0.5 → 0.5 * 600 = 300
@@ -132,9 +141,13 @@ void main() {
         'footer_text': 'مرحبا',
       },
     );
-    final brand = model.elements.whereType<CardText>().firstWhere((e) => e.id == 'brand');
-    final title = model.elements.whereType<CardText>().firstWhere((e) => e.id == 'title');
-    final footer = model.elements.whereType<CardText>().firstWhere((e) => e.id == 'footer');
+    final brand =
+        model.elements.whereType<CardText>().firstWhere((e) => e.id == 'brand');
+    final title =
+        model.elements.whereType<CardText>().firstWhere((e) => e.id == 'title');
+    final footer = model.elements
+        .whereType<CardText>()
+        .firstWhere((e) => e.id == 'footer');
     expect(brand.text, equals('Custom Brand'));
     expect(title.text, equals('Custom Title'));
     expect(footer.text, equals('مرحبا'));
@@ -142,13 +155,15 @@ void main() {
 
   test('show flags hide elements when false', () {
     final model = buildCardRenderModel(
-      template(layoutOverrides: {
-        'show_brand': false,
-        'show_password': false,
-        'show_qr': false,
-        'show_hotspot': false,
-        'show_serial': false,
-      }),
+      template(
+        layoutOverrides: {
+          'show_brand': false,
+          'show_password': false,
+          'show_qr': false,
+          'show_hotspot': false,
+          'show_serial': false,
+        },
+      ),
       card: sampleCard(),
     );
     final ids = model.elements.map((e) => e.id).toSet();
@@ -163,12 +178,14 @@ void main() {
 
   test('background flows through (gradient + image + opacity)', () {
     final model = buildCardRenderModel(
-      template(layoutOverrides: {
-        'gradient_start': '#000000',
-        'gradient_end': '#ffffff',
-        'background_image_data_url': 'data:image/png;base64,abc',
-        'image_opacity': 0.5,
-      }),
+      template(
+        layoutOverrides: {
+          'gradient_start': '#000000',
+          'gradient_end': '#ffffff',
+          'background_image_data_url': 'data:image/png;base64,abc',
+          'image_opacity': 0.5,
+        },
+      ),
       card: sampleCard(),
     );
     expect(model.background.gradientStart, equals('#000000'));
