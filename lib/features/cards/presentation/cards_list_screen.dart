@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_skeleton_loader.dart';
 import '../application/cards_list_controller.dart';
 import '../application/cards_list_providers.dart';
 import 'widgets/cards_batches_table.dart';
@@ -50,9 +51,16 @@ class CardsListScreen extends ConsumerWidget {
         ),
         const SizedBox(height: AppTokens.s16),
         async.when(
-          loading: () => const Padding(
-            padding: EdgeInsets.all(AppTokens.s40),
-            child: Center(child: CircularProgressIndicator()),
+          loading: () => Padding(
+            padding: const EdgeInsets.symmetric(vertical: AppTokens.s16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                HubSkeletonLoader.tiles(count: 4),
+                const SizedBox(height: AppTokens.s16),
+                AppCard(child: HubSkeletonLoader.list()),
+              ],
+            ),
           ),
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
