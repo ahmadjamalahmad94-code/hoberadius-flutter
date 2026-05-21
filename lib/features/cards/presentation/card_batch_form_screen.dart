@@ -13,7 +13,7 @@ import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
-import 'cards_list_screen.dart';
+import '../application/cards_list_providers.dart';
 
 class CardBatchFormScreen extends ConsumerStatefulWidget {
   const CardBatchFormScreen({super.key});

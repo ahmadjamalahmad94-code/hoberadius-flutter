@@ -10,7 +10,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
-import 'cards_list_screen.dart';
+import '../application/cards_list_providers.dart';
 
 final _batchEditProvider =
     FutureProvider.autoDispose.family<CardBatch, int>((ref, id) {

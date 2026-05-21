@@ -10,7 +10,7 @@ import '../../plans/data/plans_repository.dart';
 import '../../plans/domain/plan_model.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
-import 'cards_list_screen.dart';
+import '../application/cards_list_providers.dart';
 
 final _importPlansProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
   return ref.watch(plansRepositoryProvider).list();

@@ -15,7 +15,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
-import 'cards_list_screen.dart';
+import '../application/cards_list_providers.dart';
 
 /// Filters the cards-of-batch list can be paged through.
 enum _CardFilter { all, available, used, revoked }
