@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -16,6 +18,8 @@ final subscribersListProvider =
   return ref.watch(subscribersRepositoryProvider).list(status: status);
 });
 
+enum _Density { comfortable, compact }
+
 class SubscribersListScreen extends ConsumerStatefulWidget {
   const SubscribersListScreen({super.key});
 
@@ -27,6 +31,7 @@ class SubscribersListScreen extends ConsumerStatefulWidget {
 class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
   String? _status;
   String _query = '';
+  _Density _density = _Density.comfortable;
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +42,24 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
         PageHeader(
           title: 'المشتركون',
           actions: [
+            SegmentedButton<_Density>(
+              segments: const [
+                ButtonSegment(
+                  value: _Density.comfortable,
+                  icon: Icon(Icons.view_agenda_outlined),
+                  tooltip: 'مريح',
+                ),
+                ButtonSegment(
+                  value: _Density.compact,
+                  icon: Icon(Icons.density_small_outlined),
+                  tooltip: 'مكثّف',
+                ),
+              ],
+              selected: {_density},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => setState(() => _density = s.first),
+            ),
+            const SizedBox(width: AppTokens.s8),
             ElevatedButton.icon(
               onPressed: () => context.goNamed('subscriber-new'),
               icon: const Icon(Icons.add),
@@ -47,10 +70,10 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
         const SizedBox(height: AppTokens.s16),
         AppCard(
           padding: const EdgeInsets.all(AppTokens.s12),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final compact = constraints.maxWidth < 560;
-              final search = TextField(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
                 decoration: const InputDecoration(
                   hintText: 'بحث بالاسم أو رقم الجوال…',
                   prefixIcon: Icon(Icons.search),
@@ -58,36 +81,13 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
                 ),
                 onChanged: (v) =>
                     setState(() => _query = v.trim().toLowerCase()),
-              );
-              final status = DropdownButtonFormField<String?>(
-                initialValue: _status,
-                decoration: const InputDecoration(labelText: 'الحالة'),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('كل الحالات')),
-                  DropdownMenuItem(value: 'enabled', child: Text('مفعّل')),
-                  DropdownMenuItem(value: 'disabled', child: Text('معطّل')),
-                  DropdownMenuItem(value: 'expired', child: Text('منتهي')),
-                ],
-                onChanged: (v) => setState(() => _status = v),
-              );
-              if (compact) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    search,
-                    const SizedBox(height: AppTokens.s12),
-                    status,
-                  ],
-                );
-              }
-              return Row(
-                children: [
-                  Expanded(child: search),
-                  const SizedBox(width: AppTokens.s12),
-                  SizedBox(width: 180, child: status),
-                ],
-              );
-            },
+              ),
+              const SizedBox(height: AppTokens.s12),
+              _StatusChips(
+                value: _status,
+                onChanged: (next) => setState(() => _status = next),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppTokens.s16),
@@ -116,7 +116,7 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
             }
             return AppCard(
               padding: EdgeInsets.zero,
-              child: _Table(items: filtered),
+              child: _Table(items: filtered, density: _density),
             );
           },
         ),
@@ -125,13 +125,43 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
   }
 }
 
+class _StatusChips extends StatelessWidget {
+  const _StatusChips({required this.value, required this.onChanged});
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    const options = <(String?, String)>[
+      (null, 'كل الحالات'),
+      ('enabled', 'مفعّل'),
+      ('disabled', 'معطّل'),
+      ('expired', 'منتهي'),
+    ];
+    return Wrap(
+      spacing: AppTokens.s8,
+      runSpacing: AppTokens.s8,
+      children: [
+        for (final (code, label) in options)
+          ChoiceChip(
+            label: Text(label),
+            selected: value == code,
+            onSelected: (_) => onChanged(code),
+          ),
+      ],
+    );
+  }
+}
+
 class _Table extends StatelessWidget {
-  const _Table({required this.items});
+  const _Table({required this.items, required this.density});
   final List<Subscriber> items;
+  final _Density density;
 
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd');
+    final p = AppPalette.of(context);
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -144,45 +174,67 @@ class _Table extends StatelessWidget {
             : s.status == 'disabled'
                 ? PillTone.red
                 : PillTone.orange;
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppTokens.s16,
-            vertical: AppTokens.s8,
+        return Dismissible(
+          key: ValueKey('sub:${s.username}'),
+          direction: DismissDirection.endToStart,
+          confirmDismiss: (_) async {
+            ctx.goNamed(
+              'subscriber-finance',
+              pathParameters: {'username': s.username},
+            );
+            return false;
+          },
+          background: Container(
+            alignment: AlignmentDirectional.centerStart,
+            padding: const EdgeInsetsDirectional.only(start: 24),
+            color: p.brandSoft,
+            child: Icon(
+              Icons.account_balance_wallet_outlined,
+              color: p.brandInk,
+            ),
           ),
-          leading: const CircleAvatar(
-            backgroundColor: AppTokens.brandSoft,
-            child: Icon(Icons.person, color: AppTokens.brand),
-          ),
-          title: Text(
-            s.fullName.isEmpty ? s.username : s.fullName,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-          subtitle: Text(
-            [
-              s.username,
-              if (s.mobile.isNotEmpty) s.mobile,
-              if (s.expireAt != null) 'ينتهي: ${df.format(s.expireAt!)}',
-            ].join(' • '),
-            style: const TextStyle(color: AppTokens.textMuted),
-          ),
-          trailing: Wrap(
-            spacing: AppTokens.s8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              StatusPill(text: _statusLabel(s.status), tone: tone),
-              IconButton(
-                tooltip: 'الدفعات والسلف',
-                onPressed: () => ctx.goNamed(
-                  'subscriber-finance',
-                  pathParameters: {'username': s.username},
+          child: ListTile(
+            dense: density == _Density.compact,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: AppTokens.s16,
+              vertical:
+                  density == _Density.compact ? 0 : AppTokens.s8,
+            ),
+            leading: CircleAvatar(
+              backgroundColor: p.brandSoft,
+              child: Icon(Icons.person, color: p.brand),
+            ),
+            title: Text(
+              s.fullName.isEmpty ? s.username : s.fullName,
+              style: AppTypography.labelLarge.copyWith(color: p.textPrimary),
+            ),
+            subtitle: Text(
+              [
+                s.username,
+                if (s.mobile.isNotEmpty) s.mobile,
+                if (s.expireAt != null) 'ينتهي: ${df.format(s.expireAt!)}',
+              ].join(' • '),
+              style: AppTypography.caption.copyWith(color: p.textMuted),
+            ),
+            trailing: Wrap(
+              spacing: AppTokens.s8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                StatusPill(text: _statusLabel(s.status), tone: tone),
+                IconButton(
+                  tooltip: 'الدفعات والسلف',
+                  onPressed: () => ctx.goNamed(
+                    'subscriber-finance',
+                    pathParameters: {'username': s.username},
+                  ),
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
                 ),
-                icon: const Icon(Icons.account_balance_wallet_outlined),
-              ),
-            ],
-          ),
-          onTap: () => ctx.goNamed(
-            'subscriber-edit',
-            pathParameters: {'username': s.username},
+              ],
+            ),
+            onTap: () => ctx.goNamed(
+              'subscriber-edit',
+              pathParameters: {'username': s.username},
+            ),
           ),
         );
       },
