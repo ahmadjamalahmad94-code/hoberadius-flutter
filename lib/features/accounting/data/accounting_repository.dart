@@ -164,6 +164,14 @@ class AccountingRepository {
     return Uint8List.fromList(res.data ?? const []);
   }
 
+  Future<Uint8List> exportFinancialReportXlsx(String slug) async {
+    final res = await _api.dio.get<List<int>>(
+      '/api/v1/reports/$slug/export.xlsx',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
+  }
+
   Future<List<Map<String, dynamic>>> reportSnapshots({
     String reportType = '',
   }) async {
