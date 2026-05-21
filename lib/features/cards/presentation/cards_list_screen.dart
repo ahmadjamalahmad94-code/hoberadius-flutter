@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_skeleton_loader.dart';
 import '../application/cards_list_controller.dart';
 import '../application/cards_list_providers.dart';
@@ -62,15 +63,11 @@ class CardsListScreen extends ConsumerWidget {
               ],
             ),
           ),
-          error: (e, _) => EmptyState(
-            icon: Icons.error_outline,
+          error: (e, _) => HubErrorState(
             title: 'تعذّر جلب حزم البطاقات',
             subtitle: '$e',
-            action: OutlinedButton.icon(
-              onPressed: () => ref.invalidate(batchesOperationsProvider),
-              icon: const Icon(Icons.refresh),
-              label: const Text('إعادة المحاولة'),
-            ),
+            showToastOnce: true,
+            onRetry: () => ref.invalidate(batchesOperationsProvider),
           ),
           data: (page) {
             if (page.items.isEmpty) {
