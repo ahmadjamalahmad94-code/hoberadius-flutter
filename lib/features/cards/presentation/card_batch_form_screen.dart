@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -359,29 +360,47 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   }
 }
 
-class _BatchResult extends StatelessWidget {
+class _BatchResult extends ConsumerWidget {
   const _BatchResult({required this.result, required this.onExportCsv});
   final GenerateResult result;
   final VoidCallback onExportCsv;
 
   @override
-  Widget build(BuildContext context) {
-    return Card(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = AppPalette.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: p.card,
+        borderRadius: BorderRadius.circular(AppTokens.r14),
+        border: Border.all(color: p.successStrong.withValues(alpha: 0.4)),
+        boxShadow: p.shCard,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          Container(
             padding: const EdgeInsets.all(AppTokens.s16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [p.successBg, p.card],
+                begin: Alignment.centerRight,
+                end: Alignment.centerLeft,
+              ),
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(AppTokens.r14),
+                topLeft: Radius.circular(AppTokens.r14),
+              ),
+            ),
             child: Row(
               children: [
-                const Icon(Icons.check_circle, color: AppTokens.green),
+                Icon(Icons.check_circle, color: p.successStrong),
                 const SizedBox(width: AppTokens.s8),
                 Expanded(
                   child: Text(
                     'تم توليد ${result.cards.length} كرت — الدفعة ${result.batch.batchCode}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w800,
-                      color: AppTokens.sidebarBg,
+                      color: p.textPrimary,
                     ),
                   ),
                 ),
