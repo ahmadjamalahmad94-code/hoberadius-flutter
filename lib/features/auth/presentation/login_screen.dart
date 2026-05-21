@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_endpoint_storage.dart';
 import '../../../core/auth/auth_controller.dart';
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/theme/typography.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -12,17 +14,23 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final _server = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String _scheme = 'https';
   bool _obscure = true;
+  late final AnimationController _heroAnim;
 
   @override
   void initState() {
     super.initState();
+    _heroAnim = AnimationController(
+      vsync: this,
+      duration: AppTokens.motionMedium,
+    )..forward();
     _loadServer();
   }
 
@@ -41,6 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _server.dispose();
     _username.dispose();
     _password.dispose();
+    _heroAnim.dispose();
     super.dispose();
   }
 
@@ -69,53 +78,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authControllerProvider);
+    final p = AppPalette.of(context);
     return Scaffold(
-      backgroundColor: AppTokens.bg,
+      backgroundColor: p.bg,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, viewport) {
             return SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: const EdgeInsets.all(AppTokens.s16),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTokens.s16,
+                vertical: AppTokens.s24,
+              ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: viewport.maxHeight),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 460),
-                    child: Card(
-                      child: Padding(
-                        padding: EdgeInsets.all(
-                          viewport.maxWidth < 380
-                              ? AppTokens.s16
-                              : AppTokens.s24,
-                        ),
-                        child: Form(
-                          key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Hero(animation: _heroAnim),
+                        const SizedBox(height: AppTokens.s16),
+                        if (_server.text.trim().isNotEmpty)
+                          _EndpointChip(
+                            scheme: _scheme,
+                            host: _server.text,
+                          ),
+                        const SizedBox(height: AppTokens.s16),
+                        _FormCard(
+                          formKey: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const _Brand(),
-                              const SizedBox(height: AppTokens.s24),
                               Text(
                                 'تسجيل دخول الإدارة',
                                 textAlign: TextAlign.center,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      color: AppTokens.sidebarBg,
-                                    ),
+                                style: AppTypography.titleLarge.copyWith(
+                                  color: p.textPrimary,
+                                ),
                               ),
                               const SizedBox(height: AppTokens.s8),
                               Text(
                                 'اكتب عنوان VPS ثم بيانات مدير النظام. نفس التطبيق يعمل مع أكثر من خادم.',
                                 textAlign: TextAlign.center,
                                 softWrap: true,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium
-                                    ?.copyWith(color: AppTokens.textMuted),
+                                style: AppTypography.bodyMedium.copyWith(
+                                  color: p.textMuted,
+                                ),
                               ),
                               const SizedBox(height: AppTokens.s20),
                               _ServerFields(
@@ -155,8 +166,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           ? Icons.visibility_off_outlined
                                           : Icons.visibility_outlined,
                                     ),
-                                    onPressed: () =>
-                                        setState(() => _obscure = !_obscure),
+                                    onPressed: () => setState(
+                                      () => _obscure = !_obscure,
+                                    ),
                                   ),
                                 ),
                                 validator: (v) =>
@@ -169,7 +181,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               ],
                               const SizedBox(height: AppTokens.s20),
                               SizedBox(
-                                height: 48,
+                                height: 50,
                                 child: ElevatedButton(
                                   onPressed: auth.loading ? null : _submit,
                                   child: auth.loading
@@ -181,7 +193,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             color: Colors.white,
                                           ),
                                         )
-                                      : const Text('دخول'),
+                                      : Text(
+                                          'دخول',
+                                          style: AppTypography.labelLarge
+                                              .copyWith(color: Colors.white),
+                                        ),
                                 ),
                               ),
                               const SizedBox(height: AppTokens.s12),
@@ -189,15 +205,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 'سيتم حفظ عنوان الخادم على هذا الجهاز فقط، ويمكن تغييره من شاشة الدخول عند الحاجة.',
                                 textAlign: TextAlign.center,
                                 softWrap: true,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: AppTokens.textMuted),
+                                style: AppTypography.caption.copyWith(
+                                  color: p.textMuted,
+                                ),
                               ),
                             ],
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),
@@ -206,6 +221,133 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           },
         ),
       ),
+    );
+  }
+}
+
+/// Brand hero panel — gradient background, animated logo, app title.
+class _Hero extends StatelessWidget {
+  const _Hero({required this.animation});
+  final AnimationController animation;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    final scale = Tween<double>(begin: 0.85, end: 1.0).animate(
+      CurvedAnimation(parent: animation, curve: AppTokens.motionSpringy),
+    );
+    final fade = CurvedAnimation(
+      parent: animation,
+      curve: AppTokens.motionEaseInOut,
+    );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+      decoration: BoxDecoration(
+        gradient: p.brandGradient,
+        borderRadius: BorderRadius.circular(AppTokens.r18),
+        boxShadow: [
+          BoxShadow(
+            color: p.brand.withValues(alpha: 0.32),
+            blurRadius: 28,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: FadeTransition(
+        opacity: fade,
+        child: Column(
+          children: [
+            ScaleTransition(
+              scale: scale,
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.32),
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: const Icon(
+                  Icons.wifi_tethering,
+                  color: Colors.white,
+                  size: 38,
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'HobeRadius',
+              style: AppTypography.displayMedium.copyWith(color: Colors.white),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'إدارة خدمة الإنترنت بالكروت',
+              style: AppTypography.bodySmall.copyWith(
+                color: Colors.white.withValues(alpha: 0.85),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact chip surfacing the last-saved server endpoint so the
+/// operator confirms they're targeting the right tenant before
+/// authenticating.
+class _EndpointChip extends StatelessWidget {
+  const _EndpointChip({required this.scheme, required this.host});
+  final String scheme;
+  final String host;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: p.brandSoft,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: p.brandLine),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.dns_outlined, size: 14, color: p.brandInk),
+            const SizedBox(width: 6),
+            Text(
+              '$scheme://$host',
+              style: AppTypography.labelSmall.copyWith(color: p.brandInk),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FormCard extends StatelessWidget {
+  const _FormCard({required this.formKey, required this.child});
+  final GlobalKey<FormState> formKey;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s24),
+      decoration: BoxDecoration(
+        color: p.card,
+        borderRadius: BorderRadius.circular(AppTokens.r18),
+        border: Border.all(color: p.border),
+        boxShadow: p.shCard,
+      ),
+      child: Form(key: formKey, child: child),
     );
   }
 }
@@ -276,61 +418,31 @@ class _ServerFields extends StatelessWidget {
   }
 }
 
-class _Brand extends StatelessWidget {
-  const _Brand();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: AppTokens.brand,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          alignment: Alignment.center,
-          child:
-              const Icon(Icons.wifi_tethering, color: Colors.white, size: 28),
-        ),
-        const SizedBox(height: AppTokens.s12),
-        const Text(
-          'HobeRadius',
-          style: TextStyle(
-            color: AppTokens.sidebarBg,
-            fontWeight: FontWeight.w800,
-            fontSize: 22,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _ErrorBanner extends StatelessWidget {
   const _ErrorBanner({required this.message});
   final String message;
 
   @override
   Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: AppTokens.dangerBg,
+        color: p.dangerBg,
         borderRadius: BorderRadius.circular(AppTokens.r10),
+        border: Border.all(color: p.dangerStrong.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: AppTokens.red, size: 18),
+          Icon(Icons.error_outline, color: p.dangerFg, size: 18),
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(
               message,
               softWrap: true,
-              style: const TextStyle(
-                color: AppTokens.red,
+              style: AppTypography.bodySmall.copyWith(
+                color: p.dangerFg,
                 fontWeight: FontWeight.w600,
               ),
             ),
