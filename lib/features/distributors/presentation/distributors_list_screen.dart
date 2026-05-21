@@ -193,11 +193,39 @@ class _DistributorCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppTokens.s12),
-              Text(
-                'دين: ${distributor.debtBalance.toStringAsFixed(2)} · حد: ${distributor.creditLimit.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: AppTokens.textSecondary,
-                  fontSize: 13,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTokens.s12,
+                  vertical: AppTokens.s8,
+                ),
+                decoration: BoxDecoration(
+                  color: distributor.debtBalance > 0
+                      ? AppTokens.warningBg
+                      : AppTokens.surfaceMuted,
+                  borderRadius: BorderRadius.circular(AppTokens.r10),
+                  border: Border.all(color: AppTokens.border),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 16,
+                      color: distributor.debtBalance > 0
+                          ? AppTokens.warningFg
+                          : AppTokens.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'دين: ${distributor.debtBalance.toStringAsFixed(2)} · حد: ${distributor.creditLimit.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          color: AppTokens.textPrimary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
