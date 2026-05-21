@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/theme/app_palette.dart';
 import '../../core/theme/tokens.dart';
@@ -129,10 +130,25 @@ class HubToggleSwitch extends StatelessWidget {
             : SystemMouseCursors.basic,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: _enabled ? () => onChanged!(!value) : null,
-          child: Opacity(
-            opacity: _enabled ? 1 : 0.55,
-            child: content,
+          onTap: _enabled
+              ? () {
+                  HapticFeedback.selectionClick();
+                  onChanged!(!value);
+                }
+              : null,
+          child: AnimatedSwitcher(
+            duration: AppTokens.motionFast,
+            switchInCurve: AppTokens.motionEase,
+            switchOutCurve: AppTokens.motionEase,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: child,
+            ),
+            child: Opacity(
+              key: ValueKey(_enabled),
+              opacity: _enabled ? 1 : 0.55,
+              child: content,
+            ),
           ),
         ),
       ),
