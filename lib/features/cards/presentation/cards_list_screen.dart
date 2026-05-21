@@ -660,15 +660,19 @@ class _Counts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 230,
+      width: 270,
       child: Wrap(
         spacing: 6,
         runSpacing: 6,
         children: [
           _MiniCount(label: 'كلها', value: batch.generated),
+          _MiniCount(label: 'الأصلي', value: batch.originalCount),
           _MiniCount(label: 'متاح', value: batch.availableCount),
           _MiniCount(label: 'نشط', value: batch.activeCount),
           _MiniCount(label: 'منتهي', value: batch.expiredCount),
+          _MiniCount(label: 'مؤرشف', value: batch.archivedCount),
+          _MiniCount(label: 'قادم', value: batch.pendingArchiveCount),
+          _MiniCount(label: 'تشغيلي', value: batch.operationalRemainingCount),
           _MiniCount(label: 'ملغى', value: batch.revokedCount),
         ],
       ),

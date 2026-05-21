@@ -59,6 +59,7 @@ int _indexOfRoute(String location) {
       location == '/saas-modules' ||
       location == '/distributors' ||
       location == '/recycle-bin' ||
+      location == '/lifecycle' ||
       location == '/backups' ||
       location == '/system-operations' ||
       location == '/admin-control' ||

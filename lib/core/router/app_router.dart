@@ -27,6 +27,7 @@ import '../../features/device_fingerprints/presentation/device_fingerprints_scre
 import '../../features/distributors/presentation/distributor_detail_screen.dart';
 import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
+import '../../features/lifecycle/presentation/lifecycle_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
@@ -268,6 +269,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/recycle-bin',
             name: 'recycle-bin',
             builder: (ctx, st) => const RecycleBinScreen(),
+          ),
+          GoRoute(
+            path: '/lifecycle',
+            name: 'lifecycle',
+            builder: (ctx, st) => const LifecycleScreen(),
           ),
           GoRoute(
             path: '/backups',

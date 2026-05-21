@@ -146,6 +146,8 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                         DataColumn(label: Text('وقت الأرشفة')),
                         DataColumn(label: Text('بواسطة')),
                         DataColumn(label: Text('السبب')),
+                        DataColumn(label: Text('مصدر الأرشفة')),
+                        DataColumn(label: Text('الاحتفاظ')),
                         DataColumn(label: Text('')),
                       ],
                       rows: items
@@ -181,10 +183,18 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                                     ),
                                   ),
                                 ),
+                                DataCell(Text(_archiveSource(item))),
+                                DataCell(
+                                  SizedBox(
+                                    width: 180,
+                                    child: Text(_retentionLabel(item)),
+                                  ),
+                                ),
                                 DataCell(
                                   TextButton.icon(
-                                    onPressed:
-                                        _busy ? null : () => _restore(item),
+                                    onPressed: _busy || !item.restoreAllowed
+                                        ? null
+                                        : () => _restore(item),
                                     icon: const Icon(Icons.restore),
                                     label: const Text('استعادة'),
                                   ),
@@ -281,11 +291,23 @@ class _RecycleCard extends StatelessWidget {
             item.deleteReason.isEmpty ? 'لم يتم تسجيل سبب' : item.deleteReason,
             style: const TextStyle(color: AppTokens.textSecondary),
           ),
+          const SizedBox(height: AppTokens.s8),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              StatusPill(text: _archiveSource(item), tone: PillTone.blue),
+              StatusPill(
+                text: _retentionLabel(item),
+                tone: item.restoreAllowed ? PillTone.green : PillTone.neutral,
+              ),
+            ],
+          ),
           const SizedBox(height: AppTokens.s12),
           Align(
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
-              onPressed: busy ? null : onRestore,
+              onPressed: busy || !item.restoreAllowed ? null : onRestore,
               icon: const Icon(Icons.restore),
               label: const Text('استعادة'),
             ),
@@ -297,6 +319,22 @@ class _RecycleCard extends StatelessWidget {
 }
 
 String _label(String entityType) => _entityLabels[entityType] ?? entityType;
+
+String _archiveSource(RecycleBinItem item) {
+  if (item.archiveSource == 'auto') {
+    final policy =
+        item.archivePolicyId == null ? '' : ' #${item.archivePolicyId}';
+    return 'أرشفة تلقائية$policy';
+  }
+  if (item.archiveSource == 'manual') return 'أرشفة يدوية';
+  return 'غير محدد';
+}
+
+String _retentionLabel(RecycleBinItem item) {
+  if (item.retentionExpired) return 'انتهت مدة الاستعادة';
+  if (item.retentionExpiresAt == null) return 'استعادة مفتوحة';
+  return 'حتى ${_fmt(item.retentionExpiresAt)}';
+}
 
 String _fmt(DateTime? value) {
   if (value == null) return '—';

@@ -59,6 +59,15 @@ class CardBatch {
     this.speedRulesCount = 0,
     this.activeSpeedRules = 0,
     this.estimatedUnitPrice = 0,
+    this.sourceType = 'generated',
+    this.originalCount = 0,
+    this.settlementCount = 0,
+    this.archivedCount = 0,
+    this.pendingArchiveCount = 0,
+    this.operationalRemainingCount = 0,
+    this.archiveSource = '',
+    this.archivePolicyId,
+    this.retentionExpiresAt,
   });
 
   final int? id;
@@ -120,6 +129,15 @@ class CardBatch {
   final int speedRulesCount;
   final int activeSpeedRules;
   final num estimatedUnitPrice;
+  final String sourceType;
+  final int originalCount;
+  final int settlementCount;
+  final int archivedCount;
+  final int pendingArchiveCount;
+  final int operationalRemainingCount;
+  final String archiveSource;
+  final int? archivePolicyId;
+  final DateTime? retentionExpiresAt;
 
   int get available => availableCount;
 
@@ -204,6 +222,22 @@ class CardBatch {
         speedRulesCount: _int(j['speed_rules_count']) ?? 0,
         activeSpeedRules: _int(j['active_speed_rules']) ?? 0,
         estimatedUnitPrice: _num(j['estimated_unit_price']) ?? 0,
+        sourceType: (j['source_type'] ?? 'generated').toString(),
+        originalCount: _int(j['original_count']) ??
+            _int(j['count']) ??
+            _int(j['generated']) ??
+            0,
+        settlementCount: _int(j['settlement_count']) ??
+            _int(j['original_count']) ??
+            _int(j['count']) ??
+            0,
+        archivedCount: _int(j['archived_count']) ?? 0,
+        pendingArchiveCount: _int(j['pending_archive_count']) ?? 0,
+        operationalRemainingCount:
+            _int(j['operational_remaining_count']) ?? _availableFallback(j),
+        archiveSource: (j['archive_source'] ?? '').toString(),
+        archivePolicyId: _int(j['archive_policy_id']),
+        retentionExpiresAt: _parseDt(j['retention_expires_at']),
       );
 
   static int? _int(Object? v) =>

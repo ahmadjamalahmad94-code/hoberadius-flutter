@@ -87,6 +87,12 @@ const _items = <_MoreItem>[
     sub: 'استعادة العناصر المؤرشفة بأمان',
   ),
   _MoreItem(
+    Icons.rule_folder_outlined,
+    'الأرشفة التلقائية',
+    'lifecycle',
+    sub: 'سياسات الاحتفاظ ومعاينة الأرشفة للكروت والمشتركين',
+  ),
+  _MoreItem(
     Icons.storage_outlined,
     'النسخ الاحتياطي',
     'backups',
