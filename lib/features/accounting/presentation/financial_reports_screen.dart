@@ -23,6 +23,11 @@ final _reportProvider = FutureProvider.autoDispose
   return ref.watch(accountingRepositoryProvider).financialReport(slug);
 });
 
+final _snapshotProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>((ref, slug) {
+  return ref.watch(accountingRepositoryProvider).reportSnapshots(reportType: slug);
+});
+
 class FinancialReportsScreen extends ConsumerStatefulWidget {
   const FinancialReportsScreen({super.key});
 
@@ -34,10 +39,35 @@ class FinancialReportsScreen extends ConsumerStatefulWidget {
 class _FinancialReportsScreenState
     extends ConsumerState<FinancialReportsScreen> {
   String _slug = 'sales/daily';
+  bool _savingSnapshot = false;
+
+  Future<void> _saveSnapshot() async {
+    setState(() => _savingSnapshot = true);
+    try {
+      final snapshot = await ref
+          .read(accountingRepositoryProvider)
+          .createReportSnapshot(_slug);
+      if (!mounted) return;
+      ref.invalidate(_snapshotProvider(_slug));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('تم حفظ لقطة ثابتة للتقرير #${snapshot['id'] ?? ''}'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر حفظ اللقطة: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _savingSnapshot = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_reportProvider(_slug));
+    final snapshots = ref.watch(_snapshotProvider(_slug));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -54,7 +84,10 @@ class _FinancialReportsScreenState
             ),
             IconButton(
               tooltip: 'تحديث',
-              onPressed: () => ref.invalidate(_reportProvider(_slug)),
+              onPressed: () {
+                ref.invalidate(_reportProvider(_slug));
+                ref.invalidate(_snapshotProvider(_slug));
+              },
               icon: const Icon(Icons.refresh),
             ),
           ],
@@ -98,8 +131,25 @@ class _FinancialReportsScreenState
                     .toList(),
                 onChanged: (v) => setState(() => _slug = v ?? 'sales/daily'),
               ),
+              FilledButton.icon(
+                onPressed: _savingSnapshot ? null : _saveSnapshot,
+                icon: _savingSnapshot
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.lock_clock_outlined),
+                label: const Text('حفظ لقطة ثابتة'),
+              ),
             ],
           ),
+        ),
+        const SizedBox(height: AppTokens.s12),
+        snapshots.when(
+          loading: () => const SizedBox.shrink(),
+          error: (e, _) => _SnapshotStrip(error: '$e'),
+          data: (items) => _SnapshotStrip(items: items),
         ),
         const SizedBox(height: AppTokens.s12),
         async.when(
@@ -147,6 +197,82 @@ class _FinancialReportsScreenState
         ),
       ],
     );
+  }
+}
+
+class _SnapshotStrip extends StatelessWidget {
+  const _SnapshotStrip({this.items = const [], this.error});
+
+  final List<Map<String, dynamic>> items;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    if (error != null) {
+      return AppCard(
+        child: Text(
+          'تعذر تحميل اللقطات: $error',
+          style: const TextStyle(color: Colors.redAccent),
+        ),
+      );
+    }
+    if (items.isEmpty) {
+      return const AppCard(
+        child: Row(
+          children: [
+            Icon(Icons.lock_clock_outlined, color: AppTokens.cyan500),
+            SizedBox(width: AppTokens.s8),
+            Expanded(
+              child: Text(
+                'لا توجد لقطات ثابتة لهذا التقرير بعد.',
+                style: TextStyle(color: AppTokens.textMuted),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return AppCard(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'آخر اللقطات الثابتة',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppTokens.navy900,
+                ),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          for (final item in items.take(5))
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.archive_outlined, size: 18, color: AppTokens.cyan500),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: Text(
+                      '#${item['id']} · ${item['created_at'] ?? ''}',
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text('${_snapshotCount(item)} صف'),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  static int _snapshotCount(Map<String, dynamic> item) {
+    final result = item['result'];
+    if (result is Map && result['count'] is num) {
+      return (result['count'] as num).toInt();
+    }
+    return 0;
   }
 }
 

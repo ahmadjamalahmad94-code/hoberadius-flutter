@@ -152,6 +152,28 @@ class AccountingRepository {
     final res = await _api.get('/api/v1/reports/$slug');
     return _items(res);
   }
+
+  Future<List<Map<String, dynamic>>> reportSnapshots({String reportType = ''}) async {
+    final res = await _api.get(
+      '/api/v1/reports/snapshots',
+      query: {
+        if (reportType.isNotEmpty) 'report_type': reportType,
+        'limit': 20,
+      },
+    );
+    return _items(res);
+  }
+
+  Future<Map<String, dynamic>> createReportSnapshot(String reportType) async {
+    final res = await _api.post(
+      '/api/v1/reports/snapshots',
+      body: {
+        'report_type': reportType,
+        'parameters': {'source': 'flutter'},
+      },
+    );
+    return _object(res, 'snapshot');
+  }
 }
 
 final accountingRepositoryProvider = Provider<AccountingRepository>((ref) {
