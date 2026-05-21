@@ -234,11 +234,22 @@ class _PlanCard extends StatelessWidget {
               ],
               const Spacer(),
               if (plan.price > 0)
-                Text(
-                  '${plan.price.toStringAsFixed(2)} ${plan.currency}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.sidebarBgElev1,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${plan.price.toStringAsFixed(2)} ${plan.currency}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: accent,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
             ],
