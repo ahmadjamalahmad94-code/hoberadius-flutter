@@ -296,7 +296,7 @@ class _DeviceCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.lock_outline,
                         size: 12,
                         color: AppTokens.amberInk,
