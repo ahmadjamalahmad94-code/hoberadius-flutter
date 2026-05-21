@@ -188,13 +188,39 @@ class _AuditTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tone = _toneFor(event.action);
+    final accent = switch (tone) {
+      PillTone.red => AppTokens.redInk,
+      PillTone.green => AppTokens.greenInk,
+      PillTone.orange => AppTokens.amberInk,
+      PillTone.navy => AppTokens.brandInk,
+      _ => AppTokens.brand,
+    };
     return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: AppTokens.brandSoft,
-        child: Icon(
-          _iconFor(event.targetType),
-          color: AppTokens.brand,
-          size: 18,
+      leading: SizedBox(
+        width: 40,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: accent.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Icon(
+                _iconFor(event.targetType),
+                color: accent,
+                size: 16,
+              ),
+            ),
+          ],
         ),
       ),
       title: Row(
