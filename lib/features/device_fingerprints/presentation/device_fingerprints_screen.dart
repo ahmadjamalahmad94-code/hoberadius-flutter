@@ -293,16 +293,16 @@ class _DeviceCard extends StatelessWidget {
                     color: AppTokens.amberSoft,
                     borderRadius: BorderRadius.circular(999),
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.lock_outline,
                         size: 12,
                         color: AppTokens.amberInk,
                       ),
-                      const SizedBox(width: 4),
-                      const Text(
+                      SizedBox(width: 4),
+                      Text(
                         'مقفول على MAC',
                         style: TextStyle(
                           color: AppTokens.amberInk,
