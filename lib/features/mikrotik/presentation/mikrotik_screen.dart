@@ -2,17 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/tokens.dart';
-import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
-import '../../../shared/widgets/status_pill.dart';
+import '../application/mikrotik_providers.dart';
 import '../data/mikrotik_repository.dart';
 import '../domain/mikrotik_model.dart';
-
-final mikrotikConfigsProvider =
-    FutureProvider.autoDispose<List<MikrotikConfig>>((ref) {
-  return ref.watch(mikrotikRepositoryProvider).list();
-});
+import 'widgets/mikrotik_config_card.dart';
+import 'widgets/mikrotik_form_card.dart';
 
 class MikrotikScreen extends ConsumerStatefulWidget {
   const MikrotikScreen({super.key});
@@ -41,12 +37,9 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
 
   @override
   void dispose() {
-    _name.dispose();
-    _host.dispose();
-    _port.dispose();
-    _username.dispose();
-    _password.dispose();
-    _timeout.dispose();
+    for (final c in [_name, _host, _port, _username, _password, _timeout]) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -75,7 +68,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
         ),
         const SizedBox(height: AppTokens.s16),
         if (_formVisible) ...[
-          _FormCard(
+          MikrotikFormCard(
             formKey: _formKey,
             editing: _editing,
             name: _name,
@@ -128,7 +121,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 for (final item in items) ...[
-                  _ConfigCard(
+                  MikrotikConfigCard(
                     config: item,
                     testing: item.id != null && _testingIds.contains(item.id),
                     onEdit: () => _startEdit(item),
@@ -352,314 +345,4 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
       ),
     );
   }
-}
-
-class _FormCard extends StatelessWidget {
-  const _FormCard({
-    required this.formKey,
-    required this.editing,
-    required this.name,
-    required this.host,
-    required this.port,
-    required this.username,
-    required this.password,
-    required this.timeout,
-    required this.useTls,
-    required this.verifyTls,
-    required this.enabled,
-    required this.saving,
-    required this.testing,
-    required this.onUseTlsChanged,
-    required this.onVerifyTlsChanged,
-    required this.onEnabledChanged,
-    required this.onCancel,
-    required this.onSave,
-    required this.onTest,
-  });
-
-  final GlobalKey<FormState> formKey;
-  final MikrotikConfig? editing;
-  final TextEditingController name;
-  final TextEditingController host;
-  final TextEditingController port;
-  final TextEditingController username;
-  final TextEditingController password;
-  final TextEditingController timeout;
-  final bool useTls;
-  final bool verifyTls;
-  final bool enabled;
-  final bool saving;
-  final bool testing;
-  final ValueChanged<bool> onUseTlsChanged;
-  final ValueChanged<bool> onVerifyTlsChanged;
-  final ValueChanged<bool> onEnabledChanged;
-  final VoidCallback onCancel;
-  final VoidCallback onSave;
-  final VoidCallback onTest;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      title: editing == null ? 'اتصال MikroTik جديد' : 'تعديل اتصال MikroTik',
-      icon: Icons.router_outlined,
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final twoCols = constraints.maxWidth >= 720;
-                return Wrap(
-                  spacing: AppTokens.s12,
-                  runSpacing: AppTokens.s12,
-                  children: [
-                    _FieldBox(
-                      wide: twoCols,
-                      child: TextFormField(
-                        controller: name,
-                        decoration: const InputDecoration(
-                          labelText: 'اسم الاتصال',
-                          hintText: 'مثال: راوتر المكتب',
-                        ),
-                      ),
-                    ),
-                    _FieldBox(
-                      wide: twoCols,
-                      child: TextFormField(
-                        controller: host,
-                        decoration: const InputDecoration(
-                          labelText: 'عنوان الراوتر',
-                          hintText: 'IP أو hostname',
-                        ),
-                        validator: _required,
-                      ),
-                    ),
-                    _FieldBox(
-                      wide: twoCols,
-                      child: TextFormField(
-                        controller: username,
-                        decoration: const InputDecoration(
-                          labelText: 'اسم مستخدم API',
-                        ),
-                        validator: _required,
-                      ),
-                    ),
-                    _FieldBox(
-                      wide: twoCols,
-                      child: TextFormField(
-                        controller: password,
-                        obscureText: true,
-                        decoration: InputDecoration(
-                          labelText: editing == null
-                              ? 'كلمة مرور API'
-                              : 'كلمة مرور جديدة (اختياري)',
-                          hintText: editing == null
-                              ? 'مطلوبة عند الإضافة'
-                              : 'اتركها فارغة للإبقاء على القديمة',
-                        ),
-                      ),
-                    ),
-                    _FieldBox(
-                      wide: twoCols,
-                      child: TextFormField(
-                        controller: port,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'منفذ API',
-                        ),
-                        validator: _positiveNumber,
-                      ),
-                    ),
-                    _FieldBox(
-                      wide: twoCols,
-                      child: TextFormField(
-                        controller: timeout,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'مهلة الاتصال (ثواني)',
-                        ),
-                        validator: _positiveNumber,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: AppTokens.s12),
-            Wrap(
-              spacing: AppTokens.s12,
-              runSpacing: AppTokens.s8,
-              children: [
-                FilterChip(
-                  selected: enabled,
-                  onSelected: onEnabledChanged,
-                  label: const Text('مفعّل'),
-                  avatar: const Icon(Icons.power_settings_new),
-                ),
-                FilterChip(
-                  selected: useTls,
-                  onSelected: onUseTlsChanged,
-                  label: const Text('استخدام TLS'),
-                  avatar: const Icon(Icons.lock_outline),
-                ),
-                FilterChip(
-                  selected: verifyTls,
-                  onSelected: onVerifyTlsChanged,
-                  label: const Text('التحقق من شهادة TLS'),
-                  avatar: const Icon(Icons.verified_user_outlined),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTokens.s16),
-            Wrap(
-              spacing: AppTokens.s8,
-              runSpacing: AppTokens.s8,
-              alignment: WrapAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: saving || testing ? null : onCancel,
-                  child: const Text('إلغاء'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: saving || testing ? null : onTest,
-                  icon: testing
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.network_check),
-                  label: Text(testing ? 'جار الاختبار...' : 'اختبار قبل الحفظ'),
-                ),
-                ElevatedButton.icon(
-                  onPressed: saving || testing ? null : onSave,
-                  icon: saving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: Text(saving ? 'جار الحفظ...' : 'حفظ'),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _FieldBox extends StatelessWidget {
-  const _FieldBox({required this.wide, required this.child});
-
-  final bool wide;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: wide ? 330 : double.infinity,
-      child: child,
-    );
-  }
-}
-
-class _ConfigCard extends StatelessWidget {
-  const _ConfigCard({
-    required this.config,
-    required this.testing,
-    required this.onEdit,
-    required this.onTest,
-    required this.onDelete,
-  });
-
-  final MikrotikConfig config;
-  final bool testing;
-  final VoidCallback onEdit;
-  final VoidCallback? onTest;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppTokens.s16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Icon(
-                Icons.router_outlined,
-                color: config.enabled ? AppTokens.brand : AppTokens.textMuted,
-              ),
-              Text(
-                config.name.isEmpty ? config.host : config.name,
-                style: const TextStyle(
-                  color: AppTokens.sidebarBg,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 16,
-                ),
-              ),
-              StatusPill(
-                text: config.enabled ? 'مفعّل' : 'معطّل',
-                tone: config.enabled ? PillTone.green : PillTone.neutral,
-              ),
-              if (config.useTls)
-                const StatusPill(text: 'TLS', tone: PillTone.blue),
-            ],
-          ),
-          const SizedBox(height: AppTokens.s8),
-          Text(
-            '${config.host}:${config.port} · المستخدم: ${config.username.isEmpty ? 'غير محدد' : config.username} · المهلة: ${config.timeoutSec} ث',
-            style: const TextStyle(color: AppTokens.textMuted),
-          ),
-          const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: onEdit,
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('تعديل'),
-              ),
-              OutlinedButton.icon(
-                onPressed: testing ? null : onTest,
-                icon: testing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.network_check),
-                label: Text(testing ? 'جار الاختبار...' : 'اختبار'),
-              ),
-              OutlinedButton.icon(
-                onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, color: AppTokens.red),
-                label: const Text('حذف'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String? _required(String? value) {
-  if ((value ?? '').trim().isEmpty) return 'مطلوب';
-  return null;
-}
-
-String? _positiveNumber(String? value) {
-  final n = int.tryParse((value ?? '').trim());
-  if (n == null || n <= 0) return 'اكتب رقمًا صحيحًا أكبر من صفر';
-  return null;
 }
