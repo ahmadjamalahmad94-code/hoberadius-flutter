@@ -250,6 +250,25 @@ all phase acceptance criteria above are satisfied.
 
 ---
 
+## Execution trail (irregularities)
+
+- **J1.3** was executed in code but its commit was lost to a concurrent
+  commit race. The actual J1.3 work — extending `tokens.dart` with
+  `surfaceMuted` / `surfaceTinted` / `slate100|200|500` / `borderNeutral` /
+  `overlayLightLg|Sm` / `successMed` / `warningMed` / `dangerMed` /
+  `infoMed`, plus the sweep of 80+ `Color(0xFF…)` literals across ~23
+  files — was absorbed into the two operator commits
+  [22c3948](https://github.com/ahmadjamalahmad94-code/hoberadius-flutter/commit/22c3948)
+  («Add Flutter card print export operations room») and
+  [72b5b9d](https://github.com/ahmadjamalahmad94-code/hoberadius-flutter/commit/72b5b9d)
+  («Complete Flutter print template API models»). Operator decision
+  (2026-05-21): document the slip and continue from J1.4 — no revert,
+  rebase, or history rewrite.
+- After this irregularity, `flutter analyze` is clean and the J1.3
+  acceptance criterion («0 `Color(0xFF…)` outside tokens») is satisfied,
+  verified by `grep -r "Color(0x" lib/` returning zero results outside
+  `lib/core/theme/tokens.dart`.
+
 ## Decisions taken (locked)
 
 - **Dark mode**: full production-grade dark theme, parity across
