@@ -402,12 +402,7 @@ class _RuleCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: p.card,
         borderRadius: BorderRadius.circular(14),
-        border: Border(
-          top: BorderSide(color: p.border, width: 1.5),
-          right: BorderSide(color: p.border, width: 1.5),
-          bottom: BorderSide(color: p.border, width: 1.5),
-          left: BorderSide(color: accent, width: 4),
-        ),
+        border: Border.all(color: p.border, width: 1.5),
         boxShadow: expanded
             ? [
                 BoxShadow(
@@ -418,22 +413,41 @@ class _RuleCard extends StatelessWidget {
               ]
             : null,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Stack(
         children: [
-          if (!expanded)
-            _RuleSummary(
-              rule: rule,
-              onEdit: onToggle,
-              onDelete: onRemove,
-            )
-          else
-            _RuleDetail(
-              rule: rule,
-              onChanged: onChanged,
-              onCollapse: onToggle,
-              onDelete: onRemove,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (!expanded)
+                _RuleSummary(
+                  rule: rule,
+                  onEdit: onToggle,
+                  onDelete: onRemove,
+                )
+              else
+                _RuleDetail(
+                  rule: rule,
+                  onChanged: onChanged,
+                  onCollapse: onToggle,
+                  onDelete: onRemove,
+                ),
+            ],
+          ),
+          PositionedDirectional(
+            start: 0,
+            top: 0,
+            bottom: 0,
+            child: Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: accent,
+                borderRadius: const BorderRadiusDirectional.only(
+                  topStart: Radius.circular(13),
+                  bottomStart: Radius.circular(13),
+                ),
+              ),
             ),
+          ),
         ],
       ),
     );

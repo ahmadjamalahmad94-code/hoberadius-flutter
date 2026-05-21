@@ -61,59 +61,76 @@ class HubToast extends StatelessWidget {
     return Semantics(
       liveRegion: true,
       label: message,
-      child: Container(
+      child: ConstrainedBox(
         constraints: const BoxConstraints(minWidth: 240, maxWidth: 360),
-        padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 12, 12),
-        decoration: BoxDecoration(
-          color: p.card,
-          borderRadius: BorderRadius.circular(AppTokens.r10),
-          border: BorderDirectional(
-            start: BorderSide(color: accent, width: 4),
-            top: BorderSide(color: p.border),
-            bottom: BorderSide(color: p.border),
-            end: BorderSide(color: p.border),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.18),
-              blurRadius: 32,
-              offset: const Offset(0, 12),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
+        child: Stack(
           children: [
-            Icon(icon ?? defaultIcon, size: 18, color: fg),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Text(
-                message,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: p.textPrimary,
-                  height: 1.35,
+            Container(
+              padding: const EdgeInsetsDirectional.fromSTEB(18, 12, 12, 12),
+              decoration: BoxDecoration(
+                color: p.card,
+                borderRadius: BorderRadius.circular(AppTokens.r10),
+                border: Border.all(color: p.border),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 32,
+                    offset: const Offset(0, 12),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Icon(icon ?? defaultIcon, size: 18, color: fg),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      message,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: p.textPrimary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                  if (onDismiss != null) ...[
+                    const SizedBox(width: 6),
+                    InkResponse(
+                      radius: 16,
+                      onTap: onDismiss,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child:
+                            Icon(Icons.close, size: 14, color: p.textMuted),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            PositionedDirectional(
+              start: 0,
+              top: 0,
+              bottom: 0,
+              child: Container(
+                width: 4,
+                decoration: BoxDecoration(
+                  color: accent,
+                  borderRadius: const BorderRadiusDirectional.only(
+                    topStart: Radius.circular(AppTokens.r10),
+                    bottomStart: Radius.circular(AppTokens.r10),
+                  ),
                 ),
               ),
             ),
-            if (onDismiss != null) ...[
-              const SizedBox(width: 6),
-              InkResponse(
-                radius: 16,
-                onTap: onDismiss,
-                child: Padding(
-                  padding: const EdgeInsets.all(4),
-                  child: Icon(Icons.close, size: 14, color: p.textMuted),
-                ),
-              ),
-            ],
           ],
         ),
       ),

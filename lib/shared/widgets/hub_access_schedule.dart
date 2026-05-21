@@ -749,21 +749,28 @@ class _BlockLabel extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: p.brandInk),
         const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w800,
-            color: p.textPrimary,
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+              color: p.textPrimary,
+            ),
           ),
         ),
-        const Spacer(),
-        Text(
-          hint,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w500,
-            color: p.textMuted,
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            hint,
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: p.textMuted,
+            ),
           ),
         ),
       ],
