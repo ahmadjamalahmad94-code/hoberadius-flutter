@@ -1,21 +1,17 @@
-// ignore_for_file: require_trailing_commas, deprecated_member_use
+// ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
-import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/form_field_row.dart';
+import '../application/card_batch_edit_provider.dart';
+import '../application/cards_list_providers.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
-import '../application/cards_list_providers.dart';
-
-final _batchEditProvider =
-    FutureProvider.autoDispose.family<CardBatch, int>((ref, id) {
-  return ref.watch(cardsRepositoryProvider).getBatch(id);
-});
+import 'widgets/card_batch_edit_runtime_section.dart';
+import 'widgets/card_batch_edit_sections.dart';
 
 class CardBatchEditScreen extends ConsumerStatefulWidget {
   const CardBatchEditScreen({super.key, required this.batchId});
@@ -168,7 +164,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
             ),
           );
       ref.invalidate(batchesListProvider);
-      ref.invalidate(_batchEditProvider(widget.batchId));
+      ref.invalidate(batchEditProvider(widget.batchId));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حفظ تعديلات باقة الكروت')),
@@ -186,7 +182,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(_batchEditProvider(widget.batchId));
+    final async = ref.watch(batchEditProvider(widget.batchId));
     return async.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => EmptyState(
@@ -250,12 +246,14 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                     color: AppTokens.dangerBg,
                     borderRadius: BorderRadius.circular(AppTokens.r10),
                   ),
-                  child: Text(_error!,
-                      style: const TextStyle(color: AppTokens.red)),
+                  child: Text(
+                    _error!,
+                    style: const TextStyle(color: AppTokens.red),
+                  ),
                 ),
               ],
               const SizedBox(height: AppTokens.s16),
-              _CoreSection(
+              CardBatchCoreSection(
                 packageName: _packageName,
                 plan: _plan,
                 count: _count,
@@ -264,7 +262,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 minCount: batch.generated <= 0 ? 1 : batch.generated,
               ),
               const SizedBox(height: AppTokens.s16),
-              _MoneySection(
+              CardBatchMoneySection(
                 pricePerCard: _pricePerCard,
                 priceBulk: _priceBulk,
                 totalPrice: _totalPrice,
@@ -273,7 +271,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 managerId: _managerId,
               ),
               const SizedBox(height: AppTokens.s16),
-              _GenerationSection(
+              CardBatchGenerationSection(
                 prefix: _prefix,
                 suffix: _suffix,
                 ulen: _ulen,
@@ -288,7 +286,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                     setState(() => _includeBatchNumber = v),
               ),
               const SizedBox(height: AppTokens.s16),
-              _RuntimeSection(
+              CardBatchRuntimeSection(
                 timeVal: _timeVal,
                 devices: _devices,
                 notes: _notes,
@@ -319,379 +317,6 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
           ),
         );
       },
-    );
-  }
-}
-
-class _CoreSection extends StatelessWidget {
-  const _CoreSection({
-    required this.packageName,
-    required this.plan,
-    required this.count,
-    required this.status,
-    required this.onStatus,
-    required this.minCount,
-  });
-
-  final TextEditingController packageName;
-  final TextEditingController plan;
-  final TextEditingController count;
-  final String status;
-  final ValueChanged<String?> onStatus;
-  final int minCount;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'batch.edit.core',
-      icon: Icons.credit_card_outlined,
-      title: 'بيانات الباقة',
-      child: Column(
-        children: [
-          FormFieldRow(
-            label: 'اسم الباقة',
-            child: TextFormField(controller: packageName),
-          ),
-          FormFieldRow(
-            label: 'معرّف العرض',
-            required: true,
-            hint: 'تغيير العرض يطبّق على الكروت المتاحة فقط',
-            child: TextFormField(
-              controller: plan,
-              keyboardType: TextInputType.number,
-              validator: (v) =>
-                  int.tryParse(v?.trim() ?? '') == null ? 'مطلوب' : null,
-            ),
-          ),
-          FormFieldRow(
-            label: 'عدد الباقة',
-            required: true,
-            hint: 'لا يمكن أن يكون أقل من $minCount',
-            child: TextFormField(
-              controller: count,
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                final n = int.tryParse(v?.trim() ?? '');
-                if (n == null || n < minCount || n > 2000) {
-                  return 'بين $minCount و 2000';
-                }
-                return null;
-              },
-            ),
-          ),
-          FormFieldRow(
-            label: 'الحالة',
-            child: DropdownButtonFormField<String>(
-              value: status,
-              items: const [
-                DropdownMenuItem(value: 'active', child: Text('نشطة')),
-                DropdownMenuItem(value: 'exhausted', child: Text('مستهلكة')),
-                DropdownMenuItem(value: 'revoked', child: Text('ملغاة')),
-              ],
-              onChanged: onStatus,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MoneySection extends StatelessWidget {
-  const _MoneySection({
-    required this.pricePerCard,
-    required this.priceBulk,
-    required this.totalPrice,
-    required this.totalQuota,
-    required this.serviceName,
-    required this.managerId,
-  });
-
-  final TextEditingController pricePerCard;
-  final TextEditingController priceBulk;
-  final TextEditingController totalPrice;
-  final TextEditingController totalQuota;
-  final TextEditingController serviceName;
-  final TextEditingController managerId;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'batch.edit.money',
-      icon: Icons.sell_outlined,
-      title: 'السعر والحصة',
-      child: Column(
-        children: [
-          FormFieldRow(
-            label: 'سعر البطاقة',
-            child: TextFormField(
-                controller: pricePerCard, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'سعر الجملة',
-            child: TextFormField(
-                controller: priceBulk, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'السعر الإجمالي',
-            child: TextFormField(
-                controller: totalPrice, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'الحصة الكلية MB',
-            child: TextFormField(
-                controller: totalQuota, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'اسم الخدمة',
-            child: TextFormField(controller: serviceName),
-          ),
-          FormFieldRow(
-            label: 'معرّف المدير',
-            child: TextFormField(
-                controller: managerId, keyboardType: TextInputType.number),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GenerationSection extends StatelessWidget {
-  const _GenerationSection({
-    required this.prefix,
-    required this.suffix,
-    required this.ulen,
-    required this.plen,
-    required this.passwordType,
-    required this.onPasswordType,
-    required this.affixMode,
-    required this.onAffixMode,
-    required this.includeBatchNumber,
-    required this.onIncludeBatchNumber,
-  });
-
-  final TextEditingController prefix;
-  final TextEditingController suffix;
-  final TextEditingController ulen;
-  final TextEditingController plen;
-  final String passwordType;
-  final ValueChanged<String?> onPasswordType;
-  final String affixMode;
-  final ValueChanged<String?> onAffixMode;
-  final bool includeBatchNumber;
-  final ValueChanged<bool> onIncludeBatchNumber;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'batch.edit.generation',
-      icon: Icons.dialpad_outlined,
-      title: 'إعدادات التوليد المستقبلية',
-      child: Column(
-        children: [
-          FormFieldRow(
-            label: 'موضع الإضافة',
-            child: DropdownButtonFormField<String>(
-              value: affixMode.isEmpty ? 'none' : affixMode,
-              items: const [
-                DropdownMenuItem(value: 'none', child: Text('بدون')),
-                DropdownMenuItem(value: 'prefix', child: Text('قبل الاسم')),
-                DropdownMenuItem(value: 'suffix', child: Text('بعد الاسم')),
-              ],
-              onChanged: (v) => onAffixMode(v == 'none' ? '' : v),
-            ),
-          ),
-          FormFieldRow(
-              label: 'البادئة', child: TextFormField(controller: prefix)),
-          FormFieldRow(
-              label: 'اللاحقة', child: TextFormField(controller: suffix)),
-          FormFieldRow(
-            label: 'طول اسم الدخول',
-            child: TextFormField(
-                controller: ulen, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'طول كلمة المرور',
-            child: TextFormField(
-                controller: plen, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'نمط كلمة المرور',
-            child: DropdownButtonFormField<String>(
-              value: passwordType,
-              items: const [
-                DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),
-                DropdownMenuItem(value: 'weak', child: Text('حروف')),
-                DropdownMenuItem(value: 'medium', child: Text('متوسط')),
-                DropdownMenuItem(value: 'strong', child: Text('قوي')),
-              ],
-              onChanged: onPasswordType,
-            ),
-          ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            value: includeBatchNumber,
-            onChanged: onIncludeBatchNumber,
-            title: const Text('تضمين رقم الباقة'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RuntimeSection extends StatelessWidget {
-  const _RuntimeSection({
-    required this.timeVal,
-    required this.devices,
-    required this.notes,
-    required this.timeUnit,
-    required this.onTimeUnit,
-    required this.durationMode,
-    required this.onDurationMode,
-    required this.quotaAction,
-    required this.onQuotaAction,
-    required this.countFromFirstConnect,
-    required this.onCountFromFirstConnect,
-    required this.countBySeconds,
-    required this.onCountBySeconds,
-    required this.autoRenew,
-    required this.onAutoRenew,
-    required this.switchMac,
-    required this.onSwitchMac,
-    required this.lockMac,
-    required this.onLockMac,
-    required this.phoneOnly,
-    required this.onPhoneOnly,
-  });
-
-  final TextEditingController timeVal;
-  final TextEditingController devices;
-  final TextEditingController notes;
-  final String timeUnit;
-  final ValueChanged<String?> onTimeUnit;
-  final String durationMode;
-  final ValueChanged<String?> onDurationMode;
-  final String quotaAction;
-  final ValueChanged<String?> onQuotaAction;
-  final bool countFromFirstConnect;
-  final ValueChanged<bool> onCountFromFirstConnect;
-  final bool countBySeconds;
-  final ValueChanged<bool> onCountBySeconds;
-  final bool autoRenew;
-  final ValueChanged<bool> onAutoRenew;
-  final bool switchMac;
-  final ValueChanged<bool> onSwitchMac;
-  final bool lockMac;
-  final ValueChanged<bool> onLockMac;
-  final bool phoneOnly;
-  final ValueChanged<bool> onPhoneOnly;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'batch.edit.runtime',
-      icon: Icons.timer_outlined,
-      title: 'الصلاحية والسلوك',
-      child: Column(
-        children: [
-          FormFieldRow(
-            label: 'قيمة الوقت',
-            child: TextFormField(
-                controller: timeVal, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'وحدة الوقت',
-            child: DropdownButtonFormField<String>(
-              value: timeUnit,
-              items: const [
-                DropdownMenuItem(value: 'minutes', child: Text('دقائق')),
-                DropdownMenuItem(value: 'hours', child: Text('ساعات')),
-                DropdownMenuItem(value: 'days', child: Text('أيام')),
-              ],
-              onChanged: onTimeUnit,
-            ),
-          ),
-          FormFieldRow(
-            label: 'عدد الأجهزة',
-            child: TextFormField(
-                controller: devices, keyboardType: TextInputType.number),
-          ),
-          FormFieldRow(
-            label: 'وضع المدة',
-            child: DropdownButtonFormField<String>(
-              value: durationMode,
-              items: const [
-                DropdownMenuItem(value: 'time_unit', child: Text('حسب الوحدة')),
-                DropdownMenuItem(value: 'seconds', child: Text('بالثواني')),
-              ],
-              onChanged: onDurationMode,
-            ),
-          ),
-          FormFieldRow(
-            label: 'عند انتهاء الحصة',
-            child: DropdownButtonFormField<String>(
-              value: quotaAction,
-              items: const [
-                DropdownMenuItem(value: 'stop', child: Text('إيقاف')),
-                DropdownMenuItem(
-                    value: 'reduce_speed', child: Text('تخفيض السرعة')),
-                DropdownMenuItem(value: 'notify', child: Text('تنبيه فقط')),
-              ],
-              onChanged: onQuotaAction,
-            ),
-          ),
-          _SwitchLine(
-            label: 'العد من أول اتصال',
-            value: countFromFirstConnect,
-            onChanged: onCountFromFirstConnect,
-          ),
-          _SwitchLine(
-              label: 'العد بالثواني',
-              value: countBySeconds,
-              onChanged: onCountBySeconds),
-          _SwitchLine(
-              label: 'تجديد تلقائي', value: autoRenew, onChanged: onAutoRenew),
-          _SwitchLine(
-              label: 'ربط MAC عند الاتصال',
-              value: switchMac,
-              onChanged: onSwitchMac),
-          _SwitchLine(
-              label: 'قفل MAC عند الإغلاق',
-              value: lockMac,
-              onChanged: onLockMac),
-          _SwitchLine(
-              label: 'دخول برقم الجوال فقط',
-              value: phoneOnly,
-              onChanged: onPhoneOnly),
-          FormFieldRow(
-              label: 'ملاحظات',
-              child: TextFormField(controller: notes, maxLines: 3)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SwitchLine extends StatelessWidget {
-  const _SwitchLine({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      value: value,
-      onChanged: onChanged,
-      title: Text(label),
     );
   }
 }
