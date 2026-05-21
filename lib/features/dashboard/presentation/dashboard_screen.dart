@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -19,6 +21,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dashboardFutureProvider);
+    final p = AppPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -28,7 +31,7 @@ class DashboardScreen extends ConsumerWidget {
             IconButton(
               tooltip: 'تحديث',
               onPressed: () => ref.invalidate(dashboardFutureProvider),
-              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+              icon: Icon(Icons.refresh, color: p.textSecondary),
             ),
           ],
         ),
@@ -82,6 +85,8 @@ class _DashboardBody extends StatelessWidget {
   }
 }
 
+enum _MetricTone { brand, success, warning, info }
+
 class _MetricGrid extends StatelessWidget {
   const _MetricGrid({required this.metrics});
   final DashboardMetrics metrics;
@@ -93,32 +98,33 @@ class _MetricGrid extends StatelessWidget {
         icon: Icons.person_outline,
         label: 'إجمالي المشتركين',
         value: '${metrics.subscribers}',
-        tone: AppTokens.brand,
+        tone: _MetricTone.brand,
+        primary: true,
       ),
       _MetricTile(
         icon: Icons.online_prediction,
         label: 'متّصلون الآن',
         value: '${metrics.onlineNow}',
-        tone: AppTokens.green,
+        tone: _MetricTone.success,
       ),
       _MetricTile(
         icon: Icons.workspace_premium_outlined,
         label: 'الباقات',
         value: '${metrics.plans}',
-        tone: AppTokens.brand,
+        tone: _MetricTone.brand,
       ),
       _MetricTile(
         icon: Icons.credit_card_outlined,
         label: 'الكروت المُولَّدة',
         value: '${metrics.totalCards}',
         sub: '${metrics.usedCards} مُستخدَمة',
-        tone: AppTokens.amber,
+        tone: _MetricTone.warning,
       ),
       _MetricTile(
         icon: Icons.router_outlined,
         label: 'أجهزة الشبكة',
         value: '${metrics.nasDevices}',
-        tone: AppTokens.sidebarBgElev2,
+        tone: _MetricTone.info,
       ),
     ];
     return LayoutBuilder(
@@ -149,16 +155,60 @@ class _MetricTile extends StatelessWidget {
     required this.value,
     required this.tone,
     this.sub,
+    this.primary = false,
   });
   final IconData icon;
   final String label;
   final String value;
-  final Color tone;
+  final _MetricTone tone;
   final String? sub;
+  final bool primary;
+
+  ({Color bg, Color fg, Color valueFg, Gradient? gradient}) _palette(
+    AppPalette p,
+  ) {
+    if (primary) {
+      return (
+        bg: Colors.transparent,
+        fg: Colors.white,
+        valueFg: Colors.white,
+        gradient: p.brandGradient,
+      );
+    }
+    final (chip, ink) = switch (tone) {
+      _MetricTone.brand => (p.brandSoft, p.brandInk),
+      _MetricTone.success => (p.successBg, p.successFg),
+      _MetricTone.warning => (p.warningBg, p.warningFg),
+      _MetricTone.info => (p.infoBg, p.infoFg),
+    };
+    return (
+      bg: chip,
+      fg: ink,
+      valueFg: p.textPrimary,
+      gradient: null,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final p = AppPalette.of(context);
+    final pal = _palette(p);
+    return Container(
+      decoration: BoxDecoration(
+        color: primary ? null : p.card,
+        gradient: pal.gradient,
+        borderRadius: BorderRadius.circular(AppTokens.r14),
+        border: primary ? null : Border.all(color: p.border),
+        boxShadow: primary
+            ? [
+                BoxShadow(
+                  color: p.brand.withValues(alpha: 0.28),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+              ]
+            : p.shCard,
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxWidth < 180;
@@ -166,10 +216,16 @@ class _MetricTile extends StatelessWidget {
             width: compact ? 36 : 44,
             height: compact ? 36 : 44,
             decoration: BoxDecoration(
-              color: tone.withValues(alpha: 0.12),
+              color: primary
+                  ? Colors.white.withValues(alpha: 0.18)
+                  : pal.bg,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: tone, size: compact ? 20 : 22),
+            child: Icon(
+              icon,
+              color: primary ? Colors.white : pal.fg,
+              size: compact ? 20 : 22,
+            ),
           );
           final textBlock = Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -179,11 +235,10 @@ class _MetricTile extends StatelessWidget {
                 label,
                 maxLines: compact ? 2 : 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppTokens.textMuted,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  height: 1.2,
+                style: AppTypography.labelSmall.copyWith(
+                  color: primary
+                      ? Colors.white.withValues(alpha: 0.86)
+                      : p.textMuted,
                 ),
               ),
               const SizedBox(height: 2),
@@ -191,10 +246,9 @@ class _MetricTile extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppTokens.sidebarBg,
+                style: AppTypography.kpi.copyWith(
+                  color: pal.valueFg,
                   fontSize: 22,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
               if (sub != null)
@@ -202,9 +256,10 @@ class _MetricTile extends StatelessWidget {
                   sub!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTokens.textMuted,
-                    fontSize: 11,
+                  style: AppTypography.caption.copyWith(
+                    color: primary
+                        ? Colors.white.withValues(alpha: 0.78)
+                        : p.textMuted,
                   ),
                 ),
             ],
@@ -214,11 +269,7 @@ class _MetricTile extends StatelessWidget {
             child: compact
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      iconBox,
-                      const Spacer(),
-                      textBlock,
-                    ],
+                    children: [iconBox, const Spacer(), textBlock],
                   )
                 : Row(
                     children: [
@@ -263,12 +314,13 @@ class _Bar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
     final val = pct ?? 0;
     final color = val >= 80
-        ? AppTokens.red
+        ? p.dangerStrong
         : val >= 60
-            ? AppTokens.amber
-            : AppTokens.brand;
+            ? p.warningStrong
+            : p.brand;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -276,15 +328,14 @@ class _Bar extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: AppTokens.textSecondary,
-                fontWeight: FontWeight.w600,
+              style: AppTypography.labelMedium.copyWith(
+                color: p.textSecondary,
               ),
             ),
             const Spacer(),
             Text(
               pct == null ? '—' : '${pct!.toStringAsFixed(0)}٪',
-              style: TextStyle(color: color, fontWeight: FontWeight.w800),
+              style: AppTypography.labelLarge.copyWith(color: color),
             ),
           ],
         ),
@@ -294,7 +345,7 @@ class _Bar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: pct == null ? null : (val / 100).clamp(0.0, 1.0),
             minHeight: 8,
-            backgroundColor: AppTokens.surfaceTinted,
+            backgroundColor: p.surfaceTinted,
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),
@@ -309,23 +360,24 @@ class _EventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
       child: Row(
         children: [
-          const Icon(Icons.circle, size: 8, color: AppTokens.brand),
+          Icon(Icons.circle, size: 8, color: p.brand),
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(
               '${_dashboardActionLabel(event.action)} — ${_dashboardTargetLabel(event.targetType)}',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppTokens.textPrimary),
+              style: AppTypography.bodyMedium.copyWith(color: p.textPrimary),
             ),
           ),
           Text(
             _dashboardActorLabel(event.actor),
-            style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
+            style: AppTypography.caption.copyWith(color: p.textMuted),
           ),
         ],
       ),
