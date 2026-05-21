@@ -107,6 +107,48 @@ class CardsRepository {
     return Uint8List.fromList(res.data ?? const []);
   }
 
+  Future<Uint8List> exportBatchesXlsx({
+    String query = '',
+    String status = '',
+    int? planId,
+    String manager = '',
+    int? distributorId,
+  }) async {
+    final res = await _api.dio.get<List<int>>(
+      '/api/v1/cards/batches/export.xlsx',
+      queryParameters: {
+        if (query.trim().isNotEmpty) 'q': query.trim(),
+        if (status.isNotEmpty) 'status': status,
+        if (planId != null) 'plan_id': planId,
+        if (manager.trim().isNotEmpty) 'manager': manager.trim(),
+        if (distributorId != null) 'distributor_id': distributorId,
+      },
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
+  }
+
+  Future<Uint8List> exportBatchesPdf({
+    String query = '',
+    String status = '',
+    int? planId,
+    String manager = '',
+    int? distributorId,
+  }) async {
+    final res = await _api.dio.get<List<int>>(
+      '/api/v1/cards/batches/export.pdf',
+      queryParameters: {
+        if (query.trim().isNotEmpty) 'q': query.trim(),
+        if (status.isNotEmpty) 'status': status,
+        if (planId != null) 'plan_id': planId,
+        if (manager.trim().isNotEmpty) 'manager': manager.trim(),
+        if (distributorId != null) 'distributor_id': distributorId,
+      },
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
+  }
+
   Future<CardBatch> getBatch(int batchId) async {
     final res = await _api.get('/api/v1/cards/batches/$batchId');
     final d = res['data'];

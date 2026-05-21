@@ -89,7 +89,9 @@ class CardsListScreen extends ConsumerWidget {
             ref.read(_selectedBatchIdsProvider.notifier).state = <int>{};
             ref.read(_batchOpsFiltersProvider.notifier).state = next;
           },
-          onExport: () => _exportCsv(context, ref),
+          onExportCsv: () => _exportCsv(context, ref),
+          onExportXlsx: () => _exportXlsx(context, ref),
+          onExportPdf: () => _exportPdf(context, ref),
           onBulkAction: (action) => _runBulkAction(context, ref, action),
         ),
         const SizedBox(height: AppTokens.s16),
@@ -161,6 +163,56 @@ class CardsListScreen extends ConsumerWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('تعذّر التصدير: $e')),
+      );
+    }
+  }
+
+  Future<void> _exportXlsx(BuildContext context, WidgetRef ref) async {
+    final filters = ref.read(_batchOpsFiltersProvider);
+    try {
+      final bytes = await ref.read(cardsRepositoryProvider).exportBatchesXlsx(
+            query: filters.query,
+            status: filters.status,
+          );
+      await FileSaver.instance.saveFile(
+        name: 'card-batches',
+        bytes: bytes,
+        ext: 'xlsx',
+        mimeType: MimeType.microsoftExcel,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تنزيل ملف Excel للحزم المعروضة')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذّر تصدير Excel: $e')),
+      );
+    }
+  }
+
+  Future<void> _exportPdf(BuildContext context, WidgetRef ref) async {
+    final filters = ref.read(_batchOpsFiltersProvider);
+    try {
+      final bytes = await ref.read(cardsRepositoryProvider).exportBatchesPdf(
+            query: filters.query,
+            status: filters.status,
+          );
+      await FileSaver.instance.saveFile(
+        name: 'card-batches',
+        bytes: bytes,
+        ext: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تنزيل ملف PDF للحزم المعروضة')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذّر تصدير PDF: $e')),
       );
     }
   }
@@ -270,14 +322,18 @@ class _Toolbar extends ConsumerStatefulWidget {
     required this.filters,
     required this.selectedCount,
     required this.onFiltersChanged,
-    required this.onExport,
+    required this.onExportCsv,
+    required this.onExportXlsx,
+    required this.onExportPdf,
     required this.onBulkAction,
   });
 
   final _BatchOpsFilters filters;
   final int selectedCount;
   final ValueChanged<_BatchOpsFilters> onFiltersChanged;
-  final VoidCallback onExport;
+  final VoidCallback onExportCsv;
+  final VoidCallback onExportXlsx;
+  final VoidCallback onExportPdf;
   final ValueChanged<String> onBulkAction;
 
   @override
@@ -368,9 +424,19 @@ class _ToolbarState extends ConsumerState<_Toolbar> {
                 label: const Text('تطبيق'),
               ),
               OutlinedButton.icon(
-                onPressed: widget.onExport,
+                onPressed: widget.onExportCsv,
                 icon: const Icon(Icons.file_download_outlined),
                 label: const Text('تصدير ملف'),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.onExportXlsx,
+                icon: const Icon(Icons.table_chart_outlined),
+                label: const Text('Excel'),
+              ),
+              OutlinedButton.icon(
+                onPressed: widget.onExportPdf,
+                icon: const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF'),
               ),
               if (widget.selectedCount > 0) ...[
                 const SizedBox(width: AppTokens.s8),
