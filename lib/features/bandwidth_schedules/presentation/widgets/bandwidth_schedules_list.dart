@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -88,6 +89,7 @@ class _ScheduleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -96,10 +98,11 @@ class _ScheduleTile extends StatelessWidget {
           runSpacing: AppTokens.s8,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            Icon(Icons.speed_outlined, color: p.brand, size: 18),
             Text(
               item.name,
-              style: const TextStyle(
-                color: AppTokens.sidebarBg,
+              style: TextStyle(
+                color: p.textPrimary,
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
               ),
