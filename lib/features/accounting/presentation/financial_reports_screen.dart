@@ -1,3 +1,4 @@
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,7 +26,9 @@ final _reportProvider = FutureProvider.autoDispose
 
 final _snapshotProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, String>((ref, slug) {
-  return ref.watch(accountingRepositoryProvider).reportSnapshots(reportType: slug);
+  return ref
+      .watch(accountingRepositoryProvider)
+      .reportSnapshots(reportType: slug);
 });
 
 class FinancialReportsScreen extends ConsumerStatefulWidget {
@@ -40,6 +43,33 @@ class _FinancialReportsScreenState
     extends ConsumerState<FinancialReportsScreen> {
   String _slug = 'sales/daily';
   bool _savingSnapshot = false;
+  bool _exportingCsv = false;
+
+  Future<void> _exportCsv() async {
+    setState(() => _exportingCsv = true);
+    try {
+      final bytes = await ref
+          .read(accountingRepositoryProvider)
+          .exportFinancialReportCsv(_slug);
+      await FileSaver.instance.saveFile(
+        name: 'financial-report-${_slug.replaceAll('/', '-')}',
+        bytes: bytes,
+        ext: 'csv',
+        mimeType: MimeType.csv,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تنزيل التقرير بصيغة CSV')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تنزيل CSV: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _exportingCsv = false);
+    }
+  }
 
   Future<void> _saveSnapshot() async {
     setState(() => _savingSnapshot = true);
@@ -141,6 +171,17 @@ class _FinancialReportsScreenState
                       )
                     : const Icon(Icons.lock_clock_outlined),
                 label: const Text('حفظ لقطة ثابتة'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _exportingCsv ? null : _exportCsv,
+                icon: _exportingCsv
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.file_download_outlined),
+                label: const Text('CSV'),
               ),
             ],
           ),
@@ -250,7 +291,11 @@ class _SnapshotStrip extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 children: [
-                  const Icon(Icons.archive_outlined, size: 18, color: AppTokens.cyan500),
+                  const Icon(
+                    Icons.archive_outlined,
+                    size: 18,
+                    color: AppTokens.cyan500,
+                  ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: Text(

@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -153,7 +156,17 @@ class AccountingRepository {
     return _items(res);
   }
 
-  Future<List<Map<String, dynamic>>> reportSnapshots({String reportType = ''}) async {
+  Future<Uint8List> exportFinancialReportCsv(String slug) async {
+    final res = await _api.dio.get<List<int>>(
+      '/api/v1/reports/$slug/export.csv',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
+  }
+
+  Future<List<Map<String, dynamic>>> reportSnapshots({
+    String reportType = '',
+  }) async {
     final res = await _api.get(
       '/api/v1/reports/snapshots',
       query: {
