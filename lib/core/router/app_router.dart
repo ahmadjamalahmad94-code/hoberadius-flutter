@@ -12,6 +12,7 @@ import '../../features/accounting/presentation/subscriber_finance_screen.dart';
 import '../../features/admin_control/presentation/admin_control_screen.dart';
 import '../../features/_dev/presentation/widget_gallery_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
+import 'app_page_transitions.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
 import '../../features/system_operations/presentation/system_operations_screen.dart';
 import '../../features/tools/presentation/tools_screen.dart';
@@ -68,12 +69,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         name: 'login',
-        builder: (ctx, st) => const LoginScreen(),
+        pageBuilder: (ctx, st) =>
+            hubFadeThroughPage(child: const LoginScreen()),
       ),
       GoRoute(
         path: '/_gallery',
         name: 'widget-gallery',
-        builder: (ctx, st) => const WidgetGalleryScreen(),
+        pageBuilder: (ctx, st) =>
+            hubFadeThroughPage(child: const WidgetGalleryScreen()),
       ),
       ShellRoute(
         builder: (ctx, st, child) => ShellScaffold(child: child),
