@@ -45,6 +45,7 @@ class _FinancialReportsScreenState
   bool _savingSnapshot = false;
   bool _exportingCsv = false;
   bool _exportingXlsx = false;
+  bool _exportingPdf = false;
 
   Future<void> _exportCsv() async {
     setState(() => _exportingCsv = true);
@@ -95,6 +96,32 @@ class _FinancialReportsScreenState
       );
     } finally {
       if (mounted) setState(() => _exportingXlsx = false);
+    }
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _exportingPdf = true);
+    try {
+      final bytes = await ref
+          .read(accountingRepositoryProvider)
+          .exportFinancialReportPdf(_slug);
+      await FileSaver.instance.saveFile(
+        name: 'financial-report-${_slug.replaceAll('/', '-')}',
+        bytes: bytes,
+        ext: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تنزيل التقرير بصيغة PDF')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر تنزيل PDF: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _exportingPdf = false);
     }
   }
 
@@ -220,6 +247,17 @@ class _FinancialReportsScreenState
                       )
                     : const Icon(Icons.grid_on_outlined),
                 label: const Text('Excel'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _exportingPdf ? null : _exportPdf,
+                icon: _exportingPdf
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.picture_as_pdf_outlined),
+                label: const Text('PDF'),
               ),
             ],
           ),
