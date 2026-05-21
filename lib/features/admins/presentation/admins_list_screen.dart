@@ -104,7 +104,7 @@ class _AdminsTable extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: a.isSuperAdmin
                   ? AppTokens.brandGradient
-                  : LinearGradient(
+                  : const LinearGradient(
                       colors: [
                         AppTokens.sidebarBgElev1,
                         AppTokens.sidebarBgElev2,
