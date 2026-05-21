@@ -114,6 +114,24 @@ lib/
 
 أي endpoint يرجع `not_implemented` لا يظهر في الواجهة كأنه مكتمل. Google Drive وPDF النهائي لقوالب الطباعة ما زالا معطلين بوضوح حتى تتوفر تكاملات حقيقية.
 
+## نظام التصميم
+
+التصميم الموحد للتطبيق موثّق في
+[docs/FLUTTER_DESIGN_SYSTEM.md](docs/FLUTTER_DESIGN_SYSTEM.md):
+
+- ألوان الثيم (فاتح + غامق) عبر `AppPalette.of(context)`.
+- مقياس التايبوغرافي عبر `AppTypography` (display / title / body / label / caption / kpi).
+- العناصر المعتمدة في `lib/shared/widgets/`:
+  `HubToggleSwitch`, `HubUnitInput`, `HubTimePickerCircular`,
+  `HubAccessSchedule`, `HubSpeedRulesPanel`, `HubToast`,
+  `HubSkeletonLoader`, `HubErrorState`, `HubMasterDetail`.
+- شاشة معاينة العناصر `/_gallery` للتنقل بين كل widget في الأنواع
+  الأربعة (light/dark × LTR/RTL).
+- اختبارات goldens لكل widget مهم في `test/widgets/goldens/`.
+
+تقرير إعادة التصميم الشامل (J0 → J6) موجود في
+[docs/FLUTTER_REDESIGN_REPORT.md](docs/FLUTTER_REDESIGN_REPORT.md).
+
 ## الخطوة التالية
 
 - تفعيل Developer Mode على Windows ثم تشغيل `flutter build windows`.
