@@ -103,6 +103,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
           title: 'المتصلون الآن',
           subtitle: 'مشتركين وكروت متصلة مع إمكانية الطرد المباشر من الشبكة.',
           actions: [
+            const _LivePulseChip(),
+            const SizedBox(width: AppTokens.s8),
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
@@ -176,6 +178,69 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
           },
         ),
       ],
+    );
+  }
+}
+
+class _LivePulseChip extends StatefulWidget {
+  const _LivePulseChip();
+
+  @override
+  State<_LivePulseChip> createState() => _LivePulseChipState();
+}
+
+class _LivePulseChipState extends State<_LivePulseChip>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTokens.successBg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          FadeTransition(
+            opacity: Tween<double>(begin: 0.4, end: 1.0).animate(_ctrl),
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppTokens.successStrong,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          const Text(
+            'مباشر',
+            style: TextStyle(
+              color: AppTokens.successFg,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
