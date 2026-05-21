@@ -261,7 +261,20 @@ class _DeviceCard extends StatelessWidget {
             runSpacing: AppTokens.s8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(_osIcon(item.osFamily), color: AppTokens.brand),
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTokens.brandSoft,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  _osIcon(item.osFamily),
+                  color: AppTokens.brand,
+                  size: 20,
+                ),
+              ),
               Text(
                 item.title,
                 style: const TextStyle(
@@ -270,6 +283,36 @@ class _DeviceCard extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
+              if (item.mac.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTokens.amberSoft,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.lock_outline,
+                        size: 12,
+                        color: AppTokens.amberInk,
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'مقفول على MAC',
+                        style: TextStyle(
+                          color: AppTokens.amberInk,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               StatusPill(text: item.osLabel, tone: PillTone.blue),
               if (item.nasId != null)
                 StatusPill(text: 'NAS #${item.nasId}', tone: PillTone.neutral),
