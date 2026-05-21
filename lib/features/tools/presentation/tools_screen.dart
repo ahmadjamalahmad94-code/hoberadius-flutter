@@ -368,8 +368,8 @@ class _TestAuthPanelState extends State<_TestAuthPanel> {
             const SizedBox(height: AppTokens.s12),
             _TintBox(
               color: _decision!.ok
-                  ? const Color(0xFFE8F8EF)
-                  : const Color(0xFFFDE9E9),
+                  ? AppTokens.successBg
+                  : AppTokens.dangerBg,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -548,8 +548,8 @@ class _MaintenancePanelState extends ConsumerState<_MaintenancePanel> {
             const SizedBox(height: AppTokens.s12),
             _TintBox(
               color: _preview!.destructive
-                  ? const Color(0xFFFFF4E2)
-                  : const Color(0xFFE8F8EF),
+                  ? AppTokens.warningBg
+                  : AppTokens.successBg,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -676,7 +676,7 @@ class _SpeedsResult extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _TintBox(
-      color: result.dryRun ? const Color(0xFFFFF4E2) : const Color(0xFFE8F8EF),
+      color: result.dryRun ? AppTokens.warningBg : AppTokens.successBg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -705,7 +705,7 @@ class _KeyValueBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _TintBox(
-      color: const Color(0xFFF6F8FB),
+      color: AppTokens.surfaceMuted,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: values.entries

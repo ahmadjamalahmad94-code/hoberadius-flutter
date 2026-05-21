@@ -181,7 +181,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
             Container(
               padding: const EdgeInsets.all(AppTokens.s12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFDE9E9),
+                color: AppTokens.dangerBg,
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
               child: Text(_error!, style: const TextStyle(color: AppTokens.red)),
@@ -192,7 +192,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
             Container(
               padding: const EdgeInsets.all(AppTokens.s12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF6E0),
+                color: AppTokens.warningBg,
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
               child: const Row(

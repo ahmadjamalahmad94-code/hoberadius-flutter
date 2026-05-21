@@ -247,7 +247,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 Container(
                   padding: const EdgeInsets.all(AppTokens.s12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFDE9E9),
+                    color: AppTokens.dangerBg,
                     borderRadius: BorderRadius.circular(AppTokens.r10),
                   ),
                   child: Text(_error!,

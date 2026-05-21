@@ -226,7 +226,7 @@ class MoreScreen extends ConsumerWidget {
         ),
         const SizedBox(height: AppTokens.s16),
         Card(
-          color: const Color(0xFFFDE9E9),
+          color: AppTokens.dangerBg,
           child: ListTile(
             leading: const Icon(Icons.logout, color: AppTokens.red),
             title: const Text(

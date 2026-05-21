@@ -579,7 +579,7 @@ class _PreviewCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(AppTokens.r14),
                     border: Border.all(color: AppTokens.brand),
                     gradient: const LinearGradient(
-                      colors: [Colors.white, Color(0xFFEFF8FF)],
+                      colors: [Colors.white, AppTokens.infoBg],
                     ),
                     boxShadow: [
                       BoxShadow(

@@ -394,7 +394,7 @@ class _MessageBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: error ? const Color(0xFFFFEEEE) : const Color(0xFFF3F9FB),
+        color: error ? AppTokens.dangerBg : AppTokens.surfaceMuted,
         borderRadius: BorderRadius.circular(AppTokens.r10),
         border: Border.all(
           color:

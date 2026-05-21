@@ -243,7 +243,7 @@ class _BatchSummary extends StatelessWidget {
             child: LinearProgressIndicator(
               value: usedPct,
               minHeight: 8,
-              backgroundColor: const Color(0xFFEFF2F7),
+              backgroundColor: AppTokens.surfaceTinted,
               valueColor: AlwaysStoppedAnimation(
                 usedPct >= 0.9 ? AppTokens.red : AppTokens.brand,
               ),

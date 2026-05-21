@@ -379,7 +379,7 @@ class _MetricTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFD),
+        color: AppTokens.surfaceMuted,
         border: Border.all(color: AppTokens.border),
         borderRadius: BorderRadius.circular(AppTokens.r10),
       ),

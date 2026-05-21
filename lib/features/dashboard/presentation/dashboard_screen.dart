@@ -294,7 +294,7 @@ class _Bar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: pct == null ? null : (val / 100).clamp(0.0, 1.0),
             minHeight: 8,
-            backgroundColor: const Color(0xFFEFF2F7),
+            backgroundColor: AppTokens.surfaceTinted,
             valueColor: AlwaysStoppedAnimation(color),
           ),
         ),

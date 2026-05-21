@@ -670,9 +670,9 @@ class _Metric extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppTokens.surfaceMuted,
         borderRadius: BorderRadius.circular(AppTokens.r10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppTokens.borderNeutral),
       ),
       child: Row(
         children: [
@@ -726,9 +726,9 @@ class _InfoTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppTokens.surfaceMuted,
         borderRadius: BorderRadius.circular(AppTokens.r10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppTokens.borderNeutral),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,7 +784,7 @@ class _InlineError extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFDE9E9),
+        color: AppTokens.dangerBg,
         borderRadius: BorderRadius.circular(AppTokens.r10),
       ),
       child: Row(

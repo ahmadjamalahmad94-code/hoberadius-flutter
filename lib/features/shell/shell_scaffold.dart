@@ -188,7 +188,7 @@ class _Sidebar extends StatelessWidget {
             height: AppTokens.topbarHeight,
             padding: const EdgeInsets.symmetric(horizontal: AppTokens.s20),
             decoration: const BoxDecoration(
-              border: Border(bottom: BorderSide(color: Color(0x22FFFFFF))),
+              border: Border(bottom: BorderSide(color: AppTokens.overlayLightSm)),
             ),
             alignment: Alignment.centerRight,
             child: Row(
@@ -274,7 +274,7 @@ class _Sidebar extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(AppTokens.s16),
               decoration: const BoxDecoration(
-                border: Border(top: BorderSide(color: Color(0x22FFFFFF))),
+                border: Border(top: BorderSide(color: AppTokens.overlayLightSm)),
               ),
               child: Row(
                 children: [

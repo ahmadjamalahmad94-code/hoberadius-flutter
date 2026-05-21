@@ -379,7 +379,7 @@ class _SessionTile extends StatelessWidget {
               CircleAvatar(
                 backgroundColor: session.isCard
                     ? AppTokens.brandSoft
-                    : const Color(0xFFE6F6EC),
+                    : AppTokens.successBg,
                 child: Icon(
                   session.isCard ? Icons.credit_card : Icons.person_outline,
                   color: session.isCard ? AppTokens.brand : AppTokens.green,
@@ -496,7 +496,7 @@ class _MetaChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F7FB),
+        color: AppTokens.surfaceMuted,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTokens.border),
       ),

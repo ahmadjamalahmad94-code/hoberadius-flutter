@@ -76,7 +76,7 @@ class AppSidebar extends StatelessWidget {
               }).toList(),
             ),
           ),
-          const Divider(color: Color(0x33FFFFFF), height: 1),
+          const Divider(color: AppTokens.overlayLightLg, height: 1),
           Padding(
             padding: const EdgeInsets.all(AppTokens.s16),
             child: Text(
@@ -133,7 +133,7 @@ class _Brand extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: AppTokens.s20),
       decoration: const BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Color(0x22FFFFFF), width: 1),
+          bottom: BorderSide(color: AppTokens.overlayLightSm, width: 1),
         ),
       ),
       alignment: Alignment.centerRight,

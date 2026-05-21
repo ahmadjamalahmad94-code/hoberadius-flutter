@@ -39,21 +39,21 @@ class StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, fg, border) = switch (tone) {
       PillTone.green
-          => (AppTokens.greenSoft, AppTokens.greenInk, const Color(0xFF86EFAC)),
+          => (AppTokens.greenSoft, AppTokens.greenInk, AppTokens.successMed),
       PillTone.amber
       || PillTone.orange
-          => (AppTokens.amberSoft, AppTokens.amberInk, const Color(0xFFFCD34D)),
+          => (AppTokens.amberSoft, AppTokens.amberInk, AppTokens.warningMed),
       PillTone.red
-          => (AppTokens.redSoft, AppTokens.redInk, const Color(0xFFFCA5A5)),
+          => (AppTokens.redSoft, AppTokens.redInk, AppTokens.dangerMed),
       PillTone.blue
-          => (AppTokens.blueSoft, AppTokens.blueInk, const Color(0xFFBFDBFE)),
+          => (AppTokens.blueSoft, AppTokens.blueInk, AppTokens.infoMed),
       PillTone.brand
       || PillTone.cyan
       || PillTone.purple
       || PillTone.navy
           => (AppTokens.brandSoft, AppTokens.brandInk, AppTokens.borderStrong),
       PillTone.neutral
-          => (const Color(0xFFF1F5F9), const Color(0xFF64748B), const Color(0xFFCBD5E1)),
+          => (AppTokens.slate100, AppTokens.slate500, AppTokens.slate200),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

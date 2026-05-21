@@ -252,7 +252,7 @@ class _Metric extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTokens.s12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: AppTokens.surfaceMuted,
         borderRadius: BorderRadius.circular(AppTokens.r14),
         border: Border.all(color: AppTokens.border),
       ),

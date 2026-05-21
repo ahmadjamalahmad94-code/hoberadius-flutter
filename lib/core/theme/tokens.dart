@@ -81,6 +81,36 @@ class AppTokens {
   static const Color brandLight     = Color(0xFF8674F1);
 
   // ─────────────────────────────────────────────────────────────
+  //  Neutral surface tints + slate scale.
+  //  Replaces the ad-hoc Color(0xFFF8FAFC) / Color(0xFFEFF2F7) etc.
+  //  that used to leak through screens.
+  // ─────────────────────────────────────────────────────────────
+  static const Color surfaceMuted   = Color(0xFFF8FAFC);
+  static const Color surfaceTinted  = Color(0xFFEFF2F7);
+  static const Color slate100       = Color(0xFFF1F5F9);
+  static const Color slate200       = Color(0xFFCBD5E1);
+  static const Color slate500       = Color(0xFF64748B);
+  /// Border equivalent to `border` but slightly darker — kept for the
+  /// places where the legacy literal 0xFFE5E7EB was used.
+  static const Color borderNeutral  = Color(0xFFE5E7EB);
+
+  // ─────────────────────────────────────────────────────────────
+  //  Translucent white overlays (used on the dark sidebar).
+  // ─────────────────────────────────────────────────────────────
+  static const Color overlayLightLg = Color(0x33FFFFFF);
+  static const Color overlayLightSm = Color(0x22FFFFFF);
+
+  // ─────────────────────────────────────────────────────────────
+  //  «Medium» state colors — sit between Bg and Strong for compact
+  //  badges / pills that need higher saturation than the soft Bg
+  //  but less than the solid Strong.
+  // ─────────────────────────────────────────────────────────────
+  static const Color successMed = Color(0xFF86EFAC);
+  static const Color warningMed = Color(0xFFFCD34D);
+  static const Color dangerMed  = Color(0xFFFCA5A5);
+  static const Color infoMed    = Color(0xFFBFDBFE);
+
+  // ─────────────────────────────────────────────────────────────
   //  Spacing scale
   // ─────────────────────────────────────────────────────────────
   static const double s4  = 4;
