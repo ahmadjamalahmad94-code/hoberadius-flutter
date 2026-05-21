@@ -19,8 +19,17 @@ class ToolsPanelTitle extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: AppTokens.brand),
-        const SizedBox(width: AppTokens.s8),
+        Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: AppTokens.brandSoft,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.center,
+          child: Icon(icon, color: AppTokens.brand, size: 22),
+        ),
+        const SizedBox(width: AppTokens.s12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
