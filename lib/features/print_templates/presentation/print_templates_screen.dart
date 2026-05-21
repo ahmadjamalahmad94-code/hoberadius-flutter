@@ -2,11 +2,13 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/platform/platform_capabilities.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../application/print_templates_controller.dart';
 import '../domain/print_template_model.dart';
+import 'desktop/export_room.dart';
 import 'widgets/template_form.dart';
 import 'widgets/template_list.dart';
 import 'widgets/template_preview_card.dart';
@@ -109,6 +111,24 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
         if (action.preview != null) ...[
           const SizedBox(height: AppTokens.s12),
           TemplatePreviewCard(preview: action.preview!),
+        ],
+        // ── Windows desktop: 3-column export room mirroring the web's
+        //    #export section. Mobile + narrow web keep the existing
+        //    single-column layout below — mobile-safety contract
+        //    preserved (see docs/MOBILE_BASELINE.md). The breakpoint
+        //    check uses BOTH the platform flag AND the layout width,
+        //    so a phone in portrait never sees the desktop layout
+        //    even if the screen is somehow wide.
+        if (PlatformCapabilities.supportsDesktopLayout) ...[
+          const SizedBox(height: AppTokens.s12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              if (constraints.maxWidth < AppTokens.bpDesktop) {
+                return const SizedBox.shrink();
+              }
+              return const ExportRoom();
+            },
+          ),
         ],
         const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
