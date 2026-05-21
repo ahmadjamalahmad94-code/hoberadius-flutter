@@ -129,4 +129,72 @@ class AppTokens {
   static const List<BoxShadow> shLg = [
     BoxShadow(color: Color(0x145B4BD6), blurRadius: 25, offset: Offset(0, 10)),
   ];
+
+  // ─────────────────────────────────────────────────────────────
+  //  Semantic state colors (full Bg / Fg / Strong triplets).
+  //
+  //  Semantics:
+  //    Bg     — large surfaces, banner backgrounds
+  //    Fg     — text / icon on top of the matching Bg
+  //    Strong — solid fills (buttons, badges) when contrast on
+  //             white surface is needed
+  //  Aliases for the existing single/soft/ink names are preserved
+  //  above so nothing breaks during migration.
+  // ─────────────────────────────────────────────────────────────
+  static const Color successBg     = Color(0xFFECFDF5);
+  static const Color successFg     = Color(0xFF047857);
+  static const Color successStrong = Color(0xFF10B981);
+
+  static const Color warningBg     = Color(0xFFFFFBEB);
+  static const Color warningFg     = Color(0xFF92400E);
+  static const Color warningStrong = Color(0xFFF59E0B);
+
+  static const Color dangerBg      = Color(0xFFFEF2F2);
+  static const Color dangerFg      = Color(0xFFB91C1C);
+  static const Color dangerStrong  = Color(0xFFEF4444);
+  static const Color dangerRose    = Color(0xFFF43F5E); // rose accent for delete CTAs
+
+  static const Color infoBg        = Color(0xFFEFF6FF);
+  static const Color infoFg        = Color(0xFF1D4ED8);
+  static const Color infoStrong    = Color(0xFF3B82F6);
+
+  // ─────────────────────────────────────────────────────────────
+  //  Brand gradients — used for hero buttons, KPI cards, accents.
+  //  Codified as constant LinearGradient pairs so widgets pull
+  //  from one source instead of recomposing per call site.
+  // ─────────────────────────────────────────────────────────────
+  static const LinearGradient brandGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [brand, brandInk],
+  );
+  static const LinearGradient successGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [successStrong, successFg],
+  );
+  static const LinearGradient dangerGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [dangerRose, dangerFg],
+  );
+  static const LinearGradient brandSoftWash = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [brandSoft, Color(0x00FFFFFF)],
+  );
+
+  // ─────────────────────────────────────────────────────────────
+  //  Motion tokens — durations and curves used by the canonical
+  //  widgets. Mirrors web's --hub-anim-fast / --hub-ease.
+  // ─────────────────────────────────────────────────────────────
+  static const Duration motionInstant = Duration(milliseconds: 80);
+  static const Duration motionFast    = Duration(milliseconds: 160);
+  static const Duration motionMedium  = Duration(milliseconds: 240);
+  static const Duration motionSlow    = Duration(milliseconds: 360);
+
+  static const Curve motionEase        = Curves.easeOutCubic;
+  static const Curve motionEaseInOut   = Curves.easeInOutCubic;
+  static const Curve motionEmphasized  = Curves.fastOutSlowIn;
+  static const Curve motionSpringy     = Curves.easeOutBack;
 }
