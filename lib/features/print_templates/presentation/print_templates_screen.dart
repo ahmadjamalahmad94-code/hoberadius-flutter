@@ -121,15 +121,27 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
         // ── Windows desktop: 3-column export room mirroring the web's
         //    #export section. Mobile + narrow web keep the existing
         //    single-column layout below — mobile-safety contract
-        //    preserved (see docs/MOBILE_BASELINE.md). The breakpoint
-        //    check uses BOTH the platform flag AND the layout width,
-        //    so a phone in portrait never sees the desktop layout
-        //    even if the screen is somehow wide.
+        //    preserved (see docs/MOBILE_BASELINE.md).
+        //
+        //    Gating rule
+        //    ───────────
+        //    On Windows (or any other true-desktop OS) we always
+        //    render the export room — the user explicitly chose a
+        //    desktop build, so even narrow windows should get the
+        //    new UI. The breakpoint check only applies to web
+        //    builds, where a single Flutter bundle can serve a
+        //    600 px phone browser. The earlier "constraint width
+        //    ≥ bpDesktop" threshold was a bug: after the shell's
+        //    260 px sidebar + 32 px padding, a 1280 px window's
+        //    content area was only ~988 px so the room never
+        //    rendered. Now we gate on `bpTablet` (960) for web AND
+        //    bypass the check entirely on isDesktop.
         if (PlatformCapabilities.supportsDesktopLayout) ...[
           const SizedBox(height: AppTokens.s12),
           LayoutBuilder(
             builder: (context, constraints) {
-              if (constraints.maxWidth < AppTokens.bpDesktop) {
+              if (!PlatformCapabilities.isDesktop &&
+                  constraints.maxWidth < AppTokens.bpTablet) {
                 return const SizedBox.shrink();
               }
               return const ExportRoom();
