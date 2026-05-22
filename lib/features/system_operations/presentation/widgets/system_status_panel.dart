@@ -74,13 +74,14 @@ class SystemStatusPanel extends StatelessWidget {
                     (router) => StatusPill(
                       text:
                           '${router.name.isEmpty ? router.host : router.name}: ${router.enabled ? 'مفعل' : 'معطل'}',
-                      tone:
-                          router.enabled ? PillTone.green : PillTone.neutral,
+                      tone: router.enabled ? PillTone.green : PillTone.neutral,
                     ),
                   )
                   .toList(),
             ),
           ],
+          const SizedBox(height: AppTokens.s16),
+          _VpsHealth(status.vps),
         ],
       ),
     );
@@ -125,6 +126,195 @@ class _MetricTile extends StatelessWidget {
               color: AppTokens.sidebarBg,
               fontWeight: FontWeight.w900,
               fontSize: 20,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VpsHealth extends StatelessWidget {
+  const _VpsHealth(this.vps);
+
+  final VpsStatus vps;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.card,
+        border: Border.all(color: AppTokens.border),
+        borderRadius: BorderRadius.circular(AppTokens.r14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              _InfoChip(
+                Icons.dns_outlined,
+                vps.hostname.isEmpty ? 'VPS' : vps.hostname,
+              ),
+              if (vps.systemUptime.isNotEmpty)
+                _InfoChip(
+                  Icons.power_settings_new,
+                  'تشغيل النظام: ${vps.systemUptime}',
+                ),
+              if (vps.processUptime.isNotEmpty)
+                _InfoChip(
+                  Icons.timer_outlined,
+                  'تشغيل التطبيق: ${vps.processUptime}',
+                ),
+              if ((vps.load['one']) != null)
+                _InfoChip(Icons.speed_outlined, 'Load: ${vps.load['one']}'),
+              _InfoChip(
+                vps.network.pingOk ? Icons.public : Icons.public_off,
+                vps.network.pingMs == null
+                    ? 'Ping ${vps.network.pingOk ? 'سليم' : 'فشل'}'
+                    : 'Ping ${vps.network.pingMs!.toStringAsFixed(1)}ms',
+              ),
+              _InfoChip(
+                vps.network.dnsOk ? Icons.travel_explore : Icons.error_outline,
+                'DNS ${vps.network.dnsOk ? 'سليم' : 'فشل'}',
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 720;
+              final bars = [
+                _UsageBar(label: 'المعالج', pct: vps.cpuPct),
+                _UsageBar(
+                  label: 'الذاكرة',
+                  pct: vps.memory.percent,
+                  caption:
+                      _caption(vps.memory.usedHuman, vps.memory.availableHuman),
+                ),
+                _UsageBar(
+                  label: 'القرص',
+                  pct: vps.disk.percent,
+                  caption: _caption(vps.disk.usedHuman, vps.disk.freeHuman),
+                ),
+              ];
+              if (!wide) {
+                return Column(
+                  children: [
+                    for (final bar in bars) ...[
+                      bar,
+                      const SizedBox(height: AppTokens.s12),
+                    ],
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  for (var i = 0; i < bars.length; i++) ...[
+                    Expanded(child: bars[i]),
+                    if (i != bars.length - 1)
+                      const SizedBox(width: AppTokens.s12),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _caption(String used, String freeOrAvailable) {
+    if (used.isEmpty && freeOrAvailable.isEmpty) return '';
+    if (freeOrAvailable.isEmpty) return 'المستخدم: $used';
+    return 'المستخدم: $used · المتاح: $freeOrAvailable';
+  }
+}
+
+class _UsageBar extends StatelessWidget {
+  const _UsageBar({required this.label, required this.pct, this.caption = ''});
+
+  final String label;
+  final double? pct;
+  final String caption;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = pct ?? 0;
+    final color = value >= 85
+        ? AppTokens.red
+        : value >= 70
+            ? AppTokens.amber
+            : AppTokens.brand;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
+            const Spacer(),
+            Text(
+              pct == null ? '—' : '${pct!.toStringAsFixed(1)}٪',
+              style: TextStyle(color: color, fontWeight: FontWeight.w900),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: pct == null ? null : (value / 100).clamp(0.0, 1.0),
+            minHeight: 8,
+            backgroundColor: AppTokens.borderSoft,
+            valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+        if (caption.isNotEmpty) ...[
+          const SizedBox(height: AppTokens.s4),
+          Text(
+            caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      decoration: BoxDecoration(
+        color: AppTokens.brandSoft,
+        border: Border.all(color: AppTokens.brandLine),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppTokens.brand, size: 16),
+          const SizedBox(width: AppTokens.s8),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppTokens.sidebarBg,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
           ),
         ],

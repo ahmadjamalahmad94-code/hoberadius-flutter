@@ -216,9 +216,7 @@ class _MetricTile extends StatelessWidget {
             width: compact ? 36 : 44,
             height: compact ? 36 : 44,
             decoration: BoxDecoration(
-              color: primary
-                  ? Colors.white.withValues(alpha: 0.18)
-                  : pal.bg,
+              color: primary ? Colors.white.withValues(alpha: 0.18) : pal.bg,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -294,13 +292,88 @@ class _SystemHealth extends StatelessWidget {
     return AppCard(
       title: 'صحة النظام',
       icon: Icons.monitor_heart_outlined,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(child: _Bar(label: 'المعالج', pct: metrics.cpuPct)),
-          const SizedBox(width: AppTokens.s16),
-          Expanded(child: _Bar(label: 'الذاكرة', pct: metrics.ramPct)),
-          const SizedBox(width: AppTokens.s16),
-          Expanded(child: _Bar(label: 'القرص', pct: metrics.diskPct)),
+          Row(
+            children: [
+              Expanded(child: _Bar(label: 'المعالج', pct: metrics.cpuPct)),
+              const SizedBox(width: AppTokens.s16),
+              Expanded(child: _Bar(label: 'الذاكرة', pct: metrics.ramPct)),
+              const SizedBox(width: AppTokens.s16),
+              Expanded(child: _Bar(label: 'القرص', pct: metrics.diskPct)),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s12),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              if (metrics.hostname.isNotEmpty)
+                _HealthChip(icon: Icons.dns_outlined, text: metrics.hostname),
+              if (metrics.systemUptime.isNotEmpty)
+                _HealthChip(
+                  icon: Icons.power_settings_new,
+                  text: 'النظام ${metrics.systemUptime}',
+                ),
+              if (metrics.processUptime.isNotEmpty)
+                _HealthChip(
+                  icon: Icons.timer_outlined,
+                  text: 'التطبيق ${metrics.processUptime}',
+                ),
+              if (metrics.pingOk != null)
+                _HealthChip(
+                  icon: metrics.pingOk! ? Icons.public : Icons.public_off,
+                  text: metrics.pingMs == null
+                      ? 'Google ${metrics.pingOk! ? 'متاح' : 'غير متاح'}'
+                      : 'Google ${metrics.pingMs!.toStringAsFixed(1)}ms',
+                ),
+              if (metrics.dnsOk != null)
+                _HealthChip(
+                  icon: metrics.dnsOk!
+                      ? Icons.travel_explore
+                      : Icons.error_outline,
+                  text: 'DNS ${metrics.dnsOk! ? 'سليم' : 'فشل'}',
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HealthChip extends StatelessWidget {
+  const _HealthChip({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = AppPalette.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      decoration: BoxDecoration(
+        color: p.brandSoft,
+        border: Border.all(color: p.brandLine),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: p.brand, size: 16),
+          const SizedBox(width: AppTokens.s8),
+          Text(
+            text,
+            style: AppTypography.labelSmall.copyWith(
+              color: p.textPrimary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );

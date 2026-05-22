@@ -11,6 +11,12 @@ class DashboardMetrics {
     this.cpuPct,
     this.ramPct,
     this.diskPct,
+    this.systemUptime = '',
+    this.processUptime = '',
+    this.hostname = '',
+    this.pingOk,
+    this.pingMs,
+    this.dnsOk,
     this.recentEvents = const [],
   });
 
@@ -25,6 +31,12 @@ class DashboardMetrics {
   final double? cpuPct;
   final double? ramPct;
   final double? diskPct;
+  final String systemUptime;
+  final String processUptime;
+  final String hostname;
+  final bool? pingOk;
+  final double? pingMs;
+  final bool? dnsOk;
   final List<DashboardEvent> recentEvents;
 
   factory DashboardMetrics.fromJson(Map<String, dynamic> j) {
@@ -33,6 +45,7 @@ class DashboardMetrics {
     final plansMap = _m(j['plans']);
     final nasMap = _m(j['nas']);
     final systemMap = _m(j['system']);
+    final networkMap = _m(systemMap?['network']);
     return DashboardMetrics(
       subscribers: subscribersMap == null
           ? _firstInt([j['subscribers'], j['total_subscribers']])
@@ -66,6 +79,12 @@ class DashboardMetrics {
       cpuPct: _firstDouble([j['cpu_pct'], systemMap?['cpu_pct']]),
       ramPct: _firstDouble([j['ram_pct'], systemMap?['ram_pct']]),
       diskPct: _firstDouble([j['disk_pct'], systemMap?['disk_pct']]),
+      systemUptime: (systemMap?['system_uptime'] ?? '').toString(),
+      processUptime: (systemMap?['process_uptime'] ?? '').toString(),
+      hostname: (systemMap?['hostname'] ?? '').toString(),
+      pingOk: _b(networkMap?['ping_ok']),
+      pingMs: _d(networkMap?['ping_ms']),
+      dnsOk: _b(networkMap?['dns_ok']),
       recentEvents:
           ((j['recent'] ?? j['audit'] ?? const []) as List? ?? const [])
               .whereType<Map<String, dynamic>>()
@@ -87,6 +106,15 @@ class DashboardMetrics {
     if (v == null) return null;
     if (v is num) return v.toDouble();
     return double.tryParse(v.toString());
+  }
+
+  static bool? _b(Object? v) {
+    if (v == null) return null;
+    if (v is bool) return v;
+    final text = v.toString().trim().toLowerCase();
+    if (text == 'true' || text == '1' || text == 'yes') return true;
+    if (text == 'false' || text == '0' || text == 'no') return false;
+    return null;
   }
 
   static double? _firstDouble(List<Object?> values) {

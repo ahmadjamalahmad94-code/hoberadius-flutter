@@ -8,7 +8,15 @@ void main() {
       'cards': {'total': 5000, 'used': 331, 'batches': 9},
       'plans': {'total': 7, 'enabled': 6},
       'nas': {'total': 4, 'enabled': 3},
-      'system': {'cpu_pct': 11.5, 'ram_pct': 44, 'disk_pct': 62},
+      'system': {
+        'cpu_pct': 11.5,
+        'ram_pct': 44,
+        'disk_pct': 62,
+        'hostname': 'vps-1',
+        'system_uptime': '9ي 1س',
+        'process_uptime': '3س',
+        'network': {'ping_ok': true, 'ping_ms': 18.2, 'dns_ok': true},
+      },
       'recent': [
         {
           'action': 'payment.create',
@@ -27,6 +35,10 @@ void main() {
     expect(metrics.plans, 7);
     expect(metrics.nasDevices, 4);
     expect(metrics.cpuPct, 11.5);
+    expect(metrics.hostname, 'vps-1');
+    expect(metrics.systemUptime, '9ي 1س');
+    expect(metrics.pingOk, isTrue);
+    expect(metrics.pingMs, 18.2);
     expect(metrics.recentEvents, hasLength(1));
   });
 

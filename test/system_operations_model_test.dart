@@ -30,6 +30,29 @@ void main() {
           },
         ],
       },
+      'vps': {
+        'hostname': 'vps-1',
+        'platform': 'Linux',
+        'process_uptime': '3س 4د',
+        'system_uptime': '9ي 1س',
+        'cpu_pct': 12.5,
+        'cpu_count': 4,
+        'load': {'one': 0.2, 'five': 0.3, 'fifteen': 0.4},
+        'memory': {
+          'percent': 44,
+          'used_human': '1.2 GB',
+          'available_human': '2.8 GB',
+        },
+        'disk': {'percent': 55, 'free_human': '20 GB', 'path': '/'},
+        'network': {
+          'ping_host': '8.8.8.8',
+          'ping_ok': true,
+          'ping_ms': 22.4,
+          'dns_host': 'google.com',
+          'dns_ok': true,
+          'dns_ip': '142.250.0.0',
+        },
+      },
       'now': '2026-05-20T12:00:00Z',
     });
 
@@ -41,6 +64,11 @@ void main() {
     expect(status.webhooks['delivered'], 5);
     expect(status.routers.single.host, '10.0.0.1');
     expect(status.routers.single.enabled, isTrue);
+    expect(status.vps.hostname, 'vps-1');
+    expect(status.vps.cpuPct, 12.5);
+    expect(status.vps.memory.percent, 44);
+    expect(status.vps.disk.freeHuman, '20 GB');
+    expect(status.vps.network.pingMs, 22.4);
   });
 
   test('SystemDiagnostics and SyncQueueState parse API payloads', () {
