@@ -173,9 +173,50 @@ class ApiClient {
         'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول مرة أخرى.',
       'validation_error' ||
       'bad_request' =>
-        rawMessage.isEmpty ? 'تأكد من البيانات المدخلة.' : rawMessage,
-      _ => rawMessage.isEmpty ? 'تعذّر تنفيذ الطلب.' : rawMessage,
+        _safeVisibleMessage(rawMessage, 'تأكد من البيانات المدخلة.'),
+      _ => _safeVisibleMessage(rawMessage, 'تعذّر تنفيذ الطلب.'),
     };
+  }
+
+  String _safeVisibleMessage(String rawMessage, String fallback) {
+    final msg = rawMessage.trim();
+    if (msg.isEmpty) return fallback;
+    if (_containsArabic(msg)) return msg;
+    final lower = msg.toLowerCase();
+    if (lower.contains('invalid') &&
+        (lower.contains('password') ||
+            lower.contains('credential') ||
+            lower.contains('login') ||
+            lower.contains('username'))) {
+      return 'اسم المستخدم أو كلمة المرور غير صحيحة.';
+    }
+    if (lower.contains('csrf')) {
+      return 'انتهت صلاحية نموذج الحماية. حدّث الصفحة ثم حاول مرة أخرى.';
+    }
+    if (lower.contains('not found')) {
+      return 'العنصر المطلوب غير موجود.';
+    }
+    if (lower.contains('timeout')) {
+      return 'انتهت مهلة الطلب. حاول مرة أخرى.';
+    }
+    if (lower.contains('server') || lower.contains('internal')) {
+      return 'حدث خطأ داخلي في الخادم.';
+    }
+    if (lower.contains('request failed') || lower.contains('bad request')) {
+      return fallback;
+    }
+    return fallback;
+  }
+
+  bool _containsArabic(String value) {
+    return value.runes.any(
+      (r) =>
+          (r >= 0x0600 && r <= 0x06FF) ||
+          (r >= 0x0750 && r <= 0x077F) ||
+          (r >= 0x08A0 && r <= 0x08FF) ||
+          (r >= 0xFB50 && r <= 0xFDFF) ||
+          (r >= 0xFE70 && r <= 0xFEFF),
+    );
   }
 }
 

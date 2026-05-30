@@ -6,6 +6,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/core/api/api_client.dart';
 import 'package:hoberadius_app/core/api/api_endpoint_storage.dart';
+import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/core/auth/token_storage.dart';
 
 class _MemoryTokenStorage implements TokenStorage {
@@ -59,6 +60,34 @@ class _CountingAdapter implements HttpClientAdapter {
   }
 }
 
+class _ApiErrorAdapter implements HttpClientAdapter {
+  _ApiErrorAdapter(this.code, this.message);
+
+  final String code;
+  final String message;
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      jsonEncode({
+        'ok': false,
+        'error': {'code': code, 'message': message},
+      }),
+      400,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+}
+
 void main() {
   test('ApiClient coalesces identical in-flight GET requests', () async {
     final client = ApiClient(_MemoryTokenStorage(), _MemoryEndpointStorage());
@@ -73,5 +102,22 @@ void main() {
     final results = await Future.wait([first, second]);
     expect(adapter.calls, 1);
     expect(results[0]['data'], results[1]['data']);
+  });
+
+  test('ApiClient hides raw English API messages from visible errors',
+      () async {
+    final client = ApiClient(_MemoryTokenStorage(), _MemoryEndpointStorage());
+    client.dio.httpClientAdapter = _ApiErrorAdapter(
+      'bad_request',
+      'Invalid username or password',
+    );
+
+    try {
+      await client.get('/api/v1/dashboard');
+      fail('request should fail');
+    } on ApiException catch (e) {
+      expect(e.message, 'اسم المستخدم أو كلمة المرور غير صحيحة.');
+      expect(e.message, isNot(contains('Invalid')));
+    }
   });
 }

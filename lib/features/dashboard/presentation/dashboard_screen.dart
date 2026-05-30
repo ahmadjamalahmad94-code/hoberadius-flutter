@@ -6,6 +6,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../data/dashboard_repository.dart';
 import '../domain/dashboard_model.dart';
@@ -41,10 +42,11 @@ class DashboardScreen extends ConsumerWidget {
             padding: EdgeInsets.all(AppTokens.s40),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (e, _) => EmptyState(
-            icon: Icons.error_outline,
+          error: (e, _) => HubErrorState(
             title: 'تعذّر جلب بيانات اللوحة',
-            subtitle: '$e',
+            subtitle: 'افحص اتصال التطبيق بالريدياس ثم حاول التحديث مرة أخرى.',
+            onRetry: () => ref.invalidate(dashboardFutureProvider),
+            showToastOnce: true,
           ),
           data: (m) => _DashboardBody(metrics: m),
         ),
