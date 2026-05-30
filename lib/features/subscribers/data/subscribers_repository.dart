@@ -1,18 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../domain/subscriber_360_model.dart';
 import '../domain/subscriber_model.dart';
 
 class SubscribersRepository {
   SubscribersRepository(this._api);
   final ApiClient _api;
 
-  Future<List<Subscriber>> list({String? status, int limit = 100, int offset = 0}) async {
-    final res = await _api.get('/api/v1/accounts', query: {
-      if (status != null) 'status': status,
-      'limit': limit,
-      'offset': offset,
-    },);
+  Future<List<Subscriber>> list({
+    String? status,
+    int limit = 100,
+    int offset = 0,
+  }) async {
+    final res = await _api.get(
+      '/api/v1/accounts',
+      query: {
+        if (status != null) 'status': status,
+        'limit': limit,
+        'offset': offset,
+      },
+    );
     final items = (res['data']?['items'] ?? res['items'] ?? []) as List;
     return items
         .whereType<Map<String, dynamic>>()
@@ -25,17 +33,26 @@ class SubscribersRepository {
     return Subscriber.fromJson(_payload(res));
   }
 
+  Future<Subscriber360> get360(String username) async {
+    final res = await _api.get('/api/v1/accounts/$username/360');
+    return Subscriber360.fromJson(_payload(res));
+  }
+
   Future<Subscriber> create(Subscriber s) async {
     final res = await _api.post('/api/v1/accounts', body: s.toCreateBody());
     return Subscriber.fromJson(_payload(res));
   }
 
   Future<Subscriber> update(Subscriber s) async {
-    final res = await _api.patch('/api/v1/accounts/${s.username}', body: s.toPatchBody());
+    final res = await _api.patch(
+      '/api/v1/accounts/${s.username}',
+      body: s.toPatchBody(),
+    );
     return Subscriber.fromJson(_payload(res));
   }
 
-  Future<void> delete(String username) => _api.delete('/api/v1/accounts/$username');
+  Future<void> delete(String username) =>
+      _api.delete('/api/v1/accounts/$username');
 
   Future<void> disable(String username) =>
       _api.post('/api/v1/accounts/$username/disable');
@@ -57,8 +74,7 @@ class SubscribersRepository {
     }
   }
 
-  Future<void> resetPassword(String username, String newPassword) =>
-      _api.post(
+  Future<void> resetPassword(String username, String newPassword) => _api.post(
         '/api/v1/accounts/$username/reset_password',
         body: {'new_password': newPassword},
       );

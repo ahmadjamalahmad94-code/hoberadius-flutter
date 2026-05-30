@@ -197,8 +197,7 @@ class _Table extends StatelessWidget {
             dense: density == _Density.compact,
             contentPadding: EdgeInsets.symmetric(
               horizontal: AppTokens.s16,
-              vertical:
-                  density == _Density.compact ? 0 : AppTokens.s8,
+              vertical: density == _Density.compact ? 0 : AppTokens.s8,
             ),
             leading: CircleAvatar(
               backgroundColor: p.brandSoft,
@@ -222,6 +221,14 @@ class _Table extends StatelessWidget {
               children: [
                 StatusPill(text: _statusLabel(s.status), tone: tone),
                 IconButton(
+                  tooltip: 'ملف 360',
+                  onPressed: () => ctx.goNamed(
+                    'subscriber-360',
+                    pathParameters: {'username': s.username},
+                  ),
+                  icon: const Icon(Icons.dashboard_customize_outlined),
+                ),
+                IconButton(
                   tooltip: 'الدفعات والسلف',
                   onPressed: () => ctx.goNamed(
                     'subscriber-finance',
@@ -232,7 +239,7 @@ class _Table extends StatelessWidget {
               ],
             ),
             onTap: () => ctx.goNamed(
-              'subscriber-edit',
+              'subscriber-360',
               pathParameters: {'username': s.username},
             ),
           ),

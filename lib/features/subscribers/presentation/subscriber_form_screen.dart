@@ -214,6 +214,15 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
               if (widget.isEdit)
                 OutlinedButton.icon(
                   onPressed: () => context.goNamed(
+                    'subscriber-360',
+                    pathParameters: {'username': _c['username']!.text.trim()},
+                  ),
+                  icon: const Icon(Icons.dashboard_customize_outlined),
+                  label: const Text('ملف 360'),
+                ),
+              if (widget.isEdit)
+                OutlinedButton.icon(
+                  onPressed: () => context.goNamed(
                     'subscriber-finance',
                     pathParameters: {'username': _c['username']!.text.trim()},
                   ),
@@ -235,8 +244,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 color: AppTokens.dangerBg,
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child:
-                  Text(error, style: const TextStyle(color: AppTokens.red)),
+              child: Text(error, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           const SizedBox(height: AppTokens.s16),
