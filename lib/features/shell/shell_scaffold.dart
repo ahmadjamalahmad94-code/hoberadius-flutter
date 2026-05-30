@@ -112,6 +112,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/cards/import',
       ),
       _SidebarItem(
+        icon: Icons.people_alt_outlined,
+        label: 'مستخدمو الكروت',
+        routeName: 'card-users',
+        path: '/card-users',
+      ),
+      _SidebarItem(
         icon: Icons.print_outlined,
         label: 'تصميم وتصدير',
         routeName: 'print-templates',

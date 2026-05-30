@@ -19,6 +19,8 @@ import '../../features/tools/presentation/tools_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/backups/presentation/backups_screen.dart';
 import '../../features/bandwidth_schedules/presentation/bandwidth_schedules_screen.dart';
+import '../../features/card_users/presentation/card_user_360_screen.dart';
+import '../../features/card_users/presentation/card_users_screen.dart';
 import '../../features/cards/presentation/card_batch_detail_screen.dart';
 import '../../features/cards/presentation/card_batch_edit_screen.dart';
 import '../../features/cards/presentation/card_batch_form_screen.dart';
@@ -152,6 +154,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'card-batch-edit',
                 builder: (ctx, st) => CardBatchEditScreen(
                   batchId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+                ),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/card-users',
+            name: 'card-users',
+            builder: (ctx, st) => const CardUsersScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'card-user-360',
+                builder: (ctx, st) => CardUser360Screen(
+                  cardUserId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
                 ),
               ),
             ],
