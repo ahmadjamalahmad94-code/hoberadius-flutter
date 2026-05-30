@@ -2,19 +2,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/features/saas_modules/domain/saas_module_model.dart';
 
 void main() {
-  test('SaasModuleSnapshot parses module records and stats', () {
-    final snapshot = SaasModuleSnapshot.fromJson({
-      'items': [
-        {'id': 7, 'name': 'API pool', 'enabled': true},
-      ],
-      'count': 1,
-      'stats': {'active': 1},
+  test('SaaS module record hides raw status codes from visible text', () {
+    final record = SaasRecord.fromJson({
+      'id': 1,
+      'status': 'paid',
+      'enabled': true,
+      'name': 'اشتراك شهري',
     });
 
-    expect(snapshot.count, 1);
-    expect(snapshot.stats['active'], 1);
-    expect(snapshot.items.single.id, 7);
-    expect(snapshot.items.single.text('enabled'), 'نعم');
-    expect(snapshot.items.single.text('missing'), 'غير محدد');
+    expect(record.rawText('status'), 'paid');
+    expect(record.text('status'), 'مدفوعة');
+    expect(record.text('enabled'), 'مفعّلة');
+  });
+
+  test('service and ticket statuses are Arabic friendly', () {
+    expect(
+      SaasRecord.fromJson({'status': 'given'}).text('status'),
+      'مسلمة للعميل',
+    );
+    expect(
+      SaasRecord.fromJson({'status': 'pending'}).text('status'),
+      'بانتظار متابعة',
+    );
+    expect(
+      SaasRecord.fromJson({'status': 'revoked'}).text('status'),
+      'ملغاة',
+    );
   });
 }

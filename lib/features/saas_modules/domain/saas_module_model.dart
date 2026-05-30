@@ -12,6 +12,12 @@ class SaasRecord {
   int get id => _asInt(values['id']);
 
   String text(String key) {
+    final raw = rawText(key);
+    if (raw == 'غير محدد') return raw;
+    return _valueLabel(key, raw);
+  }
+
+  String rawText(String key) {
     final value = values[key];
     if (value == null || value.toString().isEmpty) return 'غير محدد';
     if (value is bool) return value ? 'نعم' : 'لا';
@@ -56,4 +62,39 @@ int _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse((value ?? '').toString()) ?? 0;
+}
+
+String _valueLabel(String key, String raw) {
+  if (key == 'status') {
+    return switch (raw) {
+      'active' => 'مفعّلة',
+      'inactive' => 'غير مفعّلة',
+      'enabled' => 'مفعّلة',
+      'disabled' => 'معطّلة',
+      'paid' => 'مدفوعة',
+      'unpaid' => 'غير مدفوعة',
+      'draft' => 'مسودة',
+      'cancelled' => 'ملغاة',
+      'void' => 'ملغاة',
+      'revoked' => 'ملغاة',
+      'used' => 'مستخدمة',
+      'available' => 'متاحة',
+      'given' => 'مسلمة للعميل',
+      'returned' => 'مسترجعة',
+      'lost' => 'مفقودة',
+      'maintenance' => 'صيانة',
+      'open' => 'مفتوحة',
+      'pending' => 'بانتظار متابعة',
+      'closed' => 'مغلقة',
+      _ => raw,
+    };
+  }
+  if (key == 'enabled') {
+    return switch (raw) {
+      '1' || 'true' || 'نعم' => 'مفعّلة',
+      '0' || 'false' || 'لا' => 'معطّلة',
+      _ => raw,
+    };
+  }
+  return raw;
 }

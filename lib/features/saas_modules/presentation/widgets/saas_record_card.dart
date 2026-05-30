@@ -57,7 +57,7 @@ class SaasRecordCard extends ConsumerWidget {
             spacing: AppTokens.s8,
             runSpacing: AppTokens.s8,
             children: [
-              if (def.canRevokeVoucher && record.text('status') != 'revoked')
+              if (def.canRevokeVoucher && record.rawText('status') != 'revoked')
                 OutlinedButton.icon(
                   onPressed: () => _run(
                     context,
@@ -69,7 +69,7 @@ class SaasRecordCard extends ConsumerWidget {
                   icon: const Icon(Icons.block),
                   label: const Text('إلغاء القسيمة'),
                 ),
-              if (def.canMarkPaid && record.text('status') != 'paid')
+              if (def.canMarkPaid && record.rawText('status') != 'paid')
                 OutlinedButton.icon(
                   onPressed: () => _run(
                     context,
@@ -172,9 +172,7 @@ class SaasRecordCard extends ConsumerWidget {
     await _run(
       context,
       ref,
-      () => ref
-          .read(saasModulesRepositoryProvider)
-          .delete(def.path, record.id),
+      () => ref.read(saasModulesRepositoryProvider).delete(def.path, record.id),
     );
   }
 
