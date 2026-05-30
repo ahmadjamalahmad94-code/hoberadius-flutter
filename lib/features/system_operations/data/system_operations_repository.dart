@@ -69,6 +69,11 @@ class SystemOperationsRepository {
     return _data(res);
   }
 
+  Future<BridgeEventsState> bridgeEvents() async {
+    final res = await _api.get('/api/v1/system/admin-bridge/events');
+    return BridgeEventsState.fromJson(_data(res));
+  }
+
   Map<String, dynamic> _data(Map<String, dynamic> response) {
     final data = response['data'];
     return data is Map<String, dynamic> ? data : const {};

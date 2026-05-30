@@ -24,6 +24,11 @@ final licenseFileProvider = FutureProvider.autoDispose<LicenseFileState>((ref) {
   return ref.watch(systemOperationsRepositoryProvider).licenseFile();
 });
 
+final bridgeEventsProvider =
+    FutureProvider.autoDispose<BridgeEventsState>((ref) {
+  return ref.watch(systemOperationsRepositoryProvider).bridgeEvents();
+});
+
 String systemStatusLabel(String value) {
   return switch (value) {
     'active' => 'نشط',

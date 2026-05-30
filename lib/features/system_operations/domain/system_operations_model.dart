@@ -440,6 +440,70 @@ class BridgeSnapshotSummary {
   }
 }
 
+class BridgeEventsState {
+  const BridgeEventsState({
+    required this.items,
+    required this.summary,
+    required this.adminCallback,
+  });
+
+  final List<BridgeEventItem> items;
+  final Map<String, dynamic> summary;
+  final Map<String, dynamic> adminCallback;
+
+  factory BridgeEventsState.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    return BridgeEventsState(
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map>()
+              .map((item) => BridgeEventItem.fromJson(_map(item)))
+              .toList()
+          : const [],
+      summary: _map(json['summary']),
+      adminCallback: _map(json['admin_callback']),
+    );
+  }
+
+  int get total => _int(summary['total']);
+}
+
+class BridgeEventItem {
+  const BridgeEventItem({
+    required this.id,
+    required this.eventType,
+    required this.label,
+    required this.severity,
+    required this.status,
+    required this.reference,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String eventType;
+  final String label;
+  final String severity;
+  final String status;
+  final String reference;
+  final String createdAt;
+
+  factory BridgeEventItem.fromJson(Map<String, dynamic> json) {
+    return BridgeEventItem(
+      id: _int(json['id']),
+      eventType: _string(json['event_type']),
+      label: _string(json['label_ar']).isNotEmpty
+          ? _string(json['label_ar'])
+          : 'حدث تشغيلي',
+      severity: _string(json['severity']).isEmpty
+          ? 'info'
+          : _string(json['severity']),
+      status: _string(json['status']),
+      reference: _string(json['reference']),
+      createdAt: _string(json['created_at']),
+    );
+  }
+}
+
 Map<String, dynamic> _map(Object? value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {

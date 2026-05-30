@@ -8,6 +8,7 @@ import '../application/system_operations_providers.dart';
 import '../data/system_operations_repository.dart';
 import '../domain/system_operations_model.dart';
 import 'widgets/system_diagnostics_panel.dart';
+import 'widgets/system_bridge_events_panel.dart';
 import 'widgets/system_license_file_panel.dart';
 import 'widgets/system_loading_card.dart';
 import 'widgets/system_status_panel.dart';
@@ -30,6 +31,7 @@ class _SystemOperationsScreenState
   @override
   Widget build(BuildContext context) {
     final licenseFile = ref.watch(licenseFileProvider);
+    final bridgeEvents = ref.watch(bridgeEventsProvider);
     final status = ref.watch(systemStatusProvider);
     final diagnostics = ref.watch(systemDiagnosticsProvider);
     final sync = ref.watch(syncQueueProvider(_syncStatus));
@@ -77,6 +79,16 @@ class _SystemOperationsScreenState
           ),
         ),
         const SizedBox(height: AppTokens.s12),
+        bridgeEvents.when(
+          loading: () => const SystemLoadingCard(title: 'آخر أحداث الربط'),
+          error: (_, __) => HubErrorState(
+            title: 'تعذر جلب أحداث الربط',
+            subtitle: 'لم يتمكن التطبيق من قراءة سجل الربط الآن.',
+            onRetry: () => ref.invalidate(bridgeEventsProvider),
+          ),
+          data: (data) => SystemBridgeEventsPanel(state: data),
+        ),
+        const SizedBox(height: AppTokens.s12),
         status.when(
           loading: () => const SystemLoadingCard(title: 'حالة النظام'),
           error: (_, __) => HubErrorState(
@@ -118,6 +130,7 @@ class _SystemOperationsScreenState
 
   void _refreshAll() {
     ref.invalidate(licenseFileProvider);
+    ref.invalidate(bridgeEventsProvider);
     ref.invalidate(systemStatusProvider);
     ref.invalidate(systemDiagnosticsProvider);
     ref.invalidate(syncQueueProvider(_syncStatus));

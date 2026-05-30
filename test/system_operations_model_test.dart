@@ -165,4 +165,31 @@ void main() {
     expect(state.activeServicesCount, 1);
     expect(state.limits['subscribers'], isA<Map<String, dynamic>>());
   });
+
+  test('BridgeEventsState parses local bridge event log', () {
+    final state = BridgeEventsState.fromJson({
+      'items': [
+        {
+          'id': 5,
+          'event_type': 'heartbeat.sent',
+          'label_ar': 'تم إرسال نبض الحالة',
+          'severity': 'info',
+          'status': 'recorded',
+          'reference': 'heartbeat-1',
+          'created_at': '2026-05-30T11:00:00Z',
+        },
+      ],
+      'summary': {
+        'total': 1,
+        'by_severity': {'info': 1},
+      },
+      'admin_callback': {'status': 'not_configured'},
+    });
+
+    expect(state.total, 1);
+    expect(state.items.single.id, 5);
+    expect(state.items.single.label, 'تم إرسال نبض الحالة');
+    expect(state.items.single.reference, 'heartbeat-1');
+    expect(state.adminCallback['status'], 'not_configured');
+  });
 }
