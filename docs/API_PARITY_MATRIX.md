@@ -1,115 +1,81 @@
-# API Parity Matrix — Flask Web ⇄ JSON API ⇄ Flutter Client
+# مصفوفة تغطية الريدياس Web / API / Flutter
 
-> Source of truth for backend/Flutter alignment. Update this whenever you add or change a feature in either side.
+هذا الملف هو سجل التنفيذ بين:
 
-**Legend**:
-- `✅ ready` — endpoint exists + Flutter wired to it
-- `⚠️ partial` — endpoint exists but missing fields or actions
-- `❌ missing` — no API yet
-- `📱 mobile` — should be in the mobile/desktop app
-- `🌐 web-only` — kept exclusively on the Flask web admin
-- `🔧 flag` — admin/super-admin only
+- الريدياس Web داخل `radius-module/app/templates/radius`.
+- واجهات JSON داخل `radius-module/app/api/v1`.
+- تطبيق Flutter داخل `radius-module-app/lib/features`.
 
-The Flask web app at `/admin/radius/*` is the primary web interface. The Flutter app at `radius-module-app` is the Android/iOS/Windows admin client. Both consume the same backend services; only the protocol differs (HTML form-post vs JSON).
+القرار المعتمد: كل الويب ينتقل إلى Flutter أصلي للموبايل وWindows. أي صفحة لا تملك API حقيقي يتم بناء API لها أولًا، ثم شاشة Flutter. لا WebView ولا بيانات وهمية للميزات الإنتاجية.
 
----
+## حالات التغطية
 
-## Core domain (mobile-first)
-
-| Feature | Web routes | Backend service | API now | Missing API | Flutter screen | Status | Priority | Slice |
-|---|---|---|---|---|---|---|---|---|
-| **Login** | `/login`, `/logout` | `AdminsService.authenticate` | `POST /api/admin/login` `GET /api/admin/me` `POST /api/admin/logout` | — | `LoginScreen` | ✅ ready | P0 | done |
-| **Dashboard** | `GET /` | `build_dashboard_metrics` | `GET /api/v1/dashboard` | — | `DashboardScreen` | ✅ ready | P0 | done |
-| **Subscribers (Users) list** | `GET /users` | `UsersService.list` | `GET /api/v1/accounts` | — | `SubscribersListScreen` | ✅ ready | P0 | done |
-| **Subscriber create** | `POST /users` | `UsersService.create` | `POST /api/v1/accounts` | full metadata + working_days + bandwidth fields | `SubscriberFormScreen (new)` | ⚠️ partial | P0 | **A** |
-| **Subscriber update** | `POST /users/<u>` | `UsersService.update` | `PATCH /api/v1/accounts/<u>` | same as create — full RM-H1 fields | `SubscriberFormScreen (edit)` | ⚠️ partial | P0 | **A** |
-| **Subscriber detail** | `GET /users/<u>/edit` | `UsersService.get` | `GET /api/v1/accounts/<u>` | metadata not flattened in response | `SubscriberFormScreen` | ⚠️ partial | P0 | **A** |
-| **Subscriber delete** | `POST /users/<u>/delete` | `UsersService.delete` | `DELETE /api/v1/accounts/<u>` | — | swipe-to-delete | ✅ ready (api) | P1 | A |
-| **Subscriber toggle** | `POST /users/<u>/toggle` | enable/disable | `POST /api/v1/accounts/<u>/disable` `POST /api/v1/accounts/<u>/enable` | — | from list/detail | ✅ ready (api) | P1 | A |
-| **Subscriber extend time** | `POST /users/<u>/extend` | `UsersService.extend_time` | `POST /api/v1/accounts/<u>/extend_time` | — | from detail | ✅ ready (api) | P1 | A |
-| **Subscriber usage** | inline in edit form | direct DB | `GET /api/v1/accounts/<u>/usage` | — | detail card | ✅ ready (api) | P1 | A |
-| **Plans (Profiles) list** | `GET /plans` | `PlansService.list` | `GET /api/v1/profiles` | — | `PlansListScreen` | ✅ ready | P0 | done |
-| **Plans create** | `POST /plans` | `PlansService.create` | — | `POST /api/v1/profiles` | new screen | ❌ missing | P1 | **B** |
-| **Plans update** | `POST /plans/<id>` | `PlansService.update` | — | `PATCH /api/v1/profiles/<id>` | edit screen | ❌ missing | P1 | **B** |
-| **Plans delete** | `POST /plans/<id>/delete` | `PlansService.delete` | — | `DELETE /api/v1/profiles/<id>` | swipe-to-delete | ❌ missing | P1 | **B** |
-| **Cards generate** | `POST /cards/generate` | `CardsService.generate_batch` | `POST /api/v1/cards/generate` | — | `CardBatchFormScreen` | ✅ ready | P0 | done |
-| **Cards batches list** | `GET /cards/batches` | `CardsService.list_batches` | — | `GET /api/v1/cards/batches` | `CardsListScreen` (currently empty) | ❌ missing | P1 | B/C |
-| **Cards of batch** | `GET /cards/batches/<id>/cards` | repo direct | — | `GET /api/v1/cards/batches/<id>/cards` | batch detail screen | ❌ missing | P1 | B/C |
-| **Cards revoke** | `POST /cards/<id>/revoke` | `CardsService.revoke_card` | `POST /api/v1/cards/<id>/revoke` | — | from batch detail | ✅ ready (api) | P1 | C |
-| **NAS list** | `GET /devices` | `NasService.list` | `GET /api/v1/nas` | — | `NasListScreen` | ✅ ready | P0 | done |
-| **NAS create** | `POST /devices` | `NasService.create` | — | `POST /api/v1/nas` | new screen | ❌ missing | P1 | **C** |
-| **NAS update** | `POST /devices/<id>` | `NasService.update` | — | `PATCH /api/v1/nas/<id>` | edit screen | ❌ missing | P1 | **C** |
-| **NAS delete** | `POST /devices/<id>/delete` | `NasService.delete` | — | `DELETE /api/v1/nas/<id>` | swipe-to-delete | ❌ missing | P1 | **C** |
-| **NAS test** | `POST /devices/<id>/test` | `NasService.test_device` | — | `POST /api/v1/nas/<id>/test` | test button | ❌ missing | P1 | **C** |
-| **Online sessions** | `GET /online` | `SessionsService.list_online` | `GET /api/v1/sessions/online` | — | new mobile screen | ✅ ready (api) | P1 | D |
-| **Disconnect session** | `POST /online/disconnect` | `SessionsService.disconnect` | `POST /api/v1/sessions/disconnect` | — | from sessions | ✅ ready (api) | P1 | D |
-| **Admins list** | `GET /admins` | `AdminsService.list_admins` | — | `GET /api/admin/admins` | `AdminsListScreen` | ❌ missing | P1 | **D** |
-| **Admin create** | `POST /admins` | `AdminsService.create_admin` | — | `POST /api/admin/admins` | new screen | ❌ missing | P1 | **D** |
-| **Admin update** | `POST /admins/<id>` | `AdminsService.update_admin` | — | `PATCH /api/admin/admins/<id>` | edit screen | ❌ missing | P1 | **D** |
-| **Admin delete** | `POST /admins/<id>/delete` | `AdminsService.delete_admin` | — | `DELETE /api/admin/admins/<id>` | from list | ❌ missing | P2 | D |
-| **Roles list** | `GET /roles` | `AdminsService.list_roles` | — | `GET /api/admin/roles` | `RolesListScreen` | ❌ missing | P1 | **D** |
-| **Role create/update/delete** | `POST /roles*` | `AdminsService.*role` | — | full CRUD | role form | ❌ missing | P2 | D |
-| **Audit log** | `GET /audit` | `RadiusAuditService.list` | — | `GET /api/v1/audit` | read-only mobile view | ❌ missing | P2 | D |
-
----
-
-## Operational / config (web-better but mobile-helpful)
-
-| Feature | Web routes | API now | Plan |
-|---|---|---|---|
-| **MikroTik configs** | `/mt*` (CRUD + test) | `GET/POST/PATCH/DELETE /api/v1/mikrotik` + `/test` | ✅ ready (api), defer Flutter UI |
-| **Webhooks** | `/webhooks*` | `GET/POST /api/v1/webhooks/config` `POST /api/v1/webhooks/test` | ✅ ready (api), defer Flutter UI |
-| **System status** | `/_status` | covered by `/api/v1/dashboard.system` | ⚠️ partial; consider `/api/v1/status` later |
-| **Sync queue** | `/sync*` | — | ❌ missing; useful as read-only mobile widget |
-| **Settings** | `/settings` | — | 🌐 web-only |
-| **Tenants** | `/tenants*` | — | 🌐 web-only (super-admin) |
-| **API tokens** | `/tokens*` | — | 🌐 web-only (security) |
-
-## Web-only by design
-
-| Feature | Reason |
+| الحالة | معناها |
 |---|---|
-| Reports (10 reports) | heavy data tables, web UX better. JSON export later if needed. |
-| Tools (set_speeds bulk, maintenance, general_adj, test_auth UI, radius_log live) | bulk/diag tools, web-better. `tool_radius_log.json` already callable. |
-| SaaS modules (invoices/vouchers/tickets/services/bandwidth/pools) | separate billing workflow; mobile app focuses on RADIUS ops. |
-| Share groups | infrequent admin task. |
-| Overviews (`/users/overview`, `/plans/overview`) | analytical, web tables. |
+| مكتمل | يوجد Web + API + Flutter route/screen فعلي |
+| ناقص Flutter | يوجد Web + API، لكن شاشة Flutter غير موجودة أو غير مكتملة |
+| ناقص API | يوجد Web، ولا يوجد API كاف للتطبيق |
+| يحتاج تدقيق | موجود جزئيًا لكن يحتاج مقارنة حقول وأفعال مع الويب |
 
----
+## أولوية التنفيذ الحالية
 
-## Per-slice scope
+| الأولوية | المجموعة | الهدف |
+|---|---|---|
+| P0 | الأساس | الدخول، رابط API، اللغة العربية، حالات التحميل/الفارغ/الخطأ، والداشبورد |
+| P1 | التشغيل اليومي | المشتركين، الكروت، الباقات، الجلسات، NAS، MikroTik |
+| P2 | الترخيص والمزامنة | ملف الترخيص، حالة الربط، مزامنة العقد، النسخ الاحتياطي، عمليات النظام |
+| P3 | المال والخدمات | التحصيل، المحافظ، الديون، السلف، الفواتير، طلبات الخدمات والتذاكر |
+| P4 | التحكم المتقدم | Network Policy، Site Exit، الوصول عن بعد، الأحداث والمخاطر، الاتصالات |
+| P5 | البوابات | بوابة المشترك، بوابة الكروت، مستخدمو الكروت والسوق |
+| P6 | التقارير والإدارة | التقارير، التدقيق، الإعدادات، المفاتيح، المستأجرون، الأرشفة، سلة المحذوفات |
 
-### Slice A — Subscribers full parity
-- **Backend**: extend `accounts_create` + `accounts_patch` to accept all RM-H1 fields and `metadata` JSON; serializer to flatten metadata for GET.
-- **Flutter**: hook `SubscriberFormScreen` to real create/update; round-trip metadata; add disable/enable/extend actions on the detail.
-- **Audit**: every write already goes through `UsersService` which records audit entries — no extra work.
+## مصفوفة المرحلة الأولى
 
-### Slice B — Plans CUD
-- **Backend**: add `POST /api/v1/profiles`, `PATCH /api/v1/profiles/<id>`, `DELETE /api/v1/profiles/<id>` calling `PlansService`. Full RM-H3 fields incl. metadata.
-- **Flutter**: restore `PlanFormScreen` (delete now, write fresh from the model); add to router.
+| المجال | صفحات Web المرجعية | API الحالي | Flutter الحالي | الحالة | أولوية | الشريحة |
+|---|---|---|---|---|---|---|
+| الدخول | `login.html` | `/api/admin/login`, `/api/admin/me`, `/api/admin/logout` | `LoginScreen` | يحتاج تدقيق نصوص عربية وحالات فشل | P0 | F0 |
+| الداشبورد | `dashboard.html` | `/api/v1/dashboard` | `DashboardScreen` | يحتاج مقارنة بصرية مع الويب بعد آخر تعديلات | P0 | F0 |
+| المشتركين | `users_list.html`, `users_form.html`, `users_profile.html`, `subscriber_360.html` | `/api/v1/accounts/*` | `SubscribersListScreen`, `SubscriberFormScreen` | يحتاج تدقيق حقول 360 والأفعال السريعة | P1 | F1 |
+| الكروت | `cards_*`, `cards_checker_v2.html`, `card_users.html`, `card_user_360.html` | `/api/v1/cards/*`, `/api/v1/hotspot-cards/*` | `CardsListScreen`, `CardCheckerScreen`, batch screens | ناقص Flutter لصفحات مستخدمي الكروت والسوق | P1/P5 | F2/F9 |
+| الباقات والسرعات | `plans_*`, `bandwidth_*`, `_speed_rules_panel.html` | `/api/v1/profiles`, `/api/v1/bandwidth-schedules`, `/api/v1/bandwidth-profiles` | `PlansListScreen`, `PlanFormScreen`, `BandwidthSchedulesScreen` | يحتاج تدقيق parity للحقول المتقدمة | P1 | F3 |
+| الجلسات | `sessions_list.html`, تقارير الجلسات | `/api/v1/sessions/online`, `/api/v1/accounting/*` | `SessionsListScreen` | يحتاج توسيع تفاصيل المحاسبة والتاريخ | P1 | F4 |
+| NAS وأجهزة الشبكة | `devices_*`, `network_devices_*` | `/api/v1/nas`, `/api/v1/devices` | `NasListScreen`, `NasFormScreen`, `DeviceFingerprintsScreen` | ناقص Flutter لأجهزة الشبكة المتقدمة | P1/P4 | F5/F8 |
+| MikroTik | `mt_*`, `setup_wizard*` | `/api/v1/mikrotik`, `/api/v1/mikrotik-control/*` | `MikrotikScreen` | ناقص Flutter للـ setup wizard وعمليات الراوتر | P1/P2 | F6 |
+| ملف الترخيص والمزامنة | `license_file.html`, `admin_bridge.html`, `sync_list.html` | `/api/v1/system/*` جزئيًا | `SystemOperationsScreen` | ناقص API/Flutter باسم واضح لملف الترخيص | P2 | F7 |
+| النسخ الاحتياطي | `backups.html`, `mt_backups.html` | `/api/v1/backups/*` | `BackupsScreen` | يحتاج توسيع عرض Google Drive وحالة الخدمة | P2 | F7 |
+| المال والتحصيل | `finance_*`, `payment_collection_*`, `users_finance.html` | `/api/v1/payments/*`, `/api/v1/ledger`, `/api/v1/loans`, `/api/v1/invoices` | `LedgerScreen`, `FinancialReportsScreen`, `SubscriberFinanceScreen` | ناقص Flutter لمركز التحصيل والمراجعة | P3 | F10 |
+| الخدمات والتذاكر | `services_*`, `tickets_*`, `ticket_view.html` | `/api/v1/services`, `/api/v1/tickets` | ضمن `SaasModulesScreen` جزئيًا | يحتاج شاشات أصلية واضحة | P3 | F11 |
+| Network Policy | `network_policy_*`, `site_exit.html`, `remote_device_access.html` | `/api/v1/network-policy/*` | غير موجود | ناقص Flutter | P4 | F12 |
+| الأحداث والمخاطر | `events_*` | غير واضح كـ API مستقل | غير موجود | ناقص API ثم Flutter | P4 | F13 |
+| الاتصالات | `communications_*`, `network_telegram_settings.html` | غير واضح كـ API مستقل | غير موجود | ناقص API ثم Flutter | P4 | F14 |
+| بوابة المشترك | `portal_subscriber*` | يحتاج تثبيت endpoints portal كاملة | غير موجود كتطبيق مشترك | ناقص API/Flutter | P5 | F15 |
+| بوابة الكروت | `portal_card*`, `card_marketplace.html`, `card_pricing*` | `/api/v1/hotspot-cards/*` جزئيًا | غير موجود | ناقص Flutter | P5 | F16 |
+| التقارير | `reports_*`, `rep_*` | `/api/v1/reports/*`, `/api/v1/operational-reports/*` | `FinancialReportsScreen`, `OperationalReportsScreen` | يحتاج تغطية كل التقارير لا المختصر فقط | P6 | F17 |
+| التدقيق | `audit_*` | `/api/v1/audit` | `AuditListScreen` | يحتاج تفاصيل السجل والفلاتر | P6 | F18 |
+| الإعدادات والتحكم | `settings_page.html`, `tokens_list.html`, `tenants_*`, `wh_*` | `/api/v1/settings`, `/api/v1/tokens`, `/api/v1/tenants`, `/api/v1/webhooks/*` | `AdminControlScreen` | يحتاج تدقيق كل الأفعال والنصوص | P6 | F19 |
+| الأرشفة وسلة المحذوفات | `lifecycle.html`, `recycle_bin.html` | `/api/v1/lifecycle/*`, `/api/v1/recycle-bin/*` | `LifecycleScreen`, `RecycleBinScreen` | يحتاج مقارنة وظائف كاملة | P6 | F20 |
+| أدوات التشغيل | `tool_*`, `_status.html` | `/api/v1/tools/*`, `/api/v1/health`, `/api/v1/version` | `ToolsScreen` | يحتاج تدقيق وتحسين أمان الأفعال الخطرة | P6 | F21 |
 
-### Slice C — NAS CUD + test + Cards batches
-- **Backend NAS**: `POST/PATCH/DELETE /api/v1/nas` + `POST /api/v1/nas/<id>/test` calling `NasService`.
-- **Backend Cards**: `GET /api/v1/cards/batches`, `GET /api/v1/cards/batches/<id>/cards`.
-- **Flutter NAS**: restore `NasFormScreen` connected. Test button in list.
-- **Flutter Cards**: real batches list + drill-down.
+## شرائح التنفيذ المقفلة
 
-### Slice D — Admins + Roles + Online sessions + Audit
-- **Backend Admins/Roles**: `/api/admin/admins` and `/api/admin/roles` full CRUD with permission check (`is_super_admin` for write).
-- **Backend Audit**: `GET /api/v1/audit`.
-- **Flutter**: real Admins/Roles forms; Online sessions screen with disconnect; Audit feed.
+| الشريحة | التعديل المطلوب | شرط القبول |
+|---|---|---|
+| F0 | تثبيت الأساس: نصوص عربية، أخطاء login، route coverage، حالات loading/empty/error، مقارنة dashboard | `flutter analyze`, `flutter test`, وعدم وجود نصوص إنجليزية ظاهرة إلا التقنية |
+| F1 | مشتركين 360: كل حقول Web، الإجراءات السريعة، التمويل، الحالة، التفاصيل | إنشاء/تعديل/تعطيل/تمديد/عرض 360 من Flutter يطابق الويب |
+| F2 | الكروت التشغيلية: batches، detail، import/export، checker، actions | كل أفعال الكروت الأساسية تعمل عبر API |
+| F3 | الباقات والسرعات: profile CRUD، speed rules، schedules | حفظ كل قيود السرعة والزمن من Flutter بدون فقدان حقول |
+| F4 | الجلسات والمحاسبة: online، disconnect، usage history | عرض الجلسات الحالية والتاريخ وقطع الجلسة |
+| F5 | NAS وأجهزة الشبكة | CRUD، test، fingerprints، وحالة الجهاز |
+| F6 | MikroTik وsetup wizard | إعداد الراوتر، الفحص، العمليات، ونتائج التنفيذ |
+| F7 | ملف الترخيص والمزامنة والنسخ | صفحة Flutter واضحة لحالة الترخيص والربط والمزامنة والنسخ |
+| F8-F14 | التحكم المتقدم والاتصالات والأحداث | API أولًا ثم شاشات Flutter أصلية |
+| F15-F16 | بوابات العميل والكروت | تجربة مستخدم مستقلة وآمنة داخل Flutter |
+| F17-F21 | التقارير والإدارة والأدوات | تغطية كل الصفحات المتبقية |
 
-### Slice E — Platform builds
-- Android build (debug APK) workflow + signing setup notes (no Play Store yet).
-- Windows build requirements (Visual Studio Build Tools 2022 + Desktop C++) — documented but not required during dev on this machine.
-- iOS notes (defer — needs macOS).
+## قواعد التنفيذ
 
----
-
-## Cross-slice rules
-
-1. **Single source of truth**: every write goes through the same `*Service` class as the web form. No reimplementing validation in API handlers.
-2. **Audit**: services already call `RadiusAuditService.record` — both web and API writes get logged identically.
-3. **Permissions**: the JSON login mints an api_token tied to the admin. Future enforcement layer = read `permissions` from the admin row → check on each API write. Slice D will introduce a `require_permission(perm)` decorator on Flask side.
-4. **Response shape**: every endpoint returns `{ok, data, meta}` via `api.responses.ok/fail`. Flutter `ApiClient` already unwraps this.
-5. **No web break**: every change adds API routes — never modifies the HTML form handlers. The web admin keeps working unchanged.
+1. لا يتم اعتبار أي شاشة مكتملة إذا كانت تعرض بيانات ثابتة أو رسالة “قريبًا”.
+2. كل API جديد يستخدم نفس خدمات الويب الحالية حتى تبقى validation وaudit واحدة.
+3. كل شاشة Flutter يجب أن تدعم الموبايل وWindows من نفس الكود.
+4. أي تغيير ينتهي بفحص ثم commit صغير ثم push مباشر.
+5. لا يتم لمس الملفات غير المتتبعة الموجودة حاليًا إلا بطلب صريح.
