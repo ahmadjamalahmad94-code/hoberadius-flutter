@@ -46,6 +46,29 @@ class SystemOperationsRepository {
     return ReconcileResult.fromJson(_data(res));
   }
 
+  Future<LicenseFileState> licenseFile() async {
+    final res = await _api.get('/api/v1/system/license-file');
+    return LicenseFileState.fromJson(_data(res));
+  }
+
+  Future<Map<String, dynamic>> syncLicenseContract() async {
+    final res = await _api.post('/api/v1/system/admin-bridge/license-sync');
+    return _data(res);
+  }
+
+  Future<Map<String, dynamic>> syncIdentity() async {
+    final res = await _api.post('/api/v1/system/admin-bridge/identity-sync');
+    return _data(res);
+  }
+
+  Future<Map<String, dynamic>> sendHeartbeatProbe() async {
+    final res = await _api.post(
+      '/api/v1/system/admin-bridge/heartbeat',
+      body: const {'dry_run': true},
+    );
+    return _data(res);
+  }
+
   Map<String, dynamic> _data(Map<String, dynamic> response) {
     final data = response['data'];
     return data is Map<String, dynamic> ? data : const {};

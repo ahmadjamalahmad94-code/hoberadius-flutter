@@ -107,4 +107,62 @@ void main() {
     expect(queue.items.single.id, 99);
     expect(queue.items.single.attempts, 2);
   });
+
+  test('LicenseFileState parses safe bridge contract payload', () {
+    final state = LicenseFileState.fromJson({
+      'config': {
+        'enabled': true,
+        'base_url': 'https://hoberadius.com',
+        'https_ready': true,
+        'license_key_configured': true,
+        'license_key_masked': 'HBR-...3456',
+        'shared_secret_configured': true,
+        'timeout_seconds': 3,
+        'retry_count': '1',
+        'runtime_contract_sync': true,
+        'identity_sync_enabled': true,
+        'identity_sync_on_login': false,
+        'worker_enabled': true,
+        'sync_interval_seconds': '180',
+        'server_fingerprint': {
+          'saved': 'server-a',
+          'active': 'server-a',
+          'stable': true,
+        },
+      },
+      'missing': ['HOBERADIUS_ADMIN_BASE_URL'],
+      'snapshots': {
+        'license': {
+          'available': true,
+          'status': 'active',
+          'fetched_at': '2026-05-30T10:00:00Z',
+        },
+      },
+      'contract': {
+        'license': {'active': true, 'status': 'active'},
+        'services': {
+          'cards': {'enabled': true, 'status': 'active'},
+          'cards_recharge': {'enabled': false, 'status': 'disabled'},
+        },
+        'limits': {
+          'subscribers': {'max_total': 100},
+        },
+        'features': {
+          'cards': {'state': 'enabled'},
+        },
+      },
+      'capacity': {'status': 'active'},
+    });
+
+    expect(state.config.enabled, isTrue);
+    expect(state.config.baseUrl, 'https://hoberadius.com');
+    expect(state.config.syncIntervalSeconds, 180);
+    expect(state.config.serverFingerprint.stable, isTrue);
+    expect(state.hasMissingConfig, isTrue);
+    expect(state.snapshots['license']?.status, 'active');
+    expect(state.license['active'], isTrue);
+    expect(state.services.length, 2);
+    expect(state.activeServicesCount, 1);
+    expect(state.limits['subscribers'], isA<Map<String, dynamic>>());
+  });
 }

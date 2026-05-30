@@ -20,8 +20,20 @@ final syncQueueProvider =
       );
 });
 
+final licenseFileProvider = FutureProvider.autoDispose<LicenseFileState>((ref) {
+  return ref.watch(systemOperationsRepositoryProvider).licenseFile();
+});
+
 String systemStatusLabel(String value) {
   return switch (value) {
+    'active' => 'نشط',
+    'valid' => 'صالح',
+    'healthy' => 'سليم',
+    'grace' => 'فترة سماح',
+    'missing' => 'غير موجود',
+    'stale' => 'قديم',
+    'blocked' => 'محظور',
+    'config_missing' => 'الإعدادات ناقصة',
     'ok' => 'سليم',
     'queued' => 'بالانتظار',
     'syncing' => 'قيد التنفيذ',
@@ -29,6 +41,21 @@ String systemStatusLabel(String value) {
     'done' => 'منتهية',
     'failed' => 'فاشلة',
     'disabled' => 'معطل',
+    'denied' => 'مرفوض',
+    'expired' => 'منتهي',
+    'fingerprint_denied' => 'بصمة الخادم مرفوضة',
+    'https_required' => 'يتطلب HTTPS',
+    'inactive' => 'غير نشط',
+    'invalid_payload' => 'رد غير مكتمل',
+    'invalid_request' => 'طلب غير مكتمل',
+    'local_account' => 'حساب محلي',
+    'not_found' => 'غير موجود',
+    'rate_limited' => 'طلبات كثيرة',
+    'revoked' => 'ملغي',
+    'suspended' => 'موقوف',
+    'timeout' => 'انتهت المهلة',
+    'unavailable' => 'غير متاح',
+    'unknown' => 'غير معروف',
     'tcp_failed' => 'فشل اتصال',
     'api_failed' => 'فشل API',
     _ => value.isEmpty ? 'غير معروف' : value,
@@ -37,9 +64,28 @@ String systemStatusLabel(String value) {
 
 PillTone systemStatusTone(String value) {
   return switch (value) {
-    'done' || 'ok' => PillTone.green,
-    'failed' || 'tcp_failed' || 'api_failed' => PillTone.red,
-    'queued' || 'retrying' || 'syncing' => PillTone.orange,
+    'done' || 'ok' || 'active' || 'valid' || 'healthy' => PillTone.green,
+    'failed' ||
+    'tcp_failed' ||
+    'api_failed' ||
+    'blocked' ||
+    'denied' ||
+    'expired' ||
+    'fingerprint_denied' ||
+    'invalid_payload' ||
+    'revoked' ||
+    'suspended' =>
+      PillTone.red,
+    'queued' ||
+    'retrying' ||
+    'syncing' ||
+    'stale' ||
+    'config_missing' ||
+    'https_required' ||
+    'timeout' ||
+    'unavailable' =>
+      PillTone.orange,
+    'disabled' || 'missing' || 'inactive' => PillTone.neutral,
     _ => PillTone.neutral,
   };
 }

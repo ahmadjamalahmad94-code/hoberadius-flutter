@@ -286,6 +286,160 @@ class ReconcileResult {
   }
 }
 
+class LicenseFileState {
+  const LicenseFileState({
+    required this.config,
+    required this.missing,
+    required this.snapshots,
+    required this.license,
+    required this.services,
+    required this.limits,
+    required this.features,
+    required this.capacity,
+  });
+
+  final LicenseBridgeConfig config;
+  final List<String> missing;
+  final Map<String, BridgeSnapshotSummary> snapshots;
+  final Map<String, dynamic> license;
+  final Map<String, dynamic> services;
+  final Map<String, dynamic> limits;
+  final Map<String, dynamic> features;
+  final Map<String, dynamic> capacity;
+
+  factory LicenseFileState.fromJson(Map<String, dynamic> json) {
+    final contract = _map(json['contract']);
+    final snapshotSource = _map(json['snapshots']);
+    return LicenseFileState(
+      config: LicenseBridgeConfig.fromJson(_map(json['config'])),
+      missing: _stringList(json['missing']),
+      snapshots: {
+        for (final entry in snapshotSource.entries)
+          entry.key: BridgeSnapshotSummary.fromJson(_map(entry.value)),
+      },
+      license: _map(contract['license']),
+      services: _map(contract['services']),
+      limits: _map(contract['limits']),
+      features: _map(contract['features']),
+      capacity: _map(json['capacity']),
+    );
+  }
+
+  bool get hasMissingConfig => missing.isNotEmpty;
+  int get activeServicesCount => services.values.where((item) {
+        final service = _map(item);
+        return _bool(service['enabled']) ||
+            _string(service['status']) == 'active';
+      }).length;
+}
+
+class LicenseBridgeConfig {
+  const LicenseBridgeConfig({
+    required this.enabled,
+    required this.baseUrl,
+    required this.httpsReady,
+    required this.licenseKeyConfigured,
+    required this.licenseKeyMasked,
+    required this.sharedSecretConfigured,
+    required this.timeoutSeconds,
+    required this.retryCount,
+    required this.runtimeContractSync,
+    required this.identitySyncEnabled,
+    required this.identitySyncOnLogin,
+    required this.workerEnabled,
+    required this.syncIntervalSeconds,
+    required this.serverFingerprint,
+  });
+
+  final bool enabled;
+  final String baseUrl;
+  final bool httpsReady;
+  final bool licenseKeyConfigured;
+  final String licenseKeyMasked;
+  final bool sharedSecretConfigured;
+  final double? timeoutSeconds;
+  final int retryCount;
+  final bool runtimeContractSync;
+  final bool identitySyncEnabled;
+  final bool identitySyncOnLogin;
+  final bool workerEnabled;
+  final int syncIntervalSeconds;
+  final BridgeFingerprint serverFingerprint;
+
+  factory LicenseBridgeConfig.fromJson(Map<String, dynamic> json) {
+    return LicenseBridgeConfig(
+      enabled: _bool(json['enabled']),
+      baseUrl: _string(json['base_url']),
+      httpsReady: _bool(json['https_ready']),
+      licenseKeyConfigured: _bool(json['license_key_configured']),
+      licenseKeyMasked: _string(json['license_key_masked']),
+      sharedSecretConfigured: _bool(json['shared_secret_configured']),
+      timeoutSeconds: _double(json['timeout_seconds']),
+      retryCount: _int(json['retry_count']),
+      runtimeContractSync: _bool(json['runtime_contract_sync']),
+      identitySyncEnabled: _bool(json['identity_sync_enabled']),
+      identitySyncOnLogin: _bool(json['identity_sync_on_login']),
+      workerEnabled: _bool(json['worker_enabled']),
+      syncIntervalSeconds: _int(json['sync_interval_seconds']),
+      serverFingerprint: BridgeFingerprint.fromJson(
+        _map(json['server_fingerprint']),
+      ),
+    );
+  }
+}
+
+class BridgeFingerprint {
+  const BridgeFingerprint({
+    required this.saved,
+    required this.active,
+    required this.stable,
+  });
+
+  final String saved;
+  final String active;
+  final bool stable;
+
+  factory BridgeFingerprint.fromJson(Map<String, dynamic> json) {
+    return BridgeFingerprint(
+      saved: _string(json['saved']),
+      active: _string(json['active']),
+      stable: _bool(json['stable']),
+    );
+  }
+}
+
+class BridgeSnapshotSummary {
+  const BridgeSnapshotSummary({
+    required this.available,
+    required this.status,
+    required this.fetchedAt,
+    required this.createdAt,
+    required this.staleAfterSeconds,
+    required this.sourceUrl,
+    required this.error,
+  });
+
+  final bool available;
+  final String status;
+  final String fetchedAt;
+  final String createdAt;
+  final int staleAfterSeconds;
+  final String sourceUrl;
+  final Map<String, dynamic> error;
+
+  factory BridgeSnapshotSummary.fromJson(Map<String, dynamic> json) {
+    return BridgeSnapshotSummary(
+      available: _bool(json['available']),
+      status: _string(json['status']),
+      fetchedAt: _string(json['fetched_at']),
+      createdAt: _string(json['created_at']),
+      staleAfterSeconds: _int(json['stale_after_seconds']),
+      sourceUrl: _string(json['source_url']),
+      error: _map(json['error']),
+    );
+  }
+}
+
 Map<String, dynamic> _map(Object? value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {
@@ -299,6 +453,11 @@ Map<String, int> _intMap(Object? value) {
   return {
     for (final entry in source.entries) entry.key: _int(entry.value),
   };
+}
+
+List<String> _stringList(Object? value) {
+  if (value is List) return value.map((item) => _string(item)).toList();
+  return const [];
 }
 
 int _int(Object? value) {
