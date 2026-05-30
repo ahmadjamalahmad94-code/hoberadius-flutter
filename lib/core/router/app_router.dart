@@ -41,6 +41,7 @@ import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
 import '../../features/network_policy/presentation/network_policy_screen.dart';
 import '../../features/operational_reports/presentation/operational_reports_screen.dart';
+import '../../features/payment_collection/presentation/payment_collection_screen.dart';
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
@@ -314,6 +315,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/ledger',
             name: 'ledger',
             builder: (ctx, st) => const LedgerScreen(),
+          ),
+          GoRoute(
+            path: '/payment-collection',
+            name: 'payment-collection',
+            builder: (ctx, st) => const PaymentCollectionScreen(),
           ),
           GoRoute(
             path: '/reports',

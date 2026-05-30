@@ -69,6 +69,12 @@ const _items = <_MoreItem>[
     sub: 'دفعات وسلف وقيود عكسية',
   ),
   _MoreItem(
+    Icons.fact_check_outlined,
+    'مراجعة المدفوعات',
+    'payment-collection',
+    sub: 'قبول إثبات الدفع أو رفضه وتطبيق الخدمة',
+  ),
+  _MoreItem(
     Icons.insert_chart_outlined,
     'التقارير المالية',
     'financial-reports',
