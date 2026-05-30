@@ -15,6 +15,8 @@ import '../../features/audit/presentation/audit_list_screen.dart';
 import 'app_page_transitions.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
 import '../../features/system_operations/presentation/system_operations_screen.dart';
+import '../../features/tickets/presentation/ticket_detail_screen.dart';
+import '../../features/tickets/presentation/tickets_list_screen.dart';
 import '../../features/tools/presentation/tools_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/backups/presentation/backups_screen.dart';
@@ -200,6 +202,20 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/device-fingerprints',
             name: 'device-fingerprints',
             builder: (ctx, st) => const DeviceFingerprintsScreen(),
+          ),
+          GoRoute(
+            path: '/tickets',
+            name: 'tickets',
+            builder: (ctx, st) => const TicketsListScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'ticket-detail',
+                builder: (ctx, st) => TicketDetailScreen(
+                  ticketId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/plans',

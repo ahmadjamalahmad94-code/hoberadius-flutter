@@ -198,6 +198,12 @@ const _sidebarSections = <_SidebarSection>[
         routeName: 'operational-reports',
         path: '/operational-reports',
       ),
+      _SidebarItem(
+        icon: Icons.support_agent_outlined,
+        label: 'تذاكر الدعم',
+        routeName: 'tickets',
+        path: '/tickets',
+      ),
     ],
   ),
   _SidebarSection(
@@ -320,6 +326,8 @@ int _indexOfRoute(String location) {
       location == '/ledger' ||
       location == '/reports' ||
       location == '/operational-reports' ||
+      location == '/tickets' ||
+      location.startsWith('/tickets/') ||
       location == '/saas-modules' ||
       location == '/distributors' ||
       location == '/recycle-bin' ||

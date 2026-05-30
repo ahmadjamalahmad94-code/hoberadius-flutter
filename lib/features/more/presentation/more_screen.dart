@@ -75,6 +75,12 @@ const _items = <_MoreItem>[
     sub: 'جلسات، محاولات فاشلة، MAC وأحداث المدراء',
   ),
   _MoreItem(
+    Icons.support_agent_outlined,
+    'تذاكر الدعم',
+    'tickets',
+    sub: 'طلبات خدمة ومحادثة متابعة مع الإدارة',
+  ),
+  _MoreItem(
     Icons.business_center_outlined,
     'الوحدات التجارية',
     'saas-modules',
