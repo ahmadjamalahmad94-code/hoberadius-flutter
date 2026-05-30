@@ -51,6 +51,12 @@ const _items = <_MoreItem>[
     sub: 'MAC، نظام الجهاز، آخر ظهور ومزامنة DHCP',
   ),
   _MoreItem(
+    Icons.policy_outlined,
+    'سياسات الشبكة',
+    'network-policy',
+    sub: 'الوصول البعيد، حظر المواقع، والمواقع المسموحة',
+  ),
+  _MoreItem(
     Icons.people_alt_outlined,
     'الموزعون',
     'distributors',

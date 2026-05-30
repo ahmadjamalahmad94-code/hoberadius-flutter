@@ -173,6 +173,12 @@ const _sidebarSections = <_SidebarSection>[
         routeName: 'device-fingerprints',
         path: '/device-fingerprints',
       ),
+      _SidebarItem(
+        icon: Icons.policy_outlined,
+        label: 'سياسات الشبكة',
+        routeName: 'network-policy',
+        path: '/network-policy',
+      ),
     ],
   ),
   _SidebarSection(
@@ -319,6 +325,7 @@ int _indexOfRoute(String location) {
       location == '/nas' ||
       location == '/mikrotik' ||
       location == '/device-fingerprints' ||
+      location == '/network-policy' ||
       location == '/plans' ||
       location == '/admins' ||
       location == '/roles' ||
