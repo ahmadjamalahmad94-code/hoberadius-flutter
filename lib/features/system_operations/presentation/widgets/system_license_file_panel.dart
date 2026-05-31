@@ -515,6 +515,7 @@ String _missingLabel(String key) {
 String _serviceLabel(String key) {
   return switch (key) {
     'ip_change_vpn' => 'تغيير IP / VPN',
+    'payment_collection' => 'تحصيل المدفوعات',
     'customer_portal' => 'بوابة العميل',
     'customer_support' => 'الدعم الفني',
     'cards' => 'الكروت',
@@ -530,7 +531,7 @@ String _serviceLabel(String key) {
     'mikrotik' => 'مايكروتك',
     'reports' => 'التقارير',
     'backups' => 'النسخ الاحتياطي',
-    _ => 'خدمة إضافية',
+    _ => 'خدمة مرخّصة إضافية',
   };
 }
 

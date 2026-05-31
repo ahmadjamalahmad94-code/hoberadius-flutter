@@ -127,10 +127,7 @@ class _InfoPanel extends StatelessWidget {
             children: [
               _StatusPill(ticket: ticket),
               _PriorityPill(ticket: ticket),
-              StatusPill(
-                text: _categoryLabel(ticket.category),
-                tone: PillTone.cyan,
-              ),
+              StatusPill(text: ticket.categoryLabel, tone: PillTone.cyan),
             ],
           ),
           const Divider(height: AppTokens.s24),
@@ -690,14 +687,6 @@ Future<void> _showReplyDialog(
     ),
   );
 }
-
-String _categoryLabel(String category) => switch (category) {
-      'service' => 'خدمة',
-      'service_request' => 'طلب خدمة',
-      'payment' => 'دفع',
-      'technical' => 'فني',
-      _ => 'عام',
-    };
 
 String _dateLabel(DateTime? date) {
   if (date == null) return 'غير مسجل';

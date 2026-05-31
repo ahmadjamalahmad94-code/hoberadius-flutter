@@ -229,14 +229,21 @@ class _RequestTypeOption {
 }
 
 const _serviceOptions = [
+  _ServiceOption('subscribers', 'المشتركون'),
+  _ServiceOption('sessions', 'الجلسات'),
   _ServiceOption('cards', 'الكروت'),
   _ServiceOption('cards_recharge', 'شحن الكروت'),
+  _ServiceOption('distributors', 'الموزعون'),
   _ServiceOption('payment_collection', 'تحصيل المدفوعات'),
+  _ServiceOption('finance_center', 'المركز المالي'),
   _ServiceOption('ip_change_vpn', 'خدمة تغيير IP / VPN'),
   _ServiceOption('customer_portal', 'بوابة العميل'),
+  _ServiceOption('customer_support', 'الدعم الفني'),
   _ServiceOption('communications', 'التواصل والحملات'),
   _ServiceOption('network_policy', 'سياسات الشبكة'),
   _ServiceOption('nas', 'أجهزة الشبكة'),
+  _ServiceOption('integration_bridge', 'جسر الربط'),
+  _ServiceOption('integration_tokens', 'مفاتيح الربط'),
   _ServiceOption('reports', 'التقارير'),
   _ServiceOption('other', 'خدمة أخرى'),
 ];
@@ -603,6 +610,14 @@ Future<void> _showCreateTicketDialog(
                           DropdownMenuItem(
                             value: 'service',
                             child: Text('خدمة'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'service_request',
+                            child: Text('طلب خدمة'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'complaint',
+                            child: Text('شكوى'),
                           ),
                           DropdownMenuItem(
                             value: 'payment',

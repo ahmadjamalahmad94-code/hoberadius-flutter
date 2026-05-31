@@ -25,6 +25,7 @@ void main() {
     expect(page.count, 1);
     expect(page.items.single.priorityLabel, 'مرتفعة');
     expect(page.items.single.statusLabel, 'مفتوحة');
+    expect(page.items.single.categoryLabel, 'خدمة');
 
     final detail = TicketDetail.fromJson({
       'data': {
@@ -60,6 +61,17 @@ void main() {
       'priority': 'normal',
     });
     expect(inProgress.statusLabel, 'قيد التنفيذ');
+
+    final complaint = SupportTicket.fromJson({
+      'id': 10,
+      'subscriber_id': 12,
+      'status': 'future_status',
+      'priority': 'future_priority',
+      'category': 'complaint',
+    });
+    expect(complaint.categoryLabel, 'شكوى');
+    expect(complaint.statusLabel, 'حالة غير معروفة');
+    expect(complaint.priorityLabel, 'أولوية غير معروفة');
   });
 
   test('Service request result parses ticket and optional payment request', () {

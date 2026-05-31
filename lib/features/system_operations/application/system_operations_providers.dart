@@ -63,7 +63,7 @@ String systemStatusLabel(String value) {
     'unknown' => 'غير معروف',
     'tcp_failed' => 'فشل اتصال',
     'api_failed' => 'فشل API',
-    _ => value.isEmpty ? 'غير معروف' : value,
+    _ => 'حالة غير معروفة',
   };
 }
 

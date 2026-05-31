@@ -44,7 +44,7 @@ class SupportTicket {
         'in_progress' => 'قيد التنفيذ',
         'resolved' => 'تم الحل',
         'closed' => 'مغلقة',
-        _ => status,
+        _ => 'حالة غير معروفة',
       };
 
   String get priorityLabel => switch (priority) {
@@ -52,7 +52,20 @@ class SupportTicket {
         'normal' => 'عادية',
         'high' => 'مرتفعة',
         'urgent' => 'عاجلة',
-        _ => priority,
+        _ => 'أولوية غير معروفة',
+      };
+
+  String get categoryLabel => switch (category) {
+        'general' => 'عام',
+        'service' => 'خدمة',
+        'service_request' => 'طلب خدمة',
+        'complaint' => 'شكوى',
+        'payment' => 'دفع',
+        'billing' => 'حسابات وفواتير',
+        'connection' => 'اتصال',
+        'hardware' => 'معدات',
+        'technical' => 'فني',
+        _ => 'عام',
       };
 }
 
