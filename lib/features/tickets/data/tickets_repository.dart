@@ -79,6 +79,30 @@ class TicketsRepository {
     return ServiceRequestResult.fromJson(res);
   }
 
+  Future<ServiceRequestResult> decideServiceRequest({
+    required int ticketId,
+    required String decision,
+    String note = '',
+    double? amount,
+    String currency = 'ILS',
+    String purpose = 'monthly_subscription',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/service-requests/$ticketId/decision',
+      body: {
+        'decision': decision,
+        'note': note,
+        if (amount != null)
+          'payment': {
+            'amount': amount,
+            'currency': currency,
+            'purpose': purpose,
+          },
+      },
+    );
+    return ServiceRequestResult.fromJson(res);
+  }
+
   Future<SupportTicket> updateStatus(int ticketId, String status) async {
     final res = await _api.patch(
       '/api/v1/tickets/$ticketId',

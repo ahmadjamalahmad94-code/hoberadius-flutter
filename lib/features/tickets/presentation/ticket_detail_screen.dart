@@ -60,6 +60,9 @@ class TicketDetailScreen extends ConsumerWidget {
                 replies: data.replies,
               );
               final status = _StatusPanel(ticket: data.ticket);
+              final servicePanel = data.ticket.category == 'service_request'
+                  ? _ServiceRequestPanel(ticket: data.ticket)
+                  : null;
               if (!wide) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -67,6 +70,10 @@ class TicketDetailScreen extends ConsumerWidget {
                     info,
                     const SizedBox(height: AppTokens.s16),
                     status,
+                    if (servicePanel != null) ...[
+                      const SizedBox(height: AppTokens.s16),
+                      servicePanel,
+                    ],
                     const SizedBox(height: AppTokens.s16),
                     thread,
                   ],
@@ -83,6 +90,10 @@ class TicketDetailScreen extends ConsumerWidget {
                         info,
                         const SizedBox(height: AppTokens.s16),
                         status,
+                        if (servicePanel != null) ...[
+                          const SizedBox(height: AppTokens.s16),
+                          servicePanel,
+                        ],
                       ],
                     ),
                   ),
@@ -182,6 +193,11 @@ class _StatusPanelState extends ConsumerState<_StatusPanel> {
             items: const [
               DropdownMenuItem(value: 'open', child: Text('مفتوحة')),
               DropdownMenuItem(value: 'pending', child: Text('بانتظار متابعة')),
+              DropdownMenuItem(
+                value: 'in_progress',
+                child: Text('قيد التنفيذ'),
+              ),
+              DropdownMenuItem(value: 'resolved', child: Text('تم الحل')),
               DropdownMenuItem(value: 'closed', child: Text('مغلقة')),
             ],
             onChanged: _busy
@@ -220,6 +236,235 @@ class _StatusPanelState extends ConsumerState<_StatusPanel> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+}
+
+class _ServiceRequestPanel extends ConsumerStatefulWidget {
+  const _ServiceRequestPanel({required this.ticket});
+
+  final SupportTicket ticket;
+
+  @override
+  ConsumerState<_ServiceRequestPanel> createState() =>
+      _ServiceRequestPanelState();
+}
+
+class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      title: 'إدارة طلب الخدمة',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'هذه القرارات تسجل موقف الإدارة وتفتح طلب دفع عند الحاجة. لا يتم تفعيل الخدمة آليًا من التطبيق.',
+            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              ElevatedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _showDecisionDialog(
+                          decision: 'approve',
+                          title: 'موافقة مبدئية',
+                        ),
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('موافقة مبدئية'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _showDecisionDialog(
+                          decision: 'request_payment',
+                          title: 'طلب دفع',
+                          withPayment: true,
+                        ),
+                icon: const Icon(Icons.account_balance_wallet_outlined),
+                label: const Text('طلب دفع'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _showDecisionDialog(
+                          decision: 'trial',
+                          title: 'فتح تجريبي',
+                        ),
+                icon: const Icon(Icons.timer_outlined),
+                label: const Text('فتح تجريبي'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _showDecisionDialog(
+                          decision: 'reject',
+                          title: 'رفض الطلب',
+                        ),
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('رفض'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDecisionDialog({
+    required String decision,
+    required String title,
+    bool withPayment = false,
+  }) async {
+    final note = TextEditingController();
+    final amount = TextEditingController();
+    var currency = 'ILS';
+    var dialogBusy = false;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          Future<void> submit() async {
+            double? paymentAmount;
+            if (withPayment) {
+              paymentAmount = double.tryParse(
+                amount.text.trim().replaceAll(',', '.'),
+              );
+              if (paymentAmount == null || paymentAmount <= 0) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(content: Text('أدخل مبلغ دفع صحيح')),
+                );
+                return;
+              }
+            }
+
+            setDialogState(() => dialogBusy = true);
+            setState(() => _busy = true);
+            try {
+              final result = await ref
+                  .read(ticketsRepositoryProvider)
+                  .decideServiceRequest(
+                    ticketId: widget.ticket.id,
+                    decision: decision,
+                    note: note.text.trim(),
+                    amount: paymentAmount,
+                    currency: currency,
+                  );
+              ref.invalidate(ticketDetailProvider(widget.ticket.id));
+              ref.invalidate(ticketsPageProvider);
+              if (!dialogContext.mounted) return;
+              Navigator.pop(dialogContext);
+              if (!mounted) return;
+              final payment = result.paymentRequest;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    payment == null
+                        ? 'تم تسجيل قرار الإدارة'
+                        : 'تم فتح طلب دفع بقيمة ${payment.amountLabel}',
+                  ),
+                ),
+              );
+            } catch (error) {
+              if (!dialogContext.mounted) return;
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                SnackBar(content: Text('$error')),
+              );
+            } finally {
+              if (dialogContext.mounted) {
+                setDialogState(() => dialogBusy = false);
+              }
+              if (mounted) setState(() => _busy = false);
+            }
+          }
+
+          return AlertDialog(
+            title: Text(title),
+            content: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (withPayment) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: amount,
+                            enabled: !dialogBusy,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration:
+                                const InputDecoration(labelText: 'المبلغ'),
+                          ),
+                        ),
+                        const SizedBox(width: AppTokens.s8),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: currency,
+                            decoration:
+                                const InputDecoration(labelText: 'العملة'),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'ILS',
+                                child: Text('شيكل'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'USD',
+                                child: Text('دولار'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'JOD',
+                                child: Text('دينار'),
+                              ),
+                            ],
+                            onChanged: dialogBusy
+                                ? null
+                                : (value) => setDialogState(
+                                      () => currency = value ?? 'ILS',
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppTokens.s12),
+                  ],
+                  TextField(
+                    controller: note,
+                    enabled: !dialogBusy,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'ملاحظة الإدارة',
+                      hintText: 'اكتب سبب القرار أو تفاصيل الاتفاق',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed:
+                    dialogBusy ? null : () => Navigator.pop(dialogContext),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton.icon(
+                onPressed: dialogBusy ? null : submit,
+                icon: const Icon(Icons.save_outlined),
+                label: const Text('حفظ القرار'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -419,6 +664,7 @@ Future<void> _showReplyDialog(
 
 String _categoryLabel(String category) => switch (category) {
       'service' => 'خدمة',
+      'service_request' => 'طلب خدمة',
       'payment' => 'دفع',
       'technical' => 'فني',
       _ => 'عام',

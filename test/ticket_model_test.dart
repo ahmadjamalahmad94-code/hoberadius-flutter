@@ -52,6 +52,14 @@ void main() {
     expect(detail.ticket.statusLabel, 'بانتظار متابعة');
     expect(detail.replies.single.authorLabel, 'الإدارة');
     expect(detail.replies.single.body, 'تم استلام الطلب');
+
+    final inProgress = SupportTicket.fromJson({
+      'id': 9,
+      'subscriber_id': 12,
+      'status': 'in_progress',
+      'priority': 'normal',
+    });
+    expect(inProgress.statusLabel, 'قيد التنفيذ');
   });
 
   test('Service request result parses ticket and optional payment request', () {
@@ -89,5 +97,32 @@ void main() {
     expect(result.serviceLabel, 'خدمة تغيير IP / VPN');
     expect(result.ticket.category, 'service_request');
     expect(result.paymentRequest?.amountLabel, '35 ILS');
+  });
+
+  test('Service request decision without payment still parses safely', () {
+    final result = ServiceRequestResult.fromJson({
+      'data': {
+        'service_request': {
+          'reference': 'SR-45',
+          'ticket_id': 45,
+          'payment_request_id': null,
+          'decision_label': 'موافقة مبدئية',
+        },
+        'ticket': {
+          'id': 45,
+          'subscriber_id': 8,
+          'subject': 'طلب خدمة',
+          'category': 'service_request',
+          'priority': 'normal',
+          'status': 'in_progress',
+        },
+        'payment_request': null,
+      },
+    });
+
+    expect(result.ticketId, 45);
+    expect(result.paymentRequestId, 0);
+    expect(result.ticket.statusLabel, 'قيد التنفيذ');
+    expect(result.paymentRequest, isNull);
   });
 }
