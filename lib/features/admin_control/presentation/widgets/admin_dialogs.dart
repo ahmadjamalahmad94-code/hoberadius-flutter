@@ -95,8 +95,7 @@ Future<TenantRecord?> showAdminTenantDialog(
 }) async {
   final slug = TextEditingController(text: existing?.slug ?? '');
   final name = TextEditingController(text: existing?.name ?? '');
-  final displayName =
-      TextEditingController(text: existing?.displayName ?? '');
+  final displayName = TextEditingController(text: existing?.displayName ?? '');
   final email = TextEditingController(text: existing?.email ?? '');
   final phone = TextEditingController(text: existing?.phone ?? '');
   final maxSubscribers = TextEditingController(
@@ -145,11 +144,11 @@ Future<TenantRecord?> showAdminTenantDialog(
                   initialValue: tier,
                   decoration: const InputDecoration(labelText: 'الخطة'),
                   items: const [
-                    DropdownMenuItem(value: 'starter', child: Text('Starter')),
-                    DropdownMenuItem(value: 'pro', child: Text('Pro')),
+                    DropdownMenuItem(value: 'starter', child: Text('بداية')),
+                    DropdownMenuItem(value: 'pro', child: Text('احترافي')),
                     DropdownMenuItem(
                       value: 'enterprise',
-                      child: Text('Enterprise'),
+                      child: Text('مؤسسات'),
                     ),
                   ],
                   onChanged: (value) => setLocal(() => tier = value ?? tier),
@@ -172,8 +171,7 @@ Future<TenantRecord?> showAdminTenantDialog(
                 TextField(
                   controller: maxSubscribers,
                   keyboardType: TextInputType.number,
-                  decoration:
-                      const InputDecoration(labelText: 'حد المشتركين'),
+                  decoration: const InputDecoration(labelText: 'حد المشتركين'),
                 ),
                 TextField(
                   controller: maxNas,

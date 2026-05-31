@@ -170,7 +170,7 @@ class SubscriberMtSection extends StatelessWidget {
                 DropdownMenuItem(value: 'l2tp', child: Text('L2TP')),
                 DropdownMenuItem(value: 'pptp', child: Text('PPTP')),
                 DropdownMenuItem(value: 'sstp', child: Text('SSTP')),
-                DropdownMenuItem(value: 'static', child: Text('Static')),
+                DropdownMenuItem(value: 'static', child: Text('عنوان ثابت')),
               ],
               onChanged: (v) => onMtServiceChanged(v ?? 'pppoe'),
             ),

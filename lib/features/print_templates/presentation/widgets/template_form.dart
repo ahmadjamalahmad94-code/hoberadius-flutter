@@ -100,13 +100,12 @@ class TemplateForm extends StatelessWidget {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: pageSize,
-                    decoration:
-                        const InputDecoration(labelText: 'حجم الصفحة'),
+                    decoration: const InputDecoration(labelText: 'حجم الصفحة'),
                     items: const [
                       DropdownMenuItem(value: 'A4', child: Text('A4')),
                       DropdownMenuItem(
                         value: 'Letter',
-                        child: Text('Letter'),
+                        child: Text('حجم الرسالة الأمريكي'),
                       ),
                     ],
                     onChanged: (v) => onPageSize(v ?? 'A4'),
@@ -122,8 +121,7 @@ class TemplateForm extends StatelessWidget {
             const SizedBox(height: AppTokens.s12),
             _TwoFields(
               left: _NumberField(controller: width, label: 'عرض الكرت mm'),
-              right:
-                  _NumberField(controller: height, label: 'ارتفاع الكرت mm'),
+              right: _NumberField(controller: height, label: 'ارتفاع الكرت mm'),
             ),
             const SizedBox(height: AppTokens.s12),
             _TwoFields(

@@ -140,7 +140,7 @@ class _PolicySidePanel extends StatelessWidget {
               ]
             : const [
                 ('العناصر', 'نطاق دفع أو IP مسموح قبل الدخول'),
-                ('البروفايل', 'اختياري لتحديد Hotspot Profile'),
+                ('البروفايل', 'اختياري لتحديد بروفايل الهوتسبوت'),
                 ('المعاينة', 'تراجع السماح وقابلية التراجع'),
               ];
 
@@ -1113,7 +1113,7 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
                 TextField(
                   controller: _hotspotProfile,
                   decoration: const InputDecoration(
-                    labelText: 'Hotspot Profile اختياري',
+                    labelText: 'بروفايل الهوتسبوت اختياري',
                   ),
                 ),
               ],

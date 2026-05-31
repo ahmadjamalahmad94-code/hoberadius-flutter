@@ -63,9 +63,8 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = _brightness == Brightness.light
-        ? AppTheme.light()
-        : AppTheme.dark();
+    final theme =
+        _brightness == Brightness.light ? AppTheme.light() : AppTheme.dark();
     return Theme(
       data: theme,
       child: Directionality(
@@ -80,13 +79,13 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
     return Scaffold(
       backgroundColor: p.bg,
       appBar: AppBar(
-        title: const Text('Widget Gallery (J2)'),
+        title: const Text('معرض مكونات الواجهة'),
         actions: [
           _ModeButton(
             icon: _brightness == Brightness.light
                 ? Icons.dark_mode_outlined
                 : Icons.light_mode_outlined,
-            label: _brightness == Brightness.light ? 'Dark' : 'Light',
+            label: _brightness == Brightness.light ? 'داكن' : 'فاتح',
             onPressed: () => setState(
               () => _brightness = _brightness == Brightness.light
                   ? Brightness.dark
@@ -113,7 +112,7 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
         ),
         children: [
           _Section(
-            title: 'J2.1 — HubToggleSwitch',
+            title: 'مفتاح التفعيل',
             child: Wrap(
               spacing: 14,
               runSpacing: 14,
@@ -146,7 +145,7 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
             ),
           ),
           _Section(
-            title: 'J2.2 — HubUnitInput',
+            title: 'إدخال القيم والوحدات',
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -181,7 +180,7 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
             ),
           ),
           _Section(
-            title: 'J2.3 — HubTimePickerCircular',
+            title: 'اختيار الوقت',
             child: _Row2(
               left: HubTimePickerCircular(
                 value: _from,
@@ -195,14 +194,14 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
             ),
           ),
           _Section(
-            title: 'J2.4 — HubAccessSchedule',
+            title: 'جدول السماح',
             child: HubAccessSchedule(
               value: _schedule,
               onChanged: (v) => setState(() => _schedule = v),
             ),
           ),
           _Section(
-            title: 'J2.5 — HubSpeedRulesPanel',
+            title: 'قواعد السرعة',
             child: HubSpeedRulesPanel(
               rules: _rules,
               onChanged: (v) => setState(() => _rules = v),
@@ -210,7 +209,7 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
             ),
           ),
           _Section(
-            title: 'J2.6 — HubToast',
+            title: 'رسائل التنبيه',
             child: Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -221,7 +220,7 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
                     'تم الحفظ بنجاح',
                   ),
                   icon: const Icon(Icons.check, size: 16),
-                  label: const Text('Success toast'),
+                  label: const Text('تنبيه نجاح'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => HubToaster.error(
@@ -229,7 +228,7 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
                     'تعذّر إتمام العملية',
                   ),
                   icon: const Icon(Icons.error_outline, size: 16),
-                  label: const Text('Error toast'),
+                  label: const Text('تنبيه خطأ'),
                 ),
                 TextButton.icon(
                   onPressed: () => HubToaster.info(
@@ -237,7 +236,7 @@ class _WidgetGalleryScreenState extends State<WidgetGalleryScreen> {
                     'جاري المزامنة…',
                   ),
                   icon: const Icon(Icons.info_outline, size: 16),
-                  label: const Text('Info toast'),
+                  label: const Text('تنبيه معلومات'),
                 ),
               ],
             ),
