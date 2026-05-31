@@ -304,6 +304,12 @@ class _DetailsCard extends StatelessWidget {
           _InfoRow('البريد', s.email),
           _InfoRow('نوع الخدمة', data.serviceType),
           _InfoRow('الباقة', data.planName),
+          _InfoRow(
+            'السعر المخصص',
+            s.customPrice > 0
+                ? '${_money(s.customPrice)} (بدل سعر الباقة)'
+                : 'سعر الباقة',
+          ),
           _InfoRow('IP ثابت', s.staticIp),
           _InfoRow('قفل MAC', s.macLock),
           _InfoRow('ملاحظات', data.notes.isEmpty ? s.remark : data.notes),

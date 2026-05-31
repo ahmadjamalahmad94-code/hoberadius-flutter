@@ -108,6 +108,19 @@ class SubscriberCoreSection extends StatelessWidget {
             child: PlanPicker(controller: controllers['plan_id']!),
           ),
           FormFieldRow(
+            label: 'السعر المخصص',
+            hint: 'اتركه فارغًا لاستخدام سعر الباقة',
+            child: TextFormField(
+              controller: controllers['custom_price'],
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: const InputDecoration(
+                suffixText: 'اختياري',
+              ),
+            ),
+          ),
+          FormFieldRow(
             label: 'تاريخ الانتهاء',
             child: ExpirePicker(value: expireAt, onChange: onExpireChanged),
           ),
@@ -455,8 +468,7 @@ class SubscriberGeneralSection extends StatelessWidget {
         children: [
           FormFieldRow(
             label: 'ملاحظات',
-            child:
-                TextFormField(controller: controllers['notes'], maxLines: 3),
+            child: TextFormField(controller: controllers['notes'], maxLines: 3),
           ),
           FormFieldRow(
             label: 'وسوم',

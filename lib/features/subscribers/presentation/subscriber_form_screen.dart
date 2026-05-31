@@ -47,6 +47,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
     'mac_lock',
     'static_ip',
     'plan_id',
+    'custom_price',
     'mt_profile',
     'mt_rate_limit',
     'mt_ip_pool',

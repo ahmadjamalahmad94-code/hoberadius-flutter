@@ -46,6 +46,7 @@ void applySubscriberToForm(
   c['mac_lock']!.text = s.macLock;
   c['static_ip']!.text = s.staticIp;
   c['plan_id']!.text = s.planId?.toString() ?? '';
+  c['custom_price']!.text = s.customPrice > 0 ? _moneyInput(s.customPrice) : '';
   c['mt_profile']!.text = s.mtProfile;
   c['mt_rate_limit']!.text = s.mtRateLimit;
   c['mt_ip_pool']!.text = s.mtIpPool;
@@ -90,6 +91,7 @@ Subscriber buildSubscriberFromForm(
       email: c['email']!.text.trim(),
       beneficiaryRef: c['beneficiary_ref']!.text.trim(),
       planId: int.tryParse(c['plan_id']!.text.trim()),
+      customPrice: _parseMoney(c['custom_price']!.text),
       status: sel.status,
       userType: sel.userType,
       expireAt: sel.expireAt,
@@ -98,8 +100,7 @@ Subscriber buildSubscriberFromForm(
       remark: c['remark']!.text.trim(),
       primaryDnsPpp: c['dns1']!.text.trim(),
       secondaryDnsPpp: c['dns2']!.text.trim(),
-      overrideConcurrent:
-          int.tryParse(c['simultaneous_use']!.text.trim()) ?? 0,
+      overrideConcurrent: int.tryParse(c['simultaneous_use']!.text.trim()) ?? 0,
       workingDaysCsv: sel.workingDays.join(','),
       autoRenewal: sel.autoRenew,
       mtProfile: c['mt_profile']!.text.trim(),
@@ -125,3 +126,16 @@ Subscriber buildSubscriberFromForm(
           .where((e) => e.isNotEmpty)
           .toList(),
     );
+
+double _parseMoney(String value) {
+  final normalized = value.trim().replaceAll(',', '.');
+  if (normalized.isEmpty) return 0;
+  final parsed = double.tryParse(normalized);
+  if (parsed == null || parsed <= 0) return 0;
+  return parsed;
+}
+
+String _moneyInput(double value) {
+  if (value == value.truncateToDouble()) return value.toStringAsFixed(0);
+  return value.toStringAsFixed(2);
+}

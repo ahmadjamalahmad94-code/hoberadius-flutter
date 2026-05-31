@@ -11,6 +11,7 @@ void main() {
         'mobile': '0599000000',
         'status': 'enabled',
         'service_type': 'Hotspot',
+        'custom_price': '85.25',
       },
       'plan': {'name': 'باقة شهرية'},
       'overview': {
@@ -57,6 +58,7 @@ void main() {
     });
 
     expect(state.subscriber.username, 's360-user');
+    expect(state.subscriber.customPrice, 85.25);
     expect(state.planName, 'باقة شهرية');
     expect(state.walletBalance, 12.5);
     expect(state.openDebt, 3.5);

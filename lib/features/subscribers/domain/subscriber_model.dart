@@ -18,6 +18,7 @@ class Subscriber {
     this.email = '',
     this.beneficiaryRef = '',
     this.planId,
+    this.customPrice = 0,
     this.status = 'enabled',
     this.userType = 'subscriber',
     this.serviceType = 'Hotspot',
@@ -78,6 +79,7 @@ class Subscriber {
   final String email;
   final String beneficiaryRef;
   final int? planId;
+  final double customPrice;
   final String status;
   final String userType;
   final String serviceType;
@@ -94,6 +96,7 @@ class Subscriber {
   final String primaryDnsPpp;
   final String secondaryDnsPpp;
   final String callerId;
+
   /// CSV of two-letter day codes: "sat,sun,mon,tue,wed,thu,fri"
   final String workingDaysCsv;
   final bool autoRenewal;
@@ -133,7 +136,11 @@ class Subscriber {
   /// Helper for forms — split/join the CSV.
   List<String> get workingDays => workingDaysCsv.isEmpty
       ? const <String>[]
-      : workingDaysCsv.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+      : workingDaysCsv
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .toList();
 
   factory Subscriber.fromJson(Map<String, dynamic> j) {
     final meta = (j['metadata'] is Map<String, dynamic>)
@@ -154,6 +161,7 @@ class Subscriber {
       email: (j['email'] ?? '').toString(),
       beneficiaryRef: (j['beneficiary_ref'] ?? '').toString(),
       planId: j['plan_id'] as int?,
+      customPrice: _double(j['custom_price']) ?? 0,
       status: (j['status'] ?? 'enabled').toString(),
       userType: (j['user_type'] ?? 'subscriber').toString(),
       serviceType: (j['service_type'] ?? 'Hotspot').toString(),
@@ -209,6 +217,7 @@ class Subscriber {
       'email': email,
       'beneficiary_ref': beneficiaryRef,
       if (planId != null) 'plan_id': planId,
+      'custom_price': customPrice,
       'status': status,
       'user_type': userType,
       'service_type': serviceType,
@@ -276,10 +285,16 @@ class Subscriber {
   static int? _int(Object? v) =>
       v == null ? null : (v is int ? v : int.tryParse(v.toString()));
 
+  static double? _double(Object? v) => v == null
+      ? null
+      : (v is num ? v.toDouble() : double.tryParse(v.toString()));
+
   static List<String> _strList(Object? v) {
     if (v == null) return const [];
     if (v is List) return v.map((e) => e.toString()).toList();
-    if (v is String && v.isNotEmpty) return v.split(',').map((e) => e.trim()).toList();
+    if (v is String && v.isNotEmpty) {
+      return v.split(',').map((e) => e.trim()).toList();
+    }
     return const [];
   }
 
@@ -292,6 +307,7 @@ class Subscriber {
     String? email,
     String? beneficiaryRef,
     int? planId,
+    double? customPrice,
     String? status,
     String? userType,
     String? serviceType,
@@ -325,7 +341,8 @@ class Subscriber {
     int? subscriptionDays,
     String? notes,
     List<String>? tags,
-  }) => Subscriber(
+  }) =>
+      Subscriber(
         id: id ?? this.id,
         username: username ?? this.username,
         password: password ?? this.password,
@@ -334,6 +351,7 @@ class Subscriber {
         email: email ?? this.email,
         beneficiaryRef: beneficiaryRef ?? this.beneficiaryRef,
         planId: planId ?? this.planId,
+        customPrice: customPrice ?? this.customPrice,
         status: status ?? this.status,
         userType: userType ?? this.userType,
         serviceType: serviceType ?? this.serviceType,
@@ -341,7 +359,8 @@ class Subscriber {
         macLock: macLock ?? this.macLock,
         staticIp: staticIp ?? this.staticIp,
         remark: remark ?? this.remark,
-        bandwidthControlEnabled: bandwidthControlEnabled ?? this.bandwidthControlEnabled,
+        bandwidthControlEnabled:
+            bandwidthControlEnabled ?? this.bandwidthControlEnabled,
         downloadSpeedKbps: downloadSpeedKbps ?? this.downloadSpeedKbps,
         uploadSpeedKbps: uploadSpeedKbps ?? this.uploadSpeedKbps,
         overrideConcurrent: overrideConcurrent ?? this.overrideConcurrent,
