@@ -179,6 +179,12 @@ const _sidebarSections = <_SidebarSection>[
         routeName: 'network-policy',
         path: '/network-policy',
       ),
+      _SidebarItem(
+        icon: Icons.hub_outlined,
+        label: 'موارد التشغيل',
+        routeName: 'radius-resources',
+        path: '/radius-resources',
+      ),
     ],
   ),
   _SidebarSection(
@@ -344,6 +350,7 @@ int _indexOfRoute(String location) {
       location == '/mikrotik' ||
       location == '/device-fingerprints' ||
       location == '/network-policy' ||
+      location == '/radius-resources' ||
       location == '/plans' ||
       location == '/admins' ||
       location == '/roles' ||

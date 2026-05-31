@@ -47,6 +47,7 @@ import '../../features/payment_collection/presentation/payment_collection_screen
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
+import '../../features/radius_resources/presentation/radius_resources_screen.dart';
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
@@ -211,6 +212,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/network-policy',
             name: 'network-policy',
             builder: (ctx, st) => const NetworkPolicyScreen(),
+          ),
+          GoRoute(
+            path: '/radius-resources',
+            name: 'radius-resources',
+            builder: (ctx, st) => const RadiusResourcesScreen(),
           ),
           GoRoute(
             path: '/tickets',

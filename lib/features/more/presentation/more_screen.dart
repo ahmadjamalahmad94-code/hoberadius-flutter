@@ -57,6 +57,12 @@ const _items = <_MoreItem>[
     sub: 'الوصول البعيد، حظر المواقع، والمواقع المسموحة',
   ),
   _MoreItem(
+    Icons.hub_outlined,
+    'موارد تشغيل الريدياس',
+    'radius-resources',
+    sub: 'تجمعات العناوين ومجموعات المشاركة المرتبطة بالباقات',
+  ),
+  _MoreItem(
     Icons.people_alt_outlined,
     'الموزعون',
     'distributors',
