@@ -216,6 +216,12 @@ const _sidebarSections = <_SidebarSection>[
         routeName: 'tickets',
         path: '/tickets',
       ),
+      _SidebarItem(
+        icon: Icons.campaign_outlined,
+        label: 'التواصل والحملات',
+        routeName: 'communications',
+        path: '/communications',
+      ),
     ],
   ),
   _SidebarSection(
@@ -348,6 +354,7 @@ int _indexOfRoute(String location) {
       location == '/operational-reports' ||
       location == '/tickets' ||
       location.startsWith('/tickets/') ||
+      location == '/communications' ||
       location == '/saas-modules' ||
       location == '/distributors' ||
       location == '/recycle-bin' ||

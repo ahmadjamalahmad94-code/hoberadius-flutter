@@ -93,6 +93,12 @@ const _items = <_MoreItem>[
     sub: 'طلبات خدمة ومحادثة متابعة مع الإدارة',
   ),
   _MoreItem(
+    Icons.campaign_outlined,
+    'التواصل والحملات',
+    'communications',
+    sub: 'قوالب رسائل، جمهور، طابور إرسال وحملات تجربة جافة',
+  ),
+  _MoreItem(
     Icons.business_center_outlined,
     'الوحدات التجارية',
     'saas-modules',

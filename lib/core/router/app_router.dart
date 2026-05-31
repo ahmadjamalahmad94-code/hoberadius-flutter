@@ -29,6 +29,7 @@ import '../../features/cards/presentation/card_batch_form_screen.dart';
 import '../../features/cards/presentation/card_batch_import_screen.dart';
 import '../../features/cards/presentation/card_checker_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
+import '../../features/communications/presentation/communications_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/device_fingerprints/presentation/device_fingerprints_screen.dart';
 import '../../features/distributors/presentation/distributor_detail_screen.dart';
@@ -224,6 +225,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/communications',
+            name: 'communications',
+            builder: (ctx, st) => const CommunicationsScreen(),
           ),
           GoRoute(
             path: '/plans',
