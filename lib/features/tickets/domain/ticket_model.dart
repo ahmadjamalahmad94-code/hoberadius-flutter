@@ -163,6 +163,9 @@ class ServiceRequestResult {
     required this.paymentRequestId,
     required this.serviceLabel,
     required this.requestLabel,
+    required this.localServiceApply,
+    required this.trialDays,
+    required this.expiresAt,
     required this.ticket,
     required this.paymentRequest,
   });
@@ -172,6 +175,9 @@ class ServiceRequestResult {
   final int paymentRequestId;
   final String serviceLabel;
   final String requestLabel;
+  final bool localServiceApply;
+  final int trialDays;
+  final DateTime? expiresAt;
   final SupportTicket ticket;
   final ServicePaymentRequest? paymentRequest;
 
@@ -185,11 +191,21 @@ class ServiceRequestResult {
       paymentRequestId: _int(request['payment_request_id']),
       serviceLabel: _string(request['service_label']),
       requestLabel: _string(request['request_label']),
+      localServiceApply: _bool(request['local_service_apply']),
+      trialDays: _int(request['trial_days']),
+      expiresAt: _date(request['expires_at']),
       ticket: SupportTicket.fromJson(_map(data['ticket'])),
       paymentRequest: payment == null
           ? null
           : ServicePaymentRequest.fromJson(_map(payment)),
     );
+  }
+
+  String get trialMessage {
+    if (!localServiceApply) return 'تم تسجيل قرار الإدارة';
+    final days = trialDays > 0 ? ' لمدة $trialDays يوم' : '';
+    final expiry = expiresAt == null ? '' : ' حتى ${_dateLabel(expiresAt)}';
+    return 'تم فتح التجربة$days$expiry';
   }
 }
 
@@ -223,8 +239,21 @@ double _double(dynamic value) {
   return double.tryParse(value?.toString() ?? '') ?? 0;
 }
 
+bool _bool(dynamic value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final text = value?.toString().trim().toLowerCase();
+  return text == 'true' || text == '1' || text == 'yes';
+}
+
 DateTime? _date(dynamic value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
   return DateTime.tryParse(text.replaceFirst('Z', ''));
+}
+
+String _dateLabel(DateTime? value) {
+  if (value == null) return '';
+  String two(int item) => item.toString().padLeft(2, '0');
+  return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}';
 }

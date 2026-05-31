@@ -260,7 +260,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'هذه القرارات تسجل موقف الإدارة وتفتح طلب دفع عند الحاجة. لا يتم تفعيل الخدمة آليًا من التطبيق.',
+            'هذه القرارات تسجل موقف الإدارة، وتفتح طلب دفع عند الحاجة، أو تفتح تجربة مؤقتة داخل عقد التشغيل فقط بدون أوامر مباشرة على الراوتر.',
             style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
           ),
           const SizedBox(height: AppTokens.s12),
@@ -323,6 +323,8 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
   }) async {
     final note = TextEditingController();
     final amount = TextEditingController();
+    final trialDays = TextEditingController(text: '7');
+    final withTrial = decision == 'trial';
     var currency = 'ILS';
     var dialogBusy = false;
     await showDialog<void>(
@@ -342,6 +344,20 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                 return;
               }
             }
+            int? trialDaysValue;
+            if (withTrial) {
+              trialDaysValue = int.tryParse(trialDays.text.trim());
+              if (trialDaysValue == null ||
+                  trialDaysValue < 1 ||
+                  trialDaysValue > 60) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('مدة التجربة يجب أن تكون بين 1 و60 يوم'),
+                  ),
+                );
+                return;
+              }
+            }
 
             setDialogState(() => dialogBusy = true);
             setState(() => _busy = true);
@@ -353,6 +369,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                     decision: decision,
                     note: note.text.trim(),
                     amount: paymentAmount,
+                    trialDays: trialDaysValue,
                     currency: currency,
                   );
               ref.invalidate(ticketDetailProvider(widget.ticket.id));
@@ -365,7 +382,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                 SnackBar(
                   content: Text(
                     payment == null
-                        ? 'تم تسجيل قرار الإدارة'
+                        ? result.trialMessage
                         : 'تم فتح طلب دفع بقيمة ${payment.amountLabel}',
                   ),
                 ),
@@ -433,6 +450,18 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: AppTokens.s12),
+                  ],
+                  if (withTrial) ...[
+                    TextField(
+                      controller: trialDays,
+                      enabled: !dialogBusy,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'مدة التجربة بالأيام',
+                        helperText: 'من يوم واحد إلى 60 يوم',
+                      ),
                     ),
                     const SizedBox(height: AppTokens.s12),
                   ],

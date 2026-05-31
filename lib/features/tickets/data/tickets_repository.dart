@@ -84,6 +84,7 @@ class TicketsRepository {
     required String decision,
     String note = '',
     double? amount,
+    int? trialDays,
     String currency = 'ILS',
     String purpose = 'monthly_subscription',
   }) async {
@@ -92,6 +93,7 @@ class TicketsRepository {
       body: {
         'decision': decision,
         'note': note,
+        if (trialDays != null) 'trial_days': trialDays,
         if (amount != null)
           'payment': {
             'amount': amount,

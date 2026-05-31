@@ -107,6 +107,9 @@ void main() {
           'ticket_id': 45,
           'payment_request_id': null,
           'decision_label': 'موافقة مبدئية',
+          'local_service_apply': true,
+          'trial_days': 5,
+          'expires_at': '2026-06-05T12:00:00Z',
         },
         'ticket': {
           'id': 45,
@@ -124,5 +127,11 @@ void main() {
     expect(result.paymentRequestId, 0);
     expect(result.ticket.statusLabel, 'قيد التنفيذ');
     expect(result.paymentRequest, isNull);
+    expect(result.localServiceApply, isTrue);
+    expect(result.trialDays, 5);
+    expect(
+      result.trialMessage,
+      'تم فتح التجربة لمدة 5 يوم حتى 2026-06-05 12:00',
+    );
   });
 }
