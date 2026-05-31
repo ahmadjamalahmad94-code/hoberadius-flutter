@@ -34,6 +34,7 @@ import '../../features/device_fingerprints/presentation/device_fingerprints_scre
 import '../../features/distributors/presentation/distributor_detail_screen.dart';
 import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
+import '../../features/events/presentation/events_center_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_screen.dart';
@@ -330,6 +331,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/operational-reports',
             name: 'operational-reports',
             builder: (ctx, st) => const OperationalReportsScreen(),
+          ),
+          GoRoute(
+            path: '/events',
+            name: 'events-center',
+            builder: (ctx, st) => const EventsCenterScreen(),
           ),
           GoRoute(
             path: '/saas-modules',

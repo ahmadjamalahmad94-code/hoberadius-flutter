@@ -273,6 +273,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/system-operations',
       ),
       _SidebarItem(
+        icon: Icons.event_note_outlined,
+        label: 'مركز الأحداث',
+        routeName: 'events-center',
+        path: '/events',
+      ),
+      _SidebarItem(
         icon: Icons.settings_outlined,
         label: 'التحكم الإداري',
         routeName: 'admin-control',
@@ -348,6 +354,7 @@ int _indexOfRoute(String location) {
       location == '/lifecycle' ||
       location == '/backups' ||
       location == '/system-operations' ||
+      location == '/events' ||
       location == '/admin-control' ||
       location == '/tools' ||
       location == '/bandwidth-schedules' ||

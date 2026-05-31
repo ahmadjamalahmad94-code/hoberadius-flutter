@@ -123,6 +123,12 @@ const _items = <_MoreItem>[
     sub: 'حالة الخادم، التشخيص، طابور المزامنة والمطابقة',
   ),
   _MoreItem(
+    Icons.event_note_outlined,
+    'مركز الأحداث',
+    'events-center',
+    sub: 'سجل التشغيل والأمان والمالية مع تسجيل مراجعة إدارية',
+  ),
+  _MoreItem(
     Icons.manage_accounts_outlined,
     'التحكم الإداري',
     'admin-control',
