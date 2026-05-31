@@ -48,6 +48,37 @@ class TicketsRepository {
     );
   }
 
+  Future<ServiceRequestResult> createServiceRequest({
+    required int subscriberId,
+    required String serviceKey,
+    required String serviceName,
+    required String requestType,
+    String priority = 'normal',
+    String notes = '',
+    double? amount,
+    String currency = 'ILS',
+    String purpose = 'monthly_subscription',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/service-requests',
+      body: {
+        'subscriber_id': subscriberId,
+        'service_key': serviceKey,
+        'service_name': serviceName,
+        'request_type': requestType,
+        'priority': priority,
+        'notes': notes,
+        if (amount != null)
+          'payment': {
+            'amount': amount,
+            'currency': currency,
+            'purpose': purpose,
+          },
+      },
+    );
+    return ServiceRequestResult.fromJson(res);
+  }
+
   Future<SupportTicket> updateStatus(int ticketId, String status) async {
     final res = await _api.patch(
       '/api/v1/tickets/$ticketId',

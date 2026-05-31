@@ -125,9 +125,83 @@ class TicketDetail {
   }
 }
 
+class ServicePaymentRequest {
+  const ServicePaymentRequest({
+    required this.id,
+    required this.amount,
+    required this.currency,
+    required this.referenceCode,
+    required this.status,
+  });
+
+  final int id;
+  final double amount;
+  final String currency;
+  final String referenceCode;
+  final String status;
+
+  factory ServicePaymentRequest.fromJson(Map<String, dynamic> json) {
+    return ServicePaymentRequest(
+      id: _int(json['id']),
+      amount: _double(json['amount']),
+      currency: _string(json['currency'], fallback: 'ILS'),
+      referenceCode: _string(json['reference_code']),
+      status: _string(json['status'], fallback: 'pending'),
+    );
+  }
+
+  String get amountLabel =>
+      '${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)} $currency';
+}
+
+class ServiceRequestResult {
+  const ServiceRequestResult({
+    required this.reference,
+    required this.ticketId,
+    required this.paymentRequestId,
+    required this.serviceLabel,
+    required this.requestLabel,
+    required this.ticket,
+    required this.paymentRequest,
+  });
+
+  final String reference;
+  final int ticketId;
+  final int paymentRequestId;
+  final String serviceLabel;
+  final String requestLabel;
+  final SupportTicket ticket;
+  final ServicePaymentRequest? paymentRequest;
+
+  factory ServiceRequestResult.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    final request = _map(data['service_request']);
+    final payment = data['payment_request'];
+    return ServiceRequestResult(
+      reference: _string(request['reference']),
+      ticketId: _int(request['ticket_id']),
+      paymentRequestId: _int(request['payment_request_id']),
+      serviceLabel: _string(request['service_label']),
+      requestLabel: _string(request['request_label']),
+      ticket: SupportTicket.fromJson(_map(data['ticket'])),
+      paymentRequest: payment == null
+          ? null
+          : ServicePaymentRequest.fromJson(_map(payment)),
+    );
+  }
+}
+
 Map<String, dynamic> _data(Map<String, dynamic> json) {
   final data = json['data'];
-  return data is Map<String, dynamic> ? data : json;
+  return _map(data).isEmpty ? json : _map(data);
+}
+
+Map<String, dynamic> _map(Object? value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) {
+    return value.map((key, value) => MapEntry(key.toString(), value));
+  }
+  return const {};
 }
 
 String _string(dynamic value, {String fallback = ''}) {
@@ -139,6 +213,12 @@ int _int(dynamic value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double _double(dynamic value) {
+  if (value is double) return value;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '') ?? 0;
 }
 
 DateTime? _date(dynamic value) {

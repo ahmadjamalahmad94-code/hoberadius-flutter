@@ -54,6 +54,11 @@ class TicketsListScreen extends ConsumerWidget {
               icon: const Icon(Icons.refresh),
               label: const Text('تحديث'),
             ),
+            FilledButton.icon(
+              onPressed: () => _showServiceRequestDialog(context, ref),
+              icon: const Icon(Icons.playlist_add_check_circle_outlined),
+              label: const Text('طلب خدمة'),
+            ),
             ElevatedButton.icon(
               onPressed: () => _showCreateTicketDialog(context, ref),
               icon: const Icon(Icons.add_comment_outlined),
@@ -75,9 +80,9 @@ class TicketsListScreen extends ConsumerWidget {
                 icon: Icons.support_agent_outlined,
                 title: 'لا توجد تذاكر مطابقة',
                 action: ElevatedButton.icon(
-                  onPressed: () => _showCreateTicketDialog(context, ref),
-                  icon: const Icon(Icons.add_comment_outlined),
-                  label: const Text('فتح تذكرة'),
+                  onPressed: () => _showServiceRequestDialog(context, ref),
+                  icon: const Icon(Icons.playlist_add_check_circle_outlined),
+                  label: const Text('طلب خدمة'),
                 ),
               );
             }
@@ -207,6 +212,297 @@ class _Priority extends StatelessWidget {
           : PillTone.cyan,
     );
   }
+}
+
+class _ServiceOption {
+  const _ServiceOption(this.key, this.label);
+
+  final String key;
+  final String label;
+}
+
+class _RequestTypeOption {
+  const _RequestTypeOption(this.key, this.label);
+
+  final String key;
+  final String label;
+}
+
+const _serviceOptions = [
+  _ServiceOption('cards', 'الكروت'),
+  _ServiceOption('cards_recharge', 'شحن الكروت'),
+  _ServiceOption('payment_collection', 'تحصيل المدفوعات'),
+  _ServiceOption('ip_change_vpn', 'خدمة تغيير IP / VPN'),
+  _ServiceOption('customer_portal', 'بوابة العميل'),
+  _ServiceOption('communications', 'التواصل والحملات'),
+  _ServiceOption('network_policy', 'سياسات الشبكة'),
+  _ServiceOption('nas', 'أجهزة الشبكة'),
+  _ServiceOption('reports', 'التقارير'),
+  _ServiceOption('other', 'خدمة أخرى'),
+];
+
+const _requestTypeOptions = [
+  _RequestTypeOption('activation', 'تفعيل'),
+  _RequestTypeOption('upgrade', 'ترقية'),
+  _RequestTypeOption('trial', 'فتح تجريبي'),
+  _RequestTypeOption('renewal', 'تجديد'),
+  _RequestTypeOption('support', 'مراجعة فنية'),
+];
+
+Future<void> _showServiceRequestDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final subscribers = await ref.read(_ticketSubscribersProvider.future);
+  if (!context.mounted) return;
+  if (subscribers.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('لا يوجد مشتركون لربط الطلب بهم')),
+    );
+    return;
+  }
+
+  final notes = TextEditingController();
+  final customServiceName = TextEditingController();
+  final amount = TextEditingController();
+  var subscriberId = subscribers.first.id;
+  var service = _serviceOptions.first;
+  var requestType = _requestTypeOptions.first;
+  var createPayment = false;
+  var currency = 'ILS';
+  var busy = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setState) {
+        Future<void> submit() async {
+          if (subscriberId == null) return;
+          final serviceName = service.key == 'other'
+              ? customServiceName.text.trim()
+              : service.label;
+          if (serviceName.isEmpty) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              const SnackBar(content: Text('اكتب اسم الخدمة المطلوبة')),
+            );
+            return;
+          }
+
+          double? paymentAmount;
+          if (createPayment) {
+            paymentAmount = double.tryParse(
+              amount.text.trim().replaceAll(',', '.'),
+            );
+            if (paymentAmount == null || paymentAmount <= 0) {
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
+                const SnackBar(content: Text('أدخل مبلغ دفع صحيح')),
+              );
+              return;
+            }
+          }
+
+          setState(() => busy = true);
+          try {
+            final result =
+                await ref.read(ticketsRepositoryProvider).createServiceRequest(
+                      subscriberId: subscriberId!,
+                      serviceKey: service.key,
+                      serviceName: serviceName,
+                      requestType: requestType.key,
+                      notes: notes.text.trim(),
+                      amount: paymentAmount,
+                      currency: currency,
+                    );
+            ref.invalidate(ticketsPageProvider);
+            if (!dialogContext.mounted) return;
+            Navigator.pop(dialogContext);
+            if (context.mounted) {
+              final hasPayment = result.paymentRequest != null;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    hasPayment
+                        ? 'تم فتح تذكرة وطلب دفع مرتبط بها'
+                        : 'تم فتح تذكرة طلب الخدمة',
+                  ),
+                ),
+              );
+              context.goNamed(
+                'ticket-detail',
+                pathParameters: {'id': '${result.ticketId}'},
+              );
+            }
+          } catch (error) {
+            if (!dialogContext.mounted) return;
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              SnackBar(content: Text('$error')),
+            );
+          } finally {
+            if (dialogContext.mounted) setState(() => busy = false);
+          }
+        }
+
+        return AlertDialog(
+          title: const Text('طلب خدمة'),
+          content: SizedBox(
+            width: 560,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<int>(
+                    initialValue: subscriberId,
+                    decoration: const InputDecoration(labelText: 'المشترك'),
+                    items: [
+                      for (final subscriber in subscribers)
+                        if (subscriber.id != null)
+                          DropdownMenuItem(
+                            value: subscriber.id,
+                            child: Text(_subscriberLabel(subscriber)),
+                          ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(() => subscriberId = value),
+                  ),
+                  const SizedBox(height: AppTokens.s12),
+                  DropdownButtonFormField<_ServiceOption>(
+                    initialValue: service,
+                    decoration: const InputDecoration(labelText: 'الخدمة'),
+                    items: [
+                      for (final option in _serviceOptions)
+                        DropdownMenuItem(
+                          value: option,
+                          child: Text(option.label),
+                        ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(
+                              () => service = value ?? _serviceOptions.first,
+                            ),
+                  ),
+                  if (service.key == 'other') ...[
+                    const SizedBox(height: AppTokens.s12),
+                    TextField(
+                      controller: customServiceName,
+                      enabled: !busy,
+                      decoration:
+                          const InputDecoration(labelText: 'اسم الخدمة'),
+                    ),
+                  ],
+                  const SizedBox(height: AppTokens.s12),
+                  DropdownButtonFormField<_RequestTypeOption>(
+                    initialValue: requestType,
+                    decoration: const InputDecoration(labelText: 'نوع الطلب'),
+                    items: [
+                      for (final option in _requestTypeOptions)
+                        DropdownMenuItem(
+                          value: option,
+                          child: Text(option.label),
+                        ),
+                    ],
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(
+                              () => requestType =
+                                  value ?? _requestTypeOptions.first,
+                            ),
+                  ),
+                  const SizedBox(height: AppTokens.s12),
+                  TextField(
+                    controller: notes,
+                    enabled: !busy,
+                    minLines: 3,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      labelText: 'ملاحظات الطلب',
+                      hintText: 'اكتب الاتفاق أو تفاصيل الترقية المطلوبة',
+                    ),
+                  ),
+                  const SizedBox(height: AppTokens.s12),
+                  SwitchListTile.adaptive(
+                    value: createPayment,
+                    onChanged: busy
+                        ? null
+                        : (value) => setState(() => createPayment = value),
+                    title: const Text('إنشاء طلب دفع الآن'),
+                    subtitle: const Text(
+                      'يبقى الطلب بانتظار إثبات الدفع ومراجعة الإدارة.',
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  if (createPayment) ...[
+                    const SizedBox(height: AppTokens.s8),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: amount,
+                            enabled: !busy,
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                            decoration:
+                                const InputDecoration(labelText: 'المبلغ'),
+                          ),
+                        ),
+                        const SizedBox(width: AppTokens.s8),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: currency,
+                            decoration:
+                                const InputDecoration(labelText: 'العملة'),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'ILS',
+                                child: Text('شيكل'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'USD',
+                                child: Text('دولار'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'JOD',
+                                child: Text('دينار'),
+                              ),
+                            ],
+                            onChanged: busy
+                                ? null
+                                : (value) => setState(
+                                      () => currency = value ?? 'ILS',
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton.icon(
+              onPressed: busy ? null : submit,
+              icon: busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.check_circle_outline),
+              label: const Text('فتح الطلب'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 Future<void> _showCreateTicketDialog(

@@ -53,4 +53,41 @@ void main() {
     expect(detail.replies.single.authorLabel, 'الإدارة');
     expect(detail.replies.single.body, 'تم استلام الطلب');
   });
+
+  test('Service request result parses ticket and optional payment request', () {
+    final result = ServiceRequestResult.fromJson({
+      'data': {
+        'service_request': {
+          'reference': 'SR-44',
+          'ticket_id': 44,
+          'payment_request_id': 12,
+          'service_label': 'خدمة تغيير IP / VPN',
+          'request_label': 'تفعيل',
+        },
+        'ticket': {
+          'id': 44,
+          'subscriber_id': 7,
+          'subject': 'طلب خدمة: خدمة تغيير IP / VPN',
+          'category': 'service_request',
+          'priority': 'normal',
+          'status': 'open',
+          'body': 'الخدمة المطلوبة: خدمة تغيير IP / VPN',
+        },
+        'payment_request': {
+          'id': 12,
+          'amount': 35,
+          'currency': 'ILS',
+          'reference_code': 'PAY-ABC123',
+          'status': 'pending',
+        },
+      },
+    });
+
+    expect(result.reference, 'SR-44');
+    expect(result.ticketId, 44);
+    expect(result.paymentRequestId, 12);
+    expect(result.serviceLabel, 'خدمة تغيير IP / VPN');
+    expect(result.ticket.category, 'service_request');
+    expect(result.paymentRequest?.amountLabel, '35 ILS');
+  });
 }
