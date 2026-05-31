@@ -271,11 +271,16 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
   Future<void> _applyService() async {
     setState(() => _busy = true);
     try {
-      await ref
+      final result = await ref
           .read(paymentCollectionRepositoryProvider)
           .applyService(widget.request.id);
       ref.invalidate(paymentRequestsProvider);
-      if (mounted) _snack(context, 'تم إرسال تطبيق الخدمة');
+      if (mounted) {
+        _snack(
+          context,
+          result.applyAttempt?.successMessage ?? 'تم تطبيق الخدمة',
+        );
+      }
     } catch (error) {
       if (mounted) _snack(context, 'تعذر تطبيق الخدمة: $error');
     } finally {

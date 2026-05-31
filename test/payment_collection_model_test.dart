@@ -58,4 +58,35 @@ void main() {
     expect(result.request.amountLabel, '75.50 ILS');
     expect(result.request.purposeLabel, 'شراء كروت');
   });
+
+  test('service apply result exposes local entitlement message', () {
+    final result = PaymentReviewResult.fromJson({
+      'data': {
+        'request': {
+          'id': 11,
+          'status': 'paid',
+          'purpose': 'monthly_subscription',
+          'amount': 30,
+          'currency': 'ILS',
+          'service_apply_status': 'applied',
+        },
+        'apply_attempt': {
+          'id': 4,
+          'status': 'applied',
+          'result': {
+            'local_service_apply': true,
+            'service_key': 'customer_portal',
+            'service_label': 'بوابة العميل',
+          },
+        },
+      },
+    });
+
+    expect(result.applyAttempt, isNotNull);
+    expect(result.applyAttempt?.appliedLocalEntitlement, isTrue);
+    expect(
+      result.applyAttempt?.successMessage,
+      'تم اعتماد خدمة بوابة العميل داخل عقد التشغيل',
+    );
+  });
 }

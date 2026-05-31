@@ -118,15 +118,59 @@ class PaymentRequestRecord {
 }
 
 class PaymentReviewResult {
-  const PaymentReviewResult({required this.request});
+  const PaymentReviewResult({
+    required this.request,
+    required this.applyAttempt,
+  });
 
   final PaymentRequestRecord request;
+  final PaymentApplyAttempt? applyAttempt;
 
   factory PaymentReviewResult.fromJson(Map<String, dynamic> json) {
     final data = _data(json);
     return PaymentReviewResult(
       request: PaymentRequestRecord.fromJson(_map(data['request'])),
+      applyAttempt: data['apply_attempt'] == null
+          ? null
+          : PaymentApplyAttempt.fromJson(_map(data['apply_attempt'])),
     );
+  }
+}
+
+class PaymentApplyAttempt {
+  const PaymentApplyAttempt({
+    required this.id,
+    required this.status,
+    required this.result,
+  });
+
+  final int id;
+  final String status;
+  final Map<String, dynamic> result;
+
+  factory PaymentApplyAttempt.fromJson(Map<String, dynamic> json) {
+    return PaymentApplyAttempt(
+      id: _int(json['id']),
+      status: _string(json['status']),
+      result: _map(json['result']),
+    );
+  }
+
+  bool get appliedLocalEntitlement => _bool(result['local_service_apply']);
+
+  String get serviceKey => _string(result['service_key']);
+
+  String get serviceLabel => _string(result['service_label']);
+
+  String get successMessage {
+    if (appliedLocalEntitlement) {
+      final label = serviceLabel.isNotEmpty ? serviceLabel : serviceKey;
+      if (label.isNotEmpty) {
+        return 'تم اعتماد خدمة $label داخل عقد التشغيل';
+      }
+      return 'تم اعتماد الخدمة داخل عقد التشغيل';
+    }
+    return 'تم تسجيل تطبيق الخدمة بدون تغيير صلاحيات التشغيل';
   }
 }
 
@@ -161,6 +205,13 @@ int _int(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+bool _bool(Object? value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  final text = value?.toString().trim().toLowerCase();
+  return text == 'true' || text == '1' || text == 'yes';
 }
 
 double _double(Object? value) {
