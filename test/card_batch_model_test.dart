@@ -135,7 +135,7 @@ void main() {
     final request = CardBatchImportRequest(
       planId: 3,
       sourceType: 'external',
-      csvText: 'username,password\nc1,p1\n',
+      csvText: 'اسم الدخول,كلمة المرور\nc1,p1\n',
       packageName: 'External file',
       syncToRadius: true,
       pricePerCard: 1.5,
@@ -144,6 +144,7 @@ void main() {
     final body = request.toBody();
     expect(body['plan_id'], 3);
     expect(body['source_type'], 'external');
+    expect(body['csv_text'], startsWith('username,password'));
     expect(body['csv_text'], contains('c1,p1'));
     expect(body['sync_to_radius'], isFalse);
 

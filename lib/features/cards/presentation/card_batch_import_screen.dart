@@ -33,7 +33,7 @@ class _CardBatchImportScreenState extends ConsumerState<CardBatchImportScreen> {
   final _totalPrice = TextEditingController(text: '0');
   final _notes = TextEditingController();
   final _csvText = TextEditingController(
-    text: 'username,password\ncard001,pass001\ncard002,pass002\n',
+    text: 'اسم الدخول,كلمة المرور\ncard001,pass001\ncard002,pass002\n',
   );
 
   int? _planId;
@@ -311,7 +311,7 @@ class _ImportForm extends StatelessWidget {
                   decoration: const InputDecoration(
                     labelText: 'الكروت',
                     alignLabelWithHint: true,
-                    hintText: 'username,password\ncard001,pass001',
+                    hintText: 'اسم الدخول,كلمة المرور\ncard001,pass001',
                   ),
                   validator: (value) => (value == null || value.trim().isEmpty)
                       ? 'أدخل كروت للاستيراد'
@@ -320,7 +320,7 @@ class _ImportForm extends StatelessWidget {
                 const SizedBox(height: AppTokens.s12),
                 const _MessageBox(
                   text:
-                      'الصيغ المقبولة: username,password أو عمود username فقط. كلمات المرور تُرسل للخادم فقط ولا تُعرض في نتيجة الاستيراد.',
+                      'اكتب اسم الدخول في العمود الأول، وكلمة المرور في العمود الثاني اختياريًا. إذا استخدمت عناوين عربية يحوّلها التطبيق لصيغة الخادم تلقائيًا قبل الإرسال.',
                 ),
               ],
             ),

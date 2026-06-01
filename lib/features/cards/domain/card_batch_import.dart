@@ -28,7 +28,7 @@ class CardBatchImportRequest {
   Map<String, dynamic> toBody() => {
         'plan_id': planId,
         'source_type': sourceType,
-        'csv_text': csvText,
+        'csv_text': normalizeCardImportCsvHeaders(csvText),
         if (packageName.trim().isNotEmpty) 'package_name': packageName.trim(),
         if (serviceName.trim().isNotEmpty) 'service_name': serviceName.trim(),
         if (notes.trim().isNotEmpty) 'notes': notes.trim(),
@@ -36,6 +36,40 @@ class CardBatchImportRequest {
         'total_price': totalPrice,
         'sync_to_radius': syncToRadius && sourceType != 'external',
       };
+}
+
+String normalizeCardImportCsvHeaders(String csvText) {
+  final lines = csvText.split(RegExp(r'\r?\n'));
+  if (lines.isEmpty) return csvText;
+
+  final headerCells = lines.first
+      .split(',')
+      .map((cell) => cell.trim().replaceAll('"', ''))
+      .toList();
+  if (headerCells.isEmpty) return csvText;
+
+  final normalized = headerCells.map(_normalizeImportHeader).toList();
+  final changed = normalized.join(',') != headerCells.join(',');
+  if (!changed) return csvText;
+
+  return [normalized.join(','), ...lines.skip(1)].join('\n');
+}
+
+String _normalizeImportHeader(String value) {
+  switch (value) {
+    case 'اسم الدخول':
+    case 'اسم المستخدم':
+    case 'المستخدم':
+    case 'الكرت':
+    case 'البطاقة':
+      return 'username';
+    case 'كلمة المرور':
+    case 'كلمة السر':
+    case 'الرمز':
+      return 'password';
+    default:
+      return value;
+  }
 }
 
 class CardBatchImportResult {
