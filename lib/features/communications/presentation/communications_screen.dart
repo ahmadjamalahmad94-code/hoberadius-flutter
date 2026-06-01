@@ -23,7 +23,7 @@ class CommunicationsScreen extends ConsumerWidget {
         PageHeader(
           title: 'مركز التواصل',
           subtitle:
-              'قوالب رسائل، شرائح جمهور، إرسال داخلي آمن، وحملات تجربة جافة بدون تشغيل مزود خارجي تلقائي.',
+              'قوالب رسائل، شرائح جمهور، إرسال داخلي آمن، ومعاينة حملات بدون تشغيل مزود خارجي تلقائي.',
           actions: [
             OutlinedButton.icon(
               onPressed: () => _refresh(ref),
@@ -527,7 +527,7 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
             onRetry: () => ref.invalidate(messageTemplatesProvider),
           ),
           data: (page) => AppCard(
-            title: 'تجهيز حملة كتجربة جافة',
+            title: 'تجهيز معاينة حملة بدون إرسال',
             icon: Icons.campaign_outlined,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -537,7 +537,7 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
                     icon: Icons.description_outlined,
                     title: 'أنشئ قالبًا أولًا',
                     subtitle:
-                        'الحملة تحتاج قالب رسالة حتى يتم حساب الجمهور وتجربة الخطة.',
+                        'الحملة تحتاج قالب رسالة حتى يتم حساب الجمهور ومراجعة خطة الإرسال.',
                   )
                 else ...[
                   TextField(
@@ -575,7 +575,7 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
                   FilledButton.icon(
                     onPressed: _busy ? null : () => _dryRun(page.items),
                     icon: const Icon(Icons.fact_check_outlined),
-                    label: const Text('تجهيز التجربة الجافة'),
+                    label: const Text('تجهيز المعاينة'),
                   ),
                 ],
               ],
@@ -854,7 +854,7 @@ class _CampaignList extends StatelessWidget {
       return const EmptyState(
         icon: Icons.campaign_outlined,
         title: 'لا توجد حملات محفوظة',
-        subtitle: 'جهز تجربة جافة للحملة حتى تظهر هنا للمراجعة.',
+        subtitle: 'جهز معاينة حملة حتى تظهر هنا للمراجعة قبل الإرسال الفعلي.',
       );
     }
     return AppCard(

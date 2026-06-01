@@ -44,7 +44,7 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
             icon: Icons.rule_folder_outlined,
             title: 'تعديلات عامة على حسابات',
             subtitle:
-                'إجراءات جماعية تمر عبر الخادم. تجربة فقط تعرض المستهدفين بدون تعديل.',
+                'إجراءات جماعية تمر عبر الخادم. المعاينة بدون تنفيذ تعرض المستهدفين قبل أي تعديل.',
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
@@ -86,7 +86,7 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
           SwitchListTile(
             value: _dryRun,
             onChanged: (value) => setState(() => _dryRun = value),
-            title: const Text('تجربة فقط'),
+            title: const Text('معاينة بدون تنفيذ'),
           ),
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,

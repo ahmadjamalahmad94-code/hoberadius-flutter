@@ -15,7 +15,7 @@ class FinanceNotice extends StatelessWidget {
           SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(
-              'تجربة فقط لا تغير حساب RADIUS. التطبيق الفعلي يمدد/يفعل الحساب حسب نتيجة الخادم.',
+              'المعاينة بدون تنفيذ لا تغيّر حساب RADIUS. عند اعتماد التنفيذ يمدد الخادم الحساب أو يفعّله حسب النتيجة.',
               style: TextStyle(color: AppTokens.textMuted),
             ),
           ),
@@ -77,7 +77,7 @@ class PaymentFormCard extends StatelessWidget {
           ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('تجربة فقط'),
+            title: const Text('معاينة بدون تنفيذ'),
             value: dryRun,
             onChanged: busy ? null : (v) => onDryRunChanged(v ?? true),
           ),
@@ -151,7 +151,7 @@ class LoanFormCard extends StatelessWidget {
           ),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('تجربة فقط'),
+            title: const Text('معاينة بدون تنفيذ'),
             value: dryRun,
             onChanged: busy ? null : (v) => onDryRunChanged(v ?? true),
           ),

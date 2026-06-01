@@ -345,7 +345,7 @@ String communicationStatusLabel(String value) {
     'queued' => 'في الطابور',
     'sent' => 'تم الإرسال',
     'failed' => 'فشل',
-    'dry_run_ready' => 'تجربة جافة جاهزة',
+    'dry_run_ready' => 'معاينة جاهزة',
     'read' => 'مقروء',
     _ => value.trim().isEmpty ? 'غير محدد' : value,
   };

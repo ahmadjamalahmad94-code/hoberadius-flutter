@@ -102,7 +102,7 @@ const _items = <_MoreItem>[
     Icons.campaign_outlined,
     'التواصل والحملات',
     'communications',
-    sub: 'قوالب رسائل، جمهور، طابور إرسال وحملات تجربة جافة',
+    sub: 'قوالب رسائل، جمهور، طابور إرسال ومعاينة حملات',
   ),
   _MoreItem(
     Icons.business_center_outlined,
@@ -156,7 +156,7 @@ const _items = <_MoreItem>[
     Icons.speed_outlined,
     'جدولة السرعات',
     'bandwidth-schedules',
-    sub: 'جداول وقتية مع تجربة تطبيق فقط',
+    sub: 'جداول وقتية مع معاينة قبل التطبيق الفعلي',
   ),
   _MoreItem(
     Icons.print_outlined,

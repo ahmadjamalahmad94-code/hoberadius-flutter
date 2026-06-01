@@ -44,7 +44,7 @@ class _ToolsSetSpeedsPanelState extends State<ToolsSetSpeedsPanel> {
             icon: Icons.speed_outlined,
             title: 'تعديل سرعات باقات محددة',
             subtitle:
-                'اكتب أرقام الباقات مفصولة بفاصلة. استخدم تجربة فقط أولًا قبل اعتماد التغيير الحقيقي.',
+                'اكتب أرقام الباقات مفصولة بفاصلة. استخدم المعاينة بدون تنفيذ أولًا قبل اعتماد التغيير الحقيقي.',
           ),
           const SizedBox(height: AppTokens.s12),
           ToolsTextField(
@@ -68,8 +68,8 @@ class _ToolsSetSpeedsPanelState extends State<ToolsSetSpeedsPanel> {
           SwitchListTile(
             value: _dryRun,
             onChanged: (value) => setState(() => _dryRun = value),
-            title: const Text('تجربة فقط'),
-            subtitle: const Text('لا يغيّر الخادم إلا عند إيقاف هذا الخيار.'),
+            title: const Text('معاينة بدون تنفيذ'),
+            subtitle: const Text('يعرض التأثير المتوقع ولا يغيّر الخادم إلا عند إيقاف هذا الخيار.'),
           ),
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,
@@ -120,7 +120,7 @@ class _SpeedsResult extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(result.dryRun ? 'نتيجة التجربة' : 'تم اعتماد التغيير'),
+          Text(result.dryRun ? 'نتيجة المعاينة' : 'تم اعتماد التغيير'),
           const SizedBox(height: AppTokens.s8),
           for (final change in result.changes)
             Padding(

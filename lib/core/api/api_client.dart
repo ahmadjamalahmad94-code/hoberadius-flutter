@@ -85,7 +85,7 @@ class ApiClient {
               (data['error']?['code'] ?? _statusCodeToError(res.statusCode))
                   .toString();
           final rawMessage =
-              (data['error']?['message'] ?? 'Request failed').toString();
+              (data['error']?['message'] ?? 'تعذّر تنفيذ الطلب').toString();
           throw ApiException(
             code: code,
             message: _apiErrorMessage(code, rawMessage),
@@ -96,7 +96,7 @@ class ApiClient {
         if (data['ok'] == false) {
           final code = (data['error']?['code'] ?? 'error').toString();
           final rawMessage =
-              (data['error']?['message'] ?? 'Request failed').toString();
+              (data['error']?['message'] ?? 'تعذّر تنفيذ الطلب').toString();
           throw ApiException(
             code: code,
             message: _apiErrorMessage(code, rawMessage),

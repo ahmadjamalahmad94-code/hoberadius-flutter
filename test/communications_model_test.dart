@@ -80,7 +80,7 @@ void main() {
       },
     });
 
-    expect(campaign.statusLabel, 'تجربة جافة جاهزة');
+    expect(campaign.statusLabel, 'معاينة جاهزة');
     expect(campaign.recipientCount, 12);
     expect(campaign.externalSend, isFalse);
     expect(preview.items.single.typeLabel, 'مستخدمي الكروت');

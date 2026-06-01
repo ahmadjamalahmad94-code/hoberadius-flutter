@@ -111,7 +111,7 @@ class _ScheduleTile extends StatelessWidget {
               text: item.enabled ? 'مفعّل' : 'معطّل',
               tone: item.enabled ? PillTone.green : PillTone.neutral,
             ),
-            const StatusPill(text: 'تجربة فقط', tone: PillTone.orange),
+            const StatusPill(text: 'معاينة متاحة', tone: PillTone.orange),
           ],
         ),
         const SizedBox(height: AppTokens.s8),
@@ -143,7 +143,7 @@ class _ScheduleTile extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: applying ? null : onApplyDryRun,
                 icon: const Icon(Icons.science_outlined),
-                label: const Text('تجربة تطبيق'),
+                label: const Text('معاينة التطبيق'),
               ),
               ElevatedButton.icon(
                 onPressed: applying ? null : onApplyLive,

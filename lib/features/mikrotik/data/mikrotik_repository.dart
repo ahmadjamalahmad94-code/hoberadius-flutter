@@ -36,7 +36,9 @@ class MikrotikRepository {
     String password = '',
   }) async {
     final id = config.id;
-    if (id == null) throw ArgumentError('MikroTik id is required for update');
+    if (id == null) {
+      throw ArgumentError('معرّف اتصال MikroTik مطلوب قبل التعديل');
+    }
     final res = await _api.patch(
       '/api/v1/mikrotik/$id',
       body: config.toBody(password: password),

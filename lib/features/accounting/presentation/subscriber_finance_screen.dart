@@ -100,7 +100,7 @@ class _SubscriberFinanceScreenState
       _paymentNotes.clear();
       final result = payment.activationResult;
       final label = result['dry_run'] == true
-          ? 'تمت كتجربة فقط'
+          ? 'تمت المعاينة بدون تنفيذ'
           : result['applied_to_radius'] == true
               ? 'تم التطبيق على RADIUS'
               : 'تم التسجيل المالي';
