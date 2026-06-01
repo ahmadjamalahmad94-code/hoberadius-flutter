@@ -109,7 +109,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
                 icon: Icons.router_outlined,
                 title: 'لا توجد اتصالات MikroTik بعد',
                 subtitle:
-                    'أضف أول اتصال حتى يمكن اختبار الراوتر واستخدامه لاحقًا في عمليات RADIUS/MikroTik.',
+                    'أضف أول اتصال لاختبار الراوتر وربطه بعمليات RADIUS/MikroTik.',
                 action: ElevatedButton.icon(
                   onPressed: _startCreate,
                   icon: const Icon(Icons.add),

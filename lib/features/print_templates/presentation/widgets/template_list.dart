@@ -33,7 +33,7 @@ class TemplateList extends StatelessWidget {
         child: EmptyState(
           icon: Icons.print_outlined,
           title: 'لا توجد قوالب طباعة بعد',
-          subtitle: 'احفظ أول قالب لاستخدامه لاحقًا في الطباعة.',
+          subtitle: 'احفظ أول قالب لاستخدامه في الطباعة.',
         ),
       );
     }

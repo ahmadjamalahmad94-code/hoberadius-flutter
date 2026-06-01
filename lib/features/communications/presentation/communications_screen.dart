@@ -750,7 +750,7 @@ class _SegmentList extends StatelessWidget {
       return const EmptyState(
         icon: Icons.groups_2_outlined,
         title: 'لا توجد شرائح محفوظة',
-        subtitle: 'احفظ شريحة جمهور لتستخدمها لاحقًا في الحملات.',
+        subtitle: 'احفظ شريحة جمهور لاستخدامها مباشرة عند إنشاء الحملات.',
       );
     }
     return AppCard(
