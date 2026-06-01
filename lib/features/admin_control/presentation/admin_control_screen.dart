@@ -36,7 +36,7 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
         PageHeader(
           title: 'التحكم الإداري',
           subtitle:
-              'إعدادات النظام، مفاتيح API، المستأجرون، وسجل إرسال Webhooks عبر API حقيقي.',
+              'إعدادات النظام، مفاتيح الربط، المستأجرون، وسجل إشعارات الويب عبر ربط فعلي.',
           actions: [
             IconButton(
               tooltip: 'تحديث',
@@ -119,9 +119,9 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
   Future<void> _createToken() async {
     final name = await showAdminTextDialog(
       context,
-      title: 'مفتاح API جديد',
+      title: 'مفتاح ربط جديد',
       label: 'اسم المفتاح',
-      initial: 'mobile-admin',
+      initial: 'ربط-التطبيق',
     );
     if (!mounted || name == null || name.trim().isEmpty) return;
     final result = await ref
@@ -139,7 +139,7 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
     final ok = await showAdminConfirm(
       context,
       title: 'إلغاء المفتاح',
-      body: 'سيتم إلغاء مفتاح ${token.name}. لن يستطيع استخدام API بعد ذلك.',
+      body: 'سيتم إلغاء مفتاح ${token.name}. لن يستطيع استخدام واجهة الربط بعد ذلك.',
     );
     if (!mounted || !ok) return;
     final result = await ref
@@ -178,7 +178,7 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
           secret: secret,
           events: events,
         );
-    _afterAction(result.error, 'تم حفظ إعدادات Webhook');
+    _afterAction(result.error, 'تم حفظ إعدادات إشعارات الويب');
   }
 
   Future<void> _testWebhook() async {

@@ -36,7 +36,7 @@ class WebhooksPanel extends ConsumerStatefulWidget {
 class _WebhooksPanelState extends ConsumerState<WebhooksPanel> {
   final _target = TextEditingController();
   final _secret = TextEditingController();
-  final _events = TextEditingController(text: 'webhook.test');
+  final _events = TextEditingController();
 
   @override
   void dispose() {
@@ -55,20 +55,19 @@ class _WebhooksPanelState extends ConsumerState<WebhooksPanel> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         config.when(
-          loading: () => const AdminLoadingCard(title: 'إعدادات Webhook'),
+          loading: () => const AdminLoadingCard(title: 'إعدادات إشعارات الويب'),
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
-            title: 'تعذر جلب إعدادات Webhook',
+            title: 'تعذر جلب إعدادات إشعارات الويب',
             subtitle: visibleErrorMessage(e),
           ),
           data: (item) {
             if (_target.text.isEmpty) _target.text = item.targetUrl;
-            if (_events.text == 'webhook.test' &&
-                item.enabledEvents.isNotEmpty) {
+            if (_events.text.isEmpty && item.enabledEvents.isNotEmpty) {
               _events.text = item.enabledEvents.join(',');
             }
             return AppCard(
-              title: 'إعدادات Webhook',
+              title: 'إعدادات إشعارات الويب',
               icon: Icons.bolt,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -91,7 +90,8 @@ class _WebhooksPanelState extends ConsumerState<WebhooksPanel> {
                   TextField(
                     controller: _events,
                     decoration: const InputDecoration(
-                      labelText: 'الأحداث، افصل بينها بفاصلة',
+                      labelText: 'الأحداث المرسلة، افصل بينها بفاصلة',
+                      helperText: 'هذه أسماء أحداث الربط الداخلية، ولا تظهر للمشتركين.',
                     ),
                   ),
                   const SizedBox(height: AppTokens.s12),

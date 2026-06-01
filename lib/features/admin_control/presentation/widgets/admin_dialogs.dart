@@ -176,13 +176,13 @@ Future<TenantRecord?> showAdminTenantDialog(
                 TextField(
                   controller: maxNas,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'حد NAS'),
+                  decoration: const InputDecoration(labelText: 'حد أجهزة الشبكة'),
                 ),
                 TextField(
                   controller: apiRpm,
                   keyboardType: TextInputType.number,
                   decoration: const InputDecoration(
-                    labelText: 'حد API بالدقيقة، 0 يعني بدون حد',
+                    labelText: 'حد طلبات الربط بالدقيقة، 0 يعني بدون حد',
                   ),
                 ),
               ],

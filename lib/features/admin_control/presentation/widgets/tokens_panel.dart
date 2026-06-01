@@ -33,7 +33,7 @@ class TokensPanel extends ConsumerWidget {
             children: [
               const Expanded(
                 child: Text(
-                  'المفتاح السري يظهر مرة واحدة عند الإنشاء فقط. القوائم لا تعرض token ولا hash.',
+                  'المفتاح السري يظهر مرة واحدة عند الإنشاء فقط. القوائم لا تعرض قيمة المفتاح ولا بصمته الأمنية.',
                   style: TextStyle(color: AppTokens.textMuted),
                 ),
               ),
@@ -47,20 +47,20 @@ class TokensPanel extends ConsumerWidget {
         ),
         const SizedBox(height: AppTokens.s12),
         async.when(
-          loading: () => const AdminLoadingCard(title: 'مفاتيح API'),
+          loading: () => const AdminLoadingCard(title: 'مفاتيح الربط'),
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب المفاتيح',
             subtitle: visibleErrorMessage(e),
           ),
           data: (tokens) => AppCard(
-            title: 'مفاتيح API',
+            title: 'مفاتيح الربط',
             icon: Icons.key,
             padding: EdgeInsets.zero,
             child: tokens.isEmpty
                 ? const EmptyState(
                     icon: Icons.key_off_outlined,
-                    title: 'لا توجد مفاتيح API',
+                    title: 'لا توجد مفاتيح ربط',
                   )
                 : AdminListSection(
                     count: tokens.length,
@@ -71,7 +71,7 @@ class TokensPanel extends ConsumerWidget {
                         subtitle: Text(
                           [
                             if (token.scopes.isNotEmpty)
-                              token.scopes.join(', '),
+                              token.scopes.map(_scopeLabel).join(', '),
                             if (token.lastUsedAt.isNotEmpty)
                               'آخر استخدام: ${token.lastUsedAt}',
                             if (token.expiresAt.isNotEmpty)
@@ -97,4 +97,16 @@ class TokensPanel extends ConsumerWidget {
       ],
     );
   }
+}
+
+String _scopeLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'admin:full' || '*' => 'صلاحية إدارة كاملة',
+    'cards.view' => 'عرض الكروت',
+    'cards.write' => 'إدارة الكروت',
+    'subscribers.view' => 'عرض المشتركين',
+    'subscribers.write' => 'إدارة المشتركين',
+    '' => 'صلاحية غير محددة',
+    _ => 'صلاحية مخصصة',
+  };
 }

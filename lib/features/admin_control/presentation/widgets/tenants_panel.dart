@@ -61,10 +61,10 @@ class TenantsPanel extends ConsumerWidget {
                   subtitle: Text(
                     [
                       tenant.slug,
-                      tenant.planTier,
+                      _planTierLabel(tenant.planTier),
                       'مشتركين: ${tenant.maxSubscribers}',
-                      'NAS: ${tenant.maxNas}',
-                      'API: ${tenant.apiRpm == 0 ? 'بدون حد' : tenant.apiRpm}',
+                      'أجهزة الشبكة: ${tenant.maxNas}',
+                      'طلبات الربط/دقيقة: ${tenant.apiRpm == 0 ? 'بدون حد' : tenant.apiRpm}',
                     ].join(' • '),
                   ),
                   leading: StatusPill(
@@ -84,4 +84,14 @@ class TenantsPanel extends ConsumerWidget {
       ],
     );
   }
+}
+
+String _planTierLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'starter' => 'بداية',
+    'pro' => 'احترافي',
+    'enterprise' => 'مؤسسات',
+    '' => 'خطة غير محددة',
+    _ => 'خطة مخصصة',
+  };
 }

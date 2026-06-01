@@ -64,7 +64,7 @@ class _ToolsMaintenancePanelState
               ),
               DropdownMenuItem(
                 value: 'purge_failed_webhooks',
-                child: Text('تنظيف Webhooks الفاشلة'),
+                child: Text('تنظيف إشعارات الويب الفاشلة'),
               ),
               DropdownMenuItem(
                 value: 'purge_radacct',
@@ -141,7 +141,7 @@ class _ToolsMaintenancePanelState
       builder: (ctx) => AlertDialog(
         title: const Text('تنفيذ الصيانة'),
         content: Text(
-          'سيتم تنفيذ ${preview.action} على ${preview.estimatedRows} صف تقريبًا. لا تتابع إلا إذا كنت متأكدًا.',
+          'سيتم تنفيذ ${_maintenanceActionLabel(preview.action)} على ${preview.estimatedRows} صف تقريبًا. لا تتابع إلا إذا كنت متأكدًا.',
         ),
         actions: [
           TextButton(
@@ -177,4 +177,16 @@ class _ToolsMaintenancePanelState
       if (mounted) setState(() => _running = false);
     }
   }
+}
+
+String _maintenanceActionLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'vacuum' => 'ضغط قاعدة البيانات',
+    'purge_sync_done' => 'تنظيف مهام المزامنة المكتملة',
+    'purge_failed_webhooks' => 'تنظيف إشعارات الويب الفاشلة',
+    'purge_radacct' => 'تنظيف جلسات RADIUS القديمة',
+    'purge_audit' => 'تنظيف سجل التدقيق القديم',
+    '' => 'عملية صيانة غير محددة',
+    _ => 'عملية صيانة مخصصة',
+  };
 }
