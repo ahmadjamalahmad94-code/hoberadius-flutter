@@ -126,7 +126,7 @@ const _items = <_MoreItem>[
     Icons.storage_outlined,
     'النسخ الاحتياطي',
     'backups',
-    sub: 'حالة النسخ المحلي وGoogle Drive لاحقًا',
+    sub: 'حالة النسخ المحلي وربط Google Drive عند تفعيله',
   ),
   _MoreItem(
     Icons.monitor_heart_outlined,
