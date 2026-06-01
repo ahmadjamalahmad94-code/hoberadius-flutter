@@ -166,7 +166,7 @@ class ApiClient {
     return switch (normalized) {
       'rate_limited' =>
         'تم إرسال طلبات كثيرة بسرعة. انتظر دقيقة ثم حاول مرة أخرى.',
-      'not_implemented' => 'هذه الميزة غير مفعّلة بعد على الخادم الحالي.',
+      'not_implemented' => 'هذه الميزة غير مفعّلة على الخادم الحالي.',
       'forbidden' || 'permission_denied' => 'لا تملك صلاحية تنفيذ هذا الإجراء.',
       'unauthorized' ||
       'invalid_token' =>

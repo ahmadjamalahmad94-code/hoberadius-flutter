@@ -120,4 +120,22 @@ void main() {
       expect(e.message, isNot(contains('Invalid')));
     }
   });
+
+  test('ApiClient explains disabled server features without prototype wording',
+      () async {
+    final client = ApiClient(_MemoryTokenStorage(), _MemoryEndpointStorage());
+    client.dio.httpClientAdapter = _ApiErrorAdapter(
+      'not_implemented',
+      'Google Drive OAuth is intentionally not enabled',
+    );
+
+    try {
+      await client.post('/api/v1/backups/google-drive/connect');
+      fail('request should fail');
+    } on ApiException catch (e) {
+      expect(e.message, 'هذه الميزة غير مفعّلة على الخادم الحالي.');
+      expect(e.message, isNot(contains('بعد')));
+      expect(e.message, isNot(contains('Google Drive OAuth')));
+    }
+  });
 }
