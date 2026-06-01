@@ -56,7 +56,7 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
-                  'النسخ الحالي محلي فقط. Google Drive غير مفعل حاليًا من إعدادات الخادم، لذلك لا يظهر كإجراء ناجح أو جاهز.',
+                  'النسخ الحالي محلي فقط. جوجل درايف غير مفعل حاليًا من إعدادات الخادم، لذلك لا يظهر كإجراء ناجح أو جاهز.',
                   style: TextStyle(color: AppTokens.textMuted),
                 ),
               ),
@@ -162,7 +162,7 @@ class _Body extends StatelessWidget {
                   icon: Icons.schedule,
                 ),
                 const _StatCard(
-                  title: 'Google Drive',
+                  title: 'جوجل درايف',
                   value: 'غير مفعل',
                   subtitle: 'فعّله من إعدادات الخادم عند الحاجة لرفع النسخ خارج الجهاز',
                   icon: Icons.cloud_off_outlined,
@@ -192,7 +192,7 @@ class _Body extends StatelessWidget {
               OutlinedButton.icon(
                 onPressed: null,
                 icon: const Icon(Icons.cloud_outlined),
-                label: const Text('Google Drive غير مفعل'),
+                label: const Text('جوجل درايف غير مفعل'),
               ),
             ],
           ),

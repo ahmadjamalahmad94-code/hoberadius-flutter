@@ -198,7 +198,7 @@ class _TemplateChip extends ConsumerWidget {
                       ],
                     ),
                     Text(
-                      '${layout['design_preset'] ?? 'custom'} · '
+                      '${_presetLabel(layout['design_preset'])} · '
                       '${template.cardsPerRow}×${template.cardsPerColumn}',
                       style: const TextStyle(
                         fontSize: 11,
@@ -226,7 +226,7 @@ class _TemplateChip extends ConsumerWidget {
                 visualDensity: VisualDensity.compact,
               ),
               IconButton(
-                tooltip: 'PDF عينة',
+                tooltip: 'ملف PDF تجريبي',
                 onPressed: () async {
                   final repo = ref.read(printTemplatesRepositoryProvider);
                   final bytes = await repo.exportPdf(template.id);
@@ -274,6 +274,14 @@ class _TemplateChip extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _presetLabel(Object? value) {
+    final key = value?.toString().trim();
+    if (key == null || key.isEmpty || key == 'custom') {
+      return 'تصميم مخصص';
+    }
+    return key;
   }
 }
 

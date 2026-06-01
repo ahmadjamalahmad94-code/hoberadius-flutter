@@ -81,7 +81,7 @@ class MikrotikFormCard extends StatelessWidget {
                         controller: host,
                         decoration: const InputDecoration(
                           labelText: 'عنوان الراوتر',
-                          hintText: 'IP أو hostname',
+                          hintText: 'عنوان IP أو اسم المضيف',
                         ),
                         validator: _required,
                       ),

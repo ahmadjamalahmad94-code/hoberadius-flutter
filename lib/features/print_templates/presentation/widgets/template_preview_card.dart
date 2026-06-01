@@ -5,7 +5,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../domain/print_template_model.dart';
 import 'template_metric.dart';
 
-/// Visual preview of a saved print template — renders a single mock
+/// Visual preview of a saved print template — renders a single sample
 /// card at the correct aspect ratio with the username / password / QR
 /// placeholders positioned according to the template's coordinates.
 class TemplatePreviewCard extends StatelessWidget {
@@ -76,15 +76,15 @@ class TemplatePreviewCard extends StatelessWidget {
             spacing: AppTokens.s8,
             runSpacing: AppTokens.s8,
             children: [
-              TemplateMetric(label: 'renderer', value: preview.renderer),
+              TemplateMetric(label: 'محرك الرسم', value: preview.renderer),
               TemplateMetric(
-                label: 'cards/page',
+                label: 'كروت في الصفحة',
                 value: '${preview.cardsPerPage}',
               ),
               TemplateMetric(
-                label: 'export',
+                label: 'التصدير',
                 value:
-                    preview.exportGenerated ? 'generated' : 'PDF available',
+                    preview.exportGenerated ? 'تم التجهيز' : 'PDF متاح',
               ),
             ],
           ),

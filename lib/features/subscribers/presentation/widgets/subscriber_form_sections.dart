@@ -176,7 +176,7 @@ class SubscriberMtSection extends StatelessWidget {
             ),
           ),
           FormFieldRow(
-            label: 'Rate Limit',
+            label: 'حد السرعة على الراوتر',
             hint: 'مثال: 5M/10M أو 5M/10M 6M/12M 4M/8M 30/30',
             child: TextFormField(controller: controllers['mt_rate_limit']),
           ),

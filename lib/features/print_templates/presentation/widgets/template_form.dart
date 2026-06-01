@@ -135,8 +135,8 @@ class TemplateForm extends StatelessWidget {
             ),
             const SizedBox(height: AppTokens.s12),
             _TwoFields(
-              left: _NumberField(controller: qx, label: 'QR X'),
-              right: _NumberField(controller: qy, label: 'QR Y'),
+              left: _NumberField(controller: qx, label: 'موضع QR أفقي'),
+              right: _NumberField(controller: qy, label: 'موضع QR عمودي'),
             ),
             const SizedBox(height: AppTokens.s12),
             _TwoFields(

@@ -42,7 +42,7 @@
 | NAS وأجهزة الشبكة | `devices_*`, `network_devices_*` | `/api/v1/nas`, `/api/v1/devices` | `NasListScreen`, `NasFormScreen`, `DeviceFingerprintsScreen` | ناقص Flutter لأجهزة الشبكة المتقدمة | P1/P4 | F5/F8 |
 | MikroTik | `mt_*`, `setup_wizard*` | `/api/v1/mikrotik`, `/api/v1/mikrotik-control/*` | `MikrotikScreen` | ناقص Flutter للـ setup wizard وعمليات الراوتر | P1/P2 | F6 |
 | ملف الترخيص والمزامنة | `license_file.html`, `admin_bridge.html`, `sync_list.html` | `/api/v1/system/*` جزئيًا | `SystemOperationsScreen` | ناقص API/Flutter باسم واضح لملف الترخيص | P2 | F7 |
-| النسخ الاحتياطي | `backups.html`, `mt_backups.html` | `/api/v1/backups/*` | `BackupsScreen` | يحتاج توسيع عرض Google Drive وحالة الخدمة | P2 | F7 |
+| النسخ الاحتياطي | `backups.html`, `mt_backups.html` | `/api/v1/backups/*` | `BackupsScreen` | يحتاج توسيع عرض جوجل درايف وحالة الخدمة | P2 | F7 |
 | المال والتحصيل | `finance_*`, `payment_collection_*`, `users_finance.html` | `/api/v1/payments/*`, `/api/v1/ledger`, `/api/v1/loans`, `/api/v1/invoices` | `LedgerScreen`, `FinancialReportsScreen`, `SubscriberFinanceScreen` | ناقص Flutter لمركز التحصيل والمراجعة | P3 | F10 |
 | الخدمات والتذاكر | `services_*`, `tickets_*`, `ticket_view.html` | `/api/v1/services`, `/api/v1/tickets` | ضمن `SaasModulesScreen` جزئيًا | يحتاج شاشات أصلية واضحة | P3 | F11 |
 | Network Policy | `network_policy_*`, `site_exit.html`, `remote_device_access.html` | `/api/v1/network-policy/*` | غير موجود | ناقص Flutter | P4 | F12 |

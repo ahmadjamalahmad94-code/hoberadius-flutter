@@ -118,7 +118,7 @@ class _SettingsColumnState extends ConsumerState<SettingsColumn> {
                 'price_text',
                 _price,
                 label: 'السعر الظاهر',
-                hint: 'مثال: JOD 1.00',
+                hint: 'مثال: 1.00 دينار',
               ),
             ),
             const SizedBox(height: AppTokens.s8),
@@ -153,7 +153,7 @@ class _SettingsColumnState extends ConsumerState<SettingsColumn> {
                       ? null
                       : _sampleSinglePdf,
                   icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('PDF عينة'),
+                  label: const Text('ملف PDF تجريبي'),
                 ),
                 OutlinedButton.icon(
                   onPressed: state.busy ? null : _confirmCleanup,

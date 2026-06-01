@@ -11,9 +11,9 @@ void main() {
       'lib/features/more/presentation/more_screen.dart',
     ).readAsStringSync();
 
-    expect(backupScreen, isNot(contains('Google Drive لاحقًا')));
-    expect(moreScreen, isNot(contains('Google Drive لاحقًا')));
-    expect(backupScreen, contains('Google Drive غير مفعل حاليًا'));
-    expect(moreScreen, contains('ربط Google Drive عند تفعيله'));
+    expect(backupScreen, isNot(contains('جوجل درايف لاحقًا')));
+    expect(moreScreen, isNot(contains('جوجل درايف لاحقًا')));
+    expect(backupScreen, contains('جوجل درايف غير مفعل حاليًا'));
+    expect(moreScreen, contains('ربط جوجل درايف عند تفعيله'));
   });
 }

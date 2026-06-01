@@ -109,10 +109,10 @@ lib/
 | Payments / Loans / Ledger | ✅ | `/api/v1/payments`, `/api/v1/loans`, `/api/v1/ledger` |
 | Financial reports | ✅ | `/api/v1/reports/*` |
 | Recycle bin | ✅ | `/api/v1/recycle-bin` |
-| Backups | ✅ | `/api/v1/backups/*`، وGoogle Drive غير مفعل حتى OAuth حقيقي |
+| Backups | ✅ | `/api/v1/backups/*`، وجوجل درايف غير مفعل حتى OAuth حقيقي |
 | Print templates | ✅ | `/api/v1/print-templates` مع معاينة بصرية، بدون PDF نهائي بعد |
 
-أي endpoint يرجع `not_implemented` لا يظهر في الواجهة كأنه مكتمل. Google Drive وPDF النهائي لقوالب الطباعة ما زالا معطلين بوضوح حتى تتوفر تكاملات حقيقية.
+أي endpoint يرجع `not_implemented` لا يظهر في الواجهة كأنه مكتمل. جوجل درايف وPDF النهائي لقوالب الطباعة ما زالا معطلين بوضوح حتى تتوفر تكاملات حقيقية.
 
 ## نظام التصميم
 
@@ -185,5 +185,5 @@ OFL (`OFL.txt`). يُستخدم في:
   `tools/diff_web_admin.sh` بعد كل تغيير في الـ backend renderer.
 - نقل بقية الشاشات (subscribers / cards / nas / plans) لنفس نمط
   الـ 3-column desktop عند الحاجة.
-- تحويل Google Drive من حالة معطلة إلى OAuth حقيقي عندما نقرر
+- تحويل جوجل درايف من حالة معطلة إلى OAuth حقيقي عندما نقرر
   مزود الحسابات.

@@ -230,7 +230,7 @@ class _FinancialReportsScreenState
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.file_download_outlined),
-                label: const Text('CSV'),
+                label: const Text('تصدير CSV'),
               ),
               OutlinedButton.icon(
                 onPressed: _exportingXlsx ? null : _exportXlsx,
@@ -241,7 +241,7 @@ class _FinancialReportsScreenState
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.grid_on_outlined),
-                label: const Text('Excel'),
+                label: const Text('تصدير Excel'),
               ),
               OutlinedButton.icon(
                 onPressed: _exportingPdf ? null : _exportPdf,
@@ -252,7 +252,7 @@ class _FinancialReportsScreenState
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('PDF'),
+                label: const Text('تصدير PDF'),
               ),
             ],
           ),

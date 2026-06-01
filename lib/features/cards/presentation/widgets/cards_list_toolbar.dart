@@ -121,12 +121,12 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
               OutlinedButton.icon(
                 onPressed: widget.onExportXlsx,
                 icon: const Icon(Icons.table_chart_outlined),
-                label: const Text('Excel'),
+                label: const Text('تصدير Excel'),
               ),
               OutlinedButton.icon(
                 onPressed: widget.onExportPdf,
                 icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('PDF'),
+                label: const Text('تصدير PDF'),
               ),
               if (widget.selectedCount > 0) ...[
                 const SizedBox(width: AppTokens.s8),

@@ -201,7 +201,7 @@ per logical chunk so reviews stay focused.
 
 ### C4. Template chips column
 - Scrollable list of template chips, each with a small swatch +
-  meta + star button + "PDF عينة" button.
+  meta + star button + "ملف PDF تجريبي" button.
 - Click selects + triggers live preview rebuild.
 - Default-template chip auto-selected on first paint.
 - Commit: `C4: template chips with star + sample-pdf action`.
@@ -270,7 +270,7 @@ These are smaller but visible.
 - Commit: `D3: CardPreviewViewport with object-fit:contain semantics`.
 
 ### D4. PDF preview window
-- Tap "PDF عينة" or "تصدير PDF للحزمة" on Windows opens a
+- Tap "ملف PDF تجريبي" or "تصدير PDF للحزمة" on Windows opens a
   separate flutter window (use `desktop_multi_window`) showing
   the PDF via `printing.PdfPreview`.
 - Mobile keeps the existing "download to file system" flow —
