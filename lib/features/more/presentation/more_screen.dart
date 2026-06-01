@@ -108,7 +108,7 @@ const _items = <_MoreItem>[
     Icons.business_center_outlined,
     'الوحدات التجارية',
     'saas-modules',
-    sub: 'قسائم، فواتير، خدمات، مجموعات مشاركة، Pools وبروفايلات سرعة',
+    sub: 'قسائم، فواتير، خدمات، مجموعات مشاركة، تجمعات عناوين وبروفايلات سرعة',
   ),
   _MoreItem(
     Icons.inventory_2_outlined,

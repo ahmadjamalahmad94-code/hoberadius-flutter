@@ -86,15 +86,26 @@ String _valueLabel(String key, String raw) {
       'open' => 'مفتوحة',
       'pending' => 'بانتظار متابعة',
       'closed' => 'مغلقة',
-      _ => raw,
+      _ => _containsArabic(raw) ? raw : 'حالة غير محددة',
     };
   }
   if (key == 'enabled') {
     return switch (raw) {
       '1' || 'true' || 'نعم' => 'مفعّلة',
       '0' || 'false' || 'لا' => 'معطّلة',
-      _ => raw,
+      _ => _containsArabic(raw) ? raw : 'غير محدد',
     };
   }
   return raw;
+}
+
+bool _containsArabic(String value) {
+  return value.runes.any(
+    (r) =>
+        (r >= 0x0600 && r <= 0x06FF) ||
+        (r >= 0x0750 && r <= 0x077F) ||
+        (r >= 0x08A0 && r <= 0x08FF) ||
+        (r >= 0xFB50 && r <= 0xFDFF) ||
+        (r >= 0xFE70 && r <= 0xFEFF),
+  );
 }

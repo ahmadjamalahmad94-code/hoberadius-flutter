@@ -59,7 +59,7 @@ const Map<String, SaasModuleDef> kSaasModules = {
   ),
   'pools': SaasModuleDef(
     title: 'مجموعات العناوين',
-    subtitle: 'IP pools كما تظهر في الويب.',
+    subtitle: 'تجمعات عناوين IP المستخدمة في الباقات والمشتركين كما تظهر في الويب.',
     path: '/api/v1/pools',
     fields: [
       SaasModuleField('pool_name', 'اسم المجموعة'),
@@ -165,5 +165,5 @@ String saasFieldLabel(String key) {
     'members': 'الأعضاء',
     'enabled': 'مفعلة',
   };
-  return labels[key] ?? key;
+  return labels[key] ?? 'حقل إضافي';
 }

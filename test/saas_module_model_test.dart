@@ -28,5 +28,9 @@ void main() {
       SaasRecord.fromJson({'status': 'revoked'}).text('status'),
       'ملغاة',
     );
+    expect(
+      SaasRecord.fromJson({'status': 'waiting_review'}).text('status'),
+      'حالة غير محددة',
+    );
   });
 }
