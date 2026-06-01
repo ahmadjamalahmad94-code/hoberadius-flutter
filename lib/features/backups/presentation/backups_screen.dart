@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -68,7 +69,7 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب حالة النسخ',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
           ),
           data: (status) => _Body(
             status: status,
@@ -111,7 +112,7 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _running = false);
     }

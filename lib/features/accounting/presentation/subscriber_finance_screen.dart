@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -78,7 +79,7 @@ class _SubscriberFinanceScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$e')));
+          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

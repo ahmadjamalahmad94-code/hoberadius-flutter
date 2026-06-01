@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -66,7 +67,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر تحميل معاينة الأرشفة',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
           ),
           data: (data) => LifecyclePreviewPanel(
             preview: data,
@@ -82,7 +83,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر تحميل السياسات',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
           ),
           data: (items) {
             if (items.isEmpty) {
@@ -147,7 +148,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$e')));
+          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _running = false);
     }

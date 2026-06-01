@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -104,7 +105,7 @@ class _DeviceFingerprintsScreenState
           error: (error, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب بصمات الأجهزة',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             action: OutlinedButton.icon(
               onPressed: () =>
                   ref.invalidate(deviceFingerprintsProvider(_osFamily)),
@@ -157,7 +158,7 @@ class _DeviceFingerprintsScreenState
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
+        SnackBar(content: Text(visibleErrorMessage(error))),
       );
     } finally {
       if (mounted) setState(() => _syncing = false);

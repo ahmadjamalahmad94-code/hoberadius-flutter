@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -24,7 +25,7 @@ class TicketDetailScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => HubErrorState(
         title: 'تعذر فتح التذكرة',
-        subtitle: '$error',
+        subtitle: visibleErrorMessage(error),
         onRetry: () => ref.invalidate(ticketDetailProvider(ticketId)),
       ),
       data: (data) => Column(
@@ -228,7 +229,7 @@ class _StatusPanelState extends ConsumerState<_StatusPanel> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
+        SnackBar(content: Text(visibleErrorMessage(error))),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -387,7 +388,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
             } catch (error) {
               if (!dialogContext.mounted) return;
               ScaffoldMessenger.of(dialogContext).showSnackBar(
-                SnackBar(content: Text('$error')),
+                SnackBar(content: Text(visibleErrorMessage(error))),
               );
             } finally {
               if (dialogContext.mounted) {
@@ -653,7 +654,7 @@ Future<void> _showReplyDialog(
           } catch (error) {
             if (!dialogContext.mounted) return;
             ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text('$error')),
+              SnackBar(content: Text(visibleErrorMessage(error))),
             );
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);

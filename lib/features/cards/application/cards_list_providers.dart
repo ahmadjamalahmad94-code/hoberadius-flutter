@@ -74,7 +74,7 @@ String batchStatusLabel(String status) => switch (status) {
       'exhausted' => 'مستهلكة',
       'deleted' || 'archived' => 'مؤرشفة',
       'revoked' || 'cancelled' || 'canceled' => 'ملغاة',
-      _ => status,
+      _ => status.trim().isEmpty ? 'غير محددة' : 'حالة غير معروفة',
     };
 
 PillTone batchStatusTone(String status) => switch (status) {

@@ -112,7 +112,10 @@ class _Subscriber360Content extends ConsumerWidget {
               tone: _statusTone(data.status),
               dot: true,
             ),
-            StatusPill(text: data.serviceType, tone: PillTone.blue),
+            StatusPill(
+              text: _serviceTypeLabel(data.serviceType),
+              tone: PillTone.blue,
+            ),
             StatusPill(text: data.planName, tone: PillTone.brand),
             if (s.onlineCount > 0)
               const StatusPill(
@@ -474,6 +477,16 @@ String _statusLabel(String status) {
     'disabled' => 'معطل',
     'expired' => 'منتهي',
     _ => 'غير معروف',
+  };
+}
+
+String _serviceTypeLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'hotspot' => 'هوتسبوت',
+    'pppoe' || 'broadband' => 'برودباند',
+    'cards' || 'card' => 'كروت',
+    '' => 'خدمة غير محددة',
+    _ => 'خدمة غير معروفة',
   };
 }
 

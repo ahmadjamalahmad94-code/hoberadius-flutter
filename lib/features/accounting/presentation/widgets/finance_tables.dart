@@ -50,7 +50,7 @@ class PaymentsTable extends StatelessWidget {
                         DataCell(Text('${p.id}')),
                         DataCell(Text('${p.amount} ${p.currency}')),
                         DataCell(Text('${p.earnedMinutes} دقيقة')),
-                        DataCell(Text(p.status)),
+                        DataCell(Text(_accountingStatusLabel(p.status))),
                         DataCell(Text(formatFinanceDate(p.createdAt))),
                         DataCell(
                           p.status == 'voided'
@@ -145,9 +145,9 @@ class LedgerTable extends StatelessWidget {
           .map(
             (e) => [
               '${e.id}',
-              e.entryType,
+              _ledgerTypeLabel(e.entryType),
               '${e.amount} ${e.currency}',
-              e.sourceType.isEmpty ? '—' : e.sourceType,
+              _ledgerSourceLabel(e.sourceType),
               formatFinanceDate(e.createdAt),
             ],
           )
@@ -204,4 +204,40 @@ class _SectionTable extends StatelessWidget {
 String formatFinanceDate(DateTime? value) {
   if (value == null) return '—';
   return DateFormat('yyyy-MM-dd').format(value);
+}
+
+String _accountingStatusLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'posted' => 'مرحّلة',
+    'voided' => 'معكوسة',
+    'open' => 'مفتوحة',
+    'settled' => 'مسددة',
+    'pending' => 'قيد المراجعة',
+    'failed' => 'فشلت',
+    '' => 'غير محددة',
+    _ => 'حالة غير معروفة',
+  };
+}
+
+String _ledgerTypeLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'payment' => 'دفعة',
+    'loan' => 'سلفة',
+    'settlement' => 'تسوية',
+    'void' => 'قيد عكسي',
+    'adjustment' => 'تعديل مالي',
+    '' => 'غير محدد',
+    _ => 'نوع غير معروف',
+  };
+}
+
+String _ledgerSourceLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'payment' => 'دفعة',
+    'loan' => 'سلفة',
+    'settlement' => 'تسوية',
+    'void' => 'قيد عكسي',
+    '' => '—',
+    _ => 'مصدر آخر',
+  };
 }

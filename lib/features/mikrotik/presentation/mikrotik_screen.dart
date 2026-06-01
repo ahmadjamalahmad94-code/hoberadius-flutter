@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -96,7 +97,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
           error: (error, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب اتصالات MikroTik',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             action: OutlinedButton.icon(
               onPressed: () => ref.invalidate(mikrotikConfigsProvider),
               icon: const Icon(Icons.refresh),

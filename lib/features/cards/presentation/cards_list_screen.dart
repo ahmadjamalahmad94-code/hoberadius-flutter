@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -65,7 +66,7 @@ class CardsListScreen extends ConsumerWidget {
           ),
           error: (e, _) => HubErrorState(
             title: 'تعذّر جلب حزم البطاقات',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
             showToastOnce: true,
             onRetry: () => ref.invalidate(batchesOperationsProvider),
           ),

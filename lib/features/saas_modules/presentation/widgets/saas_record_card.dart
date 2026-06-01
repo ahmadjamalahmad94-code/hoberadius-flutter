@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -192,7 +193,7 @@ class SaasRecordCard extends ConsumerWidget {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('$e')));
+            .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
       }
     }
   }

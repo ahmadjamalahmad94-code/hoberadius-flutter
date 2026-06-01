@@ -18,7 +18,7 @@ String lifecycleEntityLabel(String value) => switch (value) {
       'subscriber' => 'المشتركون المنتهون',
       'card_batch' => 'حزم البطاقات',
       'external_file' => 'ملف خارجي',
-      _ => value,
+      _ => value.trim().isEmpty ? 'غير محدد' : 'عنصر غير معروف',
     };
 
 String lifecycleUnitLabel(String value) => switch (value) {
@@ -26,5 +26,5 @@ String lifecycleUnitLabel(String value) => switch (value) {
       'hours' => 'ساعات',
       'days' => 'أيام',
       'months' => 'أشهر',
-      _ => value,
+      _ => value.trim().isEmpty ? 'غير محددة' : 'وحدة غير معروفة',
     };

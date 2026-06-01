@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -28,7 +29,7 @@ class CardUser360Screen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => HubErrorState(
         title: 'تعذر جلب ملف مستخدم الكروت',
-        subtitle: '$error',
+        subtitle: visibleErrorMessage(error),
         onRetry: () => ref.invalidate(cardUser360Provider(cardUserId)),
       ),
       data: (profile) => Column(
@@ -77,7 +78,7 @@ class CardUser360Screen extends ConsumerWidget {
                 ),
                 error: (error, _) => HubErrorState(
                   title: 'تعذر جلب باقات السوق',
-                  subtitle: '$error',
+                  subtitle: visibleErrorMessage(error),
                   onRetry: () =>
                       ref.invalidate(cardMarketplacePackagesProvider),
                 ),
@@ -311,7 +312,7 @@ class _PurchasePanelState extends ConsumerState<_PurchasePanel> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$error')),
+        SnackBar(content: Text(visibleErrorMessage(error))),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -482,7 +483,7 @@ Future<void> _showRechargeDialog(
           } catch (error) {
             if (!dialogContext.mounted) return;
             ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text('$error')),
+              SnackBar(content: Text(visibleErrorMessage(error))),
             );
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);
@@ -541,7 +542,7 @@ Future<void> _showPasswordDialog(
           } catch (error) {
             if (!dialogContext.mounted) return;
             ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text('$error')),
+              SnackBar(content: Text(visibleErrorMessage(error))),
             );
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);

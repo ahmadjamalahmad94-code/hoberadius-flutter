@@ -87,7 +87,7 @@ class PaymentRequestRecord {
         'expired' => 'منتهي',
         'cancelled' => 'ملغى',
         'failed' => 'فشل',
-        _ => status,
+        _ => status.trim().isEmpty ? 'غير محدد' : 'حالة دفع غير معروفة',
       };
 
   String get purposeLabel => switch (purpose) {
@@ -98,7 +98,7 @@ class PaymentRequestRecord {
         'time_extension' => 'تمديد وقت',
         'distributor_payment' => 'دفعة موزع',
         'loan_settlement' => 'تسوية سلفة',
-        _ => purpose,
+        _ => purpose.trim().isEmpty ? 'غير محدد' : 'غرض دفع غير معروف',
       };
 
   String get payerLabel => switch (payerType) {
@@ -113,7 +113,9 @@ class PaymentRequestRecord {
         'pending' => 'بانتظار التطبيق',
         'applied' => 'تم تطبيق الخدمة',
         'failed' => 'فشل تطبيق الخدمة',
-        _ => serviceApplyStatus,
+        _ => serviceApplyStatus.trim().isEmpty
+            ? 'غير محدد'
+            : 'حالة تطبيق غير معروفة',
       };
 }
 

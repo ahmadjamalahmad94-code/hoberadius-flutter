@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -98,7 +99,7 @@ class _OverviewPanel extends ConsumerWidget {
       loading: () => const _Loading(),
       error: (error, _) => HubErrorState(
         title: 'تعذر تحميل مركز التواصل',
-        subtitle: '$error',
+        subtitle: visibleErrorMessage(error),
         onRetry: () => ref.invalidate(communicationsHomeProvider),
       ),
       data: (data) => LayoutBuilder(
@@ -217,7 +218,7 @@ class _TemplatesPanel extends ConsumerWidget {
       loading: () => const _Loading(),
       error: (error, _) => HubErrorState(
         title: 'تعذر تحميل القوالب',
-        subtitle: '$error',
+        subtitle: visibleErrorMessage(error),
         onRetry: () => ref.invalidate(messageTemplatesProvider),
       ),
       data: (page) => Column(
@@ -437,7 +438,7 @@ class _AudiencePanelState extends ConsumerState<_AudiencePanel> {
           loading: () => const _Loading(),
           error: (error, _) => HubErrorState(
             title: 'تعذر تحميل شرائح الجمهور',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             onRetry: () => ref.invalidate(audienceSegmentsProvider),
           ),
           data: (page) => _SegmentList(items: page.items),
@@ -523,7 +524,7 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
           loading: () => const _Loading(),
           error: (error, _) => HubErrorState(
             title: 'تعذر تحميل القوالب',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             onRetry: () => ref.invalidate(messageTemplatesProvider),
           ),
           data: (page) => AppCard(
@@ -587,7 +588,7 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
           loading: () => const _Loading(),
           error: (error, _) => HubErrorState(
             title: 'تعذر تحميل الحملات',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             onRetry: () => ref.invalidate(campaignsProvider),
           ),
           data: (page) => _CampaignList(items: page.items),
@@ -638,7 +639,7 @@ class _DeliveriesPanel extends ConsumerWidget {
       loading: () => const _Loading(),
       error: (error, _) => HubErrorState(
         title: 'تعذر تحميل سجل الإرسال',
-        subtitle: '$error',
+        subtitle: visibleErrorMessage(error),
         onRetry: () => ref.invalidate(messageDeliveriesProvider),
       ),
       data: (page) => _DeliveryList(title: 'سجل الإرسال', items: page.items),

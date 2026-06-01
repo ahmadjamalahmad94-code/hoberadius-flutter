@@ -1,6 +1,7 @@
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -268,7 +269,7 @@ class _FinancialReportsScreenState
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب التقرير',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
           ),
           data: (rows) {
             if (rows.isEmpty) {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -34,7 +35,7 @@ class DistributorDetailScreen extends ConsumerWidget {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'تعذر جلب الموزع',
-        subtitle: '$e',
+        subtitle: visibleErrorMessage(e),
         action: OutlinedButton.icon(
           onPressed: () =>
               ref.invalidate(distributorSummaryProvider(distributorId)),
@@ -130,7 +131,9 @@ class _SummaryGrid extends StatelessWidget {
                     children: [
                       StatusPill(
                         text:
-                            distributor.isActive ? 'مفعّل' : distributor.status,
+                            distributor.isActive
+                                ? 'مفعّل'
+                                : distributorStatusLabel(distributor.status),
                         tone: distributor.isActive
                             ? PillTone.green
                             : PillTone.orange,
@@ -148,7 +151,10 @@ class _SummaryGrid extends StatelessWidget {
                     runSpacing: 6,
                     children: [
                       for (final p in distributor.permissions.take(4))
-                        StatusPill(text: p, tone: PillTone.cyan),
+                        StatusPill(
+                          text: distributorPermissionLabel(p),
+                          tone: PillTone.cyan,
+                        ),
                       if (distributor.permissions.isEmpty)
                         const StatusPill(
                           text: 'صلاحيات غير محددة',
@@ -389,7 +395,7 @@ class _Batches extends StatelessWidget {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'تعذر جلب الحزم',
-        subtitle: '$e',
+        subtitle: visibleErrorMessage(e),
       ),
       data: (items) {
         if (items.isEmpty) {
@@ -418,7 +424,10 @@ class _Batches extends StatelessWidget {
                       DataCell(Text('${item.count}')),
                       DataCell(Text('${item.available}')),
                       DataCell(
-                        StatusPill(text: item.status, tone: PillTone.cyan),
+                        StatusPill(
+                          text: distributorStatusLabel(item.status),
+                          tone: PillTone.cyan,
+                        ),
                       ),
                       DataCell(
                         Text(

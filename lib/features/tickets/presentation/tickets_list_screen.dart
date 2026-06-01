@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -71,7 +72,7 @@ class TicketsListScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => HubErrorState(
             title: 'تعذر جلب التذاكر',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             onRetry: () => ref.invalidate(ticketsPageProvider),
           ),
           data: (page) {
@@ -342,7 +343,7 @@ Future<void> _showServiceRequestDialog(
           } catch (error) {
             if (!dialogContext.mounted) return;
             ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text('$error')),
+              SnackBar(content: Text(visibleErrorMessage(error))),
             );
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);
@@ -559,7 +560,7 @@ Future<void> _showCreateTicketDialog(
           } catch (error) {
             if (!dialogContext.mounted) return;
             ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text('$error')),
+              SnackBar(content: Text(visibleErrorMessage(error))),
             );
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);

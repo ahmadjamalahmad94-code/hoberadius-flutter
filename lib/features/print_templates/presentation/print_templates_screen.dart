@@ -1,6 +1,7 @@
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/platform/platform_capabilities.dart';
 import '../../../core/theme/tokens.dart';
@@ -181,7 +182,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
               error: (e, _) => EmptyState(
                 icon: Icons.error_outline,
                 title: 'تعذر تحميل قوالب الطباعة',
-                subtitle: '$e',
+                subtitle: visibleErrorMessage(e),
               ),
               data: (items) => TemplateList(
                 items: items,

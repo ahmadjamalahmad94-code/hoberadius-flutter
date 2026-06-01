@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -47,7 +48,7 @@ class CardUsersScreen extends ConsumerWidget {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => HubErrorState(
             title: 'تعذر جلب مستخدمي الكروت',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             onRetry: () => ref.invalidate(cardUsersPageProvider),
           ),
           data: (page) {
@@ -110,7 +111,7 @@ class CardUsersScreen extends ConsumerWidget {
                             ),
                             error: (error, _) => HubErrorState(
                               title: 'تعذر جلب باقات السوق',
-                              subtitle: '$error',
+                              subtitle: visibleErrorMessage(error),
                               onRetry: () => ref.invalidate(
                                 cardMarketplacePackagesProvider,
                               ),
@@ -442,7 +443,7 @@ Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
           } catch (error) {
             if (!dialogContext.mounted) return;
             ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text('$error')),
+              SnackBar(content: Text(visibleErrorMessage(error))),
             );
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);

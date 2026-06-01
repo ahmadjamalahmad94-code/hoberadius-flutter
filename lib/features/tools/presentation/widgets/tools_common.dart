@@ -120,11 +120,46 @@ class ToolsKeyValueBox extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: values.entries
-            .map((entry) => Text('${entry.key}: ${entry.value}'))
+            .map(
+              (entry) => Text(
+                '${_resultKeyLabel(entry.key)}: ${_resultValueLabel(entry.value)}',
+              ),
+            )
             .toList(),
       ),
     );
   }
+}
+
+String _resultKeyLabel(String key) {
+  return switch (key.trim().toLowerCase()) {
+    'ok' || 'success' => 'النتيجة',
+    'dry_run' => 'معاينة فقط',
+    'action' => 'الإجراء',
+    'matched' || 'matched_count' => 'الحسابات المطابقة',
+    'changed' || 'changed_count' => 'الحسابات المعدلة',
+    'skipped' || 'skipped_count' => 'الحسابات المتروكة',
+    'errors' || 'error_count' => 'الأخطاء',
+    'message' => 'الرسالة',
+    'users' || 'usernames' => 'الحسابات',
+    'minutes' => 'الدقائق',
+    _ => 'تفصيل',
+  };
+}
+
+String _resultValueLabel(Object? value) {
+  if (value is bool) return value ? 'نعم' : 'لا';
+  final text = value?.toString().trim() ?? '';
+  return switch (text.toLowerCase()) {
+    'true' => 'نعم',
+    'false' => 'لا',
+    'disable' => 'تعطيل',
+    'enable' => 'تفعيل',
+    'extend' => 'تمديد وقت',
+    'reset_password' => 'تغيير كلمة المرور',
+    '' => 'غير محدد',
+    _ => text,
+  };
 }
 
 class ToolsTextField extends StatelessWidget {

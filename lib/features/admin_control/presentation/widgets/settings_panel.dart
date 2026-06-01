@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -21,7 +22,7 @@ class SettingsPanel extends ConsumerWidget {
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
         title: 'تعذر جلب الإعدادات',
-        subtitle: '$e',
+        subtitle: visibleErrorMessage(e),
       ),
       data: (snapshot) => AppCard(
         title: 'إعدادات النظام',

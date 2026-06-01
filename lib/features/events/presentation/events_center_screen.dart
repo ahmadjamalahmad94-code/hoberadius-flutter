@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -227,7 +228,7 @@ class _EventsList extends ConsumerWidget {
       ),
       error: (error, _) => HubErrorState(
         title: 'تعذر تحميل الأحداث',
-        subtitle: '$error',
+        subtitle: visibleErrorMessage(error),
         onRetry: () => ref.invalidate(businessEventsProvider),
       ),
       data: (page) {

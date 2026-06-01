@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -87,7 +88,7 @@ class _SaasModulesScreenState extends ConsumerState<SaasModulesScreen> {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر تحميل البيانات',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
           ),
           data: (snapshot) => _RecordsList(
             def: def,
@@ -116,7 +117,7 @@ class _SaasModulesScreenState extends ConsumerState<SaasModulesScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
+          SnackBar(content: Text(visibleErrorMessage(e))),
         );
       }
     }

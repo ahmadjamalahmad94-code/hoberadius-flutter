@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -169,7 +170,7 @@ class _ToolsMaintenancePanelState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
+          SnackBar(content: Text(visibleErrorMessage(e))),
         );
       }
     } finally {

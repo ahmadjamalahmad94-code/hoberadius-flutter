@@ -9,6 +9,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../application/print_templates_controller.dart';
@@ -48,7 +49,7 @@ class PreviewColumn extends ConsumerWidget {
             Expanded(
               child: templates.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('$e')),
+                error: (e, _) => Center(child: Text(visibleErrorMessage(e))),
                 data: (items) {
                   final selected = state.selectedTemplateId == null
                       ? null

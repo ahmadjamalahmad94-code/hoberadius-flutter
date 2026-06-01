@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -60,7 +61,7 @@ class DistributorsListScreen extends ConsumerWidget {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب الموزعين',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
             action: OutlinedButton.icon(
               onPressed: () => ref.invalidate(distributorsListProvider),
               icon: const Icon(Icons.refresh),
@@ -115,7 +116,12 @@ class DistributorsListScreen extends ConsumerWidget {
                                 Text(item.phone.isEmpty ? '—' : item.phone),
                               ),
                               DataCell(
-                                Text(item.permissions.take(2).join(', ')),
+                                Text(
+                                  item.permissions
+                                      .take(2)
+                                      .map(distributorPermissionLabel)
+                                      .join('، '),
+                                ),
                               ),
                               DataCell(
                                 Text(item.debtBalance.toStringAsFixed(2)),
@@ -184,7 +190,10 @@ class _DistributorCard extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   for (final permission in distributor.permissions.take(3))
-                    StatusPill(text: permission, tone: PillTone.cyan),
+                    StatusPill(
+                      text: distributorPermissionLabel(permission),
+                      tone: PillTone.cyan,
+                    ),
                   if (distributor.permissions.isEmpty)
                     const StatusPill(
                       text: 'لا توجد صلاحيات',
@@ -270,8 +279,37 @@ class _Status extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StatusPill(
-      text: distributor.isActive ? 'مفعّل' : distributor.status,
+      text: distributor.isActive
+          ? 'مفعّل'
+          : distributorStatusLabel(distributor.status),
       tone: distributor.isActive ? PillTone.green : PillTone.orange,
     );
   }
+}
+
+String distributorStatusLabel(String value) {
+  final v = value.trim().toLowerCase();
+  return switch (v) {
+    'active' => 'مفعّل',
+    'disabled' || 'inactive' => 'معطّل',
+    'suspended' => 'موقوف',
+    'pending' => 'بانتظار المراجعة',
+    '' => 'غير محدد',
+    _ => 'حالة غير معروفة',
+  };
+}
+
+String distributorPermissionLabel(String value) {
+  final v = value.trim().toLowerCase();
+  return switch (v) {
+    'cards.read' => 'عرض الكروت',
+    'cards.sell' => 'بيع الكروت',
+    'cards.view' => 'عرض الكروت',
+    'cards.create' => 'إنشاء كروت',
+    'wallet.credit' => 'تسجيل تحصيل',
+    'wallet.debit' => 'تسجيل دين',
+    'finance.view' => 'عرض المالية',
+    '' => 'غير محددة',
+    _ => 'صلاحية غير معروفة',
+  };
 }

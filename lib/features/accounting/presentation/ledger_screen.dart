@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -94,7 +95,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب السجل المالي',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
           ),
           data: (items) {
             if (items.isEmpty) {
@@ -121,14 +122,14 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                     return DataRow(
                       cells: [
                         DataCell(Text('${entry.id}')),
-                        DataCell(Text(entry.entryType)),
+                        DataCell(Text(_ledgerTypeLabel(entry.entryType))),
                         DataCell(
                           Text(
                             entry.username.isEmpty ? '—' : entry.username,
                           ),
                         ),
                         DataCell(Text('${entry.amount} ${entry.currency}')),
-                        DataCell(Text(entry.status)),
+                        DataCell(Text(_ledgerStatusLabel(entry.status))),
                         DataCell(Text(_fmt(entry.createdAt))),
                         DataCell(
                           entry.entryType == 'void'
@@ -186,7 +187,7 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     }
   }
 }
@@ -194,4 +195,27 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
 String _fmt(DateTime? value) {
   if (value == null) return '—';
   return DateFormat('yyyy-MM-dd').format(value);
+}
+
+String _ledgerTypeLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'payment' => 'دفعة',
+    'loan' => 'سلفة',
+    'settlement' => 'تسوية',
+    'void' => 'قيد عكسي',
+    'adjustment' => 'تعديل مالي',
+    '' => 'غير محدد',
+    _ => 'نوع غير معروف',
+  };
+}
+
+String _ledgerStatusLabel(String value) {
+  return switch (value.trim().toLowerCase()) {
+    'posted' => 'مرحّل',
+    'voided' => 'معكوس',
+    'pending' => 'قيد المراجعة',
+    'failed' => 'فشل',
+    '' => 'غير محدد',
+    _ => 'حالة غير معروفة',
+  };
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -58,7 +59,7 @@ class _WebhooksPanelState extends ConsumerState<WebhooksPanel> {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب إعدادات Webhook',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
           ),
           data: (item) {
             if (_target.text.isEmpty) _target.text = item.targetUrl;
@@ -159,7 +160,7 @@ class _WebhooksPanelState extends ConsumerState<WebhooksPanel> {
             error: (e, _) => EmptyState(
               icon: Icons.error_outline,
               title: 'تعذر جلب سجل الإرسال',
-              subtitle: '$e',
+              subtitle: visibleErrorMessage(e),
             ),
             data: (items) => items.isEmpty
                 ? const EmptyState(

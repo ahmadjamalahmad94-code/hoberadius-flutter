@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -46,7 +47,7 @@ class PlansListScreen extends ConsumerWidget {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذّر جلب الباقات',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
             action: OutlinedButton.icon(
               onPressed: () => ref.invalidate(plansListProvider),
               icon: const Icon(Icons.refresh),
@@ -95,8 +96,19 @@ class _PlanCard extends StatelessWidget {
         'hybrid' => 'وقت وحصة',
         'unlimited' => 'غير محدود',
         'recurring' => 'متجدّد',
-        _ => t,
+        _ => t.trim().isEmpty ? 'غير محدد' : 'نوع غير معروف',
       };
+
+  String _serviceTypeLabel(String value) {
+    final v = value.trim().toLowerCase();
+    return switch (v) {
+      'hotspot' => 'هوتسبوت',
+      'pppoe' || 'broadband' => 'برودباند',
+      'cards' || 'card' => 'كروت',
+      '' => 'غير محدد',
+      _ => 'خدمة غير معروفة',
+    };
+  }
 
   Color _typeTone(String t) => switch (t) {
         'time' => AppTokens.brand,
@@ -165,7 +177,10 @@ class _PlanCard extends StatelessWidget {
                     text: _typeLabel(plan.planType),
                     tone: PillTone.cyan,
                   ),
-                  StatusPill(text: plan.serviceType, tone: PillTone.navy),
+                  StatusPill(
+                    text: _serviceTypeLabel(plan.serviceType),
+                    tone: PillTone.navy,
+                  ),
                   if (plan.autoRenew)
                     const StatusPill(text: 'متجدّد', tone: PillTone.purple),
                 ],

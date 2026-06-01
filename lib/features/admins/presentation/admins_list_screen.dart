@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -52,7 +53,7 @@ class AdminsListScreen extends ConsumerWidget {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذّر جلب القائمة',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
             action: OutlinedButton.icon(
               onPressed: () => ref.invalidate(adminsListProvider),
               icon: const Icon(Icons.refresh),

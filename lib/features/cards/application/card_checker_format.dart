@@ -9,7 +9,7 @@ String cardCheckStatusLabel(String status) => switch (status) {
       'revoked' => 'معطلة',
       'deleted' => 'محذوفة',
       'not_found' => 'غير موجودة',
-      _ => status,
+      _ => status.trim().isEmpty ? 'غير محددة' : 'حالة غير معروفة',
     };
 
 PillTone cardCheckStatusTone(String status) => switch (status) {

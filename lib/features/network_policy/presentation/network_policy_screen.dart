@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -59,7 +60,7 @@ class NetworkPolicyScreen extends ConsumerWidget {
               ),
               error: (error, _) => HubErrorState(
                 title: 'تعذر تحميل سياسات الشبكة',
-                subtitle: '$error',
+                subtitle: visibleErrorMessage(error),
                 onRetry: () => ref.invalidate(networkPolicyPageProvider),
               ),
               data: (data) => _PoliciesList(
@@ -680,7 +681,7 @@ class _ChildrenDialog extends ConsumerWidget {
           ),
           error: (error, _) => HubErrorState(
             title: 'تعذر تحميل العناصر',
-            subtitle: '$error',
+            subtitle: visibleErrorMessage(error),
             onRetry: () =>
                 ref.invalidate(networkPolicyChildrenProvider(request)),
           ),

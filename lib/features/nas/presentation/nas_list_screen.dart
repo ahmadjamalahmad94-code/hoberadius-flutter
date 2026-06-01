@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
@@ -84,7 +85,7 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذّر جلب القائمة',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
             action: OutlinedButton.icon(
               onPressed: () => ref.invalidate(nasListProvider),
               icon: const Icon(Icons.refresh),
@@ -245,6 +246,6 @@ String _nasCheckStatusLabel(String value) {
     'timeout' => 'انتهت المهلة',
     'unreachable' => 'غير متاح',
     'failed' => 'فشل الفحص',
-    _ => value,
+    _ => value.trim().isEmpty ? 'غير محدد' : 'حالة غير معروفة',
   };
 }

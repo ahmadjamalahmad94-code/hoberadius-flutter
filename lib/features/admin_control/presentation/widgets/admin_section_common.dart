@@ -57,7 +57,7 @@ String tenantStatusLabel(String value) {
     'trial' => 'تجريبي',
     'suspended' => 'موقوف',
     'closed' => 'مغلق',
-    _ => value.isEmpty ? 'غير معروف' : value,
+    _ => value.isEmpty ? 'غير معروف' : 'حالة غير معروفة',
   };
 }
 
@@ -77,7 +77,7 @@ String deliveryLabel(String value) {
     'retrying' => 'إعادة محاولة',
     'delivered' => 'تم الإرسال',
     'failed' => 'فشل',
-    _ => value,
+    _ => value.trim().isEmpty ? 'غير محدد' : 'حالة إرسال غير معروفة',
   };
 }
 

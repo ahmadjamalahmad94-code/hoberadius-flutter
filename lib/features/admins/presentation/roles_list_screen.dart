@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -49,7 +50,7 @@ class RolesListScreen extends ConsumerWidget {
           error: (e, _) => EmptyState(
             icon: Icons.error_outline,
             title: 'تعذّر جلب الأدوار',
-            subtitle: '$e',
+            subtitle: visibleErrorMessage(e),
             action: OutlinedButton.icon(
               onPressed: () => ref.invalidate(rolesListProvider),
               icon: const Icon(Icons.refresh),

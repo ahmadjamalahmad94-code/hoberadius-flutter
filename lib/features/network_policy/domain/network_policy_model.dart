@@ -178,7 +178,7 @@ class NetworkPolicyChild {
         'disabled' => 'معطّل',
         'invalid' => 'غير صالح',
         'manual_review' => 'يحتاج مراجعة',
-        _ => status,
+        _ => status.trim().isEmpty ? 'غير محدد' : 'حالة غير معروفة',
       };
 
   String get kindLabel => switch (kind) {
@@ -188,7 +188,7 @@ class NetworkPolicyChild {
         'dst_host' => 'اسم نطاق',
         'dst_address' => 'عنوان IP',
         'dst_address_list' => 'قائمة عناوين',
-        _ => kind,
+        _ => kind.trim().isEmpty ? 'غير محدد' : 'نوع غير معروف',
       };
 }
 
