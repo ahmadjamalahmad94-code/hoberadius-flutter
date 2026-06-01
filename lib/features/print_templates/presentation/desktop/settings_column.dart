@@ -1,6 +1,6 @@
 /// Left column of the Windows export room.
 /// Batch picker + override text fields + action buttons + the
-/// "تنظيف القوالب التجريبية" button — mirrors the web's
+/// "تنظيف قوالب المعاينة" button — mirrors the web's
 /// `#export .pr-export-body` settings card byte-for-byte.
 library;
 
@@ -158,7 +158,7 @@ class _SettingsColumnState extends ConsumerState<SettingsColumn> {
                 OutlinedButton.icon(
                   onPressed: state.busy ? null : _confirmCleanup,
                   icon: const Icon(Icons.cleaning_services_outlined),
-                  label: const Text('تنظيف القوالب التجريبية'),
+                  label: const Text('تنظيف قوالب المعاينة'),
                 ),
               ],
             ),
@@ -255,7 +255,7 @@ class _SettingsColumnState extends ConsumerState<SettingsColumn> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تنظيف القوالب التجريبية'),
+        title: const Text('تنظيف قوالب المعاينة'),
         content: const Text(
           'سيتم حذف القوالب التي أنشأتها الاختبارات تلقائيًا '
           '(Print UI / ops_room_ / template_…). متابعة؟',

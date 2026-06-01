@@ -32,7 +32,7 @@ class BandwidthSchedulesList extends StatelessWidget {
         child: EmptyState(
           icon: Icons.schedule_outlined,
           title: 'لا توجد جداول سرعة بعد',
-          subtitle: 'أضف أول جدول من النموذج لتجربة العقد.',
+          subtitle: 'أضف أول جدول لتحديد السرعة حسب الخطة أو المشترك.',
         ),
       );
     }

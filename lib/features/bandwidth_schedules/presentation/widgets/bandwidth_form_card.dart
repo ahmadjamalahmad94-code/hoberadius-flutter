@@ -204,7 +204,7 @@ class BandwidthFormCard extends StatelessWidget {
               onChanged: onEnabledChanged,
               title: const Text('مفعّل'),
               subtitle:
-                  const Text('تعطيله يبقي الجدول محفوظًا بدون استخدام لاحق.'),
+                  const Text('تعطيله يبقي الجدول محفوظًا بدون تطبيقه على السرعات.'),
             ),
             const SizedBox(height: AppTokens.s12),
             ElevatedButton.icon(

@@ -90,7 +90,7 @@ class TemplatePreviewCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTokens.s8),
           Text(
-            'العينة: $username. PDF متاح لنموذج القالب من زر التصدير.',
+            'العينة: $username. ملف PDF متاح من زر التصدير.',
             style: const TextStyle(color: AppTokens.textMuted),
           ),
         ],

@@ -108,7 +108,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
-                  'القوالب محفوظة وقابلة لإعادة الاستخدام، والمعاينة بصرية للمواضع والألوان، ويمكن تنزيل PDF حقيقي لنموذج القالب.',
+                  'القوالب محفوظة وقابلة لإعادة الاستخدام، والمعاينة بصرية للمواضع والألوان، ويمكن تنزيل ملف PDF للمعاينة.',
                   style: TextStyle(color: AppTokens.textMuted),
                 ),
               ),
@@ -267,7 +267,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم تنزيل PDF لنموذج القالب')),
+        const SnackBar(content: Text('تم تنزيل ملف PDF للمعاينة')),
       );
     } else if (result.error != null) {
       if (!mounted) return;

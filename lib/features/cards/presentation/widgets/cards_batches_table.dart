@@ -137,7 +137,7 @@ class _Counts extends StatelessWidget {
           _MiniCount(label: 'نشط', value: batch.activeCount),
           _MiniCount(label: 'منتهي', value: batch.expiredCount),
           _MiniCount(label: 'مؤرشف', value: batch.archivedCount),
-          _MiniCount(label: 'قادم', value: batch.pendingArchiveCount),
+          _MiniCount(label: 'بانتظار الأرشفة', value: batch.pendingArchiveCount),
           _MiniCount(label: 'تشغيلي', value: batch.operationalRemainingCount),
           _MiniCount(label: 'ملغى', value: batch.revokedCount),
         ],
