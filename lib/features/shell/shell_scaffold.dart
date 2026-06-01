@@ -102,13 +102,13 @@ const _sidebarSections = <_SidebarSection>[
       _SidebarItem(
         icon: Icons.add_card_outlined,
         label: 'حزمة جديدة',
-        routeName: 'cards-new',
+        routeName: 'card-batch-new',
         path: '/cards/new',
       ),
       _SidebarItem(
         icon: Icons.upload_file_outlined,
         label: 'استيراد ملف',
-        routeName: 'cards-import',
+        routeName: 'card-batch-import',
         path: '/cards/import',
       ),
       _SidebarItem(
@@ -207,7 +207,7 @@ const _sidebarSections = <_SidebarSection>[
       _SidebarItem(
         icon: Icons.bar_chart_outlined,
         label: 'التقارير المالية',
-        routeName: 'reports',
+        routeName: 'financial-reports',
         path: '/reports',
       ),
       _SidebarItem(
@@ -283,6 +283,12 @@ const _sidebarSections = <_SidebarSection>[
         label: 'عمليات النظام',
         routeName: 'system-operations',
         path: '/system-operations',
+      ),
+      _SidebarItem(
+        icon: Icons.verified_user_outlined,
+        label: 'ملف الترخيص والمزامنة',
+        routeName: 'license-file',
+        path: '/license-file',
       ),
       _SidebarItem(
         icon: Icons.event_note_outlined,
@@ -368,6 +374,7 @@ int _indexOfRoute(String location) {
       location == '/lifecycle' ||
       location == '/backups' ||
       location == '/system-operations' ||
+      location == '/license-file' ||
       location == '/events' ||
       location == '/admin-control' ||
       location == '/tools' ||

@@ -135,6 +135,12 @@ const _items = <_MoreItem>[
     sub: 'حالة الخادم، التشخيص، طابور المزامنة والمطابقة',
   ),
   _MoreItem(
+    Icons.verified_user_outlined,
+    'ملف الترخيص والمزامنة',
+    'license-file',
+    sub: 'عقد الترخيص، مزامنة الهوية، الخدمات المستلمة وسر الربط',
+  ),
+  _MoreItem(
     Icons.event_note_outlined,
     'مركز الأحداث',
     'events-center',

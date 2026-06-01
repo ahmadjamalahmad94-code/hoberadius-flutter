@@ -385,6 +385,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (ctx, st) => const SystemOperationsScreen(),
           ),
           GoRoute(
+            path: '/license-file',
+            name: 'license-file',
+            builder: (ctx, st) => const SystemOperationsScreen(),
+          ),
+          GoRoute(
             path: '/admin-control',
             name: 'admin-control',
             builder: (ctx, st) => const AdminControlScreen(),
