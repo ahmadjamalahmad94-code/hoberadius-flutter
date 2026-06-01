@@ -16,4 +16,12 @@ void main() {
       expect(source, isNot(contains('قريبًا')));
     }
   });
+
+  test('production router does not expose development gallery route', () {
+    final source = File('lib/core/router/app_router.dart').readAsStringSync();
+
+    expect(source, isNot(contains("path: '/_gallery'")));
+    expect(source, isNot(contains('WidgetGalleryScreen')));
+    expect(source, isNot(contains('atGallery')));
+  });
 }

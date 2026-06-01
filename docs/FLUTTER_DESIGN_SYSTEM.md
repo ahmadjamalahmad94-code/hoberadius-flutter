@@ -65,7 +65,8 @@ toggle haptics already use.
 
 ### Gallery + goldens
 
-- Live preview: `/_gallery` route (light/dark × LTR/RTL toggles).
+- Development gallery: source-only widget gallery for local design checks;
+  it is not mounted in the production router.
 - Golden baselines: `test/widgets/goldens/*.png` (12 baselines, two
   per widget across J2.1–J2.6).
 - Re-record: `flutter test --update-goldens test/widgets/`.
@@ -85,8 +86,7 @@ toggle haptics already use.
 `lib/core/router/app_page_transitions.dart` exposes
 `hubFadeThroughPage<T>(child:, …)` — wrap any `GoRoute`'s
 `pageBuilder:` in it for a soft fade + 4 % slide in motion-token time.
-Currently wired on `/login` and `/_gallery`; other routes migrate
-during feature polish.
+Currently wired on `/login`; other routes migrate during feature polish.
 
 ## Adoption rules
 

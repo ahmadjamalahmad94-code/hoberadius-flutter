@@ -174,7 +174,7 @@ class CardText extends CardElement {
   final double? maxWidth;
 }
 
-/// USER / PASS pill: rounded surface + label + value (monospace).
+/// Credential pill: rounded surface + label + value (monospace).
 class CardPill extends CardElement {
   const CardPill({
     required super.id,

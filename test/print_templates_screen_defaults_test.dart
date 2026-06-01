@@ -27,7 +27,7 @@ void main() {
         'card_width_mm': 85,
         'card_height_mm': 54,
         'brand_name': 'HobeRadius',
-        'card_title': 'Internet Card',
+        'card_title': 'بطاقة إنترنت',
       },
     };
     final model = buildCardRenderModel(

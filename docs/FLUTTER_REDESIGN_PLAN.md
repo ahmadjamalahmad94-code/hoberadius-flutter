@@ -126,7 +126,7 @@ plus a toast system. Every widget supports light + dark themes.
 | J2.4 | `HubAccessSchedule` (simple + advanced day/time windows) | `lib/shared/widgets/hub_access_schedule.dart` | `access_schedule.html` |
 | J2.5 | `HubSpeedRulesPanel` (summary-card + expand + bulk actions) | `lib/shared/widgets/hub_speed_rules_panel.dart` | `_speed_rules_panel.html` |
 | J2.6 | `HubToast` (floating success / error / info messenger) | `lib/shared/widgets/hub_toast.dart` | `uf-toast` in users_form |
-| J2.7 | `WidgetGalleryScreen` (dev-only `/_gallery` route to exercise every widget in light + dark + RTL) | `lib/features/_dev/presentation/widget_gallery_screen.dart` | — |
+| J2.7 | `WidgetGalleryScreen` (source-only development gallery, not mounted in production router) | `lib/features/_dev/presentation/widget_gallery_screen.dart` | — |
 | J2.8 | Golden tests for J2.1 – J2.6 in both themes | `test/widgets/...` | — |
 
 **Acceptance**: gallery screen renders every widget, golden tests pass

@@ -30,7 +30,7 @@ CardRenderModel buildCardRenderModel(
   final show = _resolveShowFlags(layout);
 
   final brandText = _override(ov, 'brand_name', layout, 'HobeRadius');
-  final titleText = _override(ov, 'card_title', layout, 'Internet Card');
+  final titleText = _override(ov, 'card_title', layout, 'بطاقة إنترنت');
   final footerText = _override(ov, 'footer_text', layout, '');
   final hotspotText = _override(ov, 'hotspot_address', layout, '');
   final priceText = _override(ov, 'price_text', layout, '');
@@ -90,11 +90,11 @@ CardRenderModel buildCardRenderModel(
   );
   }
 
-  // ── USER pill ─────────────────────────────────────────────────
+  // ── Username pill ─────────────────────────────────────────────
   if (show['username']! && username.isNotEmpty) {
     elements.add(_pillElement(
       id: 'user',
-      label: 'USER',
+      label: 'اسم الدخول',
       value: username,
       pos: positions['user']!,
       canvasW: canvasW,
@@ -105,11 +105,11 @@ CardRenderModel buildCardRenderModel(
   );
   }
 
-  // ── PASS pill ─────────────────────────────────────────────────
+  // ── Password pill ─────────────────────────────────────────────
   if (show['password']! && password.isNotEmpty) {
     elements.add(_pillElement(
       id: 'pass',
-      label: 'PASS',
+      label: 'كلمة المرور',
       value: password,
       pos: positions['pass']!,
       canvasW: canvasW,

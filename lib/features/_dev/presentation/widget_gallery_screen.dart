@@ -12,10 +12,9 @@ import '../../../shared/widgets/hub_unit_input.dart';
 
 /// Dev-only gallery for the J2 canonical widgets.
 ///
-/// Mounted at `/_gallery` (outside the auth wall). Lets the operator
-/// toggle theme (light/dark) and directionality (LTR/RTL) locally so
-/// every canonical widget can be visually verified across all four
-/// combinations before J3 + J4 land.
+/// Source-only gallery for local design checks. It is intentionally not
+/// mounted in the production router. Engineers can still instantiate it
+/// from a local debug harness when reviewing theme and directionality.
 class WidgetGalleryScreen extends StatefulWidget {
   const WidgetGalleryScreen({super.key});
 

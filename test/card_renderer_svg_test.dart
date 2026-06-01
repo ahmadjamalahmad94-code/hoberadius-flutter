@@ -21,8 +21,8 @@ void main() {
         'card_width_mm': 85,
         'card_height_mm': 54,
         'brand_name': 'HobeRadius',
-        'card_title': 'Internet Card',
-        'footer_text': 'Keep login data until expiry',
+        'card_title': 'بطاقة إنترنت',
+        'footer_text': 'احتفظ ببيانات الدخول حتى انتهاء الصلاحية',
         'hotspot_address': 'hotspot.local',
         'pattern_style': 'signal',
         'show_brand': true,
@@ -90,9 +90,9 @@ void main() {
       final svg = renderCardSvg(modelOf());
       expect(svg, contains('d2-85104'));
       expect(svg, contains('HobeRadius'));
-      expect(svg, contains('Internet Card'));
+      expect(svg, contains('بطاقة إنترنت'));
       expect(svg, contains('hotspot.local'));
-      expect(svg, contains('Keep login data until expiry'));
+      expect(svg, contains('احتفظ ببيانات الدخول حتى انتهاء الصلاحية'));
       expect(svg, contains('#915'));
     });
 

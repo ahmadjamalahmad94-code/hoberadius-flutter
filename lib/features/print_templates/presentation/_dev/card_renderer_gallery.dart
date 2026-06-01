@@ -1,8 +1,8 @@
-/// Developer-only screen showing the SVG output of every web preset.
+/// Developer-only source screen showing the SVG output of every web preset.
 ///
-/// Mounted at `/_card-gallery` (only when [PlatformCapabilities.isDesktop]
-/// or in debug builds). Useful for visual regression diffing against
-/// the same gallery in the web admin's `/_gallery` page.
+/// It is intentionally not mounted in the production router. Tests import
+/// this file to keep renderer presets deterministic without exposing a
+/// separate operator page.
 library;
 
 import 'package:flutter/material.dart';
@@ -20,7 +20,7 @@ const galleryPresets = <Map<String, dynamic>>[
     'gradient_start': '#0f172a',
     'gradient_end': '#22a7bd',
     'accent_color': '#f59e0b',
-    'card_title': 'Internet Card',
+    'card_title': 'بطاقة إنترنت',
   },
   {
     'key': 'dark',
@@ -28,7 +28,7 @@ const galleryPresets = <Map<String, dynamic>>[
     'gradient_start': '#020617',
     'gradient_end': '#1e293b',
     'accent_color': '#38bdf8',
-    'card_title': 'Hotspot Voucher',
+    'card_title': 'قسيمة هوتسبوت',
   },
   {
     'key': 'gold',
@@ -36,7 +36,7 @@ const galleryPresets = <Map<String, dynamic>>[
     'gradient_start': '#92400e',
     'gradient_end': '#fbbf24',
     'accent_color': '#facc15',
-    'card_title': 'Premium Card',
+    'card_title': 'بطاقة مميزة',
   },
   {
     'key': 'minimal',
@@ -44,7 +44,7 @@ const galleryPresets = <Map<String, dynamic>>[
     'gradient_start': '#ffffff',
     'gradient_end': '#e5e7eb',
     'accent_color': '#0ea5e9',
-    'card_title': 'Access Card',
+    'card_title': 'بطاقة دخول',
     'text_color': '#0f172a',
   },
   {
@@ -53,7 +53,7 @@ const galleryPresets = <Map<String, dynamic>>[
     'gradient_start': '#155e75',
     'gradient_end': '#22d3ee',
     'accent_color': '#facc15',
-    'card_title': 'WiFi Access',
+    'card_title': 'دخول واي فاي',
   },
   {
     'key': 'neon',
@@ -61,39 +61,39 @@ const galleryPresets = <Map<String, dynamic>>[
     'gradient_start': '#1e1b4b',
     'gradient_end': '#22d3ee',
     'accent_color': '#fde047',
-    'card_title': 'Speed Card',
+    'card_title': 'بطاقة سرعة',
   },
   {
     'key': 'aurora',
-    'label': 'Aurora',
+    'label': 'شفق',
     'gradient_start': '#172554',
     'gradient_end': '#14b8a6',
     'accent_color': '#f472b6',
-    'card_title': 'Smart WiFi Pass',
+    'card_title': 'دخول واي فاي ذكي',
   },
   {
     'key': 'fiber',
-    'label': 'Fiber Pro',
+    'label': 'فايبر برو',
     'gradient_start': '#0c1e3a',
     'gradient_end': '#1d4ed8',
     'accent_color': '#facc15',
-    'card_title': 'Fiber Speed',
+    'card_title': 'سرعة فايبر',
   },
   {
     'key': 'sunset',
-    'label': 'Sunset',
+    'label': 'غروب',
     'gradient_start': '#7f1d1d',
     'gradient_end': '#ec4899',
     'accent_color': '#fde047',
-    'card_title': 'Sunset Hotspot',
+    'card_title': 'هوتسبوت الغروب',
   },
   {
     'key': 'matrix',
-    'label': 'Matrix',
+    'label': 'مصفوفة',
     'gradient_start': '#022c22',
     'gradient_end': '#0f172a',
     'accent_color': '#22c55e',
-    'card_title': 'Matrix Access',
+    'card_title': 'دخول المصفوفة',
   },
 ];
 
@@ -104,7 +104,7 @@ class CardRendererGalleryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Card Renderer Gallery'),
+        title: const Text('معرض محرك تصميم الكروت'),
       ),
       body: GridView.builder(
         padding: const EdgeInsets.all(16),
@@ -142,7 +142,7 @@ class _PresetTile extends StatelessWidget {
         'design_preset': preset['key'],
         'brand_name': 'HobeRadius',
         'card_title': preset['card_title'],
-        'footer_text': 'Keep login data until expiry',
+        'footer_text': 'احتفظ ببيانات الدخول حتى انتهاء الصلاحية',
         'hotspot_address': 'hotspot.local',
         'pattern_style': 'signal',
         'gradient_start': preset['gradient_start'],
@@ -215,7 +215,7 @@ CardRenderModel modelForPresetTest(String key) {
         'surface_color': '#e8f7fb',
         'brand_name': 'HobeRadius',
         'card_title': preset['card_title'],
-        'footer_text': 'Keep login data until expiry',
+        'footer_text': 'احتفظ ببيانات الدخول حتى انتهاء الصلاحية',
         'hotspot_address': 'hotspot.local',
         'pattern_style': 'signal',
         'show_brand': true,

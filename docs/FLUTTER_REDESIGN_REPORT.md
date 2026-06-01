@@ -60,7 +60,7 @@ helper to eliminate duplicated `_int / _num / _bool / _parseDt`.
 | J2.4 | `HubAccessSchedule` | `lib/shared/widgets/hub_access_schedule.dart` | light + dark |
 | J2.5 | `HubSpeedRulesPanel` | `lib/shared/widgets/hub_speed_rules_panel.dart` | light + dark |
 | J2.6 | `HubToast` + `HubToaster` | `lib/shared/widgets/hub_toast.dart` | light + dark |
-| J2.7 | `WidgetGalleryScreen` (`/_gallery`) | `lib/features/_dev/presentation/widget_gallery_screen.dart` | — |
+| J2.7 | `WidgetGalleryScreen` (source-only development gallery) | `lib/features/_dev/presentation/widget_gallery_screen.dart` | — |
 | J5.1 | `HubSkeletonLoader` | `lib/shared/widgets/hub_skeleton_loader.dart` | — |
 | J5.3 | `HubErrorState` | `lib/shared/widgets/hub_error_state.dart` | — |
 | J6.3 | `HubMasterDetail` | `lib/shared/widgets/responsive_layout.dart` | — |
@@ -100,7 +100,7 @@ helper to eliminate duplicated `_int / _num / _bool / _parseDt`.
 | J5.1 | `HubSkeletonLoader` (canonical) + adopted on cards-list loading |
 | J5.2 | `EmptyState` halo redesign (gradient icon halo + AppTypography) |
 | J5.3 | `HubErrorState` + retry + one-shot toast hookup on cards-list |
-| J5.4 | `hubFadeThroughPage` route transition on login + gallery routes |
+| J5.4 | `hubFadeThroughPage` route transition on login route |
 | J5.5 | `HubToggleSwitch` haptics (`HapticFeedback.selectionClick`) + `AnimatedSwitcher` on the enabled state |
 
 ## J6 platform polish

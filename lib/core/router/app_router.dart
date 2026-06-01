@@ -10,7 +10,6 @@ import '../../features/accounting/presentation/financial_reports_screen.dart';
 import '../../features/accounting/presentation/ledger_screen.dart';
 import '../../features/accounting/presentation/subscriber_finance_screen.dart';
 import '../../features/admin_control/presentation/admin_control_screen.dart';
-import '../../features/_dev/presentation/widget_gallery_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
 import 'app_page_transitions.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
@@ -67,11 +66,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final loggedIn = auth.isAuthenticated;
       final atLogin = state.matchedLocation == '/login';
-      // /_gallery is a dev-only J2 widget showcase — keep it accessible
-      // without an auth bounce so visual review works during the
-      // redesign phase.
-      final atGallery = state.matchedLocation == '/_gallery';
-      if (!loggedIn && !atLogin && !atGallery) return '/login';
+      if (!loggedIn && !atLogin) return '/login';
       if (loggedIn && atLogin) return '/';
       return null;
     },
@@ -81,12 +76,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'login',
         pageBuilder: (ctx, st) =>
             hubFadeThroughPage(child: const LoginScreen()),
-      ),
-      GoRoute(
-        path: '/_gallery',
-        name: 'widget-gallery',
-        pageBuilder: (ctx, st) =>
-            hubFadeThroughPage(child: const WidgetGalleryScreen()),
       ),
       ShellRoute(
         builder: (ctx, st, child) => ShellScaffold(child: child),

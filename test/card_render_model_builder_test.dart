@@ -8,7 +8,7 @@ import 'package:hoberadius_app/features/print_templates/domain/card_render_model
 /// `radius-module/tests/test_card_renderer.py`:
 ///   * model carries the right canvas;
 ///   * element ids appear in the expected order;
-///   * USER pill carries the username, PASS pill carries the
+///   * credential pills carry the username and password;
 ///     password (both real, NOT yet masked at this layer);
 ///   * QR payload follows the username → cardId → SAMPLE fallback;
 ///   * legacy (0, 0) mm coords trigger the canonical defaults;
@@ -25,8 +25,8 @@ void main() {
       'card_width_mm': 85,
       'card_height_mm': 54,
       'brand_name': 'HobeRadius',
-      'card_title': 'Internet Card',
-      'footer_text': 'Keep login data',
+      'card_title': 'بطاقة إنترنت',
+      'footer_text': 'احتفظ ببيانات الدخول',
       'hotspot_address': 'hotspot.local',
       'pattern_style': 'signal',
       ...?layoutOverrides,
@@ -74,7 +74,7 @@ void main() {
     );
   });
 
-  test('USER pill carries the username, PASS pill carries the real password',
+  test('credential pills carry username and real password',
       () {
     final model = buildCardRenderModel(
       template(),

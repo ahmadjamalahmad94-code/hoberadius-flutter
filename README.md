@@ -125,8 +125,8 @@ lib/
   `HubToggleSwitch`, `HubUnitInput`, `HubTimePickerCircular`,
   `HubAccessSchedule`, `HubSpeedRulesPanel`, `HubToast`,
   `HubSkeletonLoader`, `HubErrorState`, `HubMasterDetail`.
-- شاشة معاينة العناصر `/_gallery` للتنقل بين كل widget في الأنواع
-  الأربعة (light/dark × LTR/RTL).
+- معرض مكونات الواجهة موجود ككود تطوير داخلي فقط، ولا يُربط بأي
+  مسار في راوتر الإنتاج.
 - اختبارات goldens لكل widget مهم في `test/widgets/goldens/`.
 
 تقرير إعادة التصميم الشامل (J0 → J6 ثم J8 Windows-parity) موجود في
