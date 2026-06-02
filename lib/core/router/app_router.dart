@@ -13,6 +13,7 @@ import '../../features/admin_control/presentation/admin_control_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
 import 'app_page_transitions.dart';
 import '../../features/sessions/presentation/sessions_list_screen.dart';
+import '../../features/system_operations/presentation/license_file_screen.dart';
 import '../../features/system_operations/presentation/system_operations_screen.dart';
 import '../../features/tickets/presentation/ticket_detail_screen.dart';
 import '../../features/tickets/presentation/tickets_list_screen.dart';
@@ -376,7 +377,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/license-file',
             name: 'license-file',
-            builder: (ctx, st) => const SystemOperationsScreen(),
+            builder: (ctx, st) => const LicenseFileScreen(),
           ),
           GoRoute(
             path: '/admin-control',

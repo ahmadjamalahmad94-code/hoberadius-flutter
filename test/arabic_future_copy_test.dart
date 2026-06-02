@@ -25,6 +25,23 @@ void main() {
     expect(source, isNot(contains('atGallery')));
   });
 
+  test('license file route opens its dedicated operational screen', () {
+    final source = File('lib/core/router/app_router.dart').readAsStringSync();
+
+    expect(source, contains('LicenseFileScreen'));
+    expect(source, contains("path: '/license-file'"));
+    expect(
+      source,
+      isNot(
+        contains(
+          "path: '/license-file',\n"
+          "            name: 'license-file',\n"
+          "            builder: (ctx, st) => const SystemOperationsScreen(),",
+        ),
+      ),
+    );
+  });
+
   test('operator-facing copy avoids old English fallback labels', () {
     final files = [
       'lib/features/backups/presentation/backups_screen.dart',
