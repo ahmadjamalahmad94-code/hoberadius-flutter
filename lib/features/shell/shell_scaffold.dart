@@ -248,6 +248,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/roles',
       ),
       _SidebarItem(
+        icon: Icons.history,
+        label: 'سجل التدقيق',
+        routeName: 'audit',
+        path: '/audit',
+      ),
+      _SidebarItem(
         icon: Icons.storefront_outlined,
         label: 'الموزعون',
         routeName: 'distributors',
