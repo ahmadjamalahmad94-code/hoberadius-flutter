@@ -21,6 +21,7 @@ void main() {
       'communications': '/communications',
       'events-center': '/events',
       'network-policy': '/network-policy',
+      'network-devices': '/network-devices',
       'radius-resources': '/radius-resources',
       'card-users': '/card-users',
     };

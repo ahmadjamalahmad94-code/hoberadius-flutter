@@ -56,7 +56,7 @@ class _ToolsTestAuthPanelState extends State<ToolsTestAuthPanel> {
           ),
           const SizedBox(height: AppTokens.s8),
           ToolsTwoFields(
-            first: ToolsTextField(controller: _mac, label: 'MAC الجهاز'),
+            first: ToolsTextField(controller: _mac, label: 'العنوان الفيزيائي للجهاز'),
             second: ToolsTextField(controller: _nas, label: 'عنوان جهاز الشبكة'),
           ),
           FilledButton.icon(

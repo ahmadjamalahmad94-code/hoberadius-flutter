@@ -42,6 +42,7 @@ import '../../features/more/presentation/more_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
+import '../../features/network_devices/presentation/network_devices_screen.dart';
 import '../../features/network_policy/presentation/network_policy_screen.dart';
 import '../../features/operational_reports/presentation/operational_reports_screen.dart';
 import '../../features/payment_collection/presentation/payment_collection_screen.dart';
@@ -198,6 +199,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/device-fingerprints',
             name: 'device-fingerprints',
             builder: (ctx, st) => const DeviceFingerprintsScreen(),
+          ),
+          GoRoute(
+            path: '/network-devices',
+            name: 'network-devices',
+            builder: (ctx, st) => const NetworkDevicesScreen(),
           ),
           GoRoute(
             path: '/network-policy',

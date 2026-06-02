@@ -46,7 +46,7 @@ class _DeviceFingerprintsScreenState
         PageHeader(
           title: 'بصمات الأجهزة',
           subtitle:
-              'أجهزة ظهرت من DHCP leases في MikroTik. هذه بيانات قراءة ومزامنة فقط ولا تكشف كلمات مرور.',
+              'أجهزة ظهرت من سجلات تأجير العناوين في الراوتر. هذه بيانات قراءة ومزامنة فقط ولا تكشف كلمات مرور.',
           actions: [
             IconButton(
               tooltip: 'تحديث',
@@ -77,7 +77,7 @@ class _DeviceFingerprintsScreenState
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search),
                   labelText: 'بحث',
-                  hintText: 'MAC، اسم جهاز، IP، نظام، موديل...',
+                  hintText: 'العنوان الفيزيائي، اسم الجهاز، عنوان الشبكة، النظام، الطراز...',
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -304,7 +304,7 @@ class _DeviceCard extends StatelessWidget {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        'مقفول على MAC',
+                        'مقفول على العنوان الفيزيائي',
                         style: TextStyle(
                           color: AppTokens.amberInk,
                           fontWeight: FontWeight.w800,
@@ -330,7 +330,7 @@ class _DeviceCard extends StatelessWidget {
               _InfoChip(icon: Icons.memory, label: item.deviceLabel),
               _InfoChip(
                 icon: Icons.lan_outlined,
-                label: item.ipAddress.isEmpty ? 'IP غير معروف' : item.ipAddress,
+                label: item.ipAddress.isEmpty ? 'عنوان الشبكة غير معروف' : item.ipAddress,
               ),
               _InfoChip(icon: Icons.badge_outlined, label: item.mac),
             ],
@@ -340,7 +340,7 @@ class _DeviceCard extends StatelessWidget {
             [
               if (item.firstSeenAt.isNotEmpty) 'أول ظهور: ${item.firstSeenAt}',
               if (item.lastSeenAt.isNotEmpty) 'آخر ظهور: ${item.lastSeenAt}',
-              if (item.dhcpClassId.isNotEmpty) 'DHCP: ${item.dhcpClassId}',
+              if (item.dhcpClassId.isNotEmpty) 'سجل التأجير: ${item.dhcpClassId}',
             ].join(' · '),
             style: const TextStyle(color: AppTokens.textMuted),
           ),
@@ -352,11 +352,11 @@ class _DeviceCard extends StatelessWidget {
                 await Clipboard.setData(ClipboardData(text: item.mac));
                 if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('تم نسخ MAC')),
+                  const SnackBar(content: Text('تم نسخ العنوان الفيزيائي')),
                 );
               },
               icon: const Icon(Icons.copy),
-              label: const Text('نسخ MAC'),
+              label: const Text('نسخ العنوان الفيزيائي'),
             ),
           ),
         ],

@@ -48,7 +48,13 @@ const _items = <_MoreItem>[
     Icons.devices_other_outlined,
     'بصمات الأجهزة',
     'device-fingerprints',
-    sub: 'MAC، نظام الجهاز، آخر ظهور ومزامنة DHCP',
+    sub: 'العنوان الفيزيائي، نظام الجهاز، آخر ظهور ومزامنة سجلات التأجير',
+  ),
+  _MoreItem(
+    Icons.devices_other_outlined,
+    'مراقبة أجهزة الشبكة',
+    'network-devices',
+    sub: 'تسجيل نقاط الوصول والسويتشات والكاميرات وفحص الاستجابة يدويًا',
   ),
   _MoreItem(
     Icons.policy_outlined,
@@ -90,7 +96,7 @@ const _items = <_MoreItem>[
     Icons.query_stats_outlined,
     'تقارير التشغيل',
     'operational-reports',
-    sub: 'جلسات، محاولات فاشلة، MAC وأحداث المدراء',
+    sub: 'جلسات، محاولات فاشلة، عناوين فيزيائية وأحداث المدراء',
   ),
   _MoreItem(
     Icons.support_agent_outlined,
