@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -23,13 +21,25 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
   final _displayName = TextEditingController();
   final _email = TextEditingController();
   final _phone = TextEditingController();
-  final _permissions = TextEditingController(text: 'cards.read, cards.sell');
-  final _scope = TextEditingController(text: '{"card_batches":"assigned"}');
   final _creditLimit = TextEditingController(text: '0');
   final _notes = TextEditingController();
 
+  final Set<String> _permissions = {'cards.read', 'cards.sell'};
   String _status = 'active';
   bool _saving = false;
+
+  static const _permissionOptions = [
+    _PermissionOption(
+      key: 'cards.read',
+      label: 'عرض الكروت والحزم',
+      description: 'يسمح للموزع برؤية الحزم المرتبطة به ومتابعة حالتها.',
+    ),
+    _PermissionOption(
+      key: 'cards.sell',
+      label: 'بيع الكروت',
+      description: 'يسمح بتنفيذ عمليات البيع ضمن الحزم المسموحة فقط.',
+    ),
+  ];
 
   @override
   void dispose() {
@@ -37,8 +47,6 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
     _displayName.dispose();
     _email.dispose();
     _phone.dispose();
-    _permissions.dispose();
-    _scope.dispose();
     _creditLimit.dispose();
     _notes.dispose();
     super.dispose();
@@ -87,9 +95,10 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                           controller: _name,
                           decoration: const InputDecoration(
                             labelText: 'اسم الدخول',
-                            helperText: 'اسم قصير يستخدم لتتبع الموزع داخليًا.',
+                            helperText:
+                                'اسم قصير تستخدمه الإدارة لتتبع الموزع داخليًا.',
                           ),
-                          validator: (v) => (v ?? '').trim().isEmpty
+                          validator: (value) => (value ?? '').trim().isEmpty
                               ? 'اكتب اسم الدخول'
                               : null,
                         ),
@@ -107,8 +116,9 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                         wide: wide,
                         child: TextFormField(
                           controller: _phone,
-                          decoration:
-                              const InputDecoration(labelText: 'رقم الهاتف'),
+                          decoration: const InputDecoration(
+                            labelText: 'رقم الهاتف',
+                          ),
                         ),
                       ),
                       _Box(
@@ -125,8 +135,9 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                         wide: wide,
                         child: DropdownButtonFormField<String>(
                           initialValue: _status,
-                          decoration:
-                              const InputDecoration(labelText: 'الحالة'),
+                          decoration: const InputDecoration(
+                            labelText: 'الحالة',
+                          ),
                           items: const [
                             DropdownMenuItem(
                               value: 'active',
@@ -141,8 +152,8 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                               child: Text('محظور'),
                             ),
                           ],
-                          onChanged: (v) =>
-                              setState(() => _status = v ?? 'active'),
+                          onChanged: (value) =>
+                              setState(() => _status = value ?? 'active'),
                         ),
                       ),
                       _Box(
@@ -152,35 +163,56 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
                             labelText: 'حد الائتمان',
-                            helperText: 'قيمة مرجعية، وليست فوترة كاملة بعد.',
+                            helperText:
+                                'قيمة مرجعية للتحكم المالي، وليست فاتورة كاملة.',
                           ),
                         ),
                       ),
                       SizedBox(
                         width: double.infinity,
-                        child: TextFormField(
-                          controller: _permissions,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'الصلاحيات',
-                            helperText:
-                                'افصل الصلاحيات بفواصل. مثال: cards.read, cards.sell',
-                          ),
+                        child: _ChoiceSection(
+                          title: 'صلاحيات الموزع',
+                          subtitle:
+                              'اختر ما يستطيع الموزع عمله بدل كتابة رموز تقنية.',
+                          children: _permissionOptions
+                              .map(
+                                (option) => CheckboxListTile(
+                                  value: _permissions.contains(option.key),
+                                  onChanged: (checked) {
+                                    setState(() {
+                                      if (checked == true) {
+                                        _permissions.add(option.key);
+                                      } else {
+                                        _permissions.remove(option.key);
+                                      }
+                                    });
+                                  },
+                                  title: Text(option.label),
+                                  subtitle: Text(option.description),
+                                  contentPadding: EdgeInsets.zero,
+                                  controlAffinity:
+                                      ListTileControlAffinity.leading,
+                                ),
+                              )
+                              .toList(),
                         ),
                       ),
                       SizedBox(
                         width: double.infinity,
-                        child: TextFormField(
-                          controller: _scope,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'نطاق البيانات JSON',
-                            helperText:
-                                'الافتراضي يجعل الموزع يرى الحزم المربوطة به فقط.',
-                          ),
-                          validator: _validateScope,
+                        child: _ChoiceSection(
+                          title: 'نطاق البيانات',
+                          subtitle:
+                              'النظام يعرض للموزع الحزم التي تربطها به الإدارة فقط.',
+                          children: const [
+                            ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(Icons.verified_user_outlined),
+                              title: Text('الحزم المعيّنة فقط'),
+                              subtitle: Text(
+                                'لتوسيع وصول الموزع، اربط حزمًا إضافية من صفحة تفاصيل الموزع.',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       SizedBox(
@@ -189,8 +221,9 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                           controller: _notes,
                           minLines: 2,
                           maxLines: 4,
-                          decoration:
-                              const InputDecoration(labelText: 'ملاحظات'),
+                          decoration: const InputDecoration(
+                            labelText: 'ملاحظات',
+                          ),
                         ),
                       ),
                     ],
@@ -219,20 +252,19 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
     );
   }
 
-  String? _validateScope(String? value) {
-    try {
-      final decoded = jsonDecode((value ?? '').trim().isEmpty ? '{}' : value!);
-      if (decoded is! Map) return 'النطاق يجب أن يكون كائن JSON';
-      return null;
-    } catch (_) {
-      return 'اكتب JSON صحيح';
-    }
-  }
+  Map<String, dynamic> _scopePayload() => const {'card_batches': 'assigned'};
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_permissions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('اختر صلاحية واحدة على الأقل للموزع.')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
+      final permissions = _permissions.toList()..sort();
       final created = await ref.read(distributorsRepositoryProvider).create(
             Distributor(
               name: _name.text.trim(),
@@ -240,12 +272,8 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
               email: _email.text.trim(),
               phone: _phone.text.trim(),
               status: _status,
-              permissions: _permissions.text
-                  .split(',')
-                  .map((item) => item.trim())
-                  .where((item) => item.isNotEmpty)
-                  .toList(),
-              scope: Map<String, dynamic>.from(jsonDecode(_scope.text)),
+              permissions: permissions,
+              scope: _scopePayload(),
               creditLimit: num.tryParse(_creditLimit.text) ?? 0,
               notes: _notes.text.trim(),
             ),
@@ -257,16 +285,70 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
           pathParameters: {'id': '${created.id}'},
         );
       }
-    } catch (e) {
+    } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذر حفظ الموزع: $e')),
+          SnackBar(content: Text('تعذر حفظ الموزع: $error')),
         );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
+}
+
+class _ChoiceSection extends StatelessWidget {
+  const _ChoiceSection({
+    required this.title,
+    required this.subtitle,
+    required this.children,
+  });
+
+  final String title;
+  final String subtitle;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTokens.bg,
+        borderRadius: BorderRadius.circular(AppTokens.r12),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTokens.s16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: AppTokens.sidebarBg,
+              ),
+            ),
+            const SizedBox(height: AppTokens.s4),
+            Text(subtitle, style: const TextStyle(color: AppTokens.textMuted)),
+            const SizedBox(height: AppTokens.s8),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PermissionOption {
+  const _PermissionOption({
+    required this.key,
+    required this.label,
+    required this.description,
+  });
+
+  final String key;
+  final String label;
+  final String description;
 }
 
 class _Box extends StatelessWidget {
