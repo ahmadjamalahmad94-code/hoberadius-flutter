@@ -68,8 +68,8 @@ class BandwidthSchedulesController {
           .apply(item.id, live: live);
       _ref.invalidate(bandwidthSchedulesProvider);
       final msg = result.appliedToRadius
-          ? 'تم تطبيق الجدول على RADIUS'
-          : 'معاينة بدون تنفيذ: لم يتم تغيير RADIUS فعليًا';
+          ? 'تم تطبيق الجدول على الريدياس'
+          : 'معاينة بدون تنفيذ: لم يتم تغيير الريدياس فعليًا';
       return BandwidthSchedulesActionResult(message: msg);
     } catch (e) {
       return BandwidthSchedulesActionResult(error: '$e');

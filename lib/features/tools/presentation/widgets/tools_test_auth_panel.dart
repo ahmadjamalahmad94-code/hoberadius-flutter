@@ -46,7 +46,7 @@ class _ToolsTestAuthPanelState extends State<ToolsTestAuthPanel> {
             icon: Icons.verified_user_outlined,
             title: 'اختبار مصادقة',
             subtitle:
-                'يفحص قرار السماح من محرك السياسات في الخادم بدون اتصال مباشر من التطبيق إلى RADIUS.',
+                'يفحص قرار السماح من محرك السياسات في الخادم بدون اتصال مباشر من التطبيق إلى الريدياس.',
           ),
           const SizedBox(height: AppTokens.s12),
           ToolsTwoFields(
@@ -57,7 +57,7 @@ class _ToolsTestAuthPanelState extends State<ToolsTestAuthPanel> {
           const SizedBox(height: AppTokens.s8),
           ToolsTwoFields(
             first: ToolsTextField(controller: _mac, label: 'MAC الجهاز'),
-            second: ToolsTextField(controller: _nas, label: 'عنوان NAS'),
+            second: ToolsTextField(controller: _nas, label: 'عنوان جهاز الشبكة'),
           ),
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,

@@ -91,7 +91,7 @@ class MikrotikFormCard extends StatelessWidget {
                       child: TextFormField(
                         controller: username,
                         decoration: const InputDecoration(
-                          labelText: 'اسم مستخدم API',
+                          labelText: 'اسم مستخدم واجهة الربط',
                         ),
                         validator: _required,
                       ),
@@ -103,7 +103,7 @@ class MikrotikFormCard extends StatelessWidget {
                         obscureText: true,
                         decoration: InputDecoration(
                           labelText: editing == null
-                              ? 'كلمة مرور API'
+                              ? 'كلمة مرور واجهة الربط'
                               : 'كلمة مرور جديدة (اختياري)',
                           hintText: editing == null
                               ? 'مطلوبة عند الإضافة'
@@ -117,7 +117,7 @@ class MikrotikFormCard extends StatelessWidget {
                         controller: port,
                         keyboardType: TextInputType.number,
                         decoration:
-                            const InputDecoration(labelText: 'منفذ API'),
+                            const InputDecoration(labelText: 'منفذ واجهة الربط'),
                         validator: _positiveNumber,
                       ),
                     ),

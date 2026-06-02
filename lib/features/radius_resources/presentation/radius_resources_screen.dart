@@ -192,7 +192,7 @@ class _SideGuide extends StatelessWidget {
             const SizedBox(height: AppTokens.s12),
           ],
           const StatusPill(
-            text: 'متصل بعقد API حقيقي',
+            text: 'متصل بعقد ربط حقيقي',
             tone: PillTone.green,
             icon: Icons.verified_outlined,
           ),

@@ -103,7 +103,7 @@ class _SubscriberFinanceScreenState
       final label = result['dry_run'] == true
           ? 'تمت المعاينة بدون تنفيذ'
           : result['applied_to_radius'] == true
-              ? 'تم التطبيق على RADIUS'
+              ? 'تم التطبيق على الريدياس'
               : 'تم التسجيل المالي';
       if (mounted) {
         ScaffoldMessenger.of(context)

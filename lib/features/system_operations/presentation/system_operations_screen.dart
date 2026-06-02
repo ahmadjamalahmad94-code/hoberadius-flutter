@@ -36,7 +36,7 @@ class _SystemOperationsScreenState
         PageHeader(
           title: 'عمليات النظام',
           subtitle:
-              'حالة الخادم، التشخيص، طابور المزامنة، وإعادة المطابقة من API حقيقي.',
+              'حالة الخادم، التشخيص، طابور المزامنة، وإعادة المطابقة من واجهة ربط حقيقية.',
           actions: [
             IconButton(
               tooltip: 'تحديث',

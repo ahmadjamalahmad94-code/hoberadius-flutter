@@ -62,7 +62,7 @@ String systemStatusLabel(String value) {
     'unavailable' => 'غير متاح',
     'unknown' => 'غير معروف',
     'tcp_failed' => 'فشل اتصال',
-    'api_failed' => 'فشل API',
+    'api_failed' => 'فشل واجهة الربط',
     _ => 'حالة غير معروفة',
   };
 }

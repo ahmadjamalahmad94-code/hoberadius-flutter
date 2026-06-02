@@ -316,7 +316,10 @@ class _DeviceCard extends StatelessWidget {
                 ),
               StatusPill(text: item.osLabel, tone: PillTone.blue),
               if (item.nasId != null)
-                StatusPill(text: 'NAS #${item.nasId}', tone: PillTone.neutral),
+                StatusPill(
+                  text: 'جهاز الشبكة #${item.nasId}',
+                  tone: PillTone.neutral,
+                ),
             ],
           ),
           const SizedBox(height: AppTokens.s12),

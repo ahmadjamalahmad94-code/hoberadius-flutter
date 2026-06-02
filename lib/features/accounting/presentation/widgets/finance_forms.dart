@@ -15,7 +15,7 @@ class FinanceNotice extends StatelessWidget {
           SizedBox(width: AppTokens.s8),
           Expanded(
             child: Text(
-              'المعاينة بدون تنفيذ لا تغيّر حساب RADIUS. عند اعتماد التنفيذ يمدد الخادم الحساب أو يفعّله حسب النتيجة.',
+              'المعاينة بدون تنفيذ لا تغيّر حساب الريدياس. عند اعتماد التنفيذ يمدد الخادم الحساب أو يفعّله حسب النتيجة.',
               style: TextStyle(color: AppTokens.textMuted),
             ),
           ),
@@ -70,7 +70,7 @@ class PaymentFormCard extends StatelessWidget {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('تطبيق على RADIUS'),
+            title: const Text('تطبيق على الريدياس'),
             subtitle: const Text('يمدد الحساب حسب المدة المستحقة'),
             value: applyToRadius,
             onChanged: busy ? null : onApplyChanged,
@@ -145,7 +145,7 @@ class LoanFormCard extends StatelessWidget {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('تطبيق مؤقت على RADIUS'),
+            title: const Text('تطبيق مؤقت على الريدياس'),
             value: applyToRadius,
             onChanged: busy ? null : onApplyChanged,
           ),

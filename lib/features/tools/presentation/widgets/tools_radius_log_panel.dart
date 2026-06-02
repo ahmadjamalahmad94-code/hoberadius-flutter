@@ -27,7 +27,7 @@ class ToolsRadiusLogPanel extends ConsumerWidget {
           padding: const EdgeInsets.all(AppTokens.s20),
           child: EmptyState(
             icon: Icons.error_outline,
-            title: 'تعذر جلب سجل RADIUS',
+            title: 'تعذر جلب سجل الريدياس',
             subtitle: visibleErrorMessage(e),
           ),
         ),
@@ -47,7 +47,7 @@ class ToolsRadiusLogPanel extends ConsumerWidget {
               columns: const [
                 DataColumn(label: Text('القرار')),
                 DataColumn(label: Text('اسم الدخول')),
-                DataColumn(label: Text('NAS')),
+                DataColumn(label: Text('جهاز الشبكة')),
                 DataColumn(label: Text('السبب')),
                 DataColumn(label: Text('الوقت')),
               ],

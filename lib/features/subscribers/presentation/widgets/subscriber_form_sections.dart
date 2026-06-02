@@ -205,7 +205,7 @@ class SubscriberRadiusSection extends StatelessWidget {
     return CollapsibleSection(
       storageKey: 'sub.radius',
       icon: Icons.settings_ethernet,
-      title: 'سمات RADIUS / DNS',
+      title: 'سمات الريدياس وDNS',
       child: Column(
         children: [
           FormFieldRow(

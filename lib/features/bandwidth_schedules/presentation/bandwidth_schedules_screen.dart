@@ -111,7 +111,7 @@ class _BandwidthSchedulesScreenState
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
-                  'هذه الشاشة تحفظ خطط تغيير السرعة وتنفذ تجربة تطبيق فقط. لا يوجد عامل تشغيل لحظي يغيّر RADIUS الآن، لذلك تظهر النتيجة applied_to_radius = false.',
+                  'هذه الشاشة تحفظ خطط تغيير السرعة وتنفذ تجربة تطبيق فقط. لا يوجد عامل تشغيل لحظي يغيّر الريدياس الآن، لذلك تظهر النتيجة: لم يتم التطبيق فعليًا.',
                   style: TextStyle(color: AppTokens.textMuted),
                 ),
               ),

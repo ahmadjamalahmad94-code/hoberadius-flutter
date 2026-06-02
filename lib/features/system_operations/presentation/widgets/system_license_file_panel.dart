@@ -527,7 +527,7 @@ String _serviceLabel(String key) {
     'integration_tokens' => 'مفاتيح الربط',
     'subscribers' => 'المشتركين',
     'sessions' => 'الجلسات',
-    'nas' => 'أجهزة NAS',
+    'nas' => 'أجهزة الشبكة',
     'mikrotik' => 'مايكروتك',
     'reports' => 'التقارير',
     'backups' => 'النسخ الاحتياطي',
@@ -539,7 +539,7 @@ String _limitLabel(String key) {
   return switch (key) {
     'subscribers' => 'المشتركين',
     'cards' => 'الكروت',
-    'nas' => 'أجهزة NAS',
+    'nas' => 'أجهزة الشبكة',
     'routers' => 'الراوترات',
     'sessions' => 'الجلسات',
     'vpn_users' => 'مستخدمي VPN',

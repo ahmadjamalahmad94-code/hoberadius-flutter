@@ -129,7 +129,7 @@ class _PolicySidePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = kind.isRemoteAccess
         ? const [
-            ('الخدمات', 'Winbox وSSH وAPI وWebFig حسب الحاجة'),
+            ('الخدمات', 'Winbox وSSH وواجهة الربط وWebFig حسب الحاجة'),
             ('المصدر', 'قائمة عناوين موثوقة أو مدة انتهاء واضحة'),
             ('المعاينة', 'تفحص الأثر والتحذيرات قبل أي تنفيذ'),
           ]
@@ -1061,12 +1061,12 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
                 ),
                 _CheckLine(
                   value: _allowApi,
-                  label: 'السماح بـ API',
+                  label: 'السماح بواجهة الربط',
                   onChanged: (v) => setState(() => _allowApi = v),
                 ),
                 _CheckLine(
                   value: _allowApiSsl,
-                  label: 'السماح بـ API-SSL',
+                  label: 'السماح بواجهة الربط الآمنة',
                   onChanged: (v) => setState(() => _allowApiSsl = v),
                 ),
                 _CheckLine(

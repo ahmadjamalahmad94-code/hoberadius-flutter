@@ -155,7 +155,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
                     : _kind == OnlineSessionKind.subscribers
                         ? 'لا يوجد مشتركين متصلين الآن'
                         : 'لا يوجد متصلون الآن',
-                subtitle: 'أي جلسة نشطة ستظهر هنا فور وصولها من RADIUS.',
+                subtitle: 'أي جلسة نشطة ستظهر هنا فور وصولها من الريدياس.',
               );
             }
             return Column(

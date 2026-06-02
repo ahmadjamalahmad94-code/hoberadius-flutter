@@ -68,7 +68,7 @@ class _ToolsMaintenancePanelState
               ),
               DropdownMenuItem(
                 value: 'purge_radacct',
-                child: Text('تنظيف جلسات RADIUS القديمة'),
+                child: Text('تنظيف جلسات الريدياس القديمة'),
               ),
               DropdownMenuItem(
                 value: 'purge_audit',
@@ -184,7 +184,7 @@ String _maintenanceActionLabel(String value) {
     'vacuum' => 'ضغط قاعدة البيانات',
     'purge_sync_done' => 'تنظيف مهام المزامنة المكتملة',
     'purge_failed_webhooks' => 'تنظيف إشعارات الويب الفاشلة',
-    'purge_radacct' => 'تنظيف جلسات RADIUS القديمة',
+    'purge_radacct' => 'تنظيف جلسات الريدياس القديمة',
     'purge_audit' => 'تنظيف سجل التدقيق القديم',
     '' => 'عملية صيانة غير محددة',
     _ => 'عملية صيانة مخصصة',

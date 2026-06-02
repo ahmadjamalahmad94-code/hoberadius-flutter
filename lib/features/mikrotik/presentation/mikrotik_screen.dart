@@ -53,7 +53,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
         PageHeader(
           title: 'اتصالات MikroTik',
           subtitle:
-              'إدارة بيانات اتصال API للراوترات واختبارها من التطبيق. كلمة المرور لا تظهر بعد الحفظ.',
+              'إدارة بيانات واجهة ربط الراوترات واختبارها من التطبيق. كلمة المرور لا تظهر بعد الحفظ.',
           actions: [
             IconButton(
               tooltip: 'تحديث',
@@ -110,7 +110,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
                 icon: Icons.router_outlined,
                 title: 'لا توجد اتصالات MikroTik بعد',
                 subtitle:
-                    'أضف أول اتصال لاختبار الراوتر وربطه بعمليات RADIUS/MikroTik.',
+                    'أضف أول اتصال لاختبار الراوتر وربطه بعمليات الريدياس والمايكروتك.',
                 action: ElevatedButton.icon(
                   onPressed: _startCreate,
                   icon: const Icon(Icons.add),
@@ -276,7 +276,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('حذف اتصال MikroTik'),
         content: Text(
-          'سيتم حذف بيانات الاتصال "${config.name}". هذا لا يحذف NAS ولا يطرد أي مستخدم من الشبكة.',
+          'سيتم حذف بيانات الاتصال "${config.name}". هذا لا يحذف جهاز الشبكة ولا يطرد أي مستخدم من الشبكة.',
         ),
         actions: [
           TextButton(

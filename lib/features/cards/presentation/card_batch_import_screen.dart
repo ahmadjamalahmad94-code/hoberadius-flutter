@@ -94,7 +94,7 @@ class _CardBatchImportScreenState extends ConsumerState<CardBatchImportScreen> {
         PageHeader(
           title: 'استيراد ملف كروت',
           subtitle:
-              'أضف ملفًا جاهزًا للحساب التشغيلي أو كروت مستوردة عبر API حقيقي. الملف الخارجي لا يلمس RADIUS.',
+              'أضف ملفًا جاهزًا للحساب التشغيلي أو كروت مستوردة عبر واجهة ربط حقيقية. الملف الخارجي لا يلمس الريدياس.',
           actions: [
             OutlinedButton.icon(
               onPressed: () => context.goNamed('cards'),
@@ -250,7 +250,7 @@ class _ImportForm extends StatelessWidget {
                           ),
                           DropdownMenuItem(
                             value: 'imported',
-                            child: Text('ملف مستورد داخل RADIUS'),
+                            child: Text('ملف مستورد داخل الريدياس'),
                           ),
                         ],
                         onChanged: (value) =>
@@ -333,11 +333,11 @@ class _ImportForm extends StatelessWidget {
                 SwitchListTile.adaptive(
                   value: !external && syncToRadius,
                   onChanged: external ? null : onSyncChanged,
-                  title: const Text('مزامنة حسابات RADIUS'),
+                  title: const Text('مزامنة حسابات الريدياس'),
                   subtitle: Text(
                     external
-                        ? 'معطل للملف الخارجي حتى لا يلمس NAS أو FreeRADIUS.'
-                        : 'يفعّل الكروت المستوردة كحسابات RADIUS فعلية.',
+                        ? 'معطل للملف الخارجي حتى لا يلمس أجهزة الشبكة أو خدمة فري ريدياس.'
+                        : 'يفعّل الكروت المستوردة كحسابات ريدياس فعلية.',
                   ),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -450,7 +450,7 @@ class _ImportResultCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTokens.s8),
           Text(
-            '${batch.batchCode} · ${batch.sourceType} · متخطى ${result.skippedCount} · مزامنة RADIUS ${result.radiusSyncedCount}',
+            '${batch.batchCode} · ${batch.sourceType} · متخطى ${result.skippedCount} · مزامنة الريدياس ${result.radiusSyncedCount}',
             style: const TextStyle(
               color: AppTokens.textSecondary,
               fontWeight: FontWeight.w700,

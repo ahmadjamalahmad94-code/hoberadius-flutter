@@ -13,7 +13,7 @@ import '../domain/operational_report_model.dart';
 const _reports = <String, _ReportDef>{
   'sessions': _ReportDef(
     'جلسات الاتصال',
-    'كل جلسات RADIUS المسجلة من radacct.',
+    'كل جلسات الريدياس المسجلة في جدول المحاسبة.',
   ),
   'failed-logins': _ReportDef(
     'محاولات فاشلة',
@@ -32,8 +32,8 @@ const _reports = <String, _ReportDef>{
     'أحداث تعديل أو تمديد حسابات المستفيدين.',
   ),
   'api-messages': _ReportDef(
-    'رسائل API',
-    'أحداث نفذتها مفاتيح API.',
+    'رسائل واجهة الربط',
+    'أحداث نفذتها مفاتيح الربط.',
   ),
   'coa-failures': _ReportDef(
     'فشل أوامر الشبكة',
@@ -41,7 +41,7 @@ const _reports = <String, _ReportDef>{
   ),
   'manager-events': _ReportDef(
     'أحداث المدراء',
-    'الأفعال الإدارية من غير مفاتيح API.',
+    'الأفعال الإدارية من غير مفاتيح الربط.',
   ),
   'manager-login-status': _ReportDef(
     'دخول المدراء',
@@ -294,8 +294,8 @@ String _label(String key) {
     'acctsessionid': 'معرف الجلسة',
     'acctuniqueid': 'المعرف الفريد',
     'username': 'اسم الدخول',
-    'nasipaddress': 'عنوان NAS',
-    'nasportid': 'منفذ NAS',
+    'nasipaddress': 'عنوان جهاز الشبكة',
+    'nasportid': 'منفذ جهاز الشبكة',
     'nasporttype': 'نوع المنفذ',
     'acctstarttime': 'بدأت',
     'acctupdatetime': 'آخر تحديث',

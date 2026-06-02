@@ -42,7 +42,7 @@ const _items = <_MoreItem>[
     Icons.router_outlined,
     'MikroTik',
     'mikrotik',
-    sub: 'إعداد اتصال API واختبار الراوترات',
+    sub: 'إعداد واجهة ربط الراوترات واختبار الاتصال',
   ),
   _MoreItem(
     Icons.devices_other_outlined,
@@ -156,13 +156,13 @@ const _items = <_MoreItem>[
     Icons.manage_accounts_outlined,
     'التحكم الإداري',
     'admin-control',
-    sub: 'الإعدادات، مفاتيح API، المستأجرون وWebhooks',
+    sub: 'الإعدادات، مفاتيح الربط، المستأجرون واستدعاءات الويب',
   ),
   _MoreItem(
     Icons.construction_outlined,
     'الأدوات',
     'tools',
-    sub: 'تعديل سرعات، اختبار دخول، سجل RADIUS وصيانة آمنة',
+    sub: 'تعديل سرعات، اختبار دخول، سجل الريدياس وصيانة آمنة',
   ),
   _MoreItem(
     Icons.speed_outlined,

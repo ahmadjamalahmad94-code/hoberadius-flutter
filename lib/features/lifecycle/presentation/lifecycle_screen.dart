@@ -54,7 +54,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
-                  'هذه الصفحة تنقل الكروت والمشتركين المنتهين إلى سلة المحذوفات فقط. لا يوجد حذف نهائي ولا فصل RADIUS في هذه الشريحة.',
+                  'هذه الصفحة تنقل الكروت والمشتركين المنتهين إلى سلة المحذوفات فقط. لا يوجد حذف نهائي ولا فصل من الريدياس في هذه الشريحة.',
                   style: TextStyle(color: AppTokens.textMuted),
                 ),
               ),
@@ -118,7 +118,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('تشغيل الأرشفة الآن'),
         content: const Text(
-          'سيتم نقل العناصر المؤهلة إلى سلة المحذوفات فقط. العدد الأصلي للحزم لن يتغير، ولا يتم تنفيذ أي RADIUS أو CoA.',
+          'سيتم نقل العناصر المؤهلة إلى سلة المحذوفات فقط. العدد الأصلي للحزم لن يتغير، ولا يتم تنفيذ أي تغيير على الريدياس أو فصل CoA.',
         ),
         actions: [
           TextButton(

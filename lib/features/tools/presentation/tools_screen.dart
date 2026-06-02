@@ -35,7 +35,7 @@ class _ToolsScreenState extends ConsumerState<ToolsScreen> {
         PageHeader(
           title: 'الأدوات',
           subtitle:
-              'أدوات تشغيل حقيقية من الخادم: تعديل سرعات، اختبار دخول، سجل RADIUS، وصيانة بمعاينة قبل التنفيذ.',
+              'أدوات تشغيل حقيقية من الخادم: تعديل سرعات، اختبار دخول، سجل الريدياس، وصيانة بمعاينة قبل التنفيذ.',
           actions: [
             IconButton(
               tooltip: 'تحديث',

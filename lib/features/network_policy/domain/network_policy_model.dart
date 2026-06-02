@@ -255,8 +255,10 @@ String networkPolicyFieldLabel(String key, Object? value) {
   return switch (key) {
     'allow_winbox' => _bool(value) ? 'Winbox مسموح' : 'Winbox مغلق',
     'allow_ssh' => _bool(value) ? 'SSH مسموح' : 'SSH مغلق',
-    'allow_api' => _bool(value) ? 'API مسموح' : 'API مغلق',
-    'allow_api_ssl' => _bool(value) ? 'API-SSL مسموح' : 'API-SSL مغلق',
+    'allow_api' => _bool(value) ? 'واجهة الربط مسموحة' : 'واجهة الربط مغلقة',
+    'allow_api_ssl' => _bool(value)
+        ? 'واجهة الربط الآمنة مسموحة'
+        : 'واجهة الربط الآمنة مغلقة',
     'allow_webfig_http' =>
       _bool(value) ? 'WebFig HTTP مسموح' : 'WebFig HTTP مغلق',
     'allow_webfig_https' =>

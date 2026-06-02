@@ -327,8 +327,8 @@ class _SystemHealth extends StatelessWidget {
                 _HealthChip(
                   icon: metrics.pingOk! ? Icons.public : Icons.public_off,
                   text: metrics.pingMs == null
-                      ? 'Google ${metrics.pingOk! ? 'متاح' : 'غير متاح'}'
-                      : 'Google ${metrics.pingMs!.toStringAsFixed(1)}ms',
+                      ? 'فحص الإنترنت ${metrics.pingOk! ? 'متاح' : 'غير متاح'}'
+                      : 'فحص الإنترنت ${metrics.pingMs!.toStringAsFixed(1)} مللي ثانية',
                 ),
               if (metrics.dnsOk != null)
                 _HealthChip(

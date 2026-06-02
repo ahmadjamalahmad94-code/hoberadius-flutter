@@ -34,7 +34,7 @@ class SystemStatusPanel extends StatelessWidget {
         Icons.inventory_2_outlined,
       ),
       _Metric(
-        'جلسات RADIUS',
+        'جلسات الريدياس',
         status.counts['radacct'] ?? 0,
         Icons.online_prediction,
       ),

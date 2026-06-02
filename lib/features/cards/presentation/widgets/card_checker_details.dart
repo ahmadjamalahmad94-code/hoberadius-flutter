@@ -29,7 +29,7 @@ class CardCheckerDetails extends StatelessWidget {
       _InfoItem('MAC الحالي', card.macAddress ?? 'غير معروف'),
       _InfoItem('MAC مثبت', card.lockedMac ?? 'غير مثبت'),
       _InfoItem('IP', card.ipAddress ?? 'غير معروف'),
-      _InfoItem('NAS', card.nasAddress ?? 'غير معروف'),
+      _InfoItem('جهاز الشبكة', card.nasAddress ?? 'غير معروف'),
       _InfoItem('مصادر البيانات', joinLocalizedFields(card.dataSources)),
       _InfoItem(
         'حقول ناقصة',
