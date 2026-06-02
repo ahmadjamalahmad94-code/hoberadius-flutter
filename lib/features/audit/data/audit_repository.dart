@@ -4,10 +4,17 @@ import '../../../core/api/api_client.dart';
 import '../domain/audit_model.dart';
 
 class AuditQuery {
-  const AuditQuery({this.actor, this.action, this.targetType, this.limit = 200});
+  const AuditQuery({
+    this.actor,
+    this.action,
+    this.targetType,
+    this.targetId,
+    this.limit = 200,
+  });
   final String? actor;
   final String? action;
   final String? targetType;
+  final String? targetId;
   final int limit;
 
   Map<String, dynamic> toQueryParams() => {
@@ -15,6 +22,7 @@ class AuditQuery {
         if (actor != null && actor!.isNotEmpty) 'actor': actor,
         if (action != null && action!.isNotEmpty) 'action': action,
         if (targetType != null && targetType!.isNotEmpty) 'target_type': targetType,
+        if (targetId != null && targetId!.isNotEmpty) 'target_id': targetId,
       };
 }
 

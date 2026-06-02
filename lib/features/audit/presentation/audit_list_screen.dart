@@ -20,18 +20,24 @@ class AuditListScreen extends ConsumerStatefulWidget {
 
 class _AuditListScreenState extends ConsumerState<AuditListScreen> {
   String? _targetType;
+  String? _action;
   final _searchCtrl = TextEditingController();
+  final _targetIdCtrl = TextEditingController();
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _targetIdCtrl.dispose();
     super.dispose();
   }
 
   void _applyFilters() {
     final q = AuditQuery(
       actor: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+      action: _action,
       targetType: _targetType,
+      targetId:
+          _targetIdCtrl.text.trim().isEmpty ? null : _targetIdCtrl.text.trim(),
     );
     ref.read(auditQueryProvider.notifier).state = q;
   }
@@ -62,11 +68,30 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
               final search = TextField(
                 controller: _searchCtrl,
                 decoration: const InputDecoration(
-                  hintText: 'ابحث باسم المنفذ أو المدير...',
+                  hintText: 'ابحث باسم المدير أو رمز التكامل...',
                   prefixIcon: Icon(Icons.search),
                   isDense: true,
                 ),
                 onSubmitted: (_) => _applyFilters(),
+              );
+              final action = DropdownButton<String?>(
+                value: _action,
+                hint: const Text('الإجراء'),
+                underline: const SizedBox(),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('كل الإجراءات')),
+                  DropdownMenuItem(value: 'create', child: Text('إنشاء')),
+                  DropdownMenuItem(value: 'update', child: Text('تعديل')),
+                  DropdownMenuItem(value: 'delete', child: Text('حذف')),
+                  DropdownMenuItem(value: 'archive', child: Text('أرشفة')),
+                  DropdownMenuItem(value: 'restore', child: Text('استعادة')),
+                  DropdownMenuItem(value: 'login', child: Text('دخول')),
+                  DropdownMenuItem(value: 'logout', child: Text('خروج')),
+                ],
+                onChanged: (v) {
+                  setState(() => _action = v);
+                  _applyFilters();
+                },
               );
               final type = DropdownButton<String?>(
                 value: _targetType,
@@ -91,6 +116,16 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
                   _applyFilters();
                 },
               );
+              final targetId = TextField(
+                controller: _targetIdCtrl,
+                decoration: const InputDecoration(
+                  hintText: 'رقم العنصر',
+                  prefixIcon: Icon(Icons.tag_outlined),
+                  isDense: true,
+                ),
+                keyboardType: TextInputType.number,
+                onSubmitted: (_) => _applyFilters(),
+              );
               final button = IconButton(
                 tooltip: 'تطبيق',
                 onPressed: _applyFilters,
@@ -103,6 +138,10 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
                     search,
                     const SizedBox(height: AppTokens.s12),
                     Row(children: [Expanded(child: type), button]),
+                    const SizedBox(height: AppTokens.s12),
+                    action,
+                    const SizedBox(height: AppTokens.s12),
+                    targetId,
                   ],
                 );
               }
@@ -110,7 +149,11 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
                 children: [
                   Expanded(child: search),
                   const SizedBox(width: AppTokens.s12),
+                  SizedBox(width: 130, child: action),
+                  const SizedBox(width: AppTokens.s8),
                   type,
+                  const SizedBox(width: AppTokens.s8),
+                  SizedBox(width: 140, child: targetId),
                   const SizedBox(width: AppTokens.s8),
                   button,
                 ],

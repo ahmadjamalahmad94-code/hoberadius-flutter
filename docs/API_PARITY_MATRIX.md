@@ -51,7 +51,7 @@
 | بوابة المشترك | `portal_subscriber*` | `/api/v1/customer-portals` إداريًا، ومسارات Web ذاتية للبوابة | `CustomerPortalsScreen` | موجودة شاشة إدارة روابط البوابات، وتجربة المشترك الذاتية المستقلة داخل Flutter ما زالت تحتاج API/session خاص | P5 | F15 |
 | بوابة الكروت | `portal_card*`, `card_marketplace.html`, `card_pricing*` | `/api/v1/hotspot-cards/*`, `/api/v1/card-users/*` جزئيًا | `CardUsersScreen`, `CardUser360Screen` | موجودة إدارة مستخدمي الكروت، لكن تجربة بوابة الكرت المستقلة تحتاج فصل وتدقيق | P5 | F16 |
 | التقارير | `reports_*`, `rep_*` | `/api/v1/reports/*`, `/api/v1/operational-reports/*` | `FinancialReportsScreen`, `OperationalReportsScreen` | يحتاج تغطية كل التقارير لا المختصر فقط | P6 | F17 |
-| التدقيق | `audit_*` | `/api/v1/audit` | `AuditListScreen` | يحتاج تفاصيل السجل والفلاتر | P6 | F18 |
+| التدقيق | `audit_*` | `/api/v1/audit` | `AuditListScreen` | مكتمل كعرض تشغيلي مع فلاتر المدير، الإجراء، النوع، رقم العنصر، وتفاصيل payload داخل حوار قراءة | P6 | F18 |
 | الإعدادات والتحكم | `settings_page.html`, `tokens_list.html`, `tenants_*`, `wh_*` | `/api/v1/settings`, `/api/v1/tokens`, `/api/v1/tenants`, `/api/v1/webhooks/*` | `AdminControlScreen` | يحتاج تدقيق كل الأفعال والنصوص | P6 | F19 |
 | الأرشفة وسلة المحذوفات | `lifecycle.html`, `recycle_bin.html` | `/api/v1/lifecycle/*`, `/api/v1/recycle-bin/*` | `LifecycleScreen`, `RecycleBinScreen` | يحتاج مقارنة وظائف كاملة | P6 | F20 |
 | أدوات التشغيل | `tool_*`, `_status.html` | `/api/v1/tools/*`, `/api/v1/health`, `/api/v1/version` | `ToolsScreen` | يحتاج تدقيق وتحسين أمان الأفعال الخطرة | P6 | F21 |
