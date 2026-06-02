@@ -52,6 +52,7 @@ import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
 import '../../features/radius_resources/presentation/radius_resources_screen.dart';
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
+import '../../features/router_alerts/presentation/router_alerts_screen.dart';
 import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
 import '../../features/setup_wizard/presentation/setup_wizard_screen.dart';
@@ -216,6 +217,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/network-devices',
             name: 'network-devices',
             builder: (ctx, st) => const NetworkDevicesScreen(),
+          ),
+          GoRoute(
+            path: '/router-alerts',
+            name: 'router-alerts',
+            builder: (ctx, st) => const RouterAlertsScreen(),
           ),
           GoRoute(
             path: '/network-policy',

@@ -192,6 +192,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/network-devices',
       ),
       _SidebarItem(
+        icon: Icons.notifications_active_outlined,
+        label: 'تنبيهات الراوترات',
+        routeName: 'router-alerts',
+        path: '/router-alerts',
+      ),
+      _SidebarItem(
         icon: Icons.policy_outlined,
         label: 'سياسات الشبكة',
         routeName: 'network-policy',
@@ -388,6 +394,7 @@ int _indexOfRoute(String location) {
       location == '/setup-wizard' ||
       location == '/device-fingerprints' ||
       location == '/network-devices' ||
+      location == '/router-alerts' ||
       location == '/network-policy' ||
       location == '/radius-resources' ||
       location == '/plans' ||

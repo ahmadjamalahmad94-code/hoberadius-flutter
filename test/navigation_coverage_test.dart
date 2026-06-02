@@ -22,6 +22,7 @@ void main() {
       'events-center': '/events',
       'network-policy': '/network-policy',
       'network-devices': '/network-devices',
+      'router-alerts': '/router-alerts',
       'router-operations': '/router-operations',
       'setup-wizard': '/setup-wizard',
       'radius-resources': '/radius-resources',

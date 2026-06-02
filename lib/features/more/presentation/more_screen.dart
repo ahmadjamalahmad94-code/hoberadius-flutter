@@ -69,6 +69,12 @@ const _items = <_MoreItem>[
     sub: 'تسجيل نقاط الوصول والسويتشات والكاميرات وفحص الاستجابة يدويًا',
   ),
   _MoreItem(
+    Icons.notifications_active_outlined,
+    'تنبيهات الراوترات',
+    'router-alerts',
+    sub: 'حدود الانقطاع والترافيك والاستهلاك لكل راوتر حسب المقاييس المدفوعة للخادم',
+  ),
+  _MoreItem(
     Icons.policy_outlined,
     'سياسات الشبكة',
     'network-policy',
