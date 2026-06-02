@@ -51,7 +51,7 @@ class MikrotikFormCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      title: editing == null ? 'اتصال MikroTik جديد' : 'تعديل اتصال MikroTik',
+      title: editing == null ? 'اتصال ميكروتك جديد' : 'تعديل اتصال ميكروتك',
       icon: Icons.router_outlined,
       child: Form(
         key: formKey,

@@ -71,7 +71,7 @@ class MikrotikTestResult {
 
   String get displayName {
     final name = identity['name'] ?? identity['identity'] ?? '';
-    return name.toString().trim().isEmpty ? 'MikroTik' : name.toString();
+    return name.toString().trim().isEmpty ? 'ميكروتك' : name.toString();
   }
 
   String get version => (resource['version'] ?? '').toString();

@@ -51,7 +51,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PageHeader(
-          title: 'اتصالات MikroTik',
+          title: 'اتصالات ميكروتك',
           subtitle:
               'إدارة بيانات واجهة ربط الراوترات واختبارها من التطبيق. كلمة المرور لا تظهر بعد الحفظ.',
           actions: [
@@ -96,7 +96,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => EmptyState(
             icon: Icons.error_outline,
-            title: 'تعذر جلب اتصالات MikroTik',
+            title: 'تعذر جلب اتصالات ميكروتك',
             subtitle: visibleErrorMessage(error),
             action: OutlinedButton.icon(
               onPressed: () => ref.invalidate(mikrotikConfigsProvider),
@@ -108,7 +108,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
             if (items.isEmpty) {
               return EmptyState(
                 icon: Icons.router_outlined,
-                title: 'لا توجد اتصالات MikroTik بعد',
+                title: 'لا توجد اتصالات ميكروتك بعد',
                 subtitle:
                     'أضف أول اتصال لاختبار الراوتر وربطه بعمليات الريدياس والمايكروتك.',
                 action: ElevatedButton.icon(
@@ -274,7 +274,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('حذف اتصال MikroTik'),
+        title: const Text('حذف اتصال ميكروتك'),
         content: Text(
           'سيتم حذف بيانات الاتصال "${config.name}". هذا لا يحذف جهاز الشبكة ولا يطرد أي مستخدم من الشبكة.',
         ),

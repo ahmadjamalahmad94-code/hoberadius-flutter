@@ -324,7 +324,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                     items: const [
                       DropdownMenuItem(
                         value: 'mikrotik',
-                        child: Text('MikroTik'),
+                        child: Text('ميكروتك'),
                       ),
                       DropdownMenuItem(value: 'cisco', child: Text('Cisco')),
                       DropdownMenuItem(value: 'huawei', child: Text('Huawei')),
@@ -462,7 +462,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
               children: [
                 FormFieldRow(
                   label: 'منفذ واجهة الراوتر',
-                  hint: 'MikroTik افتراضي: 8728',
+                  hint: 'ميكروتك افتراضي: 8728',
                   child: TextFormField(
                     controller: _c['api_port'],
                     keyboardType: TextInputType.number,

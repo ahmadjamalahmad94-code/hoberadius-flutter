@@ -37,7 +37,7 @@ class MikrotikRepository {
   }) async {
     final id = config.id;
     if (id == null) {
-      throw ArgumentError('معرّف اتصال MikroTik مطلوب قبل التعديل');
+      throw ArgumentError('معرّف اتصال ميكروتك مطلوب قبل التعديل');
     }
     final res = await _api.patch(
       '/api/v1/mikrotik/$id',

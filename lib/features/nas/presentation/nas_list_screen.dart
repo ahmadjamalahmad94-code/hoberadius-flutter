@@ -230,7 +230,7 @@ class _NasTable extends StatelessWidget {
 
 String _nasVendorLabel(String value) {
   final v = value.toLowerCase();
-  if (v == 'mikrotik') return 'MikroTik';
+  if (v == 'mikrotik') return 'ميكروتك';
   if (v == 'cisco') return 'Cisco';
   if (v == 'huawei') return 'Huawei';
   if (v == 'ubiquiti') return 'Ubiquiti';
