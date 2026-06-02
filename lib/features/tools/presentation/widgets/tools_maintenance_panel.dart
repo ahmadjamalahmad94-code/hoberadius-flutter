@@ -136,26 +136,7 @@ class _ToolsMaintenancePanelState
   Future<void> _run() async {
     final preview = _preview;
     if (preview == null) return;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تنفيذ الصيانة'),
-        content: Text(
-          'سيتم تنفيذ ${_maintenanceActionLabel(preview.action)} على ${preview.estimatedRows} صف تقريبًا. لا تتابع إلا إذا كنت متأكدًا.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('تنفيذ'),
-          ),
-        ],
-      ),
-    );
-    if (ok != true) return;
+    if (!await _confirmMaintenance(preview)) return;
     setState(() => _running = true);
     try {
       final result =
@@ -176,6 +157,61 @@ class _ToolsMaintenancePanelState
     } finally {
       if (mounted) setState(() => _running = false);
     }
+  }
+
+  Future<bool> _confirmMaintenance(MaintenancePreview preview) async {
+    final controller = TextEditingController();
+    final expected = preview.confirmPhrase.trim();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        var typed = '';
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final matched = typed.trim() == expected && expected.isNotEmpty;
+            return AlertDialog(
+              title: const Text('تأكيد تنفيذ الصيانة'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'سيتم تنفيذ ${_maintenanceActionLabel(preview.action)} '
+                    'على ${preview.estimatedRows} صف تقريبًا. اكتب عبارة '
+                    'التأكيد كما تظهر قبل المتابعة.',
+                  ),
+                  const SizedBox(height: AppTokens.s12),
+                  SelectableText(
+                    expected.isEmpty ? 'عبارة التأكيد غير متاحة' : expected,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  const SizedBox(height: AppTokens.s8),
+                  TextField(
+                    controller: controller,
+                    decoration: const InputDecoration(
+                      labelText: 'عبارة التأكيد',
+                    ),
+                    onChanged: (value) => setDialogState(() => typed = value),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('إلغاء'),
+                ),
+                FilledButton(
+                  onPressed: matched ? () => Navigator.pop(ctx, true) : null,
+                  child: const Text('تنفيذ'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    return ok == true;
   }
 }
 
