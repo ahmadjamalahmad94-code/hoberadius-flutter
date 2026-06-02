@@ -67,6 +67,8 @@ class _RouterAlertsScreenState extends ConsumerState<RouterAlertsScreen> {
           onSave: (settings) => _save(settings: settings),
         ),
         const SizedBox(height: AppTokens.s12),
+        _LoopProbesCard(probes: state.loopProbes),
+        const SizedBox(height: AppTokens.s12),
         if (state.routers.isEmpty)
           const EmptyState(
             icon: Icons.router_outlined,
@@ -126,12 +128,12 @@ class _SummaryGrid extends StatelessWidget {
       builder: (context, constraints) {
         final wide = constraints.maxWidth >= 860;
         return GridView.count(
-          crossAxisCount: wide ? 4 : 2,
+          crossAxisCount: wide ? 3 : 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: AppTokens.s12,
           crossAxisSpacing: AppTokens.s12,
-          childAspectRatio: wide ? 3.1 : 2.35,
+          childAspectRatio: wide ? 3.05 : 2.35,
           children: [
             _MetricTile(
               icon: Icons.router_outlined,
@@ -147,6 +149,16 @@ class _SummaryGrid extends StatelessWidget {
               icon: Icons.tune_outlined,
               label: 'حدود مخصصة',
               value: counts.overrides.toString(),
+            ),
+            _MetricTile(
+              icon: Icons.cable_outlined,
+              label: 'مجسّات اللوب',
+              value: counts.loopProbes.toString(),
+            ),
+            _MetricTile(
+              icon: Icons.report_problem_outlined,
+              label: 'حلقات مكتشفة',
+              value: counts.loopDetected.toString(),
             ),
             _MetricTile(
               icon: settings.enabled
@@ -224,6 +236,7 @@ class _GlobalSettingsCardState extends State<_GlobalSettingsCard> {
   late bool _offline;
   late bool _traffic;
   late bool _usage;
+  late bool _loop;
   final _offlineAfter = TextEditingController();
   final _speed = TextEditingController();
   final _usageGb = TextEditingController();
@@ -247,6 +260,7 @@ class _GlobalSettingsCardState extends State<_GlobalSettingsCard> {
     _offline = settings.offline;
     _traffic = settings.highTraffic;
     _usage = settings.highUsage;
+    _loop = settings.loop;
     _offlineAfter.text = settings.offlineAfterMin.toString();
     _speed.text = settings.defaultSpeedMbps.toString();
     _usageGb.text = settings.defaultUsageGb.toString();
@@ -315,6 +329,11 @@ class _GlobalSettingsCardState extends State<_GlobalSettingsCard> {
                 value: _usage,
                 onChanged: (value) => setState(() => _usage = value),
               ),
+              _SwitchChip(
+                label: 'تتبّع اللوب',
+                value: _loop,
+                onChanged: (value) => setState(() => _loop = value),
+              ),
             ],
           ),
           const SizedBox(height: AppTokens.s12),
@@ -373,6 +392,7 @@ class _GlobalSettingsCardState extends State<_GlobalSettingsCard> {
         offline: _offline,
         highTraffic: _traffic,
         highUsage: _usage,
+        loop: _loop,
         offlineAfterMin: offline,
         defaultSpeedMbps: speed,
         defaultUsageGb: usage,
@@ -380,6 +400,157 @@ class _GlobalSettingsCardState extends State<_GlobalSettingsCard> {
       ),
     );
   }
+}
+
+class _LoopProbesCard extends StatelessWidget {
+  const _LoopProbesCard({required this.probes});
+
+  final List<RouterLoopProbe> probes;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cable_outlined, color: AppTokens.brand),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: Text(
+                  'تتبّع اللوب عبر مجسّ DHCP',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              StatusPill(
+                text: probes.any((probe) => probe.loopDetected)
+                    ? 'يوجد لوب'
+                    : 'لا توجد حلقات',
+                tone: probes.any((probe) => probe.loopDetected)
+                    ? PillTone.red
+                    : PillTone.green,
+                dot: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s8),
+          Text(
+            'هذه القراءات تصل من سكربت الراوتر. إذا حصل منفذ زبائن على إيجار DHCP فهذا يعني أن التوصيل أعاد الشبكة على نفسها ويحتاج فصل الكبل أو مراجعة السويتش.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTokens.textSecondary,
+                  height: 1.7,
+                ),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          if (probes.isEmpty)
+            const EmptyState(
+              icon: Icons.sensors_off_outlined,
+              title: 'لا توجد مجسّات لوب بعد',
+              subtitle:
+                  'ركّب سكربت تتبّع اللوب من واجهة الويب للراوترات حتى تبدأ القراءات بالظهور هنا.',
+            )
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 860;
+                return GridView.count(
+                  crossAxisCount: wide ? 2 : 1,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: AppTokens.s8,
+                  crossAxisSpacing: AppTokens.s8,
+                  childAspectRatio: wide ? 4.2 : 3.25,
+                  children: [
+                    for (final probe in probes) _LoopProbeTile(probe: probe),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoopProbeTile extends StatelessWidget {
+  const _LoopProbeTile({required this.probe});
+
+  final RouterLoopProbe probe;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = probe.loopDetected
+        ? PillTone.red
+        : probe.status == 'searching'
+            ? PillTone.green
+            : PillTone.neutral;
+    final label = probe.loopDetected
+        ? 'لوب مكتشف'
+        : probe.status == 'searching'
+            ? 'سليم'
+            : 'بانتظار قراءة';
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            probe.loopDetected
+                ? Icons.report_problem_outlined
+                : Icons.check_circle_outline,
+            color: probe.loopDetected ? AppTokens.dangerFg : AppTokens.successFg,
+          ),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${probe.routerName} · ${probe.interfaceName}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: AppTokens.s4),
+                Text(
+                  _probeDetails(probe),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTokens.textSecondary,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppTokens.s8),
+          StatusPill(text: label, tone: tone, dot: true),
+        ],
+      ),
+    );
+  }
+}
+
+String _probeDetails(RouterLoopProbe probe) {
+  if (probe.loopDetected) {
+    final lease = probe.leaseIp.isEmpty ? 'بدون عنوان ظاهر' : probe.leaseIp;
+    final server = probe.serverIp.isEmpty ? 'خادم غير محدد' : probe.serverIp;
+    return 'أخذ إيجارًا: $lease من $server';
+  }
+  if (probe.lastReadingAt.isNotEmpty) {
+    return 'آخر قراءة: ${probe.lastReadingAt}';
+  }
+  return 'لم تصل قراءة حديثة لهذا المجسّ';
 }
 
 class _RouterAlertCard extends StatefulWidget {

@@ -2,17 +2,20 @@ class RouterAlertsState {
   const RouterAlertsState({
     required this.settings,
     required this.routers,
+    required this.loopProbes,
     required this.counts,
     required this.usageWindows,
   });
 
   final RouterAlertSettings settings;
   final List<RouterAlertTarget> routers;
+  final List<RouterLoopProbe> loopProbes;
   final RouterAlertCounts counts;
   final List<UsageWindowOption> usageWindows;
 
   factory RouterAlertsState.fromJson(Map<String, dynamic> json) {
     final rawRouters = json['routers'];
+    final rawLoopProbes = json['loop_probes'];
     final rawWindows = json['usage_windows'];
     return RouterAlertsState(
       settings: RouterAlertSettings.fromJson(_map(json['settings'])),
@@ -20,6 +23,12 @@ class RouterAlertsState {
           ? rawRouters
               .whereType<Map>()
               .map((item) => RouterAlertTarget.fromJson(_map(item)))
+              .toList()
+          : const [],
+      loopProbes: rawLoopProbes is List
+          ? rawLoopProbes
+              .whereType<Map>()
+              .map((item) => RouterLoopProbe.fromJson(_map(item)))
               .toList()
           : const [],
       counts: RouterAlertCounts.fromJson(_map(json['counts'])),
@@ -43,6 +52,7 @@ class RouterAlertSettings {
     required this.offline,
     required this.highTraffic,
     required this.highUsage,
+    required this.loop,
     required this.offlineAfterMin,
     required this.defaultSpeedMbps,
     required this.defaultUsageGb,
@@ -54,6 +64,7 @@ class RouterAlertSettings {
   final bool offline;
   final bool highTraffic;
   final bool highUsage;
+  final bool loop;
   final int offlineAfterMin;
   final int defaultSpeedMbps;
   final int defaultUsageGb;
@@ -66,6 +77,7 @@ class RouterAlertSettings {
       offline: _bool(json['offline'], fallback: true),
       highTraffic: _bool(json['high_traffic'], fallback: true),
       highUsage: _bool(json['high_usage'], fallback: true),
+      loop: _bool(json['loop'], fallback: true),
       offlineAfterMin: _int(json['offline_after_min'], fallback: 6),
       defaultSpeedMbps: _int(json['default_speed_mbps'], fallback: 100),
       defaultUsageGb: _int(json['default_usage_gb'], fallback: 200),
@@ -79,6 +91,7 @@ class RouterAlertSettings {
     bool? offline,
     bool? highTraffic,
     bool? highUsage,
+    bool? loop,
     int? offlineAfterMin,
     int? defaultSpeedMbps,
     int? defaultUsageGb,
@@ -90,6 +103,7 @@ class RouterAlertSettings {
       offline: offline ?? this.offline,
       highTraffic: highTraffic ?? this.highTraffic,
       highUsage: highUsage ?? this.highUsage,
+      loop: loop ?? this.loop,
       offlineAfterMin: offlineAfterMin ?? this.offlineAfterMin,
       defaultSpeedMbps: defaultSpeedMbps ?? this.defaultSpeedMbps,
       defaultUsageGb: defaultUsageGb ?? this.defaultUsageGb,
@@ -103,6 +117,7 @@ class RouterAlertSettings {
         'offline': offline,
         'high_traffic': highTraffic,
         'high_usage': highUsage,
+        'loop': loop,
         'offline_after_min': offlineAfterMin,
         'default_speed_mbps': defaultSpeedMbps,
         'default_usage_gb': defaultUsageGb,
@@ -186,17 +201,64 @@ class RouterAlertCounts {
     required this.routers,
     required this.pushing,
     required this.overrides,
+    required this.loopProbes,
+    required this.loopDetected,
+    required this.loopRouters,
   });
 
   final int routers;
   final int pushing;
   final int overrides;
+  final int loopProbes;
+  final int loopDetected;
+  final int loopRouters;
 
   factory RouterAlertCounts.fromJson(Map<String, dynamic> json) {
     return RouterAlertCounts(
       routers: _int(json['routers']),
       pushing: _int(json['pushing']),
       overrides: _int(json['overrides']),
+      loopProbes: _int(json['loop_probes']),
+      loopDetected: _int(json['loop_detected']),
+      loopRouters: _int(json['loop_routers']),
+    );
+  }
+}
+
+class RouterLoopProbe {
+  const RouterLoopProbe({
+    required this.routerId,
+    required this.routerName,
+    required this.interfaceName,
+    required this.enabled,
+    required this.status,
+    required this.leaseIp,
+    required this.serverIp,
+    required this.lastReadingAt,
+    required this.loopDetected,
+  });
+
+  final int routerId;
+  final String routerName;
+  final String interfaceName;
+  final bool enabled;
+  final String status;
+  final String leaseIp;
+  final String serverIp;
+  final String lastReadingAt;
+  final bool loopDetected;
+
+  factory RouterLoopProbe.fromJson(Map<String, dynamic> json) {
+    return RouterLoopProbe(
+      routerId: _int(json['router_id']),
+      routerName: _string(json['router_name']),
+      interfaceName: _string(json['interface']),
+      enabled: _bool(json['enabled'], fallback: true),
+      status: _string(json['status']),
+      leaseIp: _string(json['lease_ip']),
+      serverIp: _string(json['server_ip']),
+      lastReadingAt: _string(json['last_reading_at']),
+      loopDetected: _bool(json['loop_detected']),
     );
   }
 }
