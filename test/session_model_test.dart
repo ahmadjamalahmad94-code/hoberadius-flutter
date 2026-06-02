@@ -33,4 +33,29 @@ void main() {
     expect(session.cardId, 9);
     expect(session.cardBatchId, 3);
   });
+
+  test('AccountingSessionHistory parses radacct history fields', () {
+    final item = AccountingSessionHistory.fromJson({
+      'radacctid': '44',
+      'username': 'sub-001',
+      'acctsessionid': 'acct-1',
+      'nasipaddress': '10.20.30.1',
+      'framedipaddress': '192.168.1.20',
+      'callingstationid': 'AA:00:00:00:00:01',
+      'acctstarttime': '2026-05-20T10:00:00Z',
+      'acctstoptime': '2026-05-20T11:00:00Z',
+      'acctinputoctets': '4096',
+      'acctoutputoctets': 8192,
+      'acctsessiontime': '3600',
+      'acctterminatecause': 'User-Request',
+    });
+
+    expect(item.id, 44);
+    expect(item.username, 'sub-001');
+    expect(item.isOnline, isFalse);
+    expect(item.bytesIn, 4096);
+    expect(item.bytesOut, 8192);
+    expect(item.sessionTime, 3600);
+    expect(item.terminateCause, 'User-Request');
+  });
 }

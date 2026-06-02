@@ -97,6 +97,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(onlineSessionsProvider(_query));
+    final historyAsync = ref.watch(accountingHistoryProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -109,7 +110,10 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
-              onPressed: () => ref.invalidate(onlineSessionsProvider(_query)),
+              onPressed: () {
+                ref.invalidate(onlineSessionsProvider(_query));
+                ref.invalidate(accountingHistoryProvider);
+              },
             ),
           ],
         ),
@@ -177,6 +181,12 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               ],
             );
           },
+        ),
+        const SizedBox(height: AppTokens.s16),
+        _HistorySection(
+          async: historyAsync,
+          formatBytes: _formatBytes,
+          formatDuration: _formatDuration,
         ),
       ],
     );
@@ -416,6 +426,193 @@ class _SummaryTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HistorySection extends StatelessWidget {
+  const _HistorySection({
+    required this.async,
+    required this.formatBytes,
+    required this.formatDuration,
+  });
+
+  final AsyncValue<List<AccountingSessionHistory>> async;
+  final String Function(int) formatBytes;
+  final String Function(int) formatDuration;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(AppTokens.s12),
+            child: Row(
+              children: [
+                const Icon(Icons.history_outlined, color: AppTokens.brand),
+                const SizedBox(width: AppTokens.s8),
+                Expanded(
+                  child: Text(
+                    'آخر جلسات المحاسبة',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          async.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(AppTokens.s20),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (error, _) => Padding(
+              padding: const EdgeInsets.all(AppTokens.s20),
+              child: EmptyState(
+                icon: Icons.error_outline,
+                title: 'تعذر جلب تاريخ الجلسات',
+                subtitle: visibleErrorMessage(error),
+              ),
+            ),
+            data: (items) {
+              if (items.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(AppTokens.s20),
+                  child: EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'لا توجد جلسات محاسبة محفوظة بعد',
+                  ),
+                );
+              }
+              return Column(
+                children: [
+                  for (final item in items.take(12))
+                    _HistoryRow(
+                      item: item,
+                      formatBytes: formatBytes,
+                      formatDuration: formatDuration,
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({
+    required this.item,
+    required this.formatBytes,
+    required this.formatDuration,
+  });
+
+  final AccountingSessionHistory item;
+  final String Function(int) formatBytes;
+  final String Function(int) formatDuration;
+
+  @override
+  Widget build(BuildContext context) {
+    final df = DateFormat('yyyy-MM-dd HH:mm');
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(AppTokens.s12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                item.isOnline
+                    ? Icons.radio_button_checked
+                    : Icons.stop_circle_outlined,
+                color: item.isOnline ? AppTokens.successFg : AppTokens.textMuted,
+              ),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.username.isEmpty ? 'مستخدم غير محدد' : item.username,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTokens.sidebarBg,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: AppTokens.s4),
+                    Text(
+                      [
+                        if (item.nasIpAddress.isNotEmpty) item.nasIpAddress,
+                        if (item.framedIpAddress.isNotEmpty)
+                          item.framedIpAddress,
+                        if (item.startedAt != null)
+                          'بدأت ${df.format(item.startedAt!.toLocal())}',
+                        if (item.stoppedAt != null)
+                          'انتهت ${df.format(item.stoppedAt!.toLocal())}',
+                      ].join(' · '),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: AppTokens.s4),
+                    Wrap(
+                      spacing: AppTokens.s8,
+                      runSpacing: AppTokens.s4,
+                      children: [
+                        _MetaChip(
+                          icon: Icons.timer_outlined,
+                          text: formatDuration(item.sessionTime),
+                        ),
+                        _MetaChip(
+                          icon: Icons.download,
+                          text: 'تنزيل ${formatBytes(item.bytesIn)}',
+                        ),
+                        _MetaChip(
+                          icon: Icons.upload,
+                          text: 'رفع ${formatBytes(item.bytesOut)}',
+                        ),
+                        if (item.terminateCause.isNotEmpty)
+                          _MetaChip(
+                            icon: Icons.flag_outlined,
+                            text: _terminateCauseLabel(item.terminateCause),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppTokens.s8),
+              StatusPill(
+                text: item.isOnline ? 'مفتوحة' : 'منتهية',
+                tone: item.isOnline ? PillTone.green : PillTone.neutral,
+              ),
+            ],
+          ),
+        ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+String _terminateCauseLabel(String value) {
+  return switch (value) {
+    'User-Request' => 'طلب المستخدم',
+    'Stale-Session-Timeout' => 'انتهت بسبب انقطاع التحديث',
+    'Lost-Carrier' => 'انقطاع الاتصال',
+    'Session-Timeout' => 'انتهاء مدة الجلسة',
+    _ => value,
+  };
 }
 
 class _SessionTile extends StatelessWidget {

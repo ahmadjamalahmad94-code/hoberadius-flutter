@@ -72,6 +72,18 @@ class SessionsRepository {
       },
     );
   }
+
+  Future<List<AccountingSessionHistory>> listHistory({int limit = 50}) async {
+    final res = await _api.get(
+      '/api/v1/accounting/sessions',
+      query: {'limit': limit.toString()},
+    );
+    final items = (res['data']?['items'] ?? const []) as List;
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(AccountingSessionHistory.fromJson)
+        .toList();
+  }
 }
 
 final sessionsRepositoryProvider = Provider<SessionsRepository>((ref) {
@@ -84,4 +96,9 @@ final onlineSessionsProvider = FutureProvider.autoDispose
         kind: query.kind,
         search: query.search,
       );
+});
+
+final accountingHistoryProvider =
+    FutureProvider.autoDispose<List<AccountingSessionHistory>>((ref) {
+  return ref.watch(sessionsRepositoryProvider).listHistory();
 });
