@@ -48,7 +48,7 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذّر الاختبار: $e')),
+        SnackBar(content: Text(visibleErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _testing.remove(d.id));

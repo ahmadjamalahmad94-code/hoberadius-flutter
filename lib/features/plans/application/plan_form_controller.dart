@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../data/plans_repository.dart';
 import '../domain/plan_model.dart';
@@ -34,8 +35,9 @@ class PlanFormActionController extends Notifier<PlanFormActionState> {
       final plan = await ref.read(plansRepositoryProvider).get(id);
       return LoadPlanResult(plan: plan);
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return LoadPlanResult(error: '$e');
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return LoadPlanResult(error: message);
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -53,8 +55,9 @@ class PlanFormActionController extends Notifier<PlanFormActionState> {
       ref.invalidate(plansListProvider);
       return null;
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return '$e';
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return message;
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -67,8 +70,9 @@ class PlanFormActionController extends Notifier<PlanFormActionState> {
       ref.invalidate(plansListProvider);
       return null;
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return '$e';
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return message;
     } finally {
       state = state.copyWith(loading: false);
     }

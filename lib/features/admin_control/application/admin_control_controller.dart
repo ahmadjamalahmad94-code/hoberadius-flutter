@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../data/admin_control_repository.dart';
 import '../domain/admin_control_model.dart';
@@ -46,7 +47,7 @@ class AdminControlController extends Notifier<AdminControlState> {
       ref.invalidate(apiTokensProvider);
       return CreateTokenResult(token: token);
     } catch (e) {
-      return CreateTokenResult(error: '$e');
+      return CreateTokenResult(error: visibleErrorMessage(e));
     } finally {
       state = state.copyWith(busy: false);
     }
@@ -110,7 +111,7 @@ class AdminControlController extends Notifier<AdminControlState> {
       await action();
       return const AdminActionResult();
     } catch (e) {
-      return AdminActionResult(error: '$e');
+      return AdminActionResult(error: visibleErrorMessage(e));
     } finally {
       state = state.copyWith(busy: false);
     }

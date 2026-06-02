@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../data/bandwidth_schedules_repository.dart';
 import '../domain/bandwidth_schedule_model.dart';
@@ -54,7 +55,7 @@ class BandwidthSchedulesController {
         message: 'تم حفظ جدول السرعة',
       );
     } catch (e) {
-      return BandwidthSchedulesActionResult(error: '$e');
+      return BandwidthSchedulesActionResult(error: visibleErrorMessage(e));
     }
   }
 
@@ -72,7 +73,7 @@ class BandwidthSchedulesController {
           : 'معاينة بدون تنفيذ: لم يتم تغيير الريدياس فعليًا';
       return BandwidthSchedulesActionResult(message: msg);
     } catch (e) {
-      return BandwidthSchedulesActionResult(error: '$e');
+      return BandwidthSchedulesActionResult(error: visibleErrorMessage(e));
     }
   }
 }

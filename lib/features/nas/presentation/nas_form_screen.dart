@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
@@ -82,7 +83,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       final d = await ref.read(nasRepositoryProvider).get(widget.nasId!);
       _populate(d);
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -167,7 +168,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       ref.invalidate(nasListProvider);
       if (mounted) context.goNamed('nas');
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -192,7 +193,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذّر الاختبار: $e')),
+        SnackBar(content: Text(visibleErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _testing = false);
@@ -228,7 +229,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       ref.invalidate(nasListProvider);
       if (mounted) context.goNamed('nas');
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

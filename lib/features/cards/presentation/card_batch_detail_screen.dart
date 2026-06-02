@@ -465,7 +465,7 @@ class _CardsTable extends ConsumerWidget {
                     } catch (e) {
                       if (!ctx.mounted) return;
                       ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(content: Text('تعذّر الإلغاء: $e')),
+                        SnackBar(content: Text(visibleErrorMessage(e))),
                       );
                     }
                   },

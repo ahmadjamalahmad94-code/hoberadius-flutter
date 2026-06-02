@@ -226,7 +226,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
       _show(_editing == null ? 'تمت إضافة الاتصال.' : 'تم حفظ التعديلات.');
       _hideForm();
     } catch (error) {
-      _show('$error', error: true);
+      _show(visibleErrorMessage(error), error: true);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -247,7 +247,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
       if (!mounted) return;
       _showTestResult(result);
     } catch (error) {
-      _show('$error', error: true);
+      _show(visibleErrorMessage(error), error: true);
     } finally {
       if (mounted) setState(() => _testingForm = false);
     }
@@ -262,7 +262,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
       if (!mounted) return;
       _showTestResult(result);
     } catch (error) {
-      _show('$error', error: true);
+      _show(visibleErrorMessage(error), error: true);
     } finally {
       if (mounted) setState(() => _testingIds.remove(id));
     }
@@ -297,7 +297,7 @@ class _MikrotikScreenState extends ConsumerState<MikrotikScreen> {
       ref.invalidate(mikrotikConfigsProvider);
       _show('تم حذف الاتصال.');
     } catch (error) {
-      _show('$error', error: true);
+      _show(visibleErrorMessage(error), error: true);
     }
   }
 

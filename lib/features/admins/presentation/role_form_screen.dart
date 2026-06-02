@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
@@ -58,7 +59,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
           ..addAll(r.permissions);
       });
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -89,7 +90,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
       ref.invalidate(rolesListProvider);
       if (mounted) context.goNamed('roles');
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -124,7 +125,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
       ref.invalidate(rolesListProvider);
       if (mounted) context.goNamed('roles');
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -253,7 +254,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                 child: Center(child: CircularProgressIndicator()),
               ),
               error: (e, _) => Text(
-                'تعذّر جلب قائمة الصلاحيات: $e',
+                visibleErrorMessage(e),
                 style: const TextStyle(color: AppTokens.red),
               ),
               data: (catalog) => Column(

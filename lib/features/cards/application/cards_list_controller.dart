@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../data/cards_repository.dart';
 import 'cards_list_providers.dart';
@@ -34,7 +35,7 @@ class CardsListController {
       await _save(bytes, 'card-batches', 'csv', MimeType.csv);
       return const ExportResult(savedAs: 'تم تنزيل ملف الحزم المعروضة');
     } catch (e) {
-      return ExportResult(error: 'تعذّر التصدير: $e');
+      return ExportResult(error: visibleErrorMessage(e));
     }
   }
 
@@ -54,7 +55,7 @@ class CardsListController {
         savedAs: 'تم تنزيل ملف Excel للحزم المعروضة',
       );
     } catch (e) {
-      return ExportResult(error: 'تعذّر تصدير Excel: $e');
+      return ExportResult(error: visibleErrorMessage(e));
     }
   }
 
@@ -69,7 +70,7 @@ class CardsListController {
         savedAs: 'تم تنزيل ملف PDF للحزم المعروضة',
       );
     } catch (e) {
-      return ExportResult(error: 'تعذّر تصدير PDF: $e');
+      return ExportResult(error: visibleErrorMessage(e));
     }
   }
 
@@ -95,7 +96,7 @@ class CardsListController {
           : 'تم تنفيذ $label على ${result.changed} من ${result.requested} حزمة';
       return BulkActionResult(message: message);
     } catch (e) {
-      return BulkActionResult(error: 'تعذّر تنفيذ الإجراء: $e');
+      return BulkActionResult(error: visibleErrorMessage(e));
     }
   }
 

@@ -79,7 +79,7 @@ class _CardBatchImportScreenState extends ConsumerState<CardBatchImportScreen> {
       ref.invalidate(batchesListProvider);
       if (mounted) setState(() => _result = result);
     } catch (e) {
-      if (mounted) setState(() => _error = '$e');
+      if (mounted) setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

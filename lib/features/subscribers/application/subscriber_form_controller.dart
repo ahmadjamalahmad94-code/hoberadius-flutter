@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
@@ -46,8 +47,9 @@ class SubscriberFormActionController
           await ref.read(subscribersRepositoryProvider).get(username);
       return LoadSubscriberResult(subscriber: s);
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return LoadSubscriberResult(error: '$e');
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return LoadSubscriberResult(error: message);
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -64,8 +66,9 @@ class SubscriberFormActionController
       }
       return null;
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return '$e';
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return message;
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -82,8 +85,9 @@ class SubscriberFormActionController
       }
       return null;
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return '$e';
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return message;
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -97,8 +101,9 @@ class SubscriberFormActionController
           .extendTime(username, minutes);
       return ExtendTimeResult(newExpire: dt);
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return ExtendTimeResult(error: '$e');
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return ExtendTimeResult(error: message);
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -112,8 +117,9 @@ class SubscriberFormActionController
           .resetPassword(username, pw);
       return null;
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return '$e';
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return message;
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -125,8 +131,9 @@ class SubscriberFormActionController
       await ref.read(subscribersRepositoryProvider).delete(username);
       return null;
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return '$e';
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return message;
     } finally {
       state = state.copyWith(loading: false);
     }

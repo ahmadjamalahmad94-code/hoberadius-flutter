@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
@@ -62,8 +63,9 @@ class CardCheckerController extends Notifier<CardCheckerState> {
       state = state.copyWith(result: card);
       return null;
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return '$e';
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return message;
     } finally {
       state = state.copyWith(loading: false);
     }
@@ -79,8 +81,9 @@ class CardCheckerController extends Notifier<CardCheckerState> {
       state = state.copyWith(result: updated);
       return CardCheckerActionOutcome(success: success);
     } catch (e) {
-      state = state.copyWith(error: '$e');
-      return CardCheckerActionOutcome(error: 'تعذر تنفيذ العملية: $e');
+      final message = visibleErrorMessage(e);
+      state = state.copyWith(error: message);
+      return CardCheckerActionOutcome(error: message);
     } finally {
       state = state.copyWith(actionLoading: false);
     }

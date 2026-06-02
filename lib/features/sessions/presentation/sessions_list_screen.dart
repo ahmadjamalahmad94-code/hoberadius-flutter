@@ -89,7 +89,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذّر الطرد: $e')),
+        SnackBar(content: Text(visibleErrorMessage(e))),
       );
     }
   }

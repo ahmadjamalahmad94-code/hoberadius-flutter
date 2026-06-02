@@ -175,7 +175,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
         pathParameters: {'id': '${updated.id ?? batch.id}'},
       );
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

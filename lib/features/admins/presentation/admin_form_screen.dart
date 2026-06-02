@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
@@ -67,7 +68,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
           await ref.read(adminsRepositoryProvider).getAdmin(widget.adminId!);
       _populate(a);
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -125,7 +126,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       ref.invalidate(adminsListProvider);
       if (mounted) context.goNamed('admins');
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -160,7 +161,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       ref.invalidate(adminsListProvider);
       if (mounted) context.goNamed('admins');
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -258,7 +259,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                     error: (e, _) => TextFormField(
                       enabled: false,
                       decoration:
-                          InputDecoration(labelText: 'تعذّر جلب الأدوار: $e'),
+                          InputDecoration(labelText: visibleErrorMessage(e)),
                     ),
                     data: (roles) => DropdownButtonFormField<int?>(
                       initialValue:

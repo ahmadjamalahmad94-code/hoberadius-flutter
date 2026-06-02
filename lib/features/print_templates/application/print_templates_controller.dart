@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../data/print_templates_repository.dart';
 import '../domain/print_template_model.dart';
@@ -104,7 +105,7 @@ class PrintTemplatesActionController
       ref.invalidate(printTemplatesProvider);
       return null;
     } catch (e) {
-      return '$e';
+      return visibleErrorMessage(e);
     } finally {
       state = state.withFlags(saving: false);
     }
@@ -124,7 +125,7 @@ class PrintTemplatesActionController
       state = state.withPreview(result);
       return null;
     } catch (e) {
-      return '$e';
+      return visibleErrorMessage(e);
     } finally {
       state = state.withFlags(previewing: false);
     }
@@ -143,7 +144,7 @@ class PrintTemplatesActionController
               );
       return ExportPdfResult(bytes: bytes);
     } catch (e) {
-      return ExportPdfResult(error: '$e');
+      return ExportPdfResult(error: visibleErrorMessage(e));
     } finally {
       state = state.withFlags(exportingPdf: false);
     }

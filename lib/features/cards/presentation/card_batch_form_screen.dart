@@ -7,6 +7,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
@@ -100,7 +101,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       setState(() => _result = r);
       ref.invalidate(batchesListProvider);
     } catch (e) {
-      setState(() => _error = '$e');
+      setState(() => _error = visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
