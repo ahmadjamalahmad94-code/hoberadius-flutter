@@ -22,6 +22,17 @@ void main() {
           'created_at': '2026-05-20T12:01:00Z',
         },
       ],
+      'google_drive': {
+        'configured': true,
+        'connected': false,
+        'pending': true,
+        'status': 'pending',
+        'email': 'owner@example.com',
+        'folder_name': 'HobeRadius Backups',
+        'last_upload_at': '',
+        'last_error': '',
+        'message_ar': 'طلب ربط جوجل درايف بانتظار إكمال التحقق من المستخدم.',
+      },
     });
 
     expect(status.job.lastStatus, 'success');
@@ -29,5 +40,8 @@ void main() {
     expect(status.recentRuns, hasLength(1));
     expect(status.recentRuns.first.id, 7);
     expect(status.recentRuns.first.path, contains('backups'));
+    expect(status.googleDrive.configured, isTrue);
+    expect(status.googleDrive.pending, isTrue);
+    expect(status.googleDrive.messageAr, contains('جوجل درايف'));
   });
 }

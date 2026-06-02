@@ -2,10 +2,12 @@ class BackupStatus {
   const BackupStatus({
     required this.job,
     required this.recentRuns,
+    required this.googleDrive,
   });
 
   final BackupJob job;
   final List<BackupRun> recentRuns;
+  final BackupGoogleDriveStatus googleDrive;
 
   factory BackupStatus.fromJson(Map<String, dynamic> json) {
     final runs = (json['recent_runs'] ?? const []) as List;
@@ -19,6 +21,49 @@ class BackupStatus {
           .whereType<Map<String, dynamic>>()
           .map(BackupRun.fromJson)
           .toList(),
+      googleDrive: BackupGoogleDriveStatus.fromJson(
+        json['google_drive'] is Map<String, dynamic>
+            ? json['google_drive'] as Map<String, dynamic>
+            : const {},
+      ),
+    );
+  }
+}
+
+class BackupGoogleDriveStatus {
+  const BackupGoogleDriveStatus({
+    required this.configured,
+    required this.connected,
+    required this.pending,
+    required this.status,
+    required this.email,
+    required this.folderName,
+    required this.lastUploadAt,
+    required this.lastError,
+    required this.messageAr,
+  });
+
+  final bool configured;
+  final bool connected;
+  final bool pending;
+  final String status;
+  final String email;
+  final String folderName;
+  final String lastUploadAt;
+  final String lastError;
+  final String messageAr;
+
+  factory BackupGoogleDriveStatus.fromJson(Map<String, dynamic> json) {
+    return BackupGoogleDriveStatus(
+      configured: _asBool(json['configured']),
+      connected: _asBool(json['connected']),
+      pending: _asBool(json['pending']),
+      status: (json['status'] ?? 'not_configured').toString(),
+      email: (json['email'] ?? '').toString(),
+      folderName: (json['folder_name'] ?? 'HobeRadius Backups').toString(),
+      lastUploadAt: (json['last_upload_at'] ?? '').toString(),
+      lastError: (json['last_error'] ?? '').toString(),
+      messageAr: (json['message_ar'] ?? 'جوجل درايف غير مفعل حاليًا').toString(),
     );
   }
 }
@@ -85,4 +130,11 @@ int _asInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+bool _asBool(Object? value) {
+  if (value is bool) return value;
+  final text = value?.toString().trim().toLowerCase();
+  if (text == null || text.isEmpty) return false;
+  return ['1', 'true', 'yes', 'on'].contains(text);
 }

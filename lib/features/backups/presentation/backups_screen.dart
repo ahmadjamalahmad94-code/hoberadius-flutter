@@ -49,21 +49,6 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
           ],
         ),
         const SizedBox(height: AppTokens.s12),
-        const AppCard(
-          child: Row(
-            children: [
-              Icon(Icons.info_outline, color: AppTokens.brand),
-              SizedBox(width: AppTokens.s8),
-              Expanded(
-                child: Text(
-                  'النسخ الحالي محلي فقط. جوجل درايف غير مفعل حاليًا من إعدادات الخادم، لذلك لا يظهر كإجراء ناجح أو جاهز.',
-                  style: TextStyle(color: AppTokens.textMuted),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppTokens.s12),
         async.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => EmptyState(
@@ -133,9 +118,12 @@ class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final job = status.job;
+    final drive = status.googleDrive;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _GoogleDriveCard(drive: drive),
+        const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
           builder: (context, constraints) {
             final cols = constraints.maxWidth > 780 ? 3 : 1;
@@ -161,10 +149,10 @@ class _Body extends StatelessWidget {
                   subtitle: 'تحقق من النسخة خارج التطبيق قبل الإنتاج',
                   icon: Icons.schedule,
                 ),
-                const _StatCard(
+                _StatCard(
                   title: 'جوجل درايف',
-                  value: 'غير مفعل',
-                  subtitle: 'فعّله من إعدادات الخادم عند الحاجة لرفع النسخ خارج الجهاز',
+                  value: _driveStatusLabel(drive),
+                  subtitle: drive.messageAr,
                   icon: Icons.cloud_off_outlined,
                 ),
               ],
@@ -242,6 +230,82 @@ class _Body extends StatelessWidget {
       ],
     );
   }
+}
+
+class _GoogleDriveCard extends StatelessWidget {
+  const _GoogleDriveCard({required this.drive});
+
+  final BackupGoogleDriveStatus drive;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = drive.connected
+        ? PillTone.green
+        : drive.pending
+            ? PillTone.amber
+            : PillTone.neutral;
+    return AppCard(
+      child: Row(
+        children: [
+          Icon(
+            drive.connected
+                ? Icons.cloud_done_outlined
+                : drive.pending
+                    ? Icons.cloud_sync_outlined
+                    : Icons.cloud_off_outlined,
+            color: drive.connected ? AppTokens.successFg : AppTokens.textMuted,
+          ),
+          const SizedBox(width: AppTokens.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'حالة جوجل درايف',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                      ),
+                    ),
+                    StatusPill(text: _driveStatusLabel(drive), tone: tone),
+                  ],
+                ),
+                const SizedBox(height: AppTokens.s4),
+                Text(
+                  drive.messageAr,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTokens.textSecondary,
+                        height: 1.6,
+                      ),
+                ),
+                if (drive.email.isNotEmpty || drive.lastUploadAt.isNotEmpty) ...[
+                  const SizedBox(height: AppTokens.s8),
+                  Text(
+                    [
+                      if (drive.email.isNotEmpty) 'الحساب: ${drive.email}',
+                      if (drive.lastUploadAt.isNotEmpty)
+                        'آخر رفع: ${drive.lastUploadAt}',
+                    ].join(' · '),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _driveStatusLabel(BackupGoogleDriveStatus drive) {
+  if (drive.connected) return 'مربوط';
+  if (drive.pending) return 'بانتظار التحقق';
+  if (drive.configured) return 'غير مربوط';
+  return 'غير مفعل';
 }
 
 class _StatCard extends StatelessWidget {

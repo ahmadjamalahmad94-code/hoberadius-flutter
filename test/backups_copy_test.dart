@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('backup copy explains disabled Google Drive without prototype wording', () {
+  test('نص النسخ يوضح حالة جوجل درايف بدون صياغة شكلية', () {
     final backupScreen = File(
       'lib/features/backups/presentation/backups_screen.dart',
     ).readAsStringSync();
@@ -13,7 +13,7 @@ void main() {
 
     expect(backupScreen, isNot(contains('جوجل درايف لاحقًا')));
     expect(moreScreen, isNot(contains('جوجل درايف لاحقًا')));
-    expect(backupScreen, contains('جوجل درايف غير مفعل حاليًا'));
+    expect(backupScreen, contains('حالة جوجل درايف'));
     expect(moreScreen, contains('ربط جوجل درايف عند تفعيله'));
   });
 }
