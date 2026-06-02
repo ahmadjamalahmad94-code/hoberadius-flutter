@@ -40,7 +40,7 @@
 | الباقات والسرعات | `plans_*`, `bandwidth_*`, `_speed_rules_panel.html` | `/api/v1/profiles`, `/api/v1/bandwidth-schedules`, `/api/v1/bandwidth-profiles` | `PlansListScreen`, `PlanFormScreen`, `BandwidthSchedulesScreen` | يحتاج تدقيق parity للحقول المتقدمة | P1 | F3 |
 | الجلسات | `sessions_list.html`, تقارير الجلسات | `/api/v1/sessions/online`, `/api/v1/accounting/*` | `SessionsListScreen` | يحتاج توسيع تفاصيل المحاسبة والتاريخ | P1 | F4 |
 | NAS وأجهزة الشبكة | `devices_*`, `network_devices_*` | `/api/v1/nas`, `/api/v1/devices`, `/api/v1/network-devices` | `NasListScreen`, `NasFormScreen`, `DeviceFingerprintsScreen`, `NetworkDevicesScreen` | مكتمل كشاشة تشغيلية لإدارة NAS وبصمات الأجهزة ومراقبة أجهزة الشبكة المتقدمة مع CRUD وفحص يدوي، ويحتاج لاحقًا ربط عمليات bypass/remote-access عند اعتمادها كواجهة JSON آمنة | P1/P4 | F5/F8 |
-| MikroTik | `mt_*`, `setup_wizard*` | `/api/v1/mikrotik`, `/api/v1/mikrotik-control/*` | `MikrotikScreen`, `RouterOperationsScreen` | موجودة شاشة اتصالات ميكروتك وشاشة قراءة حية لعمليات الراوتر من عقد overview، وما زال setup wizard الكامل يحتاج تحويل JSON منفصل قبل اعتباره مكتملًا | P1/P2 | F6 |
+| MikroTik | `mt_*`, `setup_wizard*` | `/api/v1/mikrotik`, `/api/v1/mikrotik-control/*`, `/api/v1/setup-wizard/*` | `MikrotikScreen`, `RouterOperationsScreen`, `SetupWizardScreen` | موجودة شاشة اتصالات ميكروتك، شاشة قراءة حية لعمليات الراوتر، وشاشة معالج إعداد تقرأ الصحة والجاهزية وآخر التشغيلات وتبدأ تشغيلًا جديدًا. تطبيق أوامر الراوتر والخادم يبقى في الويب المحمي حتى يكتمل تحويل خطوات التنفيذ إلى JSON آمن | P1/P2 | F6 |
 | ملف الترخيص والمزامنة | `license_file.html`, `admin_bridge.html`, `sync_list.html` | `/api/v1/system/license-file`, `/api/v1/system/admin-bridge/*`, `/api/v1/system/sync` | `LicenseFileScreen`, `SystemOperationsScreen` | مكتمل كمسار Flutter واضح لملف الترخيص والربط، مع فصل طابور المزامنة في عمليات النظام | P2 | F7 |
 | النسخ الاحتياطي | `backups.html`, `mt_backups.html` | `/api/v1/backups/*` | `BackupsScreen` | يحتاج توسيع عرض جوجل درايف وحالة الخدمة | P2 | F7 |
 | المال والتحصيل | `finance_*`, `payment_collection_*`, `users_finance.html` | `/api/v1/payments/*`, `/api/v1/ledger`, `/api/v1/loans`, `/api/v1/invoices` | `LedgerScreen`, `FinancialReportsScreen`, `SubscriberFinanceScreen`, `PaymentCollectionScreen` | موجود Flutter لمركز التحصيل، ويحتاج تدقيق قرارات القبول والرفض وتطبيق الخدمة | P3 | F10 |
@@ -66,7 +66,7 @@
 | F3 | الباقات والسرعات: profile CRUD، speed rules، schedules | حفظ كل قيود السرعة والزمن من Flutter بدون فقدان حقول |
 | F4 | الجلسات والمحاسبة: online، disconnect، usage history | عرض الجلسات الحالية والتاريخ وقطع الجلسة |
 | F5 | NAS وأجهزة الشبكة | CRUD، test، fingerprints، وحالة الجهاز |
-| F6 | MikroTik وsetup wizard | إعداد الراوتر، الفحص، العمليات، ونتائج التنفيذ |
+| F6 | MikroTik وsetup wizard | شاشة Flutter للاتصالات والعمليات ومعالج الإعداد الآمن. المتبقي هو تحويل خطوات التنفيذ الفعلية للمعالج إلى API آمن عند اعتمادها |
 | F7 | ملف الترخيص والمزامنة والنسخ | صفحة Flutter واضحة لحالة الترخيص والربط والمزامنة والنسخ |
 | F8-F14 | التحكم المتقدم والاتصالات والأحداث | API أولًا ثم شاشات Flutter أصلية |
 | F15-F16 | بوابات العميل والكروت | تجربة مستخدم مستقلة وآمنة داخل Flutter |

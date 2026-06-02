@@ -51,6 +51,12 @@ const _items = <_MoreItem>[
     sub: 'حالة الراوتر الحية، الموارد، الصحة، الهوية، والوقت من عقد القراءة الآمن',
   ),
   _MoreItem(
+    Icons.playlist_add_check_outlined,
+    'معالج إعداد الراوترات',
+    'setup-wizard',
+    sub: 'صحة المعالج، جاهزية خادم الربط، وآخر تشغيلات الإعداد بدون تطبيق أوامر من التطبيق',
+  ),
+  _MoreItem(
     Icons.devices_other_outlined,
     'بصمات الأجهزة',
     'device-fingerprints',

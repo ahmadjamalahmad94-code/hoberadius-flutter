@@ -21,6 +21,7 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.router_outlined, 'أجهزة الشبكة', 'nas'),
   _NavItem(Icons.router_outlined, 'اتصالات ميكروتك', 'mikrotik'),
   _NavItem(Icons.monitor_heart_outlined, 'عمليات الراوتر', 'router-operations'),
+  _NavItem(Icons.playlist_add_check_outlined, 'معالج إعداد الراوترات', 'setup-wizard'),
   _NavItem(
     Icons.devices_other_outlined,
     'بصمات الأجهزة',
@@ -127,6 +128,7 @@ class AppSidebar extends StatelessWidget {
       'nas': '/nas',
       'mikrotik': '/mikrotik',
       'router-operations': '/router-operations',
+      'setup-wizard': '/setup-wizard',
       'device-fingerprints': '/device-fingerprints',
       'network-devices': '/network-devices',
       'network-policy': '/network-policy',

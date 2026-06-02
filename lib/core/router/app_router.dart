@@ -54,6 +54,7 @@ import '../../features/radius_resources/presentation/radius_resources_screen.dar
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
+import '../../features/setup_wizard/presentation/setup_wizard_screen.dart';
 import '../../features/subscribers/presentation/subscriber_360_screen.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
 import '../../features/subscribers/presentation/subscribers_list_screen.dart';
@@ -200,6 +201,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/router-operations',
             name: 'router-operations',
             builder: (ctx, st) => const RouterOperationsScreen(),
+          ),
+          GoRoute(
+            path: '/setup-wizard',
+            name: 'setup-wizard',
+            builder: (ctx, st) => const SetupWizardScreen(),
           ),
           GoRoute(
             path: '/device-fingerprints',

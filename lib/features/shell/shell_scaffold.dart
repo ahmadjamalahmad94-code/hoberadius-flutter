@@ -174,6 +174,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/router-operations',
       ),
       _SidebarItem(
+        icon: Icons.playlist_add_check_outlined,
+        label: 'معالج إعداد الراوترات',
+        routeName: 'setup-wizard',
+        path: '/setup-wizard',
+      ),
+      _SidebarItem(
         icon: Icons.fingerprint_outlined,
         label: 'بصمات الأجهزة',
         routeName: 'device-fingerprints',
@@ -379,6 +385,7 @@ int _indexOfRoute(String location) {
       location == '/nas' ||
       location == '/mikrotik' ||
       location == '/router-operations' ||
+      location == '/setup-wizard' ||
       location == '/device-fingerprints' ||
       location == '/network-devices' ||
       location == '/network-policy' ||

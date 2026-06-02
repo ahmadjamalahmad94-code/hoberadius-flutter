@@ -23,6 +23,7 @@ void main() {
       'network-policy': '/network-policy',
       'network-devices': '/network-devices',
       'router-operations': '/router-operations',
+      'setup-wizard': '/setup-wizard',
       'radius-resources': '/radius-resources',
       'card-users': '/card-users',
     };
