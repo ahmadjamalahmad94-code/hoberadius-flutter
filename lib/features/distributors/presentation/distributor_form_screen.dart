@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
@@ -288,7 +289,7 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('تعذر حفظ الموزع: $error')),
+          SnackBar(content: Text(visibleErrorMessage(error))),
         );
       }
     } finally {
