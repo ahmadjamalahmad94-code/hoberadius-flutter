@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -283,7 +281,23 @@ class _ReportRequest {
 
 String _cell(Object? value) {
   if (value == null || value.toString().isEmpty) return '—';
-  if (value is Map || value is List) return jsonEncode(value);
+  if (value is bool) return value ? 'نعم' : 'لا';
+  if (value is Map) {
+    if (value.isEmpty) return 'لا توجد بيانات';
+    final entries = value.entries.take(4).map((entry) {
+      return '${_label(entry.key.toString())}: ${_cell(entry.value)}';
+    }).join('، ');
+    final remaining =
+        value.length > 4 ? '، و${value.length - 4} حقل إضافي' : '';
+    return entries + remaining;
+  }
+  if (value is Iterable) {
+    final values = value.take(4).map(_cell).join('، ');
+    if (values.isEmpty) return 'لا توجد عناصر';
+    final remaining =
+        value.length > 4 ? '، و${value.length - 4} عنصر إضافي' : '';
+    return values + remaining;
+  }
   return value.toString();
 }
 
