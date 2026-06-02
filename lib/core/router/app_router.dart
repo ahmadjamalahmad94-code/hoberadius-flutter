@@ -61,9 +61,8 @@ import '../../features/subscribers/presentation/subscriber_form_screen.dart';
 import '../../features/subscribers/presentation/subscribers_list_screen.dart';
 import '../auth/auth_controller.dart';
 
-/// Routes kept in the foundation slice are only those backed by working
-/// Flask endpoints. Placeholder Plans/NAS/Admins/Roles forms were dropped
-/// — they will return only when the backend exposes JSON CUD for each.
+/// Routes stay limited to screens backed by working Flask endpoints. Any form
+/// route listed here is expected to use a real JSON contract.
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
   return GoRouter(
