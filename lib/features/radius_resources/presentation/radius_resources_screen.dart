@@ -333,7 +333,7 @@ class _PoolTileState extends ConsumerState<_PoolTile> {
       ref.invalidate(radiusResourcesSnapshotProvider);
       if (mounted) _snack(context, 'تم حذف تجمع العناوين');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حذف التجمع: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -529,7 +529,7 @@ class _ShareGroupTileState extends ConsumerState<_ShareGroupTile> {
       ref.invalidate(radiusResourcesSnapshotProvider);
       if (mounted) _snack(context, 'تم تحديث حالة المجموعة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر تحديث المجموعة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -550,7 +550,7 @@ class _ShareGroupTileState extends ConsumerState<_ShareGroupTile> {
       ref.invalidate(radiusResourcesSnapshotProvider);
       if (mounted) _snack(context, 'تم حذف مجموعة المشاركة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حذف المجموعة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -611,7 +611,7 @@ class _MembersDialogState extends ConsumerState<_MembersDialog> {
             if (snapshot.hasError) {
               return HubErrorState(
                 title: 'تعذر تحميل الأعضاء',
-                subtitle: '${snapshot.error}',
+                subtitle: visibleErrorMessage(snapshot.error),
                 onRetry: _reload,
               );
             }
@@ -721,7 +721,7 @@ class _MembersDialogState extends ConsumerState<_MembersDialog> {
       _reload();
       if (mounted) _snack(context, 'تمت إضافة العضو');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذرت إضافة العضو: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -737,7 +737,7 @@ class _MembersDialogState extends ConsumerState<_MembersDialog> {
       _reload();
       if (mounted) _snack(context, 'تمت إزالة العضو');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذرت إزالة العضو: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -886,7 +886,7 @@ class _PoolDialogState extends ConsumerState<_PoolDialog> {
       Navigator.of(context).pop();
       _snack(context, 'تم حفظ تجمع العناوين');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حفظ التجمع: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -1072,7 +1072,7 @@ class _ShareGroupDialogState extends ConsumerState<_ShareGroupDialog> {
       Navigator.of(context).pop();
       _snack(context, 'تم حفظ مجموعة المشاركة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حفظ المجموعة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

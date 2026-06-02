@@ -263,7 +263,7 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
         _snack(context, approve ? 'تم اعتماد الدفع' : 'تم رفض الدفع');
       }
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر تنفيذ المراجعة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -283,7 +283,7 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
         );
       }
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر تطبيق الخدمة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

@@ -336,7 +336,7 @@ class _SendPanelState extends ConsumerState<_SendPanel> {
           .previewAudience(_audience());
       if (mounted) setState(() => _preview = preview);
     } catch (error) {
-      if (mounted) _snack(context, 'تعذرت معاينة الجمهور: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -359,7 +359,7 @@ class _SendPanelState extends ConsumerState<_SendPanel> {
       _refresh(ref);
       if (mounted) _snack(context, 'تمت إضافة $count رسالة للطابور');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر إضافة الرسالة للطابور: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -461,7 +461,7 @@ class _AudiencePanelState extends ConsumerState<_AudiencePanel> {
           .previewAudience(_audience());
       if (mounted) setState(() => _preview = preview);
     } catch (error) {
-      if (mounted) _snack(context, 'تعذرت المعاينة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -484,7 +484,7 @@ class _AudiencePanelState extends ConsumerState<_AudiencePanel> {
       if (mounted) setState(() => _preview = preview);
       if (mounted) _snack(context, 'تم حفظ الشريحة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حفظ الشريحة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -622,7 +622,7 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
         _snack(context, 'تم تجهيز حملة لـ ${campaign.recipientCount} مستلم');
       }
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر تجهيز الحملة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -1058,7 +1058,7 @@ class _TemplateDialogState extends ConsumerState<_TemplateDialog> {
       Navigator.of(context).pop();
       _snack(context, 'تم حفظ القالب');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حفظ القالب: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

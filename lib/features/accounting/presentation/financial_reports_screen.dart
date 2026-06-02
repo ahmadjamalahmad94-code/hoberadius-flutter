@@ -67,7 +67,7 @@ class _FinancialReportsScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تنزيل CSV: $e')),
+        SnackBar(content: Text(visibleErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _exportingCsv = false);
@@ -93,7 +93,7 @@ class _FinancialReportsScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تنزيل Excel: $e')),
+        SnackBar(content: Text(visibleErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _exportingXlsx = false);
@@ -119,7 +119,7 @@ class _FinancialReportsScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر تنزيل PDF: $e')),
+        SnackBar(content: Text(visibleErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _exportingPdf = false);
@@ -142,7 +142,7 @@ class _FinancialReportsScreenState
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تعذر حفظ اللقطة: $e')),
+        SnackBar(content: Text(visibleErrorMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _savingSnapshot = false);
@@ -260,7 +260,7 @@ class _FinancialReportsScreenState
         const SizedBox(height: AppTokens.s12),
         snapshots.when(
           loading: () => const SizedBox.shrink(),
-          error: (e, _) => _SnapshotStrip(error: '$e'),
+          error: (e, _) => _SnapshotStrip(message: visibleErrorMessage(e)),
           data: (items) => _SnapshotStrip(items: items),
         ),
         const SizedBox(height: AppTokens.s12),
@@ -313,17 +313,17 @@ class _FinancialReportsScreenState
 }
 
 class _SnapshotStrip extends StatelessWidget {
-  const _SnapshotStrip({this.items = const [], this.error});
+  const _SnapshotStrip({this.items = const [], this.message});
 
   final List<Map<String, dynamic>> items;
-  final String? error;
+  final String? message;
 
   @override
   Widget build(BuildContext context) {
-    if (error != null) {
+    if (message != null) {
       return AppCard(
         child: Text(
-          'تعذر تحميل اللقطات: $error',
+          message!,
           style: const TextStyle(color: Colors.redAccent),
         ),
       );

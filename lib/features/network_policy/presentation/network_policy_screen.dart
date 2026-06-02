@@ -383,7 +383,7 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
         builder: (_) => _PreviewDialog(preview: preview, kind: widget.kind),
       );
     } catch (error) {
-      if (mounted) _snack(context, 'تعذرت المعاينة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -400,7 +400,7 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
       ref.invalidate(networkPolicyPageProvider);
       if (mounted) _snack(context, 'تم تحديث حالة السياسة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر تحديث السياسة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -434,7 +434,7 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
       ref.invalidate(networkPolicyPageProvider);
       if (mounted) _snack(context, 'تم حذف السياسة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حذف السياسة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -913,7 +913,7 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
       ref.invalidate(networkPolicyChildrenProvider(widget.request));
       if (mounted) _snack(context, 'تمت الإضافة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذرت الإضافة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -930,7 +930,7 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
       ref.invalidate(networkPolicyChildrenProvider(widget.request));
       if (mounted) _snack(context, 'تم حذف العنصر');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حذف العنصر: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -946,7 +946,7 @@ Future<void> _showCreatePolicyDialog({
   try {
     routers = await ref.read(nasRepositoryProvider).list();
   } catch (error) {
-    if (context.mounted) _snack(context, 'تعذر تحميل أجهزة الشبكة: $error');
+    if (context.mounted) _snack(context, visibleErrorMessage(error));
     return;
   }
   routers = routers.where((router) => router.id != null).toList();
@@ -1180,7 +1180,7 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
       Navigator.of(context).pop();
       _snack(context, 'تم حفظ السياسة');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حفظ السياسة: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

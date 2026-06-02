@@ -195,7 +195,7 @@ class _SubscriberFinanceScreenState
           return EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب البيانات المالية',
-            subtitle: '${snapshot.error}',
+            subtitle: visibleErrorMessage(snapshot.error),
           );
         }
         final data = snapshot.data!;

@@ -365,7 +365,7 @@ class _ActionsState extends ConsumerState<_Actions> {
       ref.invalidate(distributorBatchesProvider(widget.distributorId));
       ref.invalidate(distributorsListProvider);
     } catch (e) {
-      _message('تعذر تنفيذ العملية: $e');
+      _message(visibleErrorMessage(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

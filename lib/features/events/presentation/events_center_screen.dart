@@ -155,7 +155,7 @@ class _EventsSidePanel extends ConsumerWidget {
               child: Center(child: CircularProgressIndicator()),
             ),
             error: (error, _) => Text(
-              'تعذر تحميل الملخص: $error',
+              visibleErrorMessage(error),
               style: const TextStyle(color: AppTokens.redInk),
             ),
             data: (data) => Column(
@@ -605,7 +605,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
       Navigator.of(context).pop();
       _snack(context, 'تم حفظ الحدث');
     } catch (error) {
-      if (mounted) _snack(context, 'تعذر حفظ الحدث: $error');
+      if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
