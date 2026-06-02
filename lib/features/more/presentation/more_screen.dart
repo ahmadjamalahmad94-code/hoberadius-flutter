@@ -99,6 +99,12 @@ const _items = <_MoreItem>[
     sub: 'طلبات خدمة ومحادثة متابعة مع الإدارة',
   ),
   _MoreItem(
+    Icons.door_front_door_outlined,
+    'بوابات العملاء',
+    'customer-portals',
+    sub: 'روابط دخول المشتركين ومستخدمي الكروت مع قيود الأمان',
+  ),
+  _MoreItem(
     Icons.campaign_outlined,
     'التواصل والحملات',
     'communications',

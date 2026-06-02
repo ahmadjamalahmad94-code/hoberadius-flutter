@@ -48,7 +48,7 @@
 | Network Policy | `network_policy_*`, `site_exit.html`, `remote_device_access.html` | `/api/v1/network-policy/*` | `NetworkPolicyScreen` | موجود Flutter، ويحتاج تدقيق preview والأهداف المتقدمة مقابل الويب | P4 | F12 |
 | الأحداث والمخاطر | `events_*` | `/api/v1/events` | `EventsCenterScreen` | موجود Flutter للأحداث، ويحتاج تدقيق تصنيف المخاطر والفلاتر المتقدمة | P4 | F13 |
 | الاتصالات | `communications_*`, `network_telegram_settings.html` | `/api/v1/communications/*` | `CommunicationsScreen` | موجود Flutter للرسائل والحملات، ويحتاج تدقيق إعدادات تيليجرام والقنوات | P4 | F14 |
-| بوابة المشترك | `portal_subscriber*` | يحتاج تثبيت endpoints portal كاملة | غير موجود كتطبيق مشترك | ناقص API/Flutter | P5 | F15 |
+| بوابة المشترك | `portal_subscriber*` | `/api/v1/customer-portals` إداريًا، ومسارات Web ذاتية للبوابة | `CustomerPortalsScreen` | موجودة شاشة إدارة روابط البوابات، وتجربة المشترك الذاتية المستقلة داخل Flutter ما زالت تحتاج API/session خاص | P5 | F15 |
 | بوابة الكروت | `portal_card*`, `card_marketplace.html`, `card_pricing*` | `/api/v1/hotspot-cards/*`, `/api/v1/card-users/*` جزئيًا | `CardUsersScreen`, `CardUser360Screen` | موجودة إدارة مستخدمي الكروت، لكن تجربة بوابة الكرت المستقلة تحتاج فصل وتدقيق | P5 | F16 |
 | التقارير | `reports_*`, `rep_*` | `/api/v1/reports/*`, `/api/v1/operational-reports/*` | `FinancialReportsScreen`, `OperationalReportsScreen` | يحتاج تغطية كل التقارير لا المختصر فقط | P6 | F17 |
 | التدقيق | `audit_*` | `/api/v1/audit` | `AuditListScreen` | يحتاج تفاصيل السجل والفلاتر | P6 | F18 |

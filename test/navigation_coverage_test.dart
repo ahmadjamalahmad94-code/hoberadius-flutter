@@ -17,6 +17,7 @@ void main() {
       'audit': '/audit',
       'payment-collection': '/payment-collection',
       'tickets': '/tickets',
+      'customer-portals': '/customer-portals',
       'communications': '/communications',
       'events-center': '/events',
       'network-policy': '/network-policy',
