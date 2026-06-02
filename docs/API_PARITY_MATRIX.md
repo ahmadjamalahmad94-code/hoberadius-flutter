@@ -36,20 +36,20 @@
 | الدخول | `login.html` | `/api/admin/login`, `/api/admin/me`, `/api/admin/logout` | `LoginScreen` | يحتاج تدقيق نصوص عربية وحالات فشل | P0 | F0 |
 | الداشبورد | `dashboard.html` | `/api/v1/dashboard` | `DashboardScreen` | يحتاج مقارنة بصرية مع الويب بعد آخر تعديلات | P0 | F0 |
 | المشتركين | `users_list.html`, `users_form.html`, `users_profile.html`, `subscriber_360.html` | `/api/v1/accounts/*` | `SubscribersListScreen`, `SubscriberFormScreen` | يحتاج تدقيق حقول 360 والأفعال السريعة | P1 | F1 |
-| الكروت | `cards_*`, `cards_checker_v2.html`, `card_users.html`, `card_user_360.html` | `/api/v1/cards/*`, `/api/v1/hotspot-cards/*` | `CardsListScreen`, `CardCheckerScreen`, batch screens | ناقص Flutter لصفحات مستخدمي الكروت والسوق | P1/P5 | F2/F9 |
+| الكروت | `cards_*`, `cards_checker_v2.html`, `card_users.html`, `card_user_360.html` | `/api/v1/cards/*`, `/api/v1/hotspot-cards/*`, `/api/v1/card-users/*` | `CardsListScreen`, `CardCheckerScreen`, batch screens, `CardUsersScreen`, `CardUser360Screen` | موجود Flutter لمستخدمي الكروت، ويحتاج تدقيق سوق الكروت وكل أفعال الشراء والشحن | P1/P5 | F2/F9 |
 | الباقات والسرعات | `plans_*`, `bandwidth_*`, `_speed_rules_panel.html` | `/api/v1/profiles`, `/api/v1/bandwidth-schedules`, `/api/v1/bandwidth-profiles` | `PlansListScreen`, `PlanFormScreen`, `BandwidthSchedulesScreen` | يحتاج تدقيق parity للحقول المتقدمة | P1 | F3 |
 | الجلسات | `sessions_list.html`, تقارير الجلسات | `/api/v1/sessions/online`, `/api/v1/accounting/*` | `SessionsListScreen` | يحتاج توسيع تفاصيل المحاسبة والتاريخ | P1 | F4 |
 | NAS وأجهزة الشبكة | `devices_*`, `network_devices_*` | `/api/v1/nas`, `/api/v1/devices` | `NasListScreen`, `NasFormScreen`, `DeviceFingerprintsScreen` | ناقص Flutter لأجهزة الشبكة المتقدمة | P1/P4 | F5/F8 |
 | MikroTik | `mt_*`, `setup_wizard*` | `/api/v1/mikrotik`, `/api/v1/mikrotik-control/*` | `MikrotikScreen` | ناقص Flutter للـ setup wizard وعمليات الراوتر | P1/P2 | F6 |
 | ملف الترخيص والمزامنة | `license_file.html`, `admin_bridge.html`, `sync_list.html` | `/api/v1/system/license-file`, `/api/v1/system/admin-bridge/*`, `/api/v1/system/sync` | `LicenseFileScreen`, `SystemOperationsScreen` | مكتمل كمسار Flutter واضح لملف الترخيص والربط، مع فصل طابور المزامنة في عمليات النظام | P2 | F7 |
 | النسخ الاحتياطي | `backups.html`, `mt_backups.html` | `/api/v1/backups/*` | `BackupsScreen` | يحتاج توسيع عرض جوجل درايف وحالة الخدمة | P2 | F7 |
-| المال والتحصيل | `finance_*`, `payment_collection_*`, `users_finance.html` | `/api/v1/payments/*`, `/api/v1/ledger`, `/api/v1/loans`, `/api/v1/invoices` | `LedgerScreen`, `FinancialReportsScreen`, `SubscriberFinanceScreen` | ناقص Flutter لمركز التحصيل والمراجعة | P3 | F10 |
-| الخدمات والتذاكر | `services_*`, `tickets_*`, `ticket_view.html` | `/api/v1/services`, `/api/v1/tickets` | ضمن `SaasModulesScreen` جزئيًا | يحتاج شاشات أصلية واضحة | P3 | F11 |
-| Network Policy | `network_policy_*`, `site_exit.html`, `remote_device_access.html` | `/api/v1/network-policy/*` | غير موجود | ناقص Flutter | P4 | F12 |
-| الأحداث والمخاطر | `events_*` | غير واضح كـ API مستقل | غير موجود | ناقص API ثم Flutter | P4 | F13 |
-| الاتصالات | `communications_*`, `network_telegram_settings.html` | غير واضح كـ API مستقل | غير موجود | ناقص API ثم Flutter | P4 | F14 |
+| المال والتحصيل | `finance_*`, `payment_collection_*`, `users_finance.html` | `/api/v1/payments/*`, `/api/v1/ledger`, `/api/v1/loans`, `/api/v1/invoices` | `LedgerScreen`, `FinancialReportsScreen`, `SubscriberFinanceScreen`, `PaymentCollectionScreen` | موجود Flutter لمركز التحصيل، ويحتاج تدقيق قرارات القبول والرفض وتطبيق الخدمة | P3 | F10 |
+| الخدمات والتذاكر | `services_*`, `tickets_*`, `ticket_view.html` | `/api/v1/services`, `/api/v1/tickets` | `TicketsListScreen`, `TicketDetailScreen`, `SaasModulesScreen` | موجود Flutter للتذاكر، ويحتاج تدقيق طلبات الخدمات من طرف العميل وربطها بالتحصيل | P3 | F11 |
+| Network Policy | `network_policy_*`, `site_exit.html`, `remote_device_access.html` | `/api/v1/network-policy/*` | `NetworkPolicyScreen` | موجود Flutter، ويحتاج تدقيق preview والأهداف المتقدمة مقابل الويب | P4 | F12 |
+| الأحداث والمخاطر | `events_*` | `/api/v1/events` | `EventsCenterScreen` | موجود Flutter للأحداث، ويحتاج تدقيق تصنيف المخاطر والفلاتر المتقدمة | P4 | F13 |
+| الاتصالات | `communications_*`, `network_telegram_settings.html` | `/api/v1/communications/*` | `CommunicationsScreen` | موجود Flutter للرسائل والحملات، ويحتاج تدقيق إعدادات تيليجرام والقنوات | P4 | F14 |
 | بوابة المشترك | `portal_subscriber*` | يحتاج تثبيت endpoints portal كاملة | غير موجود كتطبيق مشترك | ناقص API/Flutter | P5 | F15 |
-| بوابة الكروت | `portal_card*`, `card_marketplace.html`, `card_pricing*` | `/api/v1/hotspot-cards/*` جزئيًا | غير موجود | ناقص Flutter | P5 | F16 |
+| بوابة الكروت | `portal_card*`, `card_marketplace.html`, `card_pricing*` | `/api/v1/hotspot-cards/*`, `/api/v1/card-users/*` جزئيًا | `CardUsersScreen`, `CardUser360Screen` | موجودة إدارة مستخدمي الكروت، لكن تجربة بوابة الكرت المستقلة تحتاج فصل وتدقيق | P5 | F16 |
 | التقارير | `reports_*`, `rep_*` | `/api/v1/reports/*`, `/api/v1/operational-reports/*` | `FinancialReportsScreen`, `OperationalReportsScreen` | يحتاج تغطية كل التقارير لا المختصر فقط | P6 | F17 |
 | التدقيق | `audit_*` | `/api/v1/audit` | `AuditListScreen` | يحتاج تفاصيل السجل والفلاتر | P6 | F18 |
 | الإعدادات والتحكم | `settings_page.html`, `tokens_list.html`, `tenants_*`, `wh_*` | `/api/v1/settings`, `/api/v1/tokens`, `/api/v1/tenants`, `/api/v1/webhooks/*` | `AdminControlScreen` | يحتاج تدقيق كل الأفعال والنصوص | P6 | F19 |
