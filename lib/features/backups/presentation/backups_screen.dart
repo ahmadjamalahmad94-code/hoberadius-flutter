@@ -72,7 +72,7 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('تشغيل نسخة محلية'),
         content: const Text(
-          'سيتم إنشاء نسخة من SQLite والتحقق من وجود الملف. لا يتم تنفيذ Restore أو حذف أي بيانات.',
+          'سيتم إنشاء نسخة محلية من قاعدة SQLite والتحقق من وجود الملف. تبقى الاستعادة والحذف ضمن إجراءات مستقلة تحتاج تأكيدًا منفصلًا.',
         ),
         actions: [
           TextButton(
