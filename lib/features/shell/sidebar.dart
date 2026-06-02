@@ -19,7 +19,8 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.manage_search_outlined, 'فحص بطاقة', 'card-checker'),
   _NavItem(Icons.online_prediction, 'المتصلون الآن', 'sessions'),
   _NavItem(Icons.router_outlined, 'أجهزة الشبكة', 'nas'),
-  _NavItem(Icons.router_outlined, 'MikroTik', 'mikrotik'),
+  _NavItem(Icons.router_outlined, 'اتصالات ميكروتك', 'mikrotik'),
+  _NavItem(Icons.monitor_heart_outlined, 'عمليات الراوتر', 'router-operations'),
   _NavItem(
     Icons.devices_other_outlined,
     'بصمات الأجهزة',
@@ -125,6 +126,7 @@ class AppSidebar extends StatelessWidget {
       'sessions': '/sessions',
       'nas': '/nas',
       'mikrotik': '/mikrotik',
+      'router-operations': '/router-operations',
       'device-fingerprints': '/device-fingerprints',
       'network-devices': '/network-devices',
       'network-policy': '/network-policy',

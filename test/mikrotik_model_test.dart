@@ -59,4 +59,38 @@ void main() {
     expect(result.version, '7.14');
     expect(result.cpuLoad, '4');
   });
+
+  test('MikrotikRouterOverview parses section envelopes', () {
+    final overview = MikrotikRouterOverview.fromJson({
+      'router_id': 5,
+      'name': 'راوتر الفرع',
+      'any_ok': true,
+      'all_ok': false,
+      'connection': {'mode': 'vpn', 'address': '10.77.0.2'},
+      'sections': {
+        'resource': {
+          'ok': true,
+          'data': [
+            {'cpu-load': '7', 'uptime': '1d', 'version': '7.15'},
+          ],
+          'took_ms': 12,
+          'cached': true,
+          'dialed_address': '10.77.0.2',
+          'mode': 'vpn',
+        },
+        'health': {
+          'ok': false,
+          'error': 'تعذر الاتصال',
+          'took_ms': 30,
+        },
+      },
+    });
+
+    expect(overview.routerId, 5);
+    expect(overview.modeLabel, 'عبر النفق');
+    expect(overview.dialAddress, '10.77.0.2');
+    expect(overview.section('resource')?.ok, isTrue);
+    expect(overview.section('resource')?.firstRow['cpu-load'], '7');
+    expect(overview.section('health')?.error, 'تعذر الاتصال');
+  });
 }

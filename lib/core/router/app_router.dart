@@ -40,6 +40,7 @@ import '../../features/events/presentation/events_center_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_screen.dart';
+import '../../features/mikrotik/presentation/router_operations_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
 import '../../features/network_devices/presentation/network_devices_screen.dart';
@@ -194,6 +195,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/mikrotik',
             name: 'mikrotik',
             builder: (ctx, st) => const MikrotikScreen(),
+          ),
+          GoRoute(
+            path: '/router-operations',
+            name: 'router-operations',
+            builder: (ctx, st) => const RouterOperationsScreen(),
           ),
           GoRoute(
             path: '/device-fingerprints',

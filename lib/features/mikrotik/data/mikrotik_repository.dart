@@ -66,6 +66,11 @@ class MikrotikRepository {
     return MikrotikTestResult.fromJson(_data(res));
   }
 
+  Future<MikrotikRouterOverview> routerOverview(int nasId) async {
+    final res = await _api.get('/api/v1/mikrotik/$nasId/system/overview');
+    return MikrotikRouterOverview.fromJson(_data(res));
+  }
+
   Map<String, dynamic> _data(Map<String, dynamic> response) {
     final data = response['data'];
     return data is Map<String, dynamic> ? data : const {};

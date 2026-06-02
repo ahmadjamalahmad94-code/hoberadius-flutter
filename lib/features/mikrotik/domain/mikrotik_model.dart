@@ -80,6 +80,92 @@ class MikrotikTestResult {
   String get cpuLoad => (resource['cpu-load'] ?? '').toString();
 }
 
+class MikrotikRouterOverview {
+  const MikrotikRouterOverview({
+    required this.routerId,
+    required this.name,
+    required this.anyOk,
+    required this.allOk,
+    required this.connection,
+    required this.sections,
+  });
+
+  final int routerId;
+  final String name;
+  final bool anyOk;
+  final bool allOk;
+  final Map<String, dynamic> connection;
+  final Map<String, MikrotikOverviewSection> sections;
+
+  factory MikrotikRouterOverview.fromJson(Map<String, dynamic> json) {
+    final rawSections = _map(json['sections']);
+    return MikrotikRouterOverview(
+      routerId: _asInt(json['router_id']),
+      name: (json['name'] ?? '').toString(),
+      anyOk: json['any_ok'] == true,
+      allOk: json['all_ok'] == true,
+      connection: _map(json['connection']),
+      sections: rawSections.map(
+        (key, value) => MapEntry(
+          key,
+          MikrotikOverviewSection.fromJson(_map(value)),
+        ),
+      ),
+    );
+  }
+
+  String get modeLabel {
+    final mode = (connection['mode'] ?? '').toString();
+    return switch (mode) {
+      'vpn' => 'عبر النفق',
+      'direct' => 'مباشر',
+      _ => mode.isEmpty ? 'غير محدد' : mode,
+    };
+  }
+
+  String get dialAddress => (connection['address'] ?? '').toString();
+
+  MikrotikOverviewSection? section(String key) => sections[key];
+}
+
+class MikrotikOverviewSection {
+  const MikrotikOverviewSection({
+    required this.ok,
+    required this.data,
+    required this.error,
+    required this.tookMs,
+    required this.cached,
+    required this.dialedAddress,
+    required this.mode,
+  });
+
+  final bool ok;
+  final Object? data;
+  final String error;
+  final int tookMs;
+  final bool cached;
+  final String dialedAddress;
+  final String mode;
+
+  factory MikrotikOverviewSection.fromJson(Map<String, dynamic> json) {
+    return MikrotikOverviewSection(
+      ok: json['ok'] == true,
+      data: json['data'],
+      error: (json['error'] ?? '').toString(),
+      tookMs: _asInt(json['took_ms']),
+      cached: json['cached'] == true,
+      dialedAddress: (json['dialed_address'] ?? '').toString(),
+      mode: (json['mode'] ?? '').toString(),
+    );
+  }
+
+  Map<String, dynamic> get firstRow {
+    final raw = data;
+    if (raw is List && raw.isNotEmpty) return _map(raw.first);
+    return _map(raw);
+  }
+}
+
 int _asInt(Object? value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.toInt();

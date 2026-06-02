@@ -40,9 +40,15 @@ const _items = <_MoreItem>[
   ),
   _MoreItem(
     Icons.router_outlined,
-    'MikroTik',
+    'اتصالات ميكروتك',
     'mikrotik',
     sub: 'إعداد واجهة ربط الراوترات واختبار الاتصال',
+  ),
+  _MoreItem(
+    Icons.monitor_heart_outlined,
+    'عمليات الراوتر',
+    'router-operations',
+    sub: 'حالة الراوتر الحية، الموارد، الصحة، الهوية، والوقت من عقد القراءة الآمن',
   ),
   _MoreItem(
     Icons.devices_other_outlined,

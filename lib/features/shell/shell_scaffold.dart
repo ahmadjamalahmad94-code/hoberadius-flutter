@@ -163,9 +163,15 @@ const _sidebarSections = <_SidebarSection>[
       ),
       _SidebarItem(
         icon: Icons.wifi_tethering,
-        label: 'MikroTik',
+        label: 'اتصالات ميكروتك',
         routeName: 'mikrotik',
         path: '/mikrotik',
+      ),
+      _SidebarItem(
+        icon: Icons.monitor_heart_outlined,
+        label: 'عمليات الراوتر',
+        routeName: 'router-operations',
+        path: '/router-operations',
       ),
       _SidebarItem(
         icon: Icons.fingerprint_outlined,
@@ -372,6 +378,7 @@ int _indexOfRoute(String location) {
   if (location == '/more' ||
       location == '/nas' ||
       location == '/mikrotik' ||
+      location == '/router-operations' ||
       location == '/device-fingerprints' ||
       location == '/network-devices' ||
       location == '/network-policy' ||
