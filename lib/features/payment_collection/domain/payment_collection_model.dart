@@ -13,6 +13,52 @@ class PaymentRequestPage {
   }
 }
 
+class PaymentRequestDraft {
+  const PaymentRequestDraft({
+    required this.payerType,
+    required this.payerId,
+    required this.purpose,
+    required this.amount,
+    required this.currency,
+  });
+
+  final String payerType;
+  final int? payerId;
+  final String purpose;
+  final double amount;
+  final String currency;
+
+  Map<String, dynamic> toApiJson() {
+    return {
+      'payer_type': payerType,
+      if (payerId != null && payerId! > 0) 'payer_id': payerId,
+      'purpose': purpose,
+      'amount': amount,
+      'currency': currency,
+    };
+  }
+}
+
+class PaymentProofDraft {
+  const PaymentProofDraft({
+    required this.proofType,
+    required this.referenceNumber,
+    required this.note,
+  });
+
+  final String proofType;
+  final String referenceNumber;
+  final String note;
+
+  Map<String, dynamic> toApiJson() {
+    return {
+      'proof_type': proofType,
+      'reference_number': referenceNumber,
+      'note': note,
+    };
+  }
+}
+
 class PaymentCollectionSettings {
   const PaymentCollectionSettings({
     required this.id,
@@ -103,7 +149,7 @@ class PaymentCollectionSettings {
 
   String get confirmationLabel => switch (confirmationMode) {
         'manual' => 'مراجعة يدوية',
-        'automatic' => 'اعتماد آلي',
+        'api' => 'اعتماد عبر API',
         _ => confirmationMode.trim().isEmpty ? 'غير محدد' : confirmationMode,
       };
 }
@@ -253,6 +299,77 @@ class PaymentInstructions {
   String get statusLabel => _paymentStatusLabel(status);
 }
 
+class PaymentProofRecord {
+  const PaymentProofRecord({
+    required this.id,
+    required this.paymentRequestId,
+    required this.proofType,
+    required this.referenceNumber,
+    required this.imagePath,
+    required this.note,
+    required this.submittedAt,
+    required this.reviewedBy,
+    required this.reviewedAt,
+    required this.reviewStatus,
+    required this.reviewNote,
+  });
+
+  final int id;
+  final int paymentRequestId;
+  final String proofType;
+  final String referenceNumber;
+  final String imagePath;
+  final String note;
+  final DateTime? submittedAt;
+  final int reviewedBy;
+  final DateTime? reviewedAt;
+  final String reviewStatus;
+  final String reviewNote;
+
+  factory PaymentProofRecord.fromJson(Map<String, dynamic> json) {
+    return PaymentProofRecord(
+      id: _int(json['id']),
+      paymentRequestId: _int(json['payment_request_id']),
+      proofType: _string(json['proof_type']),
+      referenceNumber: _string(json['reference_number']),
+      imagePath: _string(json['image_path']),
+      note: _string(json['note']),
+      submittedAt: _date(json['submitted_at']),
+      reviewedBy: _int(json['reviewed_by']),
+      reviewedAt: _date(json['reviewed_at']),
+      reviewStatus: _string(json['review_status']),
+      reviewNote: _string(json['review_note']),
+    );
+  }
+
+  String get proofTypeLabel => switch (proofType) {
+        'manual_reference' => 'مرجع عملية',
+        'image' => 'صورة إثبات',
+        'note' => 'ملاحظة دفع',
+        _ => proofType.trim().isEmpty ? 'غير محدد' : proofType,
+      };
+
+  String get reviewStatusLabel => switch (reviewStatus) {
+        'pending' => 'بانتظار المراجعة',
+        'approved' => 'معتمد',
+        'rejected' => 'مرفوض',
+        _ => reviewStatus.trim().isEmpty ? 'غير محدد' : reviewStatus,
+      };
+}
+
+class PaymentProofResult {
+  const PaymentProofResult({required this.proof});
+
+  final PaymentProofRecord proof;
+
+  factory PaymentProofResult.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    return PaymentProofResult(
+      proof: PaymentProofRecord.fromJson(_map(data['proof'])),
+    );
+  }
+}
+
 class PaymentRequestRecord {
   const PaymentRequestRecord({
     required this.id,
@@ -314,6 +431,9 @@ class PaymentRequestRecord {
   bool get isPaid => status == 'paid';
 
   bool get canApplyService => isPaid && serviceApplyStatus != 'applied';
+
+  bool get canSubmitProof =>
+      !{'paid', 'rejected', 'expired', 'cancelled', 'failed'}.contains(status);
 
   String get amountLabel => '${_formatAmount(amount)} $currency';
 

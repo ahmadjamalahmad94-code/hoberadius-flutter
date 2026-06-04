@@ -37,6 +37,24 @@ void main() {
     expect(settings.toApiJson(), containsPair('allow_cards', true));
   });
 
+  test('payment request draft serializes create request contract', () {
+    const draft = PaymentRequestDraft(
+      payerType: 'subscriber',
+      payerId: 44,
+      purpose: 'subscriber_renewal',
+      amount: 55,
+      currency: 'ILS',
+    );
+
+    expect(draft.toApiJson(), {
+      'payer_type': 'subscriber',
+      'payer_id': 44,
+      'purpose': 'subscriber_renewal',
+      'amount': 55,
+      'currency': 'ILS',
+    });
+  });
+
   test('payment instructions parse safe customer-facing fields', () {
     final instructions = PaymentInstructions.fromJson({
       'ok': true,
@@ -59,6 +77,41 @@ void main() {
     expect(instructions.referenceCode, 'PAY-15');
     expect(instructions.statusLabel, 'بانتظار الدفع');
     expect(instructions.instructions, contains('أرسل المبلغ نفسه'));
+  });
+
+  test('payment proof draft and result parse proof upload contract', () {
+    const draft = PaymentProofDraft(
+      proofType: 'manual_reference',
+      referenceNumber: 'TX-9',
+      note: 'تم التحويل من المحفظة',
+    );
+    expect(draft.toApiJson(), {
+      'proof_type': 'manual_reference',
+      'reference_number': 'TX-9',
+      'note': 'تم التحويل من المحفظة',
+    });
+
+    final result = PaymentProofResult.fromJson({
+      'data': {
+        'proof': {
+          'id': 3,
+          'payment_request_id': 9,
+          'proof_type': 'manual_reference',
+          'reference_number': 'TX-9',
+          'image_path': '',
+          'note': 'تم التحويل من المحفظة',
+          'submitted_at': '2026-05-30T12:00:00Z',
+          'reviewed_by': null,
+          'reviewed_at': null,
+          'review_status': 'pending',
+          'review_note': '',
+        },
+      },
+    });
+
+    expect(result.proof.id, 3);
+    expect(result.proof.proofTypeLabel, 'مرجع عملية');
+    expect(result.proof.reviewStatusLabel, 'بانتظار المراجعة');
   });
 
   test('payment reconciliation summary counts operational issues', () {
@@ -140,6 +193,7 @@ void main() {
     final item = page.items.single;
     expect(page.count, 1);
     expect(item.isReviewable, isTrue);
+    expect(item.canSubmitProof, isTrue);
     expect(item.amountLabel, '50 ILS');
     expect(item.statusLabel, 'بانتظار مراجعة الإثبات');
     expect(item.purposeLabel, 'تجديد مشترك');
@@ -164,6 +218,7 @@ void main() {
     });
 
     expect(result.request.isPaid, isTrue);
+    expect(result.request.canSubmitProof, isFalse);
     expect(result.request.canApplyService, isTrue);
     expect(result.request.amountLabel, '75.50 ILS');
     expect(result.request.purposeLabel, 'شراء كروت');

@@ -39,6 +39,11 @@ class PaymentCollectionScreen extends ConsumerWidget {
               icon: const Icon(Icons.refresh),
               label: const Text('تحديث'),
             ),
+            FilledButton.icon(
+              onPressed: () => _showCreatePaymentRequestDialog(context, ref),
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('طلب دفع جديد'),
+            ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
@@ -358,8 +363,8 @@ class _PaymentSettingsEditorState
                               child: Text('مراجعة يدوية'),
                             ),
                             DropdownMenuItem(
-                              value: 'automatic',
-                              child: Text('اعتماد آلي'),
+                              value: 'api',
+                              child: Text('اعتماد عبر API'),
                             ),
                           ],
                           onChanged: _saving
@@ -879,6 +884,12 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
                 icon: const Icon(Icons.receipt_outlined),
                 label: const Text('تعليمات الدفع'),
               ),
+              if (r.canSubmitProof)
+                OutlinedButton.icon(
+                  onPressed: _busy ? null : _submitProof,
+                  icon: const Icon(Icons.upload_file_outlined),
+                  label: const Text('رفع إثبات'),
+                ),
               if (r.isReviewable)
                 FilledButton.icon(
                   onPressed: _busy ? null : () => _review(approve: true),
@@ -949,6 +960,29 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
     }
   }
 
+  Future<void> _submitProof() async {
+    final draft = await _proofDialog(context);
+    if (draft == null) return;
+    setState(() => _busy = true);
+    try {
+      final result = await ref
+          .read(paymentCollectionRepositoryProvider)
+          .submitProof(widget.request.id, draft);
+      ref.invalidate(paymentRequestsProvider);
+      ref.invalidate(paymentReconciliationProvider);
+      if (mounted) {
+        _snack(
+          context,
+          'تم رفع الإثبات: ${result.proof.proofTypeLabel}',
+        );
+      }
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _applyService() async {
     setState(() => _busy = true);
     try {
@@ -968,6 +1002,280 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
       if (mounted) setState(() => _busy = false);
     }
   }
+}
+
+const _payerTypeOptions = [
+  (value: 'subscriber', label: 'مشترك'),
+  (value: 'card_user', label: 'مستخدم كرت'),
+  (value: 'distributor', label: 'موزع'),
+];
+
+const _paymentPurposeOptions = [
+  (value: 'card_purchase', label: 'شراء كروت'),
+  (value: 'monthly_subscription', label: 'اشتراك شهري'),
+  (value: 'subscriber_renewal', label: 'تجديد مشترك'),
+  (value: 'quota_topup', label: 'إضافة حصة'),
+  (value: 'time_extension', label: 'تمديد وقت'),
+  (value: 'distributor_payment', label: 'دفعة موزع'),
+  (value: 'loan_settlement', label: 'تسوية سلفة'),
+];
+
+const _currencyOptions = ['ILS', 'JOD', 'USD'];
+
+const _proofTypeOptions = [
+  (value: 'manual_reference', label: 'مرجع عملية'),
+  (value: 'image', label: 'صورة إثبات'),
+  (value: 'note', label: 'ملاحظة دفع'),
+];
+
+Future<void> _showCreatePaymentRequestDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final draft = await _paymentRequestDialog(context);
+  if (draft == null) return;
+  try {
+    final created = await ref
+        .read(paymentCollectionRepositoryProvider)
+        .createRequest(draft);
+    ref.read(paymentCollectionModeProvider.notifier).state = 'all';
+    ref.read(paymentCollectionStatusProvider.notifier).state = 'pending';
+    ref.invalidate(paymentRequestsProvider);
+    ref.invalidate(paymentReconciliationProvider);
+    if (context.mounted) {
+      _snack(
+        context,
+        'تم إنشاء طلب الدفع ${created.referenceCode.isEmpty ? '#${created.id}' : created.referenceCode}',
+      );
+    }
+  } catch (error) {
+    if (context.mounted) _snack(context, visibleErrorMessage(error));
+  }
+}
+
+Future<PaymentRequestDraft?> _paymentRequestDialog(BuildContext context) async {
+  final formKey = GlobalKey<FormState>();
+  final payerId = TextEditingController();
+  final amount = TextEditingController();
+  var payerType = 'subscriber';
+  var purpose = 'subscriber_renewal';
+  var currency = 'ILS';
+  final result = await showDialog<PaymentRequestDraft>(
+    context: context,
+    builder: (_) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('طلب دفع جديد'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: payerType,
+                  decoration: const InputDecoration(labelText: 'نوع الدافع'),
+                  items: _payerTypeOptions
+                      .map(
+                        (option) => DropdownMenuItem(
+                          value: option.value,
+                          child: Text(option.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => payerType = value ?? 'subscriber'),
+                ),
+                const SizedBox(height: AppTokens.s12),
+                TextFormField(
+                  controller: payerId,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'رقم الدافع',
+                    helperText: 'اختياري إذا لم يتم ربط الطلب بسجل محدد.',
+                  ),
+                  validator: (value) {
+                    final text = value?.trim() ?? '';
+                    if (text.isEmpty) return null;
+                    final parsed = int.tryParse(text);
+                    if (parsed == null || parsed <= 0) {
+                      return 'أدخل رقمًا صحيحًا أو اتركه فارغًا';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppTokens.s12),
+                DropdownButtonFormField<String>(
+                  initialValue: purpose,
+                  decoration: const InputDecoration(labelText: 'الغرض'),
+                  items: _paymentPurposeOptions
+                      .map(
+                        (option) => DropdownMenuItem(
+                          value: option.value,
+                          child: Text(option.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => purpose = value ?? 'subscriber_renewal'),
+                ),
+                const SizedBox(height: AppTokens.s12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: amount,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'المبلغ'),
+                        validator: (value) {
+                          final parsed = double.tryParse(
+                            (value ?? '').replaceAll(',', '.'),
+                          );
+                          if (parsed == null || parsed <= 0) {
+                            return 'أدخل مبلغًا موجبًا';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: AppTokens.s12),
+                    SizedBox(
+                      width: 112,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: currency,
+                        decoration: const InputDecoration(labelText: 'العملة'),
+                        items: _currencyOptions
+                            .map(
+                              (value) => DropdownMenuItem(
+                                value: value,
+                                child: Text(value),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) =>
+                            setState(() => currency = value ?? 'ILS'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.of(context).pop(
+                PaymentRequestDraft(
+                  payerType: payerType,
+                  payerId: int.tryParse(payerId.text.trim()),
+                  purpose: purpose,
+                  amount: double.parse(amount.text.trim().replaceAll(',', '.')),
+                  currency: currency,
+                ),
+              );
+            },
+            child: const Text('إنشاء الطلب'),
+          ),
+        ],
+      ),
+    ),
+  );
+  payerId.dispose();
+  amount.dispose();
+  return result;
+}
+
+Future<PaymentProofDraft?> _proofDialog(BuildContext context) async {
+  final formKey = GlobalKey<FormState>();
+  final reference = TextEditingController();
+  final note = TextEditingController();
+  var proofType = 'manual_reference';
+  final result = await showDialog<PaymentProofDraft>(
+    context: context,
+    builder: (_) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
+        title: const Text('رفع إثبات دفع'),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: proofType,
+                  decoration: const InputDecoration(labelText: 'نوع الإثبات'),
+                  items: _proofTypeOptions
+                      .map(
+                        (option) => DropdownMenuItem(
+                          value: option.value,
+                          child: Text(option.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => proofType = value ?? 'manual_reference'),
+                ),
+                const SizedBox(height: AppTokens.s12),
+                TextFormField(
+                  controller: reference,
+                  decoration: const InputDecoration(
+                    labelText: 'رقم العملية أو المرجع',
+                    helperText: 'مطلوب عند اختيار مرجع عملية.',
+                  ),
+                  validator: (value) {
+                    if (proofType != 'manual_reference') return null;
+                    if ((value ?? '').trim().isEmpty) {
+                      return 'أدخل رقم العملية';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: AppTokens.s12),
+                TextFormField(
+                  controller: note,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظة',
+                    helperText: 'اكتب أي تفاصيل تساعد الإدارة في المراجعة.',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.of(context).pop(
+                PaymentProofDraft(
+                  proofType: proofType,
+                  referenceNumber: reference.text.trim(),
+                  note: note.text.trim(),
+                ),
+              );
+            },
+            child: const Text('رفع الإثبات'),
+          ),
+        ],
+      ),
+    ),
+  );
+  reference.dispose();
+  note.dispose();
+  return result;
 }
 
 Future<String?> _noteDialog(
@@ -1142,7 +1450,7 @@ double? _optionalAmount(String value) {
 String _confirmationLabel(String mode) {
   return switch (mode) {
     'manual' => 'مراجعة يدوية',
-    'automatic' => 'اعتماد آلي',
+    'api' => 'اعتماد عبر API',
     _ => mode.trim().isEmpty ? 'غير محدد' : mode,
   };
 }

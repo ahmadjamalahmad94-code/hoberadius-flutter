@@ -49,6 +49,30 @@ class PaymentCollectionRepository {
     return PaymentReconciliationSummary.fromJson(res);
   }
 
+  Future<PaymentRequestRecord> createRequest(PaymentRequestDraft draft) async {
+    final res = await _api.post(
+      '/api/v1/payments/requests',
+      body: draft.toApiJson(),
+    );
+    final data = res['data'];
+    final map = data is Map<String, dynamic> ? data : <String, dynamic>{};
+    final request = map['request'];
+    return PaymentRequestRecord.fromJson(
+      request is Map<String, dynamic> ? request : <String, dynamic>{},
+    );
+  }
+
+  Future<PaymentProofResult> submitProof(
+    int id,
+    PaymentProofDraft draft,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/payments/requests/$id/proofs',
+      body: draft.toApiJson(),
+    );
+    return PaymentProofResult.fromJson(res);
+  }
+
   Future<PaymentReviewResult> approve(int id, {String note = ''}) async {
     final res = await _api.post(
       '/api/v1/admin/payments/requests/$id/approve',
