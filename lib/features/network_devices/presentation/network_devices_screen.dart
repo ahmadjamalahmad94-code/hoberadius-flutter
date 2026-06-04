@@ -149,14 +149,14 @@ class _NetworkDevicesScreenState extends ConsumerState<NetworkDevicesScreen> {
         await repo.update(device.id, draft);
       }
       ref.invalidate(networkDevicesProvider);
-      if (!mounted) return;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(device == null ? 'تمت إضافة الجهاز' : 'تم حفظ الجهاز'),
         ),
       );
     } catch (error) {
-      if (!mounted) return;
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(visibleErrorMessage(error))),
       );
@@ -523,7 +523,7 @@ class _NetworkDeviceDialogState extends State<_NetworkDeviceDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<int>(
-                value: _routerId,
+                initialValue: _routerId,
                 decoration: const InputDecoration(labelText: 'الراوتر التابع له'),
                 items: [
                   for (final router in widget.routers)
@@ -547,7 +547,7 @@ class _NetworkDeviceDialogState extends State<_NetworkDeviceDialog> {
               ),
               const SizedBox(height: AppTokens.s12),
               DropdownButtonFormField<String>(
-                value: _deviceType,
+                initialValue: _deviceType,
                 decoration: const InputDecoration(labelText: 'نوع الجهاز'),
                 items: const [
                   DropdownMenuItem(value: 'ap', child: Text('نقطة وصول')),

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:radius_module_app/features/router_alerts/domain/router_alerts_model.dart';
+import 'package:hoberadius_app/features/router_alerts/domain/router_alerts_model.dart';
 
 void main() {
   test('router alerts state parses settings and router thresholds', () {

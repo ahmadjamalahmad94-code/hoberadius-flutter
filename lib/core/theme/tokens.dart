@@ -126,7 +126,9 @@ class AppTokens {
   //  Radii (matches hub-v2)
   // ─────────────────────────────────────────────────────────────
   static const double r6  = 6;
+  static const double r8  = 8;
   static const double r10 = 10;
+  static const double r12 = 12;
   static const double r14 = 14;
   static const double r18 = 18;
   static const double r20 = 20;

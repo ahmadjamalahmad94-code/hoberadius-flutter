@@ -198,13 +198,13 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                               .toList(),
                         ),
                       ),
-                      SizedBox(
+                      const SizedBox(
                         width: double.infinity,
                         child: _ChoiceSection(
                           title: 'نطاق البيانات',
                           subtitle:
                               'النظام يعرض للموزع الحزم التي تربطها به الإدارة فقط.',
-                          children: const [
+                          children: [
                             ListTile(
                               contentPadding: EdgeInsets.zero,
                               leading: Icon(Icons.verified_user_outlined),

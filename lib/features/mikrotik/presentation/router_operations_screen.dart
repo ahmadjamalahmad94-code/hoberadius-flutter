@@ -87,7 +87,7 @@ class _RouterOperationsScreenState
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: selected.id,
+                  initialValue: selected.id,
                   decoration: const InputDecoration(labelText: 'الراوتر'),
                   items: [
                     for (final router in available)

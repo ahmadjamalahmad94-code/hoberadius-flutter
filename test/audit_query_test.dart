@@ -3,7 +3,7 @@ import 'package:hoberadius_app/features/audit/data/audit_repository.dart';
 
 void main() {
   test('استعلام التدقيق يرسل كل الفلاتر المدعومة من الواجهة', () {
-    final query = AuditQuery(
+    const query = AuditQuery(
       actor: 'admin',
       action: 'update',
       targetType: 'nas',

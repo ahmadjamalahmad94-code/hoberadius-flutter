@@ -282,7 +282,7 @@ class PrintTemplatesRepository {
     Map<String, String> overrides = const {},
   }) async {
     final res = await _api.dio.get<String>(
-      '/admin/radius/print-templates/$templateId/preview-fragment',
+      '/api/v1/print-templates/$templateId/preview-fragment',
       queryParameters: {
         if (batchId != null) 'batch_id': batchId,
         ...overrides,

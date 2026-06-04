@@ -783,7 +783,7 @@ class _WindowPicker extends StatelessWidget {
         ? value
         : options.first.key;
     return DropdownButtonFormField<String>(
-      value: safeValue,
+      initialValue: safeValue,
       decoration: const InputDecoration(labelText: 'نافذة الاستهلاك'),
       items: [
         for (final item in options)
