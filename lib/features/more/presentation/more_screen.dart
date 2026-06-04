@@ -114,6 +114,12 @@ const _items = <_MoreItem>[
     sub: 'قبول إثبات الدفع أو رفضه وتطبيق الخدمة',
   ),
   _MoreItem(
+    Icons.receipt_long_outlined,
+    'الفواتير',
+    'invoices',
+    sub: 'إنشاء فواتير المشتركين ومراجعة التحصيل أو الإرجاع أو الإلغاء',
+  ),
+  _MoreItem(
     Icons.insert_chart_outlined,
     'التقارير المالية',
     'financial-reports',

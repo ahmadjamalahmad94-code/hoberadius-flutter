@@ -235,6 +235,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/payment-collection',
       ),
       _SidebarItem(
+        icon: Icons.receipt_long_outlined,
+        label: 'الفواتير',
+        routeName: 'invoices',
+        path: '/invoices',
+      ),
+      _SidebarItem(
         icon: Icons.bar_chart_outlined,
         label: 'التقارير المالية',
         routeName: 'financial-reports',
@@ -415,6 +421,7 @@ int _indexOfRoute(String location) {
       location == '/audit' ||
       location == '/ledger' ||
       location == '/payment-collection' ||
+      location == '/invoices' ||
       location == '/reports' ||
       location == '/operational-reports' ||
       location == '/tickets' ||

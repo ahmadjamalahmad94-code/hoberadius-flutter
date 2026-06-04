@@ -39,6 +39,7 @@ import '../../features/distributors/presentation/distributor_detail_screen.dart'
 import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
 import '../../features/events/presentation/events_center_screen.dart';
+import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_screen.dart';
@@ -359,6 +360,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/payment-collection',
             name: 'payment-collection',
             builder: (ctx, st) => const PaymentCollectionScreen(),
+          ),
+          GoRoute(
+            path: '/invoices',
+            name: 'invoices',
+            builder: (ctx, st) => const InvoicesScreen(),
           ),
           GoRoute(
             path: '/reports',

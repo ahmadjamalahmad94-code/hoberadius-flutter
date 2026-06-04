@@ -17,6 +17,7 @@ void main() {
       'license-file': '/license-file',
       'audit': '/audit',
       'payment-collection': '/payment-collection',
+      'invoices': '/invoices',
       'tickets': '/tickets',
       'customer-portals': '/customer-portals',
       'communications': '/communications',
