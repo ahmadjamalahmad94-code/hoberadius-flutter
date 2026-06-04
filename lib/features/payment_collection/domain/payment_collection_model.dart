@@ -13,6 +13,246 @@ class PaymentRequestPage {
   }
 }
 
+class PaymentCollectionSettings {
+  const PaymentCollectionSettings({
+    required this.id,
+    required this.provider,
+    required this.enabled,
+    required this.walletNumber,
+    required this.walletOwnerName,
+    required this.currency,
+    required this.confirmationMode,
+    required this.autoApply,
+    required this.allowCards,
+    required this.allowMonthlySubscriptions,
+    required this.allowDistributorPayments,
+    required this.minAmount,
+    required this.maxAmount,
+    required this.paymentRequestTtlMinutes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final int id;
+  final String provider;
+  final bool enabled;
+  final String walletNumber;
+  final String walletOwnerName;
+  final String currency;
+  final String confirmationMode;
+  final bool autoApply;
+  final bool allowCards;
+  final bool allowMonthlySubscriptions;
+  final bool allowDistributorPayments;
+  final double? minAmount;
+  final double? maxAmount;
+  final int paymentRequestTtlMinutes;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  factory PaymentCollectionSettings.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    final settings = _map(data['settings']);
+    final source = settings.isEmpty ? data : settings;
+    return PaymentCollectionSettings(
+      id: _int(source['id']),
+      provider: _string(source['provider'], fallback: 'manual_wallet'),
+      enabled: _bool(source['enabled']),
+      walletNumber: _string(source['wallet_number']),
+      walletOwnerName: _string(source['wallet_owner_name']),
+      currency: _string(source['currency'], fallback: 'ILS'),
+      confirmationMode:
+          _string(source['confirmation_mode'], fallback: 'manual'),
+      autoApply: _bool(source['auto_apply']),
+      allowCards: _bool(source['allow_cards']),
+      allowMonthlySubscriptions: _bool(source['allow_monthly_subscriptions']),
+      allowDistributorPayments: _bool(source['allow_distributor_payments']),
+      minAmount: _nullableDouble(source['min_amount']),
+      maxAmount: _nullableDouble(source['max_amount']),
+      paymentRequestTtlMinutes: _int(source['payment_request_ttl_minutes']) == 0
+          ? 1440
+          : _int(source['payment_request_ttl_minutes']),
+      createdAt: _date(source['created_at']),
+      updatedAt: _date(source['updated_at']),
+    );
+  }
+
+  Map<String, dynamic> toApiJson() {
+    return {
+      'provider': provider,
+      'enabled': enabled,
+      'wallet_number': walletNumber,
+      'wallet_owner_name': walletOwnerName,
+      'currency': currency,
+      'confirmation_mode': confirmationMode,
+      'auto_apply': autoApply,
+      'allow_cards': allowCards,
+      'allow_monthly_subscriptions': allowMonthlySubscriptions,
+      'allow_distributor_payments': allowDistributorPayments,
+      'min_amount': minAmount,
+      'max_amount': maxAmount,
+      'payment_request_ttl_minutes': paymentRequestTtlMinutes,
+    };
+  }
+
+  String get providerLabel => switch (provider) {
+        'manual_wallet' => 'محفظة يدوية',
+        'jawwal_pay' => 'Jawwal Pay',
+        _ => provider.trim().isEmpty ? 'غير محدد' : provider,
+      };
+
+  String get confirmationLabel => switch (confirmationMode) {
+        'manual' => 'مراجعة يدوية',
+        'automatic' => 'اعتماد آلي',
+        _ => confirmationMode.trim().isEmpty ? 'غير محدد' : confirmationMode,
+      };
+}
+
+class PaymentReconciliationSummary {
+  const PaymentReconciliationSummary({
+    required this.counts,
+    required this.paidWithoutLedger,
+    required this.paidNotApplied,
+    required this.expiredPending,
+    required this.duplicateProviderTransactions,
+  });
+
+  final Map<String, int> counts;
+  final List<PaymentReconciliationItem> paidWithoutLedger;
+  final List<PaymentReconciliationItem> paidNotApplied;
+  final List<PaymentReconciliationItem> expiredPending;
+  final List<PaymentReconciliationItem> duplicateProviderTransactions;
+
+  factory PaymentReconciliationSummary.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    final reconciliation = _map(data['reconciliation']);
+    final source = reconciliation.isEmpty ? data : reconciliation;
+    return PaymentReconciliationSummary(
+      counts: _map(source['counts']).map(
+        (key, value) => MapEntry(key, _int(value)),
+      ),
+      paidWithoutLedger: _list(source['paid_without_ledger'])
+          .map((item) => PaymentReconciliationItem.fromJson(_map(item)))
+          .toList(),
+      paidNotApplied: _list(source['paid_not_applied'])
+          .map((item) => PaymentReconciliationItem.fromJson(_map(item)))
+          .toList(),
+      expiredPending: _list(source['expired_pending'])
+          .map((item) => PaymentReconciliationItem.fromJson(_map(item)))
+          .toList(),
+      duplicateProviderTransactions:
+          _list(source['duplicate_provider_transactions'])
+              .map((item) => PaymentReconciliationItem.fromJson(_map(item)))
+              .toList(),
+    );
+  }
+
+  int count(String key) => counts[key] ?? 0;
+
+  int get totalIssues => counts.values.fold(0, (sum, value) => sum + value);
+
+  bool get isClean => totalIssues == 0;
+}
+
+class PaymentReconciliationItem {
+  const PaymentReconciliationItem({
+    required this.id,
+    required this.referenceCode,
+    required this.amount,
+    required this.currency,
+    required this.status,
+    required this.serviceApplyStatus,
+    required this.ledgerEntryId,
+    required this.providerTransactionId,
+    required this.count,
+    required this.paymentRequestIds,
+    required this.expiresAt,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String referenceCode;
+  final double amount;
+  final String currency;
+  final String status;
+  final String serviceApplyStatus;
+  final int ledgerEntryId;
+  final String providerTransactionId;
+  final int count;
+  final String paymentRequestIds;
+  final DateTime? expiresAt;
+  final DateTime? createdAt;
+
+  factory PaymentReconciliationItem.fromJson(Map<String, dynamic> json) {
+    return PaymentReconciliationItem(
+      id: _int(json['id']),
+      referenceCode: _string(json['reference_code']),
+      amount: _double(json['amount']),
+      currency: _string(json['currency'], fallback: 'ILS'),
+      status: _string(json['status']),
+      serviceApplyStatus: _string(json['service_apply_status']),
+      ledgerEntryId: _int(json['ledger_entry_id']),
+      providerTransactionId: _string(json['provider_transaction_id']),
+      count: _int(json['count']),
+      paymentRequestIds: _string(json['payment_request_ids']),
+      expiresAt: _date(json['expires_at']),
+      createdAt: _date(json['created_at']),
+    );
+  }
+
+  String get amountLabel =>
+      amount == 0 ? 'غير محدد' : '${_formatAmount(amount)} $currency';
+
+  String get displayReference {
+    if (referenceCode.isNotEmpty) return referenceCode;
+    if (providerTransactionId.isNotEmpty) return providerTransactionId;
+    if (id > 0) return '#$id';
+    return 'غير محدد';
+  }
+}
+
+class PaymentInstructions {
+  const PaymentInstructions({
+    required this.amount,
+    required this.currency,
+    required this.receiverWallet,
+    required this.walletOwnerName,
+    required this.referenceCode,
+    required this.expiresAt,
+    required this.instructions,
+    required this.status,
+  });
+
+  final double amount;
+  final String currency;
+  final String receiverWallet;
+  final String walletOwnerName;
+  final String referenceCode;
+  final DateTime? expiresAt;
+  final String instructions;
+  final String status;
+
+  factory PaymentInstructions.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    final source =
+        _map(data['instructions']).isEmpty ? json : _map(data['instructions']);
+    return PaymentInstructions(
+      amount: _double(source['amount']),
+      currency: _string(source['currency'], fallback: 'ILS'),
+      receiverWallet: _string(source['receiver_wallet']),
+      walletOwnerName: _string(source['wallet_owner_name']),
+      referenceCode: _string(source['reference_code']),
+      expiresAt: _date(source['expires_at']),
+      instructions: _string(source['instructions']),
+      status: _string(source['status']),
+    );
+  }
+
+  String get amountLabel => '${_formatAmount(amount)} $currency';
+
+  String get statusLabel => _paymentStatusLabel(status);
+}
+
 class PaymentRequestRecord {
   const PaymentRequestRecord({
     required this.id,
@@ -75,20 +315,9 @@ class PaymentRequestRecord {
 
   bool get canApplyService => isPaid && serviceApplyStatus != 'applied';
 
-  String get amountLabel =>
-      '${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)} $currency';
+  String get amountLabel => '${_formatAmount(amount)} $currency';
 
-  String get statusLabel => switch (status) {
-        'pending' => 'بانتظار الدفع',
-        'proof_submitted' => 'بانتظار مراجعة الإثبات',
-        'under_review' => 'قيد المراجعة',
-        'paid' => 'مدفوع',
-        'rejected' => 'مرفوض',
-        'expired' => 'منتهي',
-        'cancelled' => 'ملغى',
-        'failed' => 'فشل',
-        _ => status.trim().isEmpty ? 'غير محدد' : 'حالة دفع غير معروفة',
-      };
+  String get statusLabel => _paymentStatusLabel(status);
 
   String get purposeLabel => switch (purpose) {
         'card_purchase' => 'شراء كروت',
@@ -220,6 +449,29 @@ double _double(Object? value) {
   if (value is double) return value;
   if (value is num) return value.toDouble();
   return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double? _nullableDouble(Object? value) {
+  if (value == null || value.toString().trim().isEmpty) return null;
+  return _double(value);
+}
+
+String _formatAmount(double amount) {
+  return amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2);
+}
+
+String _paymentStatusLabel(String status) {
+  return switch (status) {
+    'pending' => 'بانتظار الدفع',
+    'proof_submitted' => 'بانتظار مراجعة الإثبات',
+    'under_review' => 'قيد المراجعة',
+    'paid' => 'مدفوع',
+    'rejected' => 'مرفوض',
+    'expired' => 'منتهي',
+    'cancelled' => 'ملغى',
+    'failed' => 'فشل',
+    _ => status.trim().isEmpty ? 'غير محدد' : 'حالة دفع غير معروفة',
+  };
 }
 
 DateTime? _date(Object? value) {

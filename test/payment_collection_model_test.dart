@@ -2,6 +2,116 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/features/payment_collection/domain/payment_collection_model.dart';
 
 void main() {
+  test('payment settings parse and serialize api payload', () {
+    final settings = PaymentCollectionSettings.fromJson({
+      'ok': true,
+      'data': {
+        'settings': {
+          'id': 2,
+          'provider': 'manual_wallet',
+          'enabled': true,
+          'wallet_number': '0599000000',
+          'wallet_owner_name': 'Hobe Radius',
+          'currency': 'ILS',
+          'confirmation_mode': 'manual',
+          'auto_apply': false,
+          'allow_cards': true,
+          'allow_monthly_subscriptions': true,
+          'allow_distributor_payments': false,
+          'min_amount': '5',
+          'max_amount': 100,
+          'payment_request_ttl_minutes': 720,
+          'created_at': '2026-05-30T10:00:00Z',
+          'updated_at': '2026-05-30T11:00:00Z',
+        },
+      },
+    });
+
+    expect(settings.enabled, isTrue);
+    expect(settings.providerLabel, 'محفظة يدوية');
+    expect(settings.confirmationLabel, 'مراجعة يدوية');
+    expect(settings.minAmount, 5);
+    expect(settings.maxAmount, 100);
+    expect(settings.paymentRequestTtlMinutes, 720);
+    expect(settings.toApiJson(), containsPair('wallet_number', '0599000000'));
+    expect(settings.toApiJson(), containsPair('allow_cards', true));
+  });
+
+  test('payment instructions parse safe customer-facing fields', () {
+    final instructions = PaymentInstructions.fromJson({
+      'ok': true,
+      'data': {
+        'instructions': {
+          'amount': 25.5,
+          'currency': 'ILS',
+          'receiver_wallet': '0599000000',
+          'wallet_owner_name': 'Hobe Radius',
+          'reference_code': 'PAY-15',
+          'expires_at': '2026-05-31T10:00:00Z',
+          'instructions': 'أرسل المبلغ نفسه إلى المحفظة.',
+          'status': 'pending',
+        },
+      },
+    });
+
+    expect(instructions.amountLabel, '25.50 ILS');
+    expect(instructions.receiverWallet, '0599000000');
+    expect(instructions.referenceCode, 'PAY-15');
+    expect(instructions.statusLabel, 'بانتظار الدفع');
+    expect(instructions.instructions, contains('أرسل المبلغ نفسه'));
+  });
+
+  test('payment reconciliation summary counts operational issues', () {
+    final summary = PaymentReconciliationSummary.fromJson({
+      'data': {
+        'reconciliation': {
+          'counts': {
+            'paid_without_ledger': 1,
+            'paid_not_applied': 1,
+            'expired_pending': 0,
+            'duplicate_provider_transactions': 1,
+          },
+          'paid_without_ledger': [
+            {
+              'id': 7,
+              'reference_code': 'PAY-7',
+              'amount': 40,
+              'currency': 'ILS',
+              'status': 'paid',
+              'created_at': '2026-05-30T10:00:00Z',
+            },
+          ],
+          'paid_not_applied': [
+            {
+              'id': 8,
+              'reference_code': 'PAY-8',
+              'amount': 60,
+              'currency': 'ILS',
+              'status': 'paid',
+              'service_apply_status': 'not_applied',
+            },
+          ],
+          'expired_pending': [],
+          'duplicate_provider_transactions': [
+            {
+              'provider_transaction_id': 'TX-1',
+              'count': 2,
+              'payment_request_ids': '9,10',
+            },
+          ],
+        },
+      },
+    });
+
+    expect(summary.isClean, isFalse);
+    expect(summary.totalIssues, 3);
+    expect(summary.paidWithoutLedger.single.amountLabel, '40 ILS');
+    expect(
+      summary.duplicateProviderTransactions.single.displayReference,
+      'TX-1',
+    );
+  });
+
   test('payment request page parses review queue payload', () {
     final page = PaymentRequestPage.fromJson({
       'ok': true,

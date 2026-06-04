@@ -8,6 +8,21 @@ class PaymentCollectionRepository {
 
   final ApiClient _api;
 
+  Future<PaymentCollectionSettings> settings() async {
+    final res = await _api.get('/api/v1/payments/settings');
+    return PaymentCollectionSettings.fromJson(res);
+  }
+
+  Future<PaymentCollectionSettings> updateSettings(
+    PaymentCollectionSettings settings,
+  ) async {
+    final res = await _api.patch(
+      '/api/v1/payments/settings',
+      body: {'settings': settings.toApiJson()},
+    );
+    return PaymentCollectionSettings.fromJson(res);
+  }
+
   Future<PaymentRequestPage> reviewQueue() async {
     final res = await _api.get('/api/v1/admin/payments/review-queue');
     return PaymentRequestPage.fromJson(res);
@@ -22,6 +37,16 @@ class PaymentCollectionRepository {
       },
     );
     return PaymentRequestPage.fromJson(res);
+  }
+
+  Future<PaymentInstructions> instructions(int id) async {
+    final res = await _api.get('/api/v1/payments/requests/$id/instructions');
+    return PaymentInstructions.fromJson(res);
+  }
+
+  Future<PaymentReconciliationSummary> reconciliation() async {
+    final res = await _api.get('/api/v1/admin/payments/reconciliation');
+    return PaymentReconciliationSummary.fromJson(res);
   }
 
   Future<PaymentReviewResult> approve(int id, {String note = ''}) async {
