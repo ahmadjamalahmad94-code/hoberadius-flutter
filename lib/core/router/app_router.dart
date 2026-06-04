@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/account/presentation/account_screen.dart';
 import '../../features/admins/presentation/admin_form_screen.dart';
 import '../../features/admins/presentation/admins_list_screen.dart';
 import '../../features/admins/presentation/role_form_screen.dart';
@@ -422,6 +423,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/more',
             name: 'more',
             builder: (ctx, st) => const MoreScreen(),
+          ),
+          GoRoute(
+            path: '/account',
+            name: 'account',
+            builder: (ctx, st) => const AccountScreen(),
           ),
         ],
       ),

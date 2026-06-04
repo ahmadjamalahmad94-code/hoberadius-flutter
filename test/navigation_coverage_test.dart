@@ -13,6 +13,7 @@ void main() {
     final navigation = '$shell\n$more\n$sidebar';
 
     final criticalRoutes = {
+      'account': '/account',
       'license-file': '/license-file',
       'audit': '/audit',
       'payment-collection': '/payment-collection',

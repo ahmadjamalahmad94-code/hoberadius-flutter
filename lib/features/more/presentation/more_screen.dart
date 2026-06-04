@@ -15,6 +15,12 @@ class _MoreItem {
 
 const _items = <_MoreItem>[
   _MoreItem(
+    Icons.account_circle_outlined,
+    'حسابي',
+    'account',
+    sub: 'بيانات الدخول وتغيير كلمة المرور',
+  ),
+  _MoreItem(
     Icons.workspace_premium_outlined,
     'الباقات',
     'plans',

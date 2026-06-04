@@ -266,6 +266,12 @@ const _sidebarSections = <_SidebarSection>[
     label: 'الإدارة',
     items: [
       _SidebarItem(
+        icon: Icons.account_circle_outlined,
+        label: 'حسابي',
+        routeName: 'account',
+        path: '/account',
+      ),
+      _SidebarItem(
         icon: Icons.manage_accounts_outlined,
         label: 'المدراء',
         routeName: 'admins',
@@ -407,6 +413,7 @@ int _indexOfRoute(String location) {
       location == '/operational-reports' ||
       location == '/tickets' ||
       location.startsWith('/tickets/') ||
+      location == '/account' ||
       location == '/customer-portals' ||
       location == '/communications' ||
       location == '/saas-modules' ||
