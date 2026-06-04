@@ -118,6 +118,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/card-users',
       ),
       _SidebarItem(
+        icon: Icons.add_card_outlined,
+        label: 'كروت الشحن',
+        routeName: 'cards-recharge',
+        path: '/cards/recharge',
+      ),
+      _SidebarItem(
         icon: Icons.print_outlined,
         label: 'تصميم وتصدير',
         routeName: 'print-templates',

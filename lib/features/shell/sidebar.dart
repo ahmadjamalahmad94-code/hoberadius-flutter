@@ -21,7 +21,11 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.router_outlined, 'أجهزة الشبكة', 'nas'),
   _NavItem(Icons.router_outlined, 'اتصالات ميكروتك', 'mikrotik'),
   _NavItem(Icons.monitor_heart_outlined, 'عمليات الراوتر', 'router-operations'),
-  _NavItem(Icons.playlist_add_check_outlined, 'معالج إعداد الراوترات', 'setup-wizard'),
+  _NavItem(
+    Icons.playlist_add_check_outlined,
+    'معالج إعداد الراوترات',
+    'setup-wizard',
+  ),
   _NavItem(
     Icons.devices_other_outlined,
     'بصمات الأجهزة',
@@ -70,6 +74,7 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.manage_accounts_outlined, 'التحكم الإداري', 'admin-control'),
   _NavItem(Icons.construction_outlined, 'الأدوات', 'tools'),
   _NavItem(Icons.speed_outlined, 'جدولة السرعات', 'bandwidth-schedules'),
+  _NavItem(Icons.add_card_outlined, 'كروت الشحن', 'cards-recharge'),
   _NavItem(Icons.print_outlined, 'قوالب الطباعة', 'print-templates'),
   _NavItem(Icons.shield_outlined, 'الأدوار', 'roles'),
   _NavItem(Icons.history, 'سجل التدقيق', 'audit'),
@@ -158,6 +163,7 @@ class AppSidebar extends StatelessWidget {
       'admin-control': '/admin-control',
       'tools': '/tools',
       'bandwidth-schedules': '/bandwidth-schedules',
+      'cards-recharge': '/cards/recharge',
       'print-templates': '/print-templates',
       'roles': '/roles',
       'audit': '/audit',

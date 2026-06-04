@@ -30,6 +30,7 @@ import '../../features/cards/presentation/card_batch_form_screen.dart';
 import '../../features/cards/presentation/card_batch_import_screen.dart';
 import '../../features/cards/presentation/card_checker_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
+import '../../features/cards/presentation/recharge_cards_screen.dart';
 import '../../features/communications/presentation/communications_screen.dart';
 import '../../features/customer_portals/presentation/customer_portals_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
@@ -159,6 +160,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 ),
               ),
             ],
+          ),
+          GoRoute(
+            path: '/cards/recharge',
+            name: 'cards-recharge',
+            builder: (ctx, st) => const RechargeCardsScreen(),
           ),
           GoRoute(
             path: '/card-users',

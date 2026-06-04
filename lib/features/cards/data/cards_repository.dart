@@ -188,6 +188,43 @@ class CardsRepository {
         .toList();
   }
 
+  Future<RechargeBatchesPage> listRechargeBatches({
+    int page = 1,
+    int perPage = 25,
+  }) async {
+    final res = await _api.get(
+      '/api/v1/cards/recharge',
+      query: {'page': page, 'per_page': perPage},
+    );
+    return RechargeBatchesPage.fromJson(res);
+  }
+
+  Future<RechargeBatchCreateResult> createRechargeBatch(
+    CreateRechargeBatchRequest request,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/cards/recharge',
+      body: request.toBody(),
+    );
+    return RechargeBatchCreateResult.fromJson(res);
+  }
+
+  Future<RechargeBatchDetail> getRechargeBatch(
+    int batchId, {
+    int page = 1,
+    int perPage = 25,
+  }) async {
+    final res = await _api.get(
+      '/api/v1/cards/recharge/$batchId',
+      query: {'page': page, 'per_page': perPage},
+    );
+    return RechargeBatchDetail.fromJson(res);
+  }
+
+  Future<void> deleteRechargeBatch(int batchId) async {
+    await _api.delete('/api/v1/cards/recharge/$batchId');
+  }
+
   Future<void> revoke(int cardId) => _api.post('/api/v1/cards/$cardId/revoke');
 
   Future<CardCheckResult> checkCard(String query) async {

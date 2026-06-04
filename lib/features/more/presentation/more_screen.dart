@@ -54,13 +54,15 @@ const _items = <_MoreItem>[
     Icons.monitor_heart_outlined,
     'عمليات الراوتر',
     'router-operations',
-    sub: 'حالة الراوتر الحية، الموارد، الصحة، الهوية، والوقت من عقد القراءة الآمن',
+    sub:
+        'حالة الراوتر الحية، الموارد، الصحة، الهوية، والوقت من عقد القراءة الآمن',
   ),
   _MoreItem(
     Icons.playlist_add_check_outlined,
     'معالج إعداد الراوترات',
     'setup-wizard',
-    sub: 'صحة المعالج، جاهزية خادم الربط، وآخر تشغيلات الإعداد بدون تطبيق أوامر من التطبيق',
+    sub:
+        'صحة المعالج، جاهزية خادم الربط، وآخر تشغيلات الإعداد بدون تطبيق أوامر من التطبيق',
   ),
   _MoreItem(
     Icons.devices_other_outlined,
@@ -78,7 +80,8 @@ const _items = <_MoreItem>[
     Icons.notifications_active_outlined,
     'تنبيهات الراوترات',
     'router-alerts',
-    sub: 'حدود الانقطاع والترافيك والاستهلاك لكل راوتر حسب المقاييس المدفوعة للخادم',
+    sub:
+        'حدود الانقطاع والترافيك والاستهلاك لكل راوتر حسب المقاييس المدفوعة للخادم',
   ),
   _MoreItem(
     Icons.policy_outlined,
@@ -199,6 +202,12 @@ const _items = <_MoreItem>[
     'جدولة السرعات',
     'bandwidth-schedules',
     sub: 'جداول وقتية مع معاينة قبل التطبيق الفعلي',
+  ),
+  _MoreItem(
+    Icons.add_card_outlined,
+    'كروت الشحن',
+    'cards-recharge',
+    sub: 'توليد كروت رصيد للمحفظة وعرض الحزم والفئات',
   ),
   _MoreItem(
     Icons.print_outlined,

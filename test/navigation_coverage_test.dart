@@ -7,8 +7,8 @@ void main() {
     final router = File('lib/core/router/app_router.dart').readAsStringSync();
     final shell =
         File('lib/features/shell/shell_scaffold.dart').readAsStringSync();
-    final more =
-        File('lib/features/more/presentation/more_screen.dart').readAsStringSync();
+    final more = File('lib/features/more/presentation/more_screen.dart')
+        .readAsStringSync();
     final sidebar = File('lib/features/shell/sidebar.dart').readAsStringSync();
     final navigation = '$shell\n$more\n$sidebar';
 
@@ -28,6 +28,7 @@ void main() {
       'setup-wizard': '/setup-wizard',
       'radius-resources': '/radius-resources',
       'card-users': '/card-users',
+      'cards-recharge': '/cards/recharge',
     };
 
     for (final entry in criticalRoutes.entries) {
