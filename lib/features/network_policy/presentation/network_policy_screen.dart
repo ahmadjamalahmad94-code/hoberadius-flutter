@@ -187,9 +187,9 @@ class _PolicySidePanel extends StatelessWidget {
           ],
           const SizedBox(height: AppTokens.s4),
           const StatusPill(
-            text: 'معاينة فقط من التطبيق',
-            tone: PillTone.blue,
-            icon: Icons.visibility_outlined,
+            text: 'معاينة وتطبيق وتراجع من التطبيق',
+            tone: PillTone.green,
+            icon: Icons.verified_outlined,
           ),
         ],
       ),
@@ -299,6 +299,15 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
                 tone: policy.enabled ? PillTone.green : PillTone.neutral,
                 dot: true,
               ),
+              const SizedBox(width: AppTokens.s8),
+              StatusPill(
+                text: policy.deploymentStatusLabel,
+                tone: policy.deploymentStatus == 'applied'
+                    ? PillTone.green
+                    : policy.deploymentStatus == 'failed'
+                        ? PillTone.red
+                        : PillTone.blue,
+              ),
             ],
           ),
           if (fields.isNotEmpty) ...[
@@ -319,6 +328,21 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
                 icon: const Icon(Icons.fact_check_outlined),
                 label: const Text('معاينة الأثر'),
               ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _copyScript,
+                icon: const Icon(Icons.file_download_outlined),
+                label: const Text('نسخ RSC'),
+              ),
+              FilledButton.icon(
+                onPressed: _busy ? null : _apply,
+                icon: const Icon(Icons.play_circle_outline),
+                label: const Text('تطبيق'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _showChanges,
+                icon: const Icon(Icons.history_outlined),
+                label: const Text('السجل والتراجع'),
+              ),
               if (widget.kind.hasChildren)
                 OutlinedButton.icon(
                   onPressed: _busy ? null : _manageChildren,
@@ -333,6 +357,11 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
                   policy.enabled ? Icons.pause_circle : Icons.play_circle,
                 ),
                 label: Text(policy.enabled ? 'تعطيل' : 'تفعيل'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _duplicate,
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('نسخ السياسة'),
               ),
               TextButton.icon(
                 onPressed: _busy ? null : _delete,
@@ -382,6 +411,105 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
         context: context,
         builder: (_) => _PreviewDialog(preview: preview, kind: widget.kind),
       );
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _copyScript() async {
+    setState(() => _busy = true);
+    try {
+      final script = await ref
+          .read(networkPolicyRepositoryProvider)
+          .script(widget.kind, widget.policy.id);
+      await Clipboard.setData(ClipboardData(text: script.script));
+      if (!mounted) return;
+      _snack(context, 'تم نسخ سكربت ${script.filename}');
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _apply() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('تطبيق السياسة؟'),
+        content: const Text(
+          'سيطلب التطبيق من الخادم تنفيذ السياسة عبر مسار التشغيل الآمن. تأكد أن المعاينة سليمة وأن النسخة الاحتياطية جاهزة.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.play_circle_outline),
+            label: const Text('تطبيق الآن'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _busy = true);
+    try {
+      final result = await ref.read(networkPolicyRepositoryProvider).apply(
+        widget.kind,
+        widget.policy.id,
+        confirmations: const ['operator_reviewed_preview'],
+      );
+      ref.invalidate(networkPolicyPageProvider);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _ActionResultDialog(
+          title: 'نتيجة التطبيق',
+          result: result,
+        ),
+      );
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _showChanges() async {
+    setState(() => _busy = true);
+    try {
+      final changes = await ref
+          .read(networkPolicyRepositoryProvider)
+          .changes(widget.kind, widget.policy.id);
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _ChangesDialog(
+          kind: widget.kind,
+          policy: widget.policy,
+          page: changes,
+        ),
+      );
+      ref.invalidate(networkPolicyPageProvider);
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _duplicate() async {
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(networkPolicyRepositoryProvider)
+          .duplicate(widget.kind, widget.policy.id);
+      ref.invalidate(networkPolicyPageProvider);
+      if (mounted) _snack(context, 'تم إنشاء نسخة من السياسة');
     } catch (error) {
       if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
@@ -551,6 +679,265 @@ class _PreviewDialog extends StatelessWidget {
           child: const Text('إغلاق'),
         ),
       ],
+    );
+  }
+}
+
+class _ActionResultDialog extends StatelessWidget {
+  const _ActionResultDialog({
+    required this.title,
+    required this.result,
+  });
+
+  final String title;
+  final NetworkPolicyActionResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    final messages = [
+      if (result.reason.isNotEmpty) result.reason,
+      ...result.blockers,
+      ...result.warnings,
+    ];
+    return AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Wrap(
+              spacing: AppTokens.s8,
+              runSpacing: AppTokens.s8,
+              children: [
+                StatusPill(
+                  text: result.ok ? 'نجحت العملية' : 'لم تكتمل العملية',
+                  tone: result.ok ? PillTone.green : PillTone.red,
+                  dot: true,
+                ),
+                StatusPill(text: result.statusLabel, tone: PillTone.blue),
+                if (result.changeSetId > 0)
+                  StatusPill(
+                    text: 'رقم العملية ${result.changeSetId}',
+                    tone: PillTone.neutral,
+                  ),
+              ],
+            ),
+            if (messages.isNotEmpty) ...[
+              const SizedBox(height: AppTokens.s12),
+              for (final message in messages)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppTokens.s4),
+                  child: Text(message, style: const TextStyle(height: 1.35)),
+                ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('حسنًا'),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChangesDialog extends ConsumerStatefulWidget {
+  const _ChangesDialog({
+    required this.kind,
+    required this.policy,
+    required this.page,
+  });
+
+  final NetworkPolicyKind kind;
+  final NetworkPolicy policy;
+  final NetworkPolicyChangeSetPage page;
+
+  @override
+  ConsumerState<_ChangesDialog> createState() => _ChangesDialogState();
+}
+
+class _ChangesDialogState extends ConsumerState<_ChangesDialog> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('سجل التنفيذ والتراجع'),
+      content: SizedBox(
+        width: 720,
+        child: widget.page.items.isEmpty
+            ? const EmptyState(
+                icon: Icons.history_outlined,
+                title: 'لا توجد عمليات بعد',
+                subtitle: 'بعد تطبيق أي سياسة سيظهر سجل التنفيذ هنا.',
+              )
+            : SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final item in widget.page.items)
+                      _ChangeSetCard(
+                        item: item,
+                        busy: _busy,
+                        onRollback: item.rollbackEligible
+                            ? () => _rollback(item)
+                            : null,
+                      ),
+                  ],
+                ),
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('إغلاق'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _rollback(NetworkPolicyChangeSet item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('التراجع عن العملية؟'),
+        content: Text(
+          'سيطلب التطبيق من الخادم التراجع عن العملية رقم ${item.id} باستخدام سكربت التراجع الآمن.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(Icons.restore_outlined),
+            label: const Text('تراجع الآن'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _busy = true);
+    try {
+      final result = await ref.read(networkPolicyRepositoryProvider).rollback(
+            widget.kind,
+            widget.policy.id,
+            item.id,
+          );
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (_) => _ActionResultDialog(
+          title: 'نتيجة التراجع',
+          result: result,
+        ),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _ChangeSetCard extends StatelessWidget {
+  const _ChangeSetCard({
+    required this.item,
+    required this.busy,
+    required this.onRollback,
+  });
+
+  final NetworkPolicyChangeSet item;
+  final bool busy;
+  final VoidCallback? onRollback;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppTokens.s8),
+      child: AppCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${item.actionLabel} #${item.id}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppTokens.sidebarBg,
+                    ),
+                  ),
+                ),
+                StatusPill(
+                  text: item.statusLabel,
+                  tone: item.status == 'failed' ||
+                          item.status == 'rollback_failed'
+                      ? PillTone.red
+                      : item.status.contains('succeeded') ||
+                              item.status == 'rolled_back'
+                          ? PillTone.green
+                          : PillTone.blue,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppTokens.s8),
+            Wrap(
+              spacing: AppTokens.s8,
+              runSpacing: AppTokens.s8,
+              children: [
+                if (item.executionMode.isNotEmpty)
+                  StatusPill(
+                    text: 'وضع التنفيذ: ${item.executionMode}',
+                    tone: PillTone.neutral,
+                  ),
+                if (item.createdAt.isNotEmpty)
+                  StatusPill(
+                    text: 'بدأت: ${item.createdAt}',
+                    tone: PillTone.neutral,
+                  ),
+                if (item.finishedAt.isNotEmpty)
+                  StatusPill(
+                    text: 'انتهت: ${item.finishedAt}',
+                    tone: PillTone.neutral,
+                  ),
+              ],
+            ),
+            if (item.targets.isNotEmpty) ...[
+              const Divider(height: AppTokens.s20),
+              for (final target in item.targets)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.router_outlined),
+                  title: Text('راوتر #${target.routerId}'),
+                  subtitle: target.errorMessage.isEmpty
+                      ? Text(target.statusLabel)
+                      : Text(target.errorMessage),
+                ),
+            ],
+            if (onRollback != null) ...[
+              const SizedBox(height: AppTokens.s8),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton.icon(
+                  onPressed: busy ? null : onRollback,
+                  icon: const Icon(Icons.restore_outlined),
+                  label: const Text('تراجع'),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

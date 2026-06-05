@@ -47,6 +47,61 @@ class NetworkPolicyRepository {
     return NetworkPolicyPreview.fromJson(res);
   }
 
+  Future<NetworkPolicyScriptDownload> script(
+    NetworkPolicyKind kind,
+    int policyId,
+  ) async {
+    final res = await _api.get('${_base(kind)}/policies/$policyId/preview.rsc');
+    return NetworkPolicyScriptDownload.fromJson(res);
+  }
+
+  Future<NetworkPolicyActionResult> apply(
+    NetworkPolicyKind kind,
+    int policyId, {
+    String executionMode = 'full',
+    List<String> confirmations = const [],
+    bool canaryOptIn = false,
+  }) async {
+    final res = await _api.post(
+      '${_base(kind)}/policies/$policyId/apply',
+      body: {
+        'execution_mode': executionMode,
+        'confirmations': confirmations,
+        'canary_opt_in': canaryOptIn,
+      },
+    );
+    return NetworkPolicyActionResult.fromJson(res);
+  }
+
+  Future<NetworkPolicyChangeSetPage> changes(
+    NetworkPolicyKind kind,
+    int policyId,
+  ) async {
+    final res = await _api.get('${_base(kind)}/policies/$policyId/changes');
+    return NetworkPolicyChangeSetPage.fromJson(res);
+  }
+
+  Future<NetworkPolicyActionResult> rollback(
+    NetworkPolicyKind kind,
+    int policyId,
+    int changeSetId,
+  ) async {
+    final res = await _api.post(
+      '${_base(kind)}/policies/$policyId/changes/$changeSetId/rollback',
+    );
+    return NetworkPolicyActionResult.fromJson(res);
+  }
+
+  Future<NetworkPolicy> duplicate(
+    NetworkPolicyKind kind,
+    int policyId,
+  ) async {
+    final res = await _api.post(
+      '${_base(kind)}/policies/$policyId/duplicate',
+    );
+    return NetworkPolicy.fromJson(_payload(res));
+  }
+
   Future<NetworkPolicyChildrenPage> listChildren(
     NetworkPolicyKind kind,
     int policyId,

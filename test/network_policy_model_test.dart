@@ -16,6 +16,7 @@ void main() {
             'enabled': 1,
             'scope': 'all_users',
             'fail_open': 0,
+            'deployment_status': 'previewed',
           },
         ],
       },
@@ -26,6 +27,7 @@ void main() {
     expect(page.items.single.routerId, 4);
     expect(page.items.single.enabled, isTrue);
     expect(page.items.single.flag('fail_open'), isFalse);
+    expect(page.items.single.deploymentStatusLabel, 'تمت المعاينة');
     expect(
       networkPolicyFieldLabel('scope', page.items.single.fields['scope']),
       'النطاق: كل المستخدمين',
@@ -73,5 +75,47 @@ void main() {
     expect(preview.commandCount, 3);
     expect(preview.healthScore, 82);
     expect(preview.warnings.single, 'راجع قائمة الأهداف');
+  });
+
+  test('runtime action and change-set payloads parse status labels', () {
+    final action = NetworkPolicyActionResult.fromJson({
+      'data': {
+        'ok': false,
+        'change_set_id': 0,
+        'status': 'failed',
+        'reason_ar': 'تعذر التنفيذ.',
+        'blockers': [
+          {'message_ar': 'لا توجد نسخة احتياطية جاهزة'},
+        ],
+      },
+    });
+    expect(action.ok, isFalse);
+    expect(action.statusLabel, 'فشلت');
+    expect(action.blockers.single, 'لا توجد نسخة احتياطية جاهزة');
+
+    final changes = NetworkPolicyChangeSetPage.fromJson({
+      'data': {
+        'count': 1,
+        'items': [
+          {
+            'id': 8,
+            'action_type': 'apply',
+            'status': 'partially_succeeded',
+            'execution_mode': 'canary',
+            'rollback_eligible': true,
+            'targets': [
+              {
+                'router_id': 3,
+                'status': 'failed',
+                'error_message': 'تعذر الوصول للراوتر',
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(changes.items.single.actionLabel, 'تطبيق');
+    expect(changes.items.single.statusLabel, 'نجحت جزئيًا');
+    expect(changes.items.single.targets.single.statusLabel, 'فشلت');
   });
 }

@@ -106,6 +106,21 @@ class NetworkPolicy {
   String value(String key) => _string(fields[key]);
 
   bool flag(String key) => _bool(fields[key]);
+
+  String get deploymentStatus => _string(
+        fields['deployment_status'],
+        fallback:
+            _string(_map(fields['deployment'])['status'], fallback: 'draft'),
+      );
+
+  String get deploymentStatusLabel => switch (deploymentStatus) {
+        'draft' => 'مسودة',
+        'previewed' => 'تمت المعاينة',
+        'applied' => 'مطبقة',
+        'failed' => 'فشل التنفيذ',
+        'disabled' => 'معطلة',
+        _ => deploymentStatus.trim().isEmpty ? 'مسودة' : deploymentStatus,
+      };
 }
 
 class NetworkPolicyChildrenPage {
@@ -249,6 +264,162 @@ class NetworkPolicyPreview {
   }
 }
 
+class NetworkPolicyScriptDownload {
+  const NetworkPolicyScriptDownload({
+    required this.filename,
+    required this.script,
+    required this.scriptHash,
+  });
+
+  final String filename;
+  final String script;
+  final String scriptHash;
+
+  factory NetworkPolicyScriptDownload.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    return NetworkPolicyScriptDownload(
+      filename: _string(data['filename']),
+      script: _string(data['script']),
+      scriptHash: _string(data['script_hash']),
+    );
+  }
+}
+
+class NetworkPolicyActionResult {
+  const NetworkPolicyActionResult({
+    required this.ok,
+    required this.changeSetId,
+    required this.status,
+    required this.reason,
+    required this.blockers,
+    required this.warnings,
+  });
+
+  final bool ok;
+  final int changeSetId;
+  final String status;
+  final String reason;
+  final List<String> blockers;
+  final List<String> warnings;
+
+  factory NetworkPolicyActionResult.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    return NetworkPolicyActionResult(
+      ok: _bool(data['ok']),
+      changeSetId: _int(data['change_set_id']),
+      status: _string(data['status']),
+      reason: _string(data['reason_ar']),
+      blockers: _issueMessages(data['blockers']),
+      warnings: _issueMessages(data['warnings']),
+    );
+  }
+
+  String get statusLabel => networkPolicyExecutionStatusLabel(status);
+}
+
+class NetworkPolicyChangeSetPage {
+  const NetworkPolicyChangeSetPage({required this.items, required this.count});
+
+  final List<NetworkPolicyChangeSet> items;
+  final int count;
+
+  factory NetworkPolicyChangeSetPage.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    final items = _list(data['items'])
+        .map((item) => NetworkPolicyChangeSet.fromJson(_map(item)))
+        .toList();
+    return NetworkPolicyChangeSetPage(
+      items: items,
+      count: _int(data['count'], fallback: items.length),
+    );
+  }
+}
+
+class NetworkPolicyChangeSet {
+  const NetworkPolicyChangeSet({
+    required this.id,
+    required this.actionType,
+    required this.status,
+    required this.executionMode,
+    required this.createdAt,
+    required this.finishedAt,
+    required this.rollbackEligible,
+    required this.targets,
+  });
+
+  final int id;
+  final String actionType;
+  final String status;
+  final String executionMode;
+  final String createdAt;
+  final String finishedAt;
+  final bool rollbackEligible;
+  final List<NetworkPolicyChangeTarget> targets;
+
+  factory NetworkPolicyChangeSet.fromJson(Map<String, dynamic> json) {
+    return NetworkPolicyChangeSet(
+      id: _int(json['id']),
+      actionType: _string(json['action_type']),
+      status: _string(json['status']),
+      executionMode: _string(json['execution_mode']),
+      createdAt: _string(json['created_at']),
+      finishedAt: _string(json['finished_at']),
+      rollbackEligible: _bool(json['rollback_eligible']),
+      targets: _list(json['targets'])
+          .map((item) => NetworkPolicyChangeTarget.fromJson(_map(item)))
+          .toList(),
+    );
+  }
+
+  String get actionLabel => switch (actionType) {
+        'apply' => 'تطبيق',
+        'rollback' => 'تراجع',
+        _ => actionType.trim().isEmpty ? 'عملية' : actionType,
+      };
+
+  String get statusLabel => networkPolicyExecutionStatusLabel(status);
+}
+
+class NetworkPolicyChangeTarget {
+  const NetworkPolicyChangeTarget({
+    required this.routerId,
+    required this.status,
+    required this.errorMessage,
+  });
+
+  final int routerId;
+  final String status;
+  final String errorMessage;
+
+  factory NetworkPolicyChangeTarget.fromJson(Map<String, dynamic> json) {
+    return NetworkPolicyChangeTarget(
+      routerId: _int(json['router_id']),
+      status: _string(json['status']),
+      errorMessage: _string(json['error_message']),
+    );
+  }
+
+  String get statusLabel => networkPolicyExecutionStatusLabel(status);
+}
+
+String networkPolicyExecutionStatusLabel(String status) {
+  return switch (status) {
+    'planned' => 'مخططة',
+    'running' => 'قيد التنفيذ',
+    'succeeded' => 'نجحت',
+    'failed' => 'فشلت',
+    'partially_succeeded' => 'نجحت جزئيًا',
+    'rolled_back' => 'تم التراجع',
+    'rollback_pending' => 'تراجع قيد الانتظار',
+    'rollback_running' => 'تراجع قيد التنفيذ',
+    'rollback_failed' => 'فشل التراجع',
+    'partially_rolled_back' => 'تراجع جزئي',
+    'pending' => 'قيد الانتظار',
+    'skipped' => 'تم التخطي',
+    _ => status.trim().isEmpty ? 'غير محدد' : status,
+  };
+}
+
 String networkPolicyFieldLabel(String key, Object? value) {
   final text = _string(value);
   if (text.isEmpty) return '';
@@ -256,9 +427,8 @@ String networkPolicyFieldLabel(String key, Object? value) {
     'allow_winbox' => _bool(value) ? 'Winbox مسموح' : 'Winbox مغلق',
     'allow_ssh' => _bool(value) ? 'SSH مسموح' : 'SSH مغلق',
     'allow_api' => _bool(value) ? 'واجهة الربط مسموحة' : 'واجهة الربط مغلقة',
-    'allow_api_ssl' => _bool(value)
-        ? 'واجهة الربط الآمنة مسموحة'
-        : 'واجهة الربط الآمنة مغلقة',
+    'allow_api_ssl' =>
+      _bool(value) ? 'واجهة الربط الآمنة مسموحة' : 'واجهة الربط الآمنة مغلقة',
     'allow_webfig_http' =>
       _bool(value) ? 'WebFig HTTP مسموح' : 'WebFig HTTP مغلق',
     'allow_webfig_https' =>
@@ -304,6 +474,25 @@ List<String> _strings(Object? value) {
   }
   final text = _string(value);
   return text.isEmpty ? const [] : [text];
+}
+
+List<String> _issueMessages(Object? value) {
+  if (value is List) {
+    return value
+        .map((item) {
+          final map = _map(item);
+          return _string(
+            map['message_ar'],
+            fallback: _string(
+              map['reason_ar'],
+              fallback: _string(map['message'], fallback: item.toString()),
+            ),
+          );
+        })
+        .where((text) => text.isNotEmpty)
+        .toList();
+  }
+  return _strings(value);
 }
 
 String _string(Object? value, {String fallback = ''}) {
