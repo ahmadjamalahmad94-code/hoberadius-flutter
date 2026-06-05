@@ -42,6 +42,7 @@ import '../../features/distributors/presentation/distributor_detail_screen.dart'
 import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
 import '../../features/events/presentation/events_center_screen.dart';
+import '../../features/hotspot_cards_portal/presentation/hotspot_cards_portal_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
@@ -79,7 +80,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final loggedIn = auth.isAuthenticated;
       final atLogin = state.matchedLocation == '/login';
-      if (!loggedIn && !atLogin) return '/login';
+      final atHotspotCardsPortal =
+          state.matchedLocation.startsWith('/hotspot-cards');
+      if (!loggedIn && !atLogin && !atHotspotCardsPortal) return '/login';
       if (loggedIn && atLogin) return '/';
       return null;
     },
@@ -89,6 +92,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'login',
         pageBuilder: (ctx, st) =>
             hubFadeThroughPage(child: const LoginScreen()),
+      ),
+      GoRoute(
+        path: '/hotspot-cards',
+        name: 'hotspot-cards-portal',
+        pageBuilder: (ctx, st) =>
+            hubFadeThroughPage(child: const HotspotCardsPortalScreen()),
       ),
       ShellRoute(
         builder: (ctx, st, child) => ShellScaffold(child: child),

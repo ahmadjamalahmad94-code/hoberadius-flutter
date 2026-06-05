@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_endpoint_storage.dart';
 import '../../../core/auth/auth_controller.dart';
@@ -199,6 +200,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                               .copyWith(color: Colors.white),
                                         ),
                                 ),
+                              ),
+                              const SizedBox(height: AppTokens.s12),
+                              OutlinedButton.icon(
+                                onPressed: auth.loading
+                                    ? null
+                                    : () => context.goNamed(
+                                          'hotspot-cards-portal',
+                                        ),
+                                icon: const Icon(
+                                  Icons.confirmation_number_outlined,
+                                ),
+                                label: const Text('بوابة شراء الكروت'),
                               ),
                               const SizedBox(height: AppTokens.s12),
                               Text(

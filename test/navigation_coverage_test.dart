@@ -61,6 +61,20 @@ void main() {
     expect(router, contains("path: ':id'"));
   });
 
+  test('public hotspot card portal is reachable without admin session', () {
+    final router = File('lib/core/router/app_router.dart').readAsStringSync();
+    final login = File('lib/features/auth/presentation/login_screen.dart')
+        .readAsStringSync();
+
+    expect(router, contains("path: '/hotspot-cards'"));
+    expect(router, contains("name: 'hotspot-cards-portal'"));
+    expect(router, contains('HotspotCardsPortalScreen'));
+    expect(router, contains('atHotspotCardsPortal'));
+    expect(login, contains("context.goNamed("));
+    expect(login, contains("'hotspot-cards-portal'"));
+    expect(login, contains('بوابة شراء الكروت'));
+  });
+
   test('shell scaffold uses the shared navigation schema', () {
     final shell =
         File('lib/features/shell/shell_scaffold.dart').readAsStringSync();
