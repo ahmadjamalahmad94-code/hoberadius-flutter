@@ -138,6 +138,12 @@ const _items = <_MoreItem>[
     sub: 'متابعة السلف المفتوحة وتسجيل دين أو سلفة وتسويتها',
   ),
   _MoreItem(
+    Icons.monetization_on_outlined,
+    'الإيرادات',
+    'revenue',
+    sub: 'سجلات السعر والتحصيل والتكلفة والربح حسب العمليات المالية',
+  ),
+  _MoreItem(
     Icons.insert_chart_outlined,
     'التقارير المالية',
     'financial-reports',

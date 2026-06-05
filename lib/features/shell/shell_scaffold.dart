@@ -259,6 +259,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/loans',
       ),
       _SidebarItem(
+        icon: Icons.monetization_on_outlined,
+        label: 'الإيرادات',
+        routeName: 'revenue',
+        path: '/revenue',
+      ),
+      _SidebarItem(
         icon: Icons.bar_chart_outlined,
         label: 'التقارير المالية',
         routeName: 'financial-reports',

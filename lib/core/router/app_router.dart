@@ -58,6 +58,7 @@ import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
 import '../../features/radius_resources/presentation/radius_resources_screen.dart';
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
+import '../../features/revenue/presentation/revenue_screen.dart';
 import '../../features/router_alerts/presentation/router_alerts_screen.dart';
 import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
@@ -383,6 +384,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/loans',
             name: 'loans-center',
             builder: (ctx, st) => const LoansCenterScreen(),
+          ),
+          GoRoute(
+            path: '/revenue',
+            name: 'revenue',
+            builder: (ctx, st) => const RevenueScreen(),
           ),
           GoRoute(
             path: '/reports',

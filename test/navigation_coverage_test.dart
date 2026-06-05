@@ -21,6 +21,7 @@ void main() {
       'vouchers': '/vouchers',
       'wallets': '/wallets',
       'loans-center': '/loans',
+      'revenue': '/revenue',
       'tickets': '/tickets',
       'customer-portals': '/customer-portals',
       'communications': '/communications',
