@@ -241,6 +241,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/invoices',
       ),
       _SidebarItem(
+        icon: Icons.confirmation_number_outlined,
+        label: 'الكوبونات',
+        routeName: 'vouchers',
+        path: '/vouchers',
+      ),
+      _SidebarItem(
         icon: Icons.account_balance_wallet_outlined,
         label: 'الخزائن والمحافظ',
         routeName: 'wallets',

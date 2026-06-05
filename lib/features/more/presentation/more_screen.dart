@@ -120,6 +120,12 @@ const _items = <_MoreItem>[
     sub: 'إنشاء فواتير المشتركين ومراجعة التحصيل أو الإرجاع أو الإلغاء',
   ),
   _MoreItem(
+    Icons.confirmation_number_outlined,
+    'الكوبونات',
+    'vouchers',
+    sub: 'توليد كوبونات الشحن ومراجعة حالتها وإلغاء الكوبونات النشطة',
+  ),
+  _MoreItem(
     Icons.account_balance_wallet_outlined,
     'الخزائن والمحافظ',
     'wallets',
