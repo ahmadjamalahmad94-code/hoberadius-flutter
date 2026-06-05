@@ -75,6 +75,19 @@ void main() {
     expect(login, contains('بوابة شراء الكروت'));
   });
 
+  test('public subscriber portal is reachable without admin session', () {
+    final router = File('lib/core/router/app_router.dart').readAsStringSync();
+    final login = File('lib/features/auth/presentation/login_screen.dart')
+        .readAsStringSync();
+
+    expect(router, contains("path: '/subscriber-portal'"));
+    expect(router, contains("name: 'subscriber-portal'"));
+    expect(router, contains('SubscriberPortalScreen'));
+    expect(router, contains('atSubscriberPortal'));
+    expect(login, contains("'subscriber-portal'"));
+    expect(login, contains('بوابة المشترك'));
+  });
+
   test('shell scaffold uses the shared navigation schema', () {
     final shell =
         File('lib/features/shell/shell_scaffold.dart').readAsStringSync();

@@ -65,6 +65,7 @@ import '../../features/router_alerts/presentation/router_alerts_screen.dart';
 import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
 import '../../features/setup_wizard/presentation/setup_wizard_screen.dart';
+import '../../features/subscriber_portal/presentation/subscriber_portal_screen.dart';
 import '../../features/subscribers/presentation/subscriber_360_screen.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
 import '../../features/subscribers/presentation/subscribers_list_screen.dart';
@@ -82,7 +83,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final atLogin = state.matchedLocation == '/login';
       final atHotspotCardsPortal =
           state.matchedLocation.startsWith('/hotspot-cards');
-      if (!loggedIn && !atLogin && !atHotspotCardsPortal) return '/login';
+      final atSubscriberPortal =
+          state.matchedLocation.startsWith('/subscriber-portal');
+      if (!loggedIn &&
+          !atLogin &&
+          !atHotspotCardsPortal &&
+          !atSubscriberPortal) {
+        return '/login';
+      }
       if (loggedIn && atLogin) return '/';
       return null;
     },
@@ -98,6 +106,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'hotspot-cards-portal',
         pageBuilder: (ctx, st) =>
             hubFadeThroughPage(child: const HotspotCardsPortalScreen()),
+      ),
+      GoRoute(
+        path: '/subscriber-portal',
+        name: 'subscriber-portal',
+        pageBuilder: (ctx, st) =>
+            hubFadeThroughPage(child: const SubscriberPortalScreen()),
       ),
       ShellRoute(
         builder: (ctx, st, child) => ShellScaffold(child: child),

@@ -214,6 +214,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 label: const Text('بوابة شراء الكروت'),
                               ),
                               const SizedBox(height: AppTokens.s12),
+                              OutlinedButton.icon(
+                                onPressed: auth.loading
+                                    ? null
+                                    : () => context.goNamed(
+                                          'subscriber-portal',
+                                        ),
+                                icon: const Icon(
+                                  Icons.person_pin_circle_outlined,
+                                ),
+                                label: const Text('بوابة المشترك'),
+                              ),
+                              const SizedBox(height: AppTokens.s12),
                               Text(
                                 'سيتم حفظ عنوان الخادم على هذا الجهاز فقط، ويمكن تغييره من شاشة الدخول عند الحاجة.',
                                 textAlign: TextAlign.center,
