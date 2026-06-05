@@ -249,6 +249,8 @@ class PaymentReconciliationItem {
   String get amountLabel =>
       amount == 0 ? 'غير محدد' : '${_formatAmount(amount)} $currency';
 
+  String get statusLabel => _paymentStatusLabel(status);
+
   String get displayReference {
     if (referenceCode.isNotEmpty) return referenceCode;
     if (providerTransactionId.isNotEmpty) return providerTransactionId;

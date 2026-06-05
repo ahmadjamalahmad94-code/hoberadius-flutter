@@ -44,6 +44,16 @@ class RecycleBinItem {
       retentionExpired: _asBool(json['retention_expired']),
     );
   }
+
+  String get statusLabel => switch (status) {
+        'active' => 'نشط',
+        'disabled' => 'معطل',
+        'deleted' => 'محذوف',
+        'archived' => 'مؤرشف',
+        'revoked' => 'ملغى',
+        'expired' => 'منتهي',
+        _ => status.trim().isEmpty ? 'غير محدد' : 'حالة غير معروفة',
+      };
 }
 
 int _asInt(Object? value) {

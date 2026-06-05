@@ -724,7 +724,7 @@ class _ReconciliationList extends StatelessWidget {
                               ),
                             if (item.status.isNotEmpty)
                               StatusPill(
-                                text: item.status,
+                                text: item.statusLabel,
                                 tone: PillTone.amber,
                               ),
                             if (item.paymentRequestIds.isNotEmpty)

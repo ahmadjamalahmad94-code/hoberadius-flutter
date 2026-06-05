@@ -310,7 +310,7 @@ class _Status extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return StatusPill(
-      text: user.isActive ? 'مفعل' : user.status,
+      text: user.statusLabel,
       tone: user.isActive ? PillTone.green : PillTone.orange,
     );
   }

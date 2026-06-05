@@ -39,6 +39,7 @@ void main() {
     expect(status.job.lastRunAt, isNotNull);
     expect(status.recentRuns, hasLength(1));
     expect(status.recentRuns.first.id, 7);
+    expect(status.recentRuns.first.statusLabel, 'ناجحة');
     expect(status.recentRuns.first.path, contains('backups'));
     expect(status.googleDrive.configured, isTrue);
     expect(status.googleDrive.pending, isTrue);

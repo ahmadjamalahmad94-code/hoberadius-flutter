@@ -63,7 +63,8 @@ class BackupGoogleDriveStatus {
       folderName: (json['folder_name'] ?? 'HobeRadius Backups').toString(),
       lastUploadAt: (json['last_upload_at'] ?? '').toString(),
       lastError: (json['last_error'] ?? '').toString(),
-      messageAr: (json['message_ar'] ?? 'جوجل درايف غير مفعل حاليًا').toString(),
+      messageAr:
+          (json['message_ar'] ?? 'جوجل درايف غير مفعل حاليًا').toString(),
     );
   }
 }
@@ -124,6 +125,15 @@ class BackupRun {
       createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
     );
   }
+
+  String get statusLabel => switch (status) {
+        'success' => 'ناجحة',
+        'failed' => 'فشلت',
+        'running' => 'قيد التنفيذ',
+        'pending' => 'بانتظار التنفيذ',
+        'skipped' => 'تم تجاوزها',
+        _ => status.trim().isEmpty ? 'غير محددة' : 'حالة غير معروفة',
+      };
 }
 
 int _asInt(Object? value) {

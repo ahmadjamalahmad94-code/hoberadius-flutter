@@ -33,6 +33,7 @@ void main() {
     });
 
     expect(page.items.single.title, 'مشتري تجريبي');
+    expect(page.items.single.statusLabel, 'مفعل');
     expect(page.items.single.balance, 12.5);
     expect(page.items.single.hasPortalPassword, isTrue);
     expect(page.summary.cards, 2);
@@ -82,6 +83,7 @@ void main() {
     expect(profile.cardUser.id, 7);
     expect(profile.wallet.balance, '0.00');
     expect(profile.purchases.single.status, 'completed');
+    expect(profile.purchases.single.statusLabel, 'مكتملة');
     expect(profile.cards.single.statusLabel, 'جاهزة');
     expect(profile.usage.sessionsCount, 2);
     expect(profile.usage.totalSeconds, 7200);

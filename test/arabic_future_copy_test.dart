@@ -71,4 +71,40 @@ void main() {
       }
     }
   });
+
+  test('status pills avoid raw backend status values in cleaned screens', () {
+    final blockedByFile = {
+      'lib/features/backups/presentation/backups_screen.dart': [
+        'text: run.status,',
+      ],
+      'lib/features/card_users/presentation/card_users_screen.dart': [
+        "user.isActive ? 'مفعل' : user.status",
+      ],
+      'lib/features/card_users/presentation/card_user_360_screen.dart': [
+        "user.isActive ? 'مفعل' : user.status",
+        ': purchase.status,',
+      ],
+      'lib/features/cards/presentation/card_batch_detail_screen.dart': [
+        '_ => batch.status',
+      ],
+      'lib/features/payment_collection/presentation/payment_collection_screen.dart':
+          [
+        'text: item.status,',
+      ],
+      'lib/features/recycle_bin/presentation/recycle_bin_screen.dart': [
+        ': item.status,',
+      ],
+    };
+
+    for (final entry in blockedByFile.entries) {
+      final source = File(entry.key).readAsStringSync();
+      for (final rawSnippet in entry.value) {
+        expect(
+          source,
+          isNot(contains(rawSnippet)),
+          reason: '${entry.key} still exposes raw status: $rawSnippet',
+        );
+      }
+    }
+  });
 }

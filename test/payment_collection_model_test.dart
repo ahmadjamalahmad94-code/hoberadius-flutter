@@ -159,6 +159,7 @@ void main() {
     expect(summary.isClean, isFalse);
     expect(summary.totalIssues, 3);
     expect(summary.paidWithoutLedger.single.amountLabel, '40 ILS');
+    expect(summary.paidWithoutLedger.single.statusLabel, 'مدفوع');
     expect(
       summary.duplicateProviderTransactions.single.displayReference,
       'TX-1',

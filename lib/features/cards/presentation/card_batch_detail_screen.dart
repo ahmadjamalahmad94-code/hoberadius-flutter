@@ -224,17 +224,8 @@ class _BatchSummary extends StatelessWidget {
                 ),
               ),
               StatusPill(
-                text: switch (batch.status) {
-                  'active' => 'نشِط',
-                  'exhausted' => 'منتهٍ',
-                  'revoked' => 'مُلغى',
-                  _ => batch.status,
-                },
-                tone: batch.status == 'active'
-                    ? PillTone.green
-                    : batch.status == 'revoked'
-                        ? PillTone.red
-                        : PillTone.orange,
+                text: batchStatusLabel(batch.status),
+                tone: batchStatusTone(batch.status),
               ),
             ],
           ),

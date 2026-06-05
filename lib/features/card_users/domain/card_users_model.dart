@@ -46,6 +46,15 @@ class CardUser {
 
   String get title => displayName.isEmpty ? 'مستخدم كروت #$id' : displayName;
   bool get isActive => status == 'active';
+
+  String get statusLabel => switch (status) {
+        'active' => 'مفعل',
+        'inactive' => 'غير مفعل',
+        'disabled' => 'معطل',
+        'suspended' => 'موقوف',
+        'blocked' => 'محظور',
+        _ => status.trim().isEmpty ? 'غير محدد' : 'حالة غير معروفة',
+      };
 }
 
 class CardUsersSummary {
@@ -220,6 +229,15 @@ class CardUserPurchase {
       createdAt: _date(json['created_at']),
     );
   }
+
+  String get statusLabel => switch (status) {
+        'completed' => 'مكتملة',
+        'pending' => 'بانتظار الاعتماد',
+        'failed' => 'فشلت',
+        'cancelled' || 'canceled' => 'ملغاة',
+        'refunded' => 'مسترجعة',
+        _ => status.trim().isEmpty ? 'غير محددة' : 'حالة غير معروفة',
+      };
 }
 
 class CardUserOwnedCard {

@@ -213,7 +213,7 @@ class _IdentityPanel extends StatelessWidget {
                 ),
               ),
               StatusPill(
-                text: user.isActive ? 'مفعل' : user.status,
+                text: user.statusLabel,
                 tone: user.isActive ? PillTone.green : PillTone.orange,
               ),
             ],
@@ -392,9 +392,7 @@ class _PurchasesPanel extends StatelessWidget {
                     title: Text('${purchase.amount} ${purchase.currency}'),
                     subtitle: Text(_dateLabel(purchase.createdAt)),
                     trailing: StatusPill(
-                      text: purchase.status == 'completed'
-                          ? 'مكتملة'
-                          : purchase.status,
+                      text: purchase.statusLabel,
                       tone: purchase.status == 'completed'
                           ? PillTone.green
                           : PillTone.orange,

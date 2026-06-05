@@ -17,6 +17,7 @@ void main() {
     expect(item.id, 12);
     expect(item.label, 'user123');
     expect(item.status, 'disabled');
+    expect(item.statusLabel, 'معطل');
     expect(item.deletedAt, isNotNull);
     expect(item.deletedBy, 'admin');
     expect(item.deleteReason, 'duplicate');

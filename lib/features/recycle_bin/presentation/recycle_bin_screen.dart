@@ -159,9 +159,7 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                                 DataCell(Text(item.label)),
                                 DataCell(
                                   StatusPill(
-                                    text: item.status.isEmpty
-                                        ? 'غير محدد'
-                                        : item.status,
+                                    text: item.statusLabel,
                                     tone: PillTone.orange,
                                   ),
                                 ),
@@ -245,7 +243,8 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

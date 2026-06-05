@@ -97,7 +97,8 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _running = false);
     }
@@ -211,10 +212,8 @@ class _Body extends StatelessWidget {
                             cells: [
                               DataCell(
                                 StatusPill(
-                                  text: run.status,
-                                  tone: run.status == 'success'
-                                      ? PillTone.green
-                                      : PillTone.orange,
+                                  text: run.statusLabel,
+                                  tone: _backupRunTone(run.status),
                                 ),
                               ),
                               DataCell(Text(run.message)),
@@ -265,9 +264,10 @@ class _GoogleDriveCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         'حالة جوجل درايف',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
                       ),
                     ),
                     StatusPill(text: _driveStatusLabel(drive), tone: tone),
@@ -281,7 +281,8 @@ class _GoogleDriveCard extends StatelessWidget {
                         height: 1.6,
                       ),
                 ),
-                if (drive.email.isNotEmpty || drive.lastUploadAt.isNotEmpty) ...[
+                if (drive.email.isNotEmpty ||
+                    drive.lastUploadAt.isNotEmpty) ...[
                   const SizedBox(height: AppTokens.s8),
                   Text(
                     [
@@ -307,6 +308,13 @@ String _driveStatusLabel(BackupGoogleDriveStatus drive) {
   if (drive.configured) return 'غير مربوط';
   return 'غير مفعل';
 }
+
+PillTone _backupRunTone(String status) => switch (status) {
+      'success' => PillTone.green,
+      'failed' => PillTone.red,
+      'running' || 'pending' => PillTone.amber,
+      _ => PillTone.neutral,
+    };
 
 class _StatCard extends StatelessWidget {
   const _StatCard({
