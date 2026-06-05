@@ -192,6 +192,153 @@ class MikrotikLiveSnapshot {
   }
 }
 
+class MikrotikActionResult {
+  const MikrotikActionResult({
+    required this.ok,
+    required this.routerId,
+    required this.message,
+    required this.error,
+    required this.backupId,
+    required this.backupName,
+    required this.routerFilename,
+    required this.newName,
+    required this.raw,
+  });
+
+  final bool ok;
+  final int routerId;
+  final String message;
+  final String error;
+  final int? backupId;
+  final String backupName;
+  final String routerFilename;
+  final String newName;
+  final Map<String, dynamic> raw;
+
+  factory MikrotikActionResult.fromJson(Map<String, dynamic> json) {
+    final ok = json['ok'] != false;
+    final message = _string(json['message']);
+    final error = _string(json['error']);
+    return MikrotikActionResult(
+      ok: ok,
+      routerId: _asInt(json['router_id']),
+      message: message.isNotEmpty
+          ? message
+          : ok
+              ? 'تم تنفيذ الأمر بنجاح.'
+              : 'تعذر تنفيذ الأمر على الراوتر.',
+      error: error,
+      backupId: _asIntOrNull(json['backup_id']),
+      backupName: _string(json['backup_name']),
+      routerFilename: _string(json['router_filename']),
+      newName: _string(json['new_name']),
+      raw: json,
+    );
+  }
+
+  String get visibleMessage {
+    if (ok) return message;
+    return error.isEmpty ? message : error;
+  }
+}
+
+class MikrotikRouterBackup {
+  const MikrotikRouterBackup({
+    required this.id,
+    required this.name,
+    required this.filename,
+    required this.routerFilename,
+    required this.sizeBytes,
+    required this.status,
+    required this.routerStatus,
+    required this.manifestSummary,
+    required this.createdAt,
+    required this.restoredAt,
+    required this.restoredBy,
+    required this.reason,
+    required this.notes,
+    required this.hasBlob,
+  });
+
+  final int id;
+  final String name;
+  final String filename;
+  final String routerFilename;
+  final int sizeBytes;
+  final String status;
+  final String routerStatus;
+  final String manifestSummary;
+  final String createdAt;
+  final String restoredAt;
+  final String restoredBy;
+  final String reason;
+  final String notes;
+  final bool hasBlob;
+
+  factory MikrotikRouterBackup.fromJson(Map<String, dynamic> json) {
+    return MikrotikRouterBackup(
+      id: _asInt(json['id']),
+      name: _string(json['name']),
+      filename: _string(json['filename']),
+      routerFilename: _string(json['router_filename']),
+      sizeBytes: _asInt(json['size_bytes']),
+      status: _string(json['status'], fallback: 'saved'),
+      routerStatus: _string(json['router_status'], fallback: 'on_router'),
+      manifestSummary: _string(json['manifest_summary']),
+      createdAt: _string(json['created_at']),
+      restoredAt: _string(json['restored_at']),
+      restoredBy: _string(json['restored_by']),
+      reason: _string(json['reason']),
+      notes: _string(json['notes']),
+      hasBlob: _bool(json['has_blob']),
+    );
+  }
+
+  String get displayName {
+    for (final value in [name, filename, routerFilename]) {
+      final clean = value.trim();
+      if (clean.isNotEmpty) return clean;
+    }
+    return 'نسخة بدون اسم';
+  }
+
+  String get routerStatusLabel => switch (routerStatus) {
+        'on_router' => 'موجودة على الراوتر',
+        'saved' => 'محفوظة في اللوحة',
+        'restored' => 'تمت استعادتها',
+        _ => 'حالة غير معروفة',
+      };
+
+  bool get canRestoreFromRouter => routerStatus == 'on_router';
+}
+
+class MikrotikRouterBackupsPage {
+  const MikrotikRouterBackupsPage({
+    required this.routerId,
+    required this.count,
+    required this.backups,
+  });
+
+  final int routerId;
+  final int count;
+  final List<MikrotikRouterBackup> backups;
+
+  factory MikrotikRouterBackupsPage.fromJson(Map<String, dynamic> json) {
+    final raw = json['backups'];
+    final backups = raw is List
+        ? raw
+            .whereType<Map<String, dynamic>>()
+            .map(MikrotikRouterBackup.fromJson)
+            .toList()
+        : const <MikrotikRouterBackup>[];
+    return MikrotikRouterBackupsPage(
+      routerId: _asInt(json['router_id']),
+      count: _asInt(json['count'], fallback: backups.length),
+      backups: backups,
+    );
+  }
+}
+
 class MikrotikLiveSection {
   const MikrotikLiveSection({
     required this.key,
@@ -280,6 +427,17 @@ int _asInt(Object? value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse((value ?? '').toString()) ?? fallback;
+}
+
+bool _bool(Object? value) {
+  if (value is bool) return value;
+  final text = (value ?? '').toString().trim().toLowerCase();
+  return text == 'true' || text == '1' || text == 'yes' || text == 'on';
+}
+
+String _string(Object? value, {String fallback = ''}) {
+  final text = (value ?? '').toString().trim();
+  return text.isEmpty ? fallback : text;
 }
 
 int? _asIntOrNull(Object? value) {

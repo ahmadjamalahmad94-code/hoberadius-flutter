@@ -153,6 +153,49 @@ void main() {
     expect(section.summary['router_id'], 5);
   });
 
+  test('MikrotikActionResult parses protected action response', () {
+    final result = MikrotikActionResult.fromJson({
+      'ok': true,
+      'router_id': 5,
+      'backup_id': 12,
+      'backup_name': 'before-change',
+      'message': 'تم إنشاء النسخة الاحتياطية.',
+    });
+
+    expect(result.ok, isTrue);
+    expect(result.routerId, 5);
+    expect(result.backupId, 12);
+    expect(result.backupName, 'before-change');
+    expect(result.visibleMessage, 'تم إنشاء النسخة الاحتياطية.');
+  });
+
+  test('MikrotikRouterBackupsPage parses actionable backup rows', () {
+    final page = MikrotikRouterBackupsPage.fromJson({
+      'router_id': 5,
+      'count': 1,
+      'backups': [
+        {
+          'id': 9,
+          'name': 'before-change.backup',
+          'filename': 'before-change.backup',
+          'router_filename': 'before-change.backup',
+          'size_bytes': 2048,
+          'router_status': 'on_router',
+          'manifest_summary': 'Hotspot + PPPoE',
+          'created_at': '2026-06-05T10:00:00Z',
+          'has_blob': false,
+        },
+      ],
+    });
+
+    expect(page.routerId, 5);
+    expect(page.count, 1);
+    expect(page.backups.single.id, 9);
+    expect(page.backups.single.displayName, 'before-change.backup');
+    expect(page.backups.single.canRestoreFromRouter, isTrue);
+    expect(page.backups.single.routerStatusLabel, 'موجودة على الراوتر');
+  });
+
   test('MikrotikLiveSnapshot keeps failed sections isolated', () {
     final failed = MikrotikLiveSection.failed(
       key: 'logs',

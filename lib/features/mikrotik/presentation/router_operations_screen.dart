@@ -118,6 +118,16 @@ class _RouterOperationsScreenState
           ),
         ),
         const SizedBox(height: AppTokens.s12),
+        _RouterProtectedActions(
+          routerId: selected.id!,
+          routerName: selected.name,
+          onRefresh: () {
+            ref.invalidate(mikrotikRouterOverviewProvider(selected.id!));
+            ref.invalidate(mikrotikLiveSnapshotProvider(selected.id!));
+            ref.invalidate(mikrotikRouterBackupsProvider(selected.id!));
+          },
+        ),
+        const SizedBox(height: AppTokens.s12),
         overviewAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => HubErrorState(
@@ -129,6 +139,8 @@ class _RouterOperationsScreenState
           ),
           data: (overview) => _OverviewBody(overview: overview),
         ),
+        const SizedBox(height: AppTokens.s16),
+        _RouterBackupsPanel(routerId: selected.id!),
         const SizedBox(height: AppTokens.s16),
         liveAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -150,6 +162,430 @@ class _RouterOperationsScreenState
     );
   }
 }
+
+class _RouterProtectedActions extends ConsumerWidget {
+  const _RouterProtectedActions({
+    required this.routerId,
+    required this.routerName,
+    required this.onRefresh,
+  });
+
+  final int routerId;
+  final String routerName;
+  final VoidCallback onRefresh;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(routerOperationControllerProvider);
+    final controller = ref.read(routerOperationControllerProvider.notifier);
+    return AppCard(
+      title: 'أوامر محمية للراوتر',
+      icon: Icons.admin_panel_settings_outlined,
+      actions: [
+        StatusPill(
+          text: state.isBusy ? 'تنفيذ جارٍ' : 'جاهزة',
+          tone: state.isBusy ? PillTone.amber : PillTone.green,
+          dot: true,
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'هذه الأوامر تُرسل عبر API محمي إلى الريدياس، ثم ينفذها الريدياس على الراوتر المسجل. لا يتم تشغيل أي أمر قبل التأكيد الواضح.',
+            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+          ),
+          if (state.notice.isNotEmpty || state.error.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s12),
+            _ActionMessage(
+              text: state.notice.isNotEmpty
+                  ? state.notice
+                  : visibleErrorMessage(state.error),
+              isError: state.error.isNotEmpty,
+              onClose: controller.clearMessage,
+            ),
+          ],
+          const SizedBox(height: AppTokens.s12),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              _ActionButton(
+                label: 'حفظ نسخة من الراوتر',
+                icon: Icons.backup_outlined,
+                busy: state.busyAction == 'backup_save',
+                disabled: state.isBusy,
+                onPressed: () async {
+                  final input = await _showBackupDialog(context, routerName);
+                  if (input == null) return;
+                  await controller.saveBackup(
+                    routerId,
+                    name: input.$1,
+                    notes: input.$2,
+                  );
+                },
+              ),
+              _ActionButton(
+                label: 'تغيير اسم الراوتر',
+                icon: Icons.badge_outlined,
+                busy: state.busyAction == 'identity',
+                disabled: state.isBusy,
+                onPressed: () async {
+                  final input = await _showIdentityDialog(context, routerName);
+                  if (input == null) return;
+                  await controller.setIdentity(
+                    routerId,
+                    name: input.$1,
+                    reason: input.$2,
+                  );
+                },
+              ),
+              _ActionButton(
+                label: 'مزامنة الوقت',
+                icon: Icons.schedule_send_outlined,
+                busy: state.busyAction == 'ntp',
+                disabled: state.isBusy,
+                onPressed: () async {
+                  final ok = await _confirm(
+                    context,
+                    title: 'مزامنة وقت الراوتر',
+                    body:
+                        'سيتم طلب مزامنة NTP من الراوتر. الإجراء غير تخريبي ويمكن تنفيذه الآن.',
+                    confirmLabel: 'مزامنة الوقت',
+                  );
+                  if (ok) await controller.syncNtp(routerId);
+                },
+              ),
+              _ActionButton(
+                label: 'تفريغ ذاكرة DNS',
+                icon: Icons.cleaning_services_outlined,
+                busy: state.busyAction == 'dns',
+                disabled: state.isBusy,
+                onPressed: () async {
+                  final ok = await _confirm(
+                    context,
+                    title: 'تفريغ ذاكرة DNS',
+                    body:
+                        'سيتم تفريغ ذاكرة DNS المؤقتة على الراوتر فقط. الطلبات القادمة ستُقرأ من جديد.',
+                    confirmLabel: 'تفريغ الذاكرة',
+                  );
+                  if (ok) await controller.flushDns(routerId);
+                },
+              ),
+              _ActionButton(
+                label: 'إعادة تشغيل الراوتر',
+                icon: Icons.power_settings_new_outlined,
+                tone: _ActionTone.danger,
+                busy: state.busyAction == 'reboot',
+                disabled: state.isBusy,
+                onPressed: () async {
+                  final reason = await _showRebootDialog(context);
+                  if (reason == null) return;
+                  await controller.reboot(routerId, reason: reason);
+                },
+              ),
+              OutlinedButton.icon(
+                onPressed: state.isBusy ? null : onRefresh,
+                icon: const Icon(Icons.refresh),
+                label: const Text('تحديث الحالة'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RouterBackupsPanel extends ConsumerWidget {
+  const _RouterBackupsPanel({required this.routerId});
+
+  final int routerId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final backups = ref.watch(mikrotikRouterBackupsProvider(routerId));
+    final state = ref.watch(routerOperationControllerProvider);
+    final controller = ref.read(routerOperationControllerProvider.notifier);
+    return backups.when(
+      loading: () => const AppCard(
+        title: 'نسخ الراوتر المحفوظة',
+        icon: Icons.restore_outlined,
+        child: Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, _) => HubErrorState(
+        title: 'تعذر تحميل نسخ الراوتر',
+        subtitle: visibleErrorMessage(error),
+        onRetry: () => ref.invalidate(mikrotikRouterBackupsProvider(routerId)),
+      ),
+      data: (page) {
+        if (page.backups.isEmpty) {
+          return const AppCard(
+            title: 'نسخ الراوتر المحفوظة',
+            icon: Icons.restore_outlined,
+            child: EmptyState(
+              icon: Icons.backup_outlined,
+              title: 'لا توجد نسخ محفوظة لهذا الراوتر',
+              subtitle:
+                  'استخدم زر حفظ نسخة من الراوتر قبل أي تغيير كبير حتى تستطيع الرجوع لو احتجت.',
+            ),
+          );
+        }
+        return AppCard(
+          title: 'نسخ الراوتر المحفوظة',
+          icon: Icons.restore_outlined,
+          actions: [
+            StatusPill(text: '${page.count} نسخة', tone: PillTone.blue),
+          ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final backup in page.backups) ...[
+                _BackupRow(
+                  backup: backup,
+                  busy: state.busyAction == 'restore_${backup.id}' ||
+                      state.busyAction == 'delete_${backup.id}',
+                  disabled: state.isBusy,
+                  onRestore: () async {
+                    final notes = await _showRestoreDialog(context, backup);
+                    if (notes == null) return;
+                    await controller.restoreBackup(
+                      routerId,
+                      backup.id,
+                      notes: notes,
+                    );
+                  },
+                  onDelete: () async {
+                    final ok = await _confirm(
+                      context,
+                      title: 'حذف سجل النسخة',
+                      body:
+                          'سيتم حذف سجل النسخة من لوحة الريدياس فقط، ولن يتم حذف الملف الموجود على الراوتر.',
+                      confirmLabel: 'حذف السجل',
+                      danger: true,
+                    );
+                    if (ok) await controller.deleteBackup(routerId, backup.id);
+                  },
+                ),
+                const SizedBox(height: AppTokens.s8),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BackupRow extends StatelessWidget {
+  const _BackupRow({
+    required this.backup,
+    required this.busy,
+    required this.disabled,
+    required this.onRestore,
+    required this.onDelete,
+  });
+
+  final MikrotikRouterBackup backup;
+  final bool busy;
+  final bool disabled;
+  final VoidCallback onRestore;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppTokens.r12),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 720;
+          final info = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                backup.displayName,
+                style: const TextStyle(
+                  color: AppTokens.textPrimary,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: AppTokens.s8,
+                runSpacing: AppTokens.s8,
+                children: [
+                  StatusPill(
+                    text: backup.routerStatusLabel,
+                    tone: backup.canRestoreFromRouter
+                        ? PillTone.green
+                        : PillTone.neutral,
+                  ),
+                  if (backup.createdAt.isNotEmpty)
+                    _MiniFact('تاريخ الحفظ', backup.createdAt),
+                  if (backup.manifestSummary.isNotEmpty)
+                    _MiniFact('الملخص', backup.manifestSummary),
+                ],
+              ),
+              if (backup.notes.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  backup.notes,
+                  style: const TextStyle(color: AppTokens.textSecondary),
+                ),
+              ],
+            ],
+          );
+          final actions = Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: disabled || busy || !backup.canRestoreFromRouter
+                    ? null
+                    : onRestore,
+                icon: busy
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.restore),
+                label: const Text('استعادة'),
+              ),
+              TextButton.icon(
+                onPressed: disabled || busy ? null : onDelete,
+                icon: const Icon(Icons.delete_outline),
+                label: const Text('حذف السجل'),
+              ),
+            ],
+          );
+          if (compact) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                info,
+                const SizedBox(height: AppTokens.s12),
+                actions,
+              ],
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: info),
+              const SizedBox(width: AppTokens.s12),
+              actions,
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ActionMessage extends StatelessWidget {
+  const _ActionMessage({
+    required this.text,
+    required this.isError,
+    required this.onClose,
+  });
+
+  final String text;
+  final bool isError;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: isError ? AppTokens.redSoft : AppTokens.greenSoft,
+        borderRadius: BorderRadius.circular(AppTokens.r12),
+        border: Border.all(
+          color: isError ? AppTokens.red : AppTokens.green,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            isError ? Icons.error_outline : Icons.check_circle_outline,
+            color: isError ? AppTokens.redInk : AppTokens.greenInk,
+          ),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: isError ? AppTokens.redInk : AppTokens.greenInk,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'إخفاء الرسالة',
+            onPressed: onClose,
+            icon: const Icon(Icons.close, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.busy,
+    required this.disabled,
+    required this.onPressed,
+    this.tone = _ActionTone.normal,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool busy;
+  final bool disabled;
+  final VoidCallback onPressed;
+  final _ActionTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final dangerous = tone == _ActionTone.danger;
+    return dangerous
+        ? OutlinedButton.icon(
+            onPressed: disabled || busy ? null : onPressed,
+            icon: busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(icon),
+            label: Text(label),
+            style: OutlinedButton.styleFrom(foregroundColor: AppTokens.redInk),
+          )
+        : ElevatedButton.icon(
+            onPressed: disabled || busy ? null : onPressed,
+            icon: busy
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(icon),
+            label: Text(label),
+          );
+  }
+}
+
+enum _ActionTone { normal, danger }
 
 class _OverviewBody extends StatelessWidget {
   const _OverviewBody({required this.overview});
@@ -574,6 +1010,289 @@ class _KeyValueGrid extends StatelessWidget {
       ],
     );
   }
+}
+
+Future<(String, String)?> _showBackupDialog(
+  BuildContext context,
+  String routerName,
+) async {
+  final name = TextEditingController();
+  final notes = TextEditingController();
+  try {
+    return await showDialog<(String, String)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حفظ نسخة احتياطية'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'سيتم إنشاء ملف نسخة على الراوتر وحفظ ملخصها داخل لوحة الريدياس.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTokens.textSecondary,
+                  ),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            TextField(
+              controller: name,
+              decoration: InputDecoration(
+                labelText: 'اسم النسخة اختياري',
+                hintText: routerName.isEmpty ? 'before-change' : routerName,
+              ),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            TextField(
+              controller: notes,
+              minLines: 2,
+              maxLines: 4,
+              decoration: const InputDecoration(
+                labelText: 'ملاحظات داخلية اختيارية',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(
+              context,
+              (name.text.trim(), notes.text.trim()),
+            ),
+            child: const Text('حفظ النسخة'),
+          ),
+        ],
+      ),
+    );
+  } finally {
+    name.dispose();
+    notes.dispose();
+  }
+}
+
+Future<(String, String)?> _showIdentityDialog(
+  BuildContext context,
+  String currentName,
+) async {
+  final name = TextEditingController(text: currentName);
+  final reason = TextEditingController();
+  try {
+    return await showDialog<(String, String)>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('تغيير اسم الراوتر'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'اكتب الاسم الجديد كما سيظهر داخل MikroTik. هذا الأمر يحتاج تأكيدًا ويحفظ في سجل التدقيق.',
+              style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            TextField(
+              controller: name,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'الاسم الجديد'),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            TextField(
+              controller: reason,
+              minLines: 2,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'سبب التغيير اختياري',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final clean = name.text.trim();
+              if (clean.isEmpty) return;
+              Navigator.pop(context, (clean, reason.text.trim()));
+            },
+            child: const Text('تغيير الاسم'),
+          ),
+        ],
+      ),
+    );
+  } finally {
+    name.dispose();
+    reason.dispose();
+  }
+}
+
+Future<String?> _showRebootDialog(BuildContext context) async {
+  final reason = TextEditingController();
+  var confirmed = false;
+  try {
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('إعادة تشغيل الراوتر'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'هذا أمر حساس. الراوتر قد يفصل المشتركين مؤقتًا أثناء إعادة التشغيل.',
+                style: TextStyle(color: AppTokens.redInk, height: 1.45),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              TextField(
+                controller: reason,
+                minLines: 2,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'سبب إعادة التشغيل اختياري',
+                ),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              CheckboxListTile(
+                value: confirmed,
+                onChanged: (value) {
+                  setState(() => confirmed = value == true);
+                },
+                contentPadding: EdgeInsets.zero,
+                title: const Text('أفهم أن الراوتر سيُعاد تشغيله الآن'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            OutlinedButton(
+              onPressed: confirmed
+                  ? () => Navigator.pop(context, reason.text.trim())
+                  : null,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTokens.redInk,
+              ),
+              child: const Text('إعادة التشغيل'),
+            ),
+          ],
+        ),
+      ),
+    );
+  } finally {
+    reason.dispose();
+  }
+}
+
+Future<String?> _showRestoreDialog(
+  BuildContext context,
+  MikrotikRouterBackup backup,
+) async {
+  final notes = TextEditingController();
+  var confirmed = false;
+  try {
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('استعادة نسخة الراوتر'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'سيتم إرسال أمر استعادة النسخة "${backup.displayName}". الراوتر سيعيد التشغيل بعد الاستعادة.',
+                style: const TextStyle(
+                  color: AppTokens.redInk,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              TextField(
+                controller: notes,
+                minLines: 2,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'ملاحظات الاستعادة اختيارية',
+                ),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              CheckboxListTile(
+                value: confirmed,
+                onChanged: (value) {
+                  setState(() => confirmed = value == true);
+                },
+                contentPadding: EdgeInsets.zero,
+                title: const Text('أفهم أن الاستعادة ستعيد تشغيل الراوتر'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            OutlinedButton(
+              onPressed: confirmed
+                  ? () => Navigator.pop(context, notes.text.trim())
+                  : null,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTokens.redInk,
+              ),
+              child: const Text('استعادة النسخة'),
+            ),
+          ],
+        ),
+      ),
+    );
+  } finally {
+    notes.dispose();
+  }
+}
+
+Future<bool> _confirm(
+  BuildContext context, {
+  required String title,
+  required String body,
+  required String confirmLabel,
+  bool danger = false,
+}) async {
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Text(
+        body,
+        style: const TextStyle(color: AppTokens.textSecondary, height: 1.45),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('إلغاء'),
+        ),
+        danger
+            ? OutlinedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTokens.redInk,
+                ),
+                child: Text(confirmLabel),
+              )
+            : ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(confirmLabel),
+              ),
+      ],
+    ),
+  );
+  return result == true;
 }
 
 String _value(

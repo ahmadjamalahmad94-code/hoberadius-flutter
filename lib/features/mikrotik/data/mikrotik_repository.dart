@@ -78,6 +78,98 @@ class MikrotikRepository {
     return MikrotikLiveSnapshot(routerId: nasId, sections: sections);
   }
 
+  Future<MikrotikActionResult> saveRouterBackup(
+    int nasId, {
+    String name = '',
+    String notes = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/system/backup/save',
+      body: {
+        if (name.trim().isNotEmpty) 'name': name.trim(),
+        if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+      },
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikActionResult> rebootRouter(
+    int nasId, {
+    String reason = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/system/reboot',
+      body: {
+        'confirm': true,
+        if (reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikActionResult> setRouterIdentity(
+    int nasId, {
+    required String name,
+    String reason = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/system/identity/set',
+      body: {
+        'confirm': true,
+        'name': name.trim(),
+        if (reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikActionResult> syncRouterNtp(int nasId) async {
+    final res = await _api.post('/api/v1/mikrotik/$nasId/system/ntp/sync');
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikActionResult> flushRouterDnsCache(int nasId) async {
+    final res = await _api.post('/api/v1/mikrotik/$nasId/ip/dns/cache/flush');
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikRouterBackupsPage> routerBackups(int nasId) async {
+    final res = await _api.get('/api/v1/mikrotik/$nasId/backups');
+    return MikrotikRouterBackupsPage.fromJson(_data(res));
+  }
+
+  Future<Map<String, dynamic>> routerBackupManifest(
+    int nasId,
+    int backupId,
+  ) async {
+    final res =
+        await _api.get('/api/v1/mikrotik/$nasId/backups/$backupId/manifest');
+    return _data(res);
+  }
+
+  Future<MikrotikActionResult> restoreRouterBackup(
+    int nasId,
+    int backupId, {
+    String notes = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/backups/$backupId/restore',
+      body: {
+        'confirm': true,
+        if (notes.trim().isNotEmpty) 'notes': notes.trim(),
+      },
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikActionResult> deleteRouterBackup(
+    int nasId,
+    int backupId,
+  ) async {
+    final res = await _api.delete('/api/v1/mikrotik/$nasId/backups/$backupId');
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
   Future<MikrotikLiveSection> _liveSection(
     int nasId,
     _LiveSectionSpec spec,
