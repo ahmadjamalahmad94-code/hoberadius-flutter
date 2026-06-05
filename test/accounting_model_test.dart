@@ -35,6 +35,9 @@ void main() {
       'currency': 'JOD',
       'reason': 'support',
       'status': 'open',
+      'approval_status': 'not_required',
+      'starts_at': '2026-06-05T08:00:00Z',
+      'ends_at': '2026-06-05T10:00:00Z',
     });
     final ledger = LedgerEntry.fromJson({
       'id': 12,
@@ -50,6 +53,10 @@ void main() {
 
     expect(loan.durationMinutes, 120);
     expect(loan.status, 'open');
+    expect(loan.statusLabel, 'مفتوحة');
+    expect(loan.approvalStatusLabel, 'لا يلزم اعتماد');
+    expect(loan.startsAt, isNotNull);
+    expect(loan.endsAt, isNotNull);
     expect(ledger.entryType, 'void');
     expect(ledger.reversalOfEntryId, 11);
   });

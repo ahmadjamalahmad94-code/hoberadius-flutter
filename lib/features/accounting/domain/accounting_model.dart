@@ -59,6 +59,10 @@ class LoanEntry {
     required this.reason,
     required this.status,
     required this.createdAt,
+    this.startsAt,
+    this.endsAt,
+    this.settledAt,
+    this.approvalStatus = '',
     this.activationResult = const {},
   });
 
@@ -71,6 +75,10 @@ class LoanEntry {
   final String reason;
   final String status;
   final DateTime? createdAt;
+  final DateTime? startsAt;
+  final DateTime? endsAt;
+  final DateTime? settledAt;
+  final String approvalStatus;
   final Map<String, dynamic> activationResult;
 
   factory LoanEntry.fromJson(Map<String, dynamic> j) {
@@ -84,9 +92,38 @@ class LoanEntry {
       reason: _string(j['reason']),
       status: _string(j['status'], fallback: 'open'),
       createdAt: _date(j['created_at']),
+      startsAt: _date(j['starts_at']),
+      endsAt: _date(j['ends_at']),
+      settledAt: _date(j['settled_at']),
+      approvalStatus: _string(j['approval_status']),
       activationResult: _map(j['activation_result']),
     );
   }
+
+  String get statusLabel => loanStatusLabel(status);
+
+  String get approvalStatusLabel => loanApprovalStatusLabel(approvalStatus);
+
+  bool get isOpen => status == 'open';
+}
+
+String loanStatusLabel(String value) {
+  return switch (value) {
+    '' => 'كل الحالات',
+    'open' => 'مفتوحة',
+    'settled' => 'مسددة',
+    'voided' => 'ملغاة',
+    _ => value.trim().isEmpty ? 'غير محددة' : value,
+  };
+}
+
+String loanApprovalStatusLabel(String value) {
+  return switch (value) {
+    'approved' => 'معتمدة',
+    'pending' => 'بانتظار الاعتماد',
+    'not_required' => 'لا يلزم اعتماد',
+    _ => value.trim().isEmpty ? 'غير محدد' : value,
+  };
 }
 
 class LedgerEntry {

@@ -253,6 +253,12 @@ const _sidebarSections = <_SidebarSection>[
         path: '/wallets',
       ),
       _SidebarItem(
+        icon: Icons.handshake_outlined,
+        label: 'السلف والديون',
+        routeName: 'loans-center',
+        path: '/loans',
+      ),
+      _SidebarItem(
         icon: Icons.bar_chart_outlined,
         label: 'التقارير المالية',
         routeName: 'financial-reports',

@@ -9,6 +9,7 @@ import '../../features/admins/presentation/role_form_screen.dart';
 import '../../features/admins/presentation/roles_list_screen.dart';
 import '../../features/accounting/presentation/financial_reports_screen.dart';
 import '../../features/accounting/presentation/ledger_screen.dart';
+import '../../features/accounting/presentation/loans_center_screen.dart';
 import '../../features/accounting/presentation/subscriber_finance_screen.dart';
 import '../../features/admin_control/presentation/admin_control_screen.dart';
 import '../../features/audit/presentation/audit_list_screen.dart';
@@ -377,6 +378,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/wallets',
             name: 'wallets',
             builder: (ctx, st) => const WalletsScreen(),
+          ),
+          GoRoute(
+            path: '/loans',
+            name: 'loans-center',
+            builder: (ctx, st) => const LoansCenterScreen(),
           ),
           GoRoute(
             path: '/reports',

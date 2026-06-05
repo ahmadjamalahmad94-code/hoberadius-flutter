@@ -54,6 +54,7 @@ const _navItems = <_NavItem>[
     'الخزائن والمحافظ',
     'wallets',
   ),
+  _NavItem(Icons.handshake_outlined, 'السلف والديون', 'loans-center'),
   _NavItem(
     Icons.insert_chart_outlined,
     'التقارير المالية',
@@ -158,6 +159,7 @@ class AppSidebar extends StatelessWidget {
       'invoices': '/invoices',
       'vouchers': '/vouchers',
       'wallets': '/wallets',
+      'loans-center': '/loans',
       'financial-reports': '/reports',
       'operational-reports': '/operational-reports',
       'tickets': '/tickets',

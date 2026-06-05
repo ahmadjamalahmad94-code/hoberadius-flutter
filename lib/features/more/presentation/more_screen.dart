@@ -132,6 +132,12 @@ const _items = <_MoreItem>[
     sub: 'إنشاء المحافظ وشحنها أو الخصم منها مع حركات قابلة للتتبع',
   ),
   _MoreItem(
+    Icons.handshake_outlined,
+    'السلف والديون',
+    'loans-center',
+    sub: 'متابعة السلف المفتوحة وتسجيل دين أو سلفة وتسويتها',
+  ),
+  _MoreItem(
     Icons.insert_chart_outlined,
     'التقارير المالية',
     'financial-reports',

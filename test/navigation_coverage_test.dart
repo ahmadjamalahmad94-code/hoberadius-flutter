@@ -20,6 +20,7 @@ void main() {
       'invoices': '/invoices',
       'vouchers': '/vouchers',
       'wallets': '/wallets',
+      'loans-center': '/loans',
       'tickets': '/tickets',
       'customer-portals': '/customer-portals',
       'communications': '/communications',

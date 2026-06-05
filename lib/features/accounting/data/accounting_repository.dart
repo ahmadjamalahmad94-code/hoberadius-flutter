@@ -87,6 +87,7 @@ class AccountingRepository {
     num amount = 0,
     String currency = 'JOD',
     String reason = '',
+    bool priceFromDays = false,
     bool applyToRadius = false,
     bool dryRun = true,
   }) async {
@@ -99,6 +100,7 @@ class AccountingRepository {
         'amount': amount,
         'currency': currency,
         'reason': reason,
+        if (priceFromDays) 'price_from_days': true,
         'apply_to_radius': applyToRadius,
         'dry_run': dryRun,
       },
