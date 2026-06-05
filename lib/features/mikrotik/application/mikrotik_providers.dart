@@ -19,3 +19,8 @@ final mikrotikRouterOverviewProvider =
     FutureProvider.autoDispose.family<MikrotikRouterOverview, int>((ref, id) {
   return ref.watch(mikrotikRepositoryProvider).routerOverview(id);
 });
+
+final mikrotikLiveSnapshotProvider =
+    FutureProvider.autoDispose.family<MikrotikLiveSnapshot, int>((ref, id) {
+  return ref.watch(mikrotikRepositoryProvider).liveSnapshot(id);
+});

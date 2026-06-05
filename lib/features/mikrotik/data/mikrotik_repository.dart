@@ -71,6 +71,36 @@ class MikrotikRepository {
     return MikrotikRouterOverview.fromJson(_data(res));
   }
 
+  Future<MikrotikLiveSnapshot> liveSnapshot(int nasId) async {
+    final sections = await Future.wait(
+      _liveSectionSpecs.map((spec) => _liveSection(nasId, spec)),
+    );
+    return MikrotikLiveSnapshot(routerId: nasId, sections: sections);
+  }
+
+  Future<MikrotikLiveSection> _liveSection(
+    int nasId,
+    _LiveSectionSpec spec,
+  ) async {
+    final path = spec.path.replaceAll('{id}', nasId.toString());
+    try {
+      final res = await _api.get(path, query: spec.query);
+      return MikrotikLiveSection.fromJson(
+        key: spec.key,
+        title: spec.title,
+        path: path,
+        json: _data(res),
+      );
+    } catch (error) {
+      return MikrotikLiveSection.failed(
+        key: spec.key,
+        title: spec.title,
+        path: path,
+        error: error.toString(),
+      );
+    }
+  }
+
   Map<String, dynamic> _data(Map<String, dynamic> response) {
     final data = response['data'];
     return data is Map<String, dynamic> ? data : const {};
@@ -80,3 +110,91 @@ class MikrotikRepository {
 final mikrotikRepositoryProvider = Provider<MikrotikRepository>((ref) {
   return MikrotikRepository(ref.watch(apiClientProvider));
 });
+
+class _LiveSectionSpec {
+  const _LiveSectionSpec(
+    this.key,
+    this.title,
+    this.path, {
+    this.query,
+  });
+
+  final String key;
+  final String title;
+  final String path;
+  final Map<String, dynamic>? query;
+}
+
+const _liveSectionSpecs = <_LiveSectionSpec>[
+  _LiveSectionSpec(
+    'interfaces',
+    'واجهات الراوتر',
+    '/api/v1/mikrotik/{id}/interfaces',
+  ),
+  _LiveSectionSpec(
+    'ip_addresses',
+    'عناوين IP على الراوتر',
+    '/api/v1/mikrotik/{id}/ip/addresses',
+  ),
+  _LiveSectionSpec(
+    'routes',
+    'مسارات التوجيه',
+    '/api/v1/mikrotik/{id}/routes',
+  ),
+  _LiveSectionSpec(
+    'neighbors',
+    'الأجهزة المجاورة',
+    '/api/v1/mikrotik/{id}/neighbors',
+  ),
+  _LiveSectionSpec(
+    'hotspot_active',
+    'جلسات الهوتسبوت النشطة',
+    '/api/v1/mikrotik/{id}/hotspot/active',
+  ),
+  _LiveSectionSpec(
+    'ppp_active',
+    'جلسات PPP النشطة',
+    '/api/v1/mikrotik/{id}/ppp/active',
+  ),
+  _LiveSectionSpec(
+    'queues',
+    'الطوابير والسرعات',
+    '/api/v1/mikrotik/{id}/queues/simple',
+  ),
+  _LiveSectionSpec(
+    'firewall_filter',
+    'قواعد فلترة الجدار الناري',
+    '/api/v1/mikrotik/{id}/firewall/filter',
+  ),
+  _LiveSectionSpec(
+    'firewall_nat',
+    'قواعد NAT',
+    '/api/v1/mikrotik/{id}/firewall/nat',
+  ),
+  _LiveSectionSpec(
+    'address_lists',
+    'قوائم العناوين',
+    '/api/v1/mikrotik/{id}/firewall/address-lists',
+  ),
+  _LiveSectionSpec(
+    'logs',
+    'آخر سجل من الراوتر',
+    '/api/v1/mikrotik/{id}/log',
+    query: {'limit': 30},
+  ),
+  _LiveSectionSpec(
+    'files',
+    'ملفات الراوتر',
+    '/api/v1/mikrotik/{id}/files',
+  ),
+  _LiveSectionSpec(
+    'router_backups',
+    'نسخ الراوتر المحفوظة',
+    '/api/v1/mikrotik/{id}/backups',
+  ),
+  _LiveSectionSpec(
+    'counters',
+    'عدادات التشغيل',
+    '/api/v1/mikrotik/{id}/counters',
+  ),
+];

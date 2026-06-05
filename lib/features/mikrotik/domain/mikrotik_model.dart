@@ -166,6 +166,116 @@ class MikrotikOverviewSection {
   }
 }
 
+class MikrotikLiveSnapshot {
+  const MikrotikLiveSnapshot({
+    required this.routerId,
+    required this.sections,
+  });
+
+  final int routerId;
+  final List<MikrotikLiveSection> sections;
+
+  bool get anyOk => sections.any((section) => section.ok);
+
+  int get totalRows => sections.fold<int>(
+        0,
+        (total, section) => total + section.rowCount,
+      );
+
+  int get failedSections => sections.where((section) => !section.ok).length;
+
+  MikrotikLiveSection? section(String key) {
+    for (final section in sections) {
+      if (section.key == key) return section;
+    }
+    return null;
+  }
+}
+
+class MikrotikLiveSection {
+  const MikrotikLiveSection({
+    required this.key,
+    required this.title,
+    required this.path,
+    required this.ok,
+    required this.rows,
+    required this.summary,
+    required this.error,
+    required this.tookMs,
+    required this.cached,
+    required this.dialedAddress,
+    required this.mode,
+    required this.count,
+  });
+
+  final String key;
+  final String title;
+  final String path;
+  final bool ok;
+  final List<Map<String, dynamic>> rows;
+  final Map<String, dynamic> summary;
+  final String error;
+  final int tookMs;
+  final bool cached;
+  final String dialedAddress;
+  final String mode;
+  final int count;
+
+  factory MikrotikLiveSection.fromJson({
+    required String key,
+    required String title,
+    required String path,
+    required Map<String, dynamic> json,
+  }) {
+    final payload = json.containsKey('data') ? json['data'] : json;
+    final rows = _rows(payload, fallback: json);
+    final summary = _summary(payload);
+    final explicitCount = _asIntOrNull(json['count']) ??
+        _asIntOrNull(summary['count']) ??
+        _asIntOrNull(summary['total']);
+    return MikrotikLiveSection(
+      key: key,
+      title: title,
+      path: path,
+      ok: json['ok'] != false,
+      rows: rows,
+      summary: summary,
+      error: (json['error'] ?? '').toString(),
+      tookMs: _asInt(json['took_ms']),
+      cached: json['cached'] == true,
+      dialedAddress: (json['dialed_address'] ?? '').toString(),
+      mode: (json['mode'] ?? '').toString(),
+      count: explicitCount ?? (rows.isNotEmpty ? rows.length : summary.length),
+    );
+  }
+
+  factory MikrotikLiveSection.failed({
+    required String key,
+    required String title,
+    required String path,
+    required String error,
+  }) {
+    return MikrotikLiveSection(
+      key: key,
+      title: title,
+      path: path,
+      ok: false,
+      rows: const [],
+      summary: const {},
+      error: error,
+      tookMs: 0,
+      cached: false,
+      dialedAddress: '',
+      mode: '',
+      count: 0,
+    );
+  }
+
+  int get rowCount => rows.isNotEmpty ? rows.length : count;
+
+  bool get hasData => rows.isNotEmpty || summary.isNotEmpty || count > 0;
+}
+
 int _asInt(Object? value, {int fallback = 0}) {
   if (value is int) return value;
   if (value is num) return value.toInt();
@@ -181,4 +291,79 @@ int? _asIntOrNull(Object? value) {
 
 Map<String, dynamic> _map(Object? value) {
   return value is Map<String, dynamic> ? value : const {};
+}
+
+List<Map<String, dynamic>> _rows(
+  Object? payload, {
+  required Map<String, dynamic> fallback,
+}) {
+  final fromPayload = _rowsFromObject(payload);
+  if (fromPayload.isNotEmpty) return fromPayload;
+  for (final key in const [
+    'items',
+    'rows',
+    'interfaces',
+    'addresses',
+    'routes',
+    'neighbors',
+    'sessions',
+    'queues',
+    'rules',
+    'files',
+    'backups',
+    'logs',
+  ]) {
+    final fromFallback = _rowsFromObject(fallback[key]);
+    if (fromFallback.isNotEmpty) return fromFallback;
+  }
+  return const [];
+}
+
+List<Map<String, dynamic>> _rowsFromObject(Object? value) {
+  if (value is List) {
+    return value.whereType<Map<String, dynamic>>().toList();
+  }
+  if (value is Map<String, dynamic>) {
+    for (final key in const [
+      'items',
+      'rows',
+      'interfaces',
+      'addresses',
+      'routes',
+      'neighbors',
+      'sessions',
+      'queues',
+      'rules',
+      'files',
+      'backups',
+      'logs',
+    ]) {
+      final nested = _rowsFromObject(value[key]);
+      if (nested.isNotEmpty) return nested;
+    }
+    if (value.isNotEmpty) return [value];
+  }
+  return const [];
+}
+
+Map<String, dynamic> _summary(Object? payload) {
+  final map = _map(payload);
+  if (map.isEmpty) return const {};
+  final listKeys = {
+    'items',
+    'rows',
+    'interfaces',
+    'addresses',
+    'routes',
+    'neighbors',
+    'sessions',
+    'queues',
+    'rules',
+    'files',
+    'backups',
+    'logs',
+  };
+  return Map.fromEntries(
+    map.entries.where((entry) => !listKeys.contains(entry.key)),
+  );
 }

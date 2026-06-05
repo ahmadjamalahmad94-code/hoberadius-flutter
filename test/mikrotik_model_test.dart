@@ -93,4 +93,87 @@ void main() {
     expect(overview.section('resource')?.firstRow['cpu-load'], '7');
     expect(overview.section('health')?.error, 'تعذر الاتصال');
   });
+
+  test('MikrotikLiveSection parses standard router envelopes', () {
+    final section = MikrotikLiveSection.fromJson(
+      key: 'interfaces',
+      title: 'واجهات الراوتر',
+      path: '/api/v1/mikrotik/5/interfaces',
+      json: {
+        'ok': true,
+        'data': [
+          {
+            'name': 'ether1',
+            'type': 'ether',
+            'running': true,
+            'disabled': false,
+          },
+          {
+            'name': 'bridge-customers',
+            'running': false,
+          },
+        ],
+        'took_ms': 18,
+        'cached': true,
+        'dialed_address': '10.10.0.5',
+        'mode': 'vpn',
+      },
+    );
+
+    expect(section.ok, isTrue);
+    expect(section.rowCount, 2);
+    expect(section.rows.first['name'], 'ether1');
+    expect(section.tookMs, 18);
+    expect(section.cached, isTrue);
+    expect(section.dialedAddress, '10.10.0.5');
+    expect(section.mode, 'vpn');
+  });
+
+  test('MikrotikLiveSection parses backup list shape', () {
+    final section = MikrotikLiveSection.fromJson(
+      key: 'router_backups',
+      title: 'نسخ الراوتر المحفوظة',
+      path: '/api/v1/mikrotik/5/backups',
+      json: {
+        'backups': [
+          {
+            'id': 9,
+            'name': 'before-change.backup',
+            'router_status': 'on_router',
+          },
+        ],
+        'count': 1,
+        'router_id': 5,
+      },
+    );
+
+    expect(section.ok, isTrue);
+    expect(section.rowCount, 1);
+    expect(section.rows.first['name'], 'before-change.backup');
+    expect(section.summary['router_id'], 5);
+  });
+
+  test('MikrotikLiveSnapshot keeps failed sections isolated', () {
+    final failed = MikrotikLiveSection.failed(
+      key: 'logs',
+      title: 'آخر سجل من الراوتر',
+      path: '/api/v1/mikrotik/5/log',
+      error: 'تعذر الاتصال',
+    );
+    final ok = MikrotikLiveSection.fromJson(
+      key: 'counters',
+      title: 'عدادات التشغيل',
+      path: '/api/v1/mikrotik/5/counters',
+      json: {
+        'ok': true,
+        'data': {'hotspot_active': 4, 'ppp_active': 2},
+      },
+    );
+    final snapshot = MikrotikLiveSnapshot(routerId: 5, sections: [failed, ok]);
+
+    expect(snapshot.anyOk, isTrue);
+    expect(snapshot.failedSections, 1);
+    expect(snapshot.totalRows, 1);
+    expect(snapshot.section('logs')?.ok, isFalse);
+  });
 }
