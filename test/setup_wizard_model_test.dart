@@ -61,6 +61,7 @@ void main() {
         'can_apply_router_changes': false,
         'can_apply_server_peer': false,
         'can_plan_phases': true,
+        'can_run_lifecycle': true,
         'reason_ar': 'قراءة آمنة فقط.',
       },
     });
@@ -78,6 +79,7 @@ void main() {
     expect(overview.runsSummary.byState['COLLECTING'], 1);
     expect(overview.safeOperations.canApplyRouterChanges, isFalse);
     expect(overview.safeOperations.canPlanPhases, isTrue);
+    expect(overview.safeOperations.canRunLifecycle, isTrue);
   });
 
   test('phase planner and phase plan payloads parse safely', () {
@@ -118,5 +120,25 @@ void main() {
     expect(response.plan.validationCommands.single, '/ip route print');
     expect(response.diagnostics.single.explanation, 'اختر نوع وصلة الإنترنت.');
     expect(setupWizardInputLabel('router_vpn_ip'), 'عنوان الراوتر داخل النفق');
+  });
+
+  test('script generation result hides secret fields and parses run state', () {
+    final result = SetupWizardScriptResult.fromJson({
+      'run': {'id': 12, 'state': 'AWAITING_HANDSHAKE'},
+      'script': '/interface wireguard add',
+      'short_code': 'abc123',
+      'sha256': 'deadbeef',
+      'expires_at': '2026-06-06T00:00:00Z',
+      'script_contains_sensitive_values': true,
+      'warning_ar': 'هذا السكربت يحتوي أسرار تشغيلية.',
+      'radius_secret': 'ignored',
+      'api_password': 'ignored',
+    });
+
+    expect(result.run.id, 12);
+    expect(result.script, contains('/interface wireguard'));
+    expect(result.shortCode, 'abc123');
+    expect(result.containsSensitiveValues, isTrue);
+    expect(result.warning, contains('أسرار'));
   });
 }

@@ -84,6 +84,11 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
           enabled: overview.safeOperations.canPlanPhases,
         ),
         const SizedBox(height: AppTokens.s12),
+        _RunLifecycleCard(
+          runs: overview.recentRuns,
+          enabled: overview.safeOperations.canRunLifecycle,
+        ),
+        const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 980;
@@ -477,6 +482,494 @@ class _PhasePlannerCardState extends ConsumerState<_PhasePlannerCard> {
       return inputs;
     }
     return text;
+  }
+}
+
+class _RunLifecycleCard extends ConsumerStatefulWidget {
+  const _RunLifecycleCard({required this.runs, required this.enabled});
+
+  final List<SetupWizardRun> runs;
+  final bool enabled;
+
+  @override
+  ConsumerState<_RunLifecycleCard> createState() => _RunLifecycleCardState();
+}
+
+class _RunLifecycleCardState extends ConsumerState<_RunLifecycleCard> {
+  final _routerName = TextEditingController(text: 'main-router');
+  final _endpoint = TextEditingController(text: 'hoberadius.com');
+  final _serverPublicKey = TextEditingController();
+  final _routerPublicKey = TextEditingController();
+  final _apiUser = TextEditingController(text: 'admin');
+  final _apiPassword = TextEditingController();
+  String _routerType = 'hotspot';
+  int? _runId;
+  String? _busyAction;
+  SetupWizardScriptResult? _scriptResult;
+  SetupWizardRun? _latestRun;
+
+  @override
+  void didUpdateWidget(covariant _RunLifecycleCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final validRunIds = widget.runs.map((run) => run.id).toSet();
+    if (_runId == null || !validRunIds.contains(_runId)) {
+      _runId = widget.runs.isEmpty ? null : widget.runs.first.id;
+      _latestRun = widget.runs.isEmpty ? null : widget.runs.first;
+    }
+  }
+
+  @override
+  void dispose() {
+    _routerName.dispose();
+    _endpoint.dispose();
+    _serverPublicKey.dispose();
+    _routerPublicKey.dispose();
+    _apiUser.dispose();
+    _apiPassword.dispose();
+    super.dispose();
+  }
+
+  SetupWizardRun? get _selectedRun {
+    if (_latestRun != null && _latestRun!.id == _runId) return _latestRun;
+    for (final run in widget.runs) {
+      if (run.id == _runId) return run;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.runs.isEmpty) {
+      return const AppCard(
+        title: 'إكمال تشغيل المعالج',
+        icon: Icons.checklist_rtl_outlined,
+        child: EmptyState(
+          icon: Icons.playlist_add_outlined,
+          title: 'لا يوجد تشغيل لإكماله',
+          subtitle: 'أنشئ تشغيلًا جديدًا من أعلى الصفحة ثم أكمل خطواته هنا.',
+        ),
+      );
+    }
+    final run = _selectedRun ?? widget.runs.first;
+    _runId ??= run.id;
+    return AppCard(
+      title: 'إكمال تشغيل المعالج',
+      icon: Icons.checklist_rtl_outlined,
+      actions: [
+        StatusPill(
+          text: widget.enabled ? 'خطوات متاحة' : 'مقفلة',
+          tone: widget.enabled ? PillTone.green : PillTone.neutral,
+          dot: true,
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SelectBox<int>(
+            label: 'تشغيل المعالج',
+            value: _runId ?? run.id,
+            items: [
+              for (final item in widget.runs)
+                DropdownMenuItem(
+                  value: item.id,
+                  child: Text('تشغيل ${item.id} - ${item.stateLabel}'),
+                ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() {
+                _runId = value;
+                _latestRun = widget.runs.firstWhere((item) => item.id == value);
+                _scriptResult = null;
+              });
+            },
+          ),
+          const SizedBox(height: AppTokens.s12),
+          _LifecycleProgress(run: run),
+          const SizedBox(height: AppTokens.s12),
+          _LifecycleFields(
+            routerName: _routerName,
+            endpoint: _endpoint,
+            serverPublicKey: _serverPublicKey,
+            routerPublicKey: _routerPublicKey,
+            apiUser: _apiUser,
+            apiPassword: _apiPassword,
+            routerType: _routerType,
+            onRouterTypeChanged: (value) {
+              if (value == null) return;
+              setState(() => _routerType = value);
+            },
+          ),
+          const SizedBox(height: AppTokens.s12),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              _ActionButton(
+                label: 'حفظ بيانات الراوتر',
+                icon: Icons.router_outlined,
+                busy: _busyAction == 'router_info',
+                enabled: widget.enabled && run.state == 'COLLECTING',
+                onPressed: () => _runAction('router_info'),
+              ),
+              _ActionButton(
+                label: 'توليد سكربت الربط',
+                icon: Icons.code_outlined,
+                busy: _busyAction == 'generate',
+                enabled: widget.enabled && run.state == 'PLANNING',
+                onPressed: () => _runAction('generate'),
+              ),
+              _ActionButton(
+                label: 'حفظ مفتاح الراوتر',
+                icon: Icons.key_outlined,
+                busy: _busyAction == 'submit_key',
+                enabled: widget.enabled && run.state == 'AWAITING_HANDSHAKE',
+                onPressed: () => _runAction('submit_key'),
+              ),
+              _ActionButton(
+                label: 'تطبيق peer على الخادم',
+                icon: Icons.vpn_lock_outlined,
+                busy: _busyAction == 'apply_peer',
+                enabled: widget.enabled && run.state == 'APPLYING_SERVER_PEER',
+                onPressed: () => _runAction('apply_peer'),
+              ),
+              _ActionButton(
+                label: 'تأكيد الاتصال',
+                icon: Icons.verified_outlined,
+                busy: _busyAction == 'mark_handshake',
+                enabled: widget.enabled && run.state == 'VERIFYING',
+                onPressed: () => _runAction('mark_handshake'),
+              ),
+              _ActionButton(
+                label: 'تسجيل الراوتر',
+                icon: Icons.app_registration_outlined,
+                busy: _busyAction == 'register',
+                enabled: widget.enabled && run.state == 'REGISTERING',
+                onPressed: () => _runAction('register'),
+              ),
+            ],
+          ),
+          if (_scriptResult != null) ...[
+            const SizedBox(height: AppTokens.s12),
+            _GeneratedScriptBox(result: _scriptResult!),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runAction(String action) async {
+    final runId = _runId;
+    if (runId == null) return;
+    setState(() => _busyAction = action);
+    try {
+      final repo = ref.read(setupWizardRepositoryProvider);
+      SetupWizardRun run;
+      if (action == 'router_info') {
+        run = await repo.submitRouterInfo(
+          runId,
+          routerName: _routerName.text.trim(),
+          routerType: _routerType,
+        );
+      } else if (action == 'generate') {
+        final result = await repo.generateScript(
+          runId,
+          endpoint: _endpoint.text.trim(),
+          serverPublicKey: _serverPublicKey.text.trim(),
+        );
+        run = result.run;
+        _scriptResult = result;
+      } else if (action == 'submit_key') {
+        run = await repo.submitPublicKey(
+          runId,
+          publicKeyOrOutput: _routerPublicKey.text.trim(),
+        );
+      } else if (action == 'apply_peer') {
+        run = await repo.applyServerPeer(runId);
+      } else if (action == 'mark_handshake') {
+        run = await repo.markHandshake(runId);
+      } else {
+        run = await repo.registerRouter(
+          runId,
+          apiUser:
+              _apiUser.text.trim().isEmpty ? 'admin' : _apiUser.text.trim(),
+          apiPassword: _apiPassword.text,
+        );
+      }
+      ref.invalidate(setupWizardOverviewProvider);
+      if (!mounted) return;
+      setState(() => _latestRun = run);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم تنفيذ الخطوة وتحديث حالة التشغيل')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(visibleErrorMessage(error))),
+      );
+    } finally {
+      if (mounted) setState(() => _busyAction = null);
+    }
+  }
+}
+
+class _LifecycleFields extends StatelessWidget {
+  const _LifecycleFields({
+    required this.routerName,
+    required this.endpoint,
+    required this.serverPublicKey,
+    required this.routerPublicKey,
+    required this.apiUser,
+    required this.apiPassword,
+    required this.routerType,
+    required this.onRouterTypeChanged,
+  });
+
+  final TextEditingController routerName;
+  final TextEditingController endpoint;
+  final TextEditingController serverPublicKey;
+  final TextEditingController routerPublicKey;
+  final TextEditingController apiUser;
+  final TextEditingController apiPassword;
+  final String routerType;
+  final ValueChanged<String?> onRouterTypeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth >= 760;
+        final fields = [
+          _InputBox(
+            label: 'اسم الراوتر',
+            controller: routerName,
+            hint: 'main-router',
+          ),
+          _SelectBox<String>(
+            label: 'نوع الراوتر',
+            value: routerType,
+            items: const [
+              DropdownMenuItem(value: 'hotspot', child: Text('بوابة دخول')),
+              DropdownMenuItem(value: 'pppoe', child: Text('اشتراكات PPPoE')),
+              DropdownMenuItem(value: 'mixed', child: Text('مختلط')),
+            ],
+            onChanged: onRouterTypeChanged,
+          ),
+          _InputBox(
+            label: 'عنوان الخادم العام',
+            controller: endpoint,
+            hint: 'hoberadius.com',
+          ),
+          _InputBox(
+            label: 'مفتاح الخادم العام',
+            controller: serverPublicKey,
+            hint: 'WireGuard public key',
+          ),
+          _InputBox(
+            label: 'مفتاح الراوتر أو المخرجات',
+            controller: routerPublicKey,
+            hint: 'HOBERADIUS_PUBLIC_KEY=...',
+          ),
+          _InputBox(
+            label: 'مستخدم API على الراوتر',
+            controller: apiUser,
+            hint: 'admin',
+          ),
+          _InputBox(
+            label: 'كلمة مرور API على الراوتر',
+            controller: apiPassword,
+            hint: 'تترك فارغة إذا أنشأها السكربت',
+          ),
+        ];
+        if (!wide) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final field in fields) ...[
+                field,
+                const SizedBox(height: AppTokens.s8),
+              ],
+            ],
+          );
+        }
+        return Wrap(
+          spacing: AppTokens.s8,
+          runSpacing: AppTokens.s8,
+          children: [
+            for (final field in fields) SizedBox(width: 260, child: field),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _LifecycleProgress extends StatelessWidget {
+  const _LifecycleProgress({required this.run});
+
+  final SetupWizardRun run;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.soft,
+        borderRadius: BorderRadius.circular(AppTokens.r8),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'الحالة الحالية: ${run.stateLabel}',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                ),
+              ),
+              StatusPill(
+                text: run.isTerminal ? 'نهائية' : 'قيد التشغيل',
+                tone: run.isTerminal ? PillTone.neutral : PillTone.blue,
+                dot: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s8),
+          Text(
+            _nextLifecycleHint(run.state),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTokens.textSecondary,
+                  height: 1.45,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    required this.busy,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool busy;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: enabled && !busy ? onPressed : null,
+      icon: busy
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon),
+      label: Text(busy ? 'جاري التنفيذ' : label),
+    );
+  }
+}
+
+class _GeneratedScriptBox extends StatelessWidget {
+  const _GeneratedScriptBox({required this.result});
+
+  final SetupWizardScriptResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.warningBg,
+        borderRadius: BorderRadius.circular(AppTokens.r8),
+        border: Border.all(color: AppTokens.warningMed),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'سكربت الربط الموحد',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        color: AppTokens.warningFg,
+                      ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: result.script));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم نسخ سكربت الربط')),
+                  );
+                },
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('نسخ'),
+              ),
+            ],
+          ),
+          if (result.warning.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s8),
+            Text(
+              result.warning,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTokens.warningFg,
+                    height: 1.4,
+                  ),
+            ),
+          ],
+          const SizedBox(height: AppTokens.s8),
+          SelectableText(
+            [
+              if (result.shortCode.isNotEmpty)
+                'رمز السكربت: ${result.shortCode}',
+              if (result.expiresAt.isNotEmpty) 'ينتهي في: ${result.expiresAt}',
+            ].join('  •  '),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTokens.warningFg,
+                ),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 260),
+            padding: const EdgeInsets.all(AppTokens.s12),
+            decoration: BoxDecoration(
+              color: AppTokens.card,
+              borderRadius: BorderRadius.circular(AppTokens.r8),
+              border: Border.all(color: AppTokens.warningMed),
+            ),
+            child: SingleChildScrollView(
+              child: SelectableText(
+                result.script,
+                textDirection: TextDirection.ltr,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  height: 1.35,
+                  color: AppTokens.textPrimary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1264,6 +1757,27 @@ String _safeArabicDetail(String value) {
   if (text.isEmpty) return '';
   if (_containsArabic(text)) return text;
   return 'تفاصيل تقنية متاحة من الخادم، وتحتاج صياغة عربية في المصدر.';
+}
+
+String _nextLifecycleHint(String state) {
+  return switch (state) {
+    'COLLECTING' =>
+      'أدخل اسم الراوتر ونوعه، ثم احفظ بيانات الراوتر للانتقال إلى التخطيط.',
+    'PLANNING' =>
+      'أدخل عنوان الخادم العام ومفتاح الخادم العام، ثم ولّد سكربت الربط والصقه في الراوتر.',
+    'AWAITING_HANDSHAKE' =>
+      'بعد تشغيل السكربت على الراوتر، الصق مفتاح الراوتر العام أو مخرجات السكربت هنا.',
+    'APPLYING_SERVER_PEER' =>
+      'طبّق peer على الخادم حتى يتعرف الخادم على الراوتر داخل النفق.',
+    'VERIFYING' =>
+      'عند نجاح الاتصال أو ظهور handshake، أكد الاتصال للانتقال إلى التسجيل.',
+    'REGISTERING' =>
+      'سجل الراوتر في النظام حتى يظهر ضمن أجهزة الشبكة وإدارة MikroTik.',
+    'COMPLETE' =>
+      'اكتمل هذا التشغيل. تستطيع إدارة الراوتر من صفحات الشبكة والخدمات.',
+    'BLOCKED' => 'هذا التشغيل متوقف ويحتاج مراجعة التشخيص قبل المتابعة.',
+    _ => 'راجع حالة التشغيل الحالية واختر الخطوة المتاحة فقط.',
+  };
 }
 
 List<String> _fieldsFor(String phase, String serviceKey) {

@@ -53,6 +53,79 @@ class SetupWizardRepository {
         : const [];
   }
 
+  Future<SetupWizardRun> submitRouterInfo(
+    int runId, {
+    required String routerName,
+    required String routerType,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/setup-wizard/runs/$runId/router-info',
+      body: {'router_name': routerName, 'router_type': routerType},
+    );
+    return _runFromResponse(res);
+  }
+
+  Future<SetupWizardScriptResult> generateScript(
+    int runId, {
+    required String endpoint,
+    required String serverPublicKey,
+    int wgListenPort = 13231,
+    int endpointPort = 51820,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/setup-wizard/runs/$runId/generate-script',
+      body: {
+        'vps_public_endpoint': endpoint,
+        'vps_wg_pubkey': serverPublicKey,
+        'wg_listen_port': wgListenPort,
+        'vps_endpoint_port': endpointPort,
+      },
+    );
+    final data = res['data'];
+    return SetupWizardScriptResult.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
+  }
+
+  Future<SetupWizardRun> submitPublicKey(
+    int runId, {
+    required String publicKeyOrOutput,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/setup-wizard/runs/$runId/submit-key',
+      body: {'pasted_output': publicKeyOrOutput},
+    );
+    return _runFromResponse(res);
+  }
+
+  Future<SetupWizardRun> applyServerPeer(int runId) async {
+    final res = await _api.post(
+      '/api/v1/setup-wizard/runs/$runId/apply-server-peer',
+      body: {},
+    );
+    return _runFromResponse(res);
+  }
+
+  Future<SetupWizardRun> markHandshake(int runId) async {
+    final res = await _api.post(
+      '/api/v1/setup-wizard/runs/$runId/mark-handshake',
+      body: {},
+    );
+    return _runFromResponse(res);
+  }
+
+  Future<SetupWizardRun> registerRouter(
+    int runId, {
+    required String apiUser,
+    required String apiPassword,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/setup-wizard/runs/$runId/register',
+      body: {'api_user': apiUser, 'api_password': apiPassword},
+    );
+    return _runFromResponse(res);
+  }
+
   Future<SetupWizardPhasePlanResponse> phasePlan(
     int runId,
     String phase, {
@@ -83,6 +156,15 @@ class SetupWizardRepository {
             )
             .toList()
         : const [];
+  }
+
+  SetupWizardRun _runFromResponse(Map<String, dynamic> res) {
+    final data = res['data'];
+    final map = data is Map<String, dynamic> ? data : const <String, dynamic>{};
+    final run = map['run'];
+    return SetupWizardRun.fromJson(
+      run is Map<String, dynamic> ? run : const {},
+    );
   }
 }
 

@@ -306,6 +306,7 @@ class SetupWizardSafeOperations {
     required this.canApplyRouterChanges,
     required this.canApplyServerPeer,
     required this.canPlanPhases,
+    required this.canRunLifecycle,
     required this.reason,
   });
 
@@ -313,6 +314,7 @@ class SetupWizardSafeOperations {
   final bool canApplyRouterChanges;
   final bool canApplyServerPeer;
   final bool canPlanPhases;
+  final bool canRunLifecycle;
   final String reason;
 
   factory SetupWizardSafeOperations.fromJson(Map<String, dynamic> json) {
@@ -321,7 +323,40 @@ class SetupWizardSafeOperations {
       canApplyRouterChanges: _bool(json['can_apply_router_changes']),
       canApplyServerPeer: _bool(json['can_apply_server_peer']),
       canPlanPhases: _bool(json['can_plan_phases']),
+      canRunLifecycle: _bool(json['can_run_lifecycle']),
       reason: _string(json['reason_ar']),
+    );
+  }
+}
+
+class SetupWizardScriptResult {
+  const SetupWizardScriptResult({
+    required this.run,
+    required this.script,
+    required this.shortCode,
+    required this.sha256,
+    required this.expiresAt,
+    required this.warning,
+    required this.containsSensitiveValues,
+  });
+
+  final SetupWizardRun run;
+  final String script;
+  final String shortCode;
+  final String sha256;
+  final String expiresAt;
+  final String warning;
+  final bool containsSensitiveValues;
+
+  factory SetupWizardScriptResult.fromJson(Map<String, dynamic> json) {
+    return SetupWizardScriptResult(
+      run: SetupWizardRun.fromJson(_map(json['run'])),
+      script: _string(json['script']),
+      shortCode: _string(json['short_code']),
+      sha256: _string(json['sha256']),
+      expiresAt: _string(json['expires_at']),
+      warning: _string(json['warning_ar']),
+      containsSensitiveValues: _bool(json['script_contains_sensitive_values']),
     );
   }
 }

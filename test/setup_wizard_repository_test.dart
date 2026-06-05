@@ -75,6 +75,30 @@ class _CaptureAdapter implements HttpClientAdapter {
           },
           'diagnostics': [],
         },
+      String path when path.endsWith('/generate-script') => {
+          'run': {'id': 9, 'state': 'AWAITING_HANDSHAKE'},
+          'script': '/interface wireguard add',
+          'short_code': 'abc123',
+          'sha256': 'deadbeef',
+          'expires_at': '2026-06-06T00:00:00Z',
+          'script_contains_sensitive_values': true,
+          'warning_ar': 'هذا السكربت يحتوي أسرار تشغيلية.',
+        },
+      String path when path.endsWith('/router-info') => {
+          'run': {'id': 9, 'state': 'PLANNING'},
+        },
+      String path when path.endsWith('/submit-key') => {
+          'run': {'id': 9, 'state': 'APPLYING_SERVER_PEER'},
+        },
+      String path when path.endsWith('/apply-server-peer') => {
+          'run': {'id': 9, 'state': 'VERIFYING'},
+        },
+      String path when path.endsWith('/mark-handshake') => {
+          'run': {'id': 9, 'state': 'REGISTERING'},
+        },
+      String path when path.endsWith('/register') => {
+          'run': {'id': 9, 'state': 'COMPLETE'},
+        },
       _ => {},
     };
     return ResponseBody.fromString(
@@ -113,5 +137,56 @@ void main() {
         'GET /api/v1/setup-wizard/diagnostics-catalogue',
       ],
     );
+  });
+
+  test('SetupWizardRepository sends lifecycle API requests', () async {
+    final client = ApiClient(_MemoryTokenStorage(), _MemoryEndpointStorage());
+    final adapter = _CaptureAdapter();
+    client.dio.httpClientAdapter = adapter;
+    final repo = SetupWizardRepository(client);
+
+    final routerInfo = await repo.submitRouterInfo(
+      9,
+      routerName: 'main-router',
+      routerType: 'mixed',
+    );
+    final script = await repo.generateScript(
+      9,
+      endpoint: 'hoberadius.com',
+      serverPublicKey: List.filled(44, 'A').join(),
+    );
+    final key = await repo.submitPublicKey(
+      9,
+      publicKeyOrOutput: 'HOBERADIUS_PUBLIC_KEY=${List.filled(44, 'A').join()}',
+    );
+    final peer = await repo.applyServerPeer(9);
+    final handshake = await repo.markHandshake(9);
+    final registered = await repo.registerRouter(
+      9,
+      apiUser: 'admin',
+      apiPassword: 'secret',
+    );
+
+    expect(routerInfo.state, 'PLANNING');
+    expect(script.shortCode, 'abc123');
+    expect(script.containsSensitiveValues, isTrue);
+    expect(key.state, 'APPLYING_SERVER_PEER');
+    expect(peer.state, 'VERIFYING');
+    expect(handshake.state, 'REGISTERING');
+    expect(registered.state, 'COMPLETE');
+    expect(
+      adapter.requests.map((request) => '${request.method} ${request.path}'),
+      [
+        'POST /api/v1/setup-wizard/runs/9/router-info',
+        'POST /api/v1/setup-wizard/runs/9/generate-script',
+        'POST /api/v1/setup-wizard/runs/9/submit-key',
+        'POST /api/v1/setup-wizard/runs/9/apply-server-peer',
+        'POST /api/v1/setup-wizard/runs/9/mark-handshake',
+        'POST /api/v1/setup-wizard/runs/9/register',
+      ],
+    );
+    final routerInfoBody = adapter.requests.first.data as Map<String, dynamic>;
+    expect(routerInfoBody['router_name'], 'main-router');
+    expect(routerInfoBody['router_type'], 'mixed');
   });
 }
