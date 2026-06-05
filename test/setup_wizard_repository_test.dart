@@ -59,7 +59,12 @@ class _CaptureAdapter implements HttpClientAdapter {
           'catalogue': [
             {
               'code': 'internet_source_missing',
+              'phase': 'internet',
               'ar_explanation': 'اختر نوع وصلة الإنترنت.',
+              'cause': 'لم يتم تحديد مصدر الإنترنت.',
+              'fix': 'حدد المصدر قبل توليد الخطة.',
+              'severity': 'warning',
+              'inspect_command': '/interface print',
             },
           ],
         },
@@ -153,6 +158,8 @@ void main() {
     expect(phases.single.title, 'وصلة الإنترنت');
     expect(plan.plan.script, contains('/ip dhcp-client add'));
     expect(diagnostics.single.explanation, 'اختر نوع وصلة الإنترنت.');
+    expect(diagnostics.single.fix, 'حدد المصدر قبل توليد الخطة.');
+    expect(diagnostics.single.inspectCommand, '/interface print');
     expect(
       adapter.requests.map((request) => '${request.method} ${request.path}'),
       [

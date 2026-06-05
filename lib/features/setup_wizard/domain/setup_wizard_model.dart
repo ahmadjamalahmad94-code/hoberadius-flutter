@@ -203,29 +203,55 @@ class SetupWizardReadinessCheck {
 class SetupWizardDiagnostic {
   const SetupWizardDiagnostic({
     required this.code,
+    required this.phase,
     required this.title,
     required this.explanation,
+    required this.cause,
+    required this.fix,
+    required this.severity,
+    required this.inspectCommand,
   });
 
   final String code;
+  final String phase;
   final String title;
   final String explanation;
+  final String cause;
+  final String fix;
+  final String severity;
+  final String inspectCommand;
 
   factory SetupWizardDiagnostic.fromJson(Map<String, dynamic> json) {
+    final code = _string(json['code']);
     return SetupWizardDiagnostic(
-      code: _string(json['code']),
+      code: code,
+      phase: _string(json['phase']),
       title: _arabicOr(
         _string(json['arabic_title']),
-        _diagnosticTitle(_string(json['code'])),
+        _diagnosticTitle(code),
       ),
       explanation: _arabicOr(
         _string(json['explanation_ar']).isNotEmpty
             ? _string(json['explanation_ar'])
             : _string(json['ar_explanation']),
-        _diagnosticExplanation(_string(json['code'])),
+        _diagnosticExplanation(code),
       ),
+      cause: _string(json['cause']),
+      fix: _string(json['fix']),
+      severity: _string(json['severity'], fallback: 'info'),
+      inspectCommand: _string(json['inspect_command']),
     );
   }
+
+  String get phaseLabel =>
+      phase.trim().isEmpty ? 'تشخيص عام' : setupWizardPhaseLabel(phase);
+
+  String get severityLabel => switch (severity) {
+        'error' || 'critical' => 'حرج',
+        'warning' || 'warn' => 'تنبيه',
+        'info' || 'notice' => 'معلومة',
+        _ => 'معلومة',
+      };
 }
 
 class SetupWizardRun {

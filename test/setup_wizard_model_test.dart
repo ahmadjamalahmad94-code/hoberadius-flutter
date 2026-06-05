@@ -110,7 +110,12 @@ void main() {
       'diagnostics': [
         {
           'code': 'internet_source_missing',
+          'phase': 'internet',
           'ar_explanation': 'اختر نوع وصلة الإنترنت.',
+          'cause': 'نوع المصدر غير محدد.',
+          'fix': 'اختر DHCP أو عنوان ثابت.',
+          'severity': 'warning',
+          'inspect_command': '/interface print',
         },
       ],
     });
@@ -121,6 +126,9 @@ void main() {
     expect(response.plan.canApply, isTrue);
     expect(response.plan.validationCommands.single, '/ip route print');
     expect(response.diagnostics.single.explanation, 'اختر نوع وصلة الإنترنت.');
+    expect(response.diagnostics.single.phaseLabel, 'وصلة الإنترنت');
+    expect(response.diagnostics.single.severityLabel, 'تنبيه');
+    expect(response.diagnostics.single.inspectCommand, '/interface print');
     expect(setupWizardInputLabel('router_vpn_ip'), 'عنوان الراوتر داخل النفق');
   });
 

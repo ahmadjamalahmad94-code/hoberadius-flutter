@@ -13,6 +13,11 @@ final setupWizardPhasePlannersProvider =
   return ref.watch(setupWizardRepositoryProvider).phasePlanners();
 });
 
+final setupWizardDiagnosticsCatalogueProvider =
+    FutureProvider.autoDispose<List<SetupWizardDiagnostic>>((ref) {
+  return ref.watch(setupWizardRepositoryProvider).diagnosticsCatalogue();
+});
+
 final setupWizardRouterServiceCatalogueProvider =
     FutureProvider.autoDispose<List<SetupWizardRouterServiceCard>>((ref) {
   return ref.watch(setupWizardRepositoryProvider).routerServiceCatalogue();

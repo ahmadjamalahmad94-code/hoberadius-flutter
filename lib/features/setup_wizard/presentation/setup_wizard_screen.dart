@@ -91,6 +91,8 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
         const SizedBox(height: AppTokens.s12),
         _RouterServicesCard(runs: overview.recentRuns),
         const SizedBox(height: AppTokens.s12),
+        const _DiagnosticsCatalogueCard(),
+        const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 980;
@@ -221,7 +223,7 @@ class _SafetyNotice extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   safeOperations.reason.isEmpty
-                      ? 'التطبيق يعرض الحالة ويبدأ تشغيلًا جديدًا فقط. تطبيق أوامر الراوتر يتم من شاشة الويب المحمية.'
+                      ? 'التطبيق يعرض الحالة، يبدأ تشغيلًا جديدًا، ويكمل خطوات الربط المسموحة عبر API محمي. أوامر الراوتر المباشرة تبقى ضمن شاشات محمية بتأكيد واضح.'
                       : safeOperations.reason,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: AppTokens.textSecondary,
@@ -960,6 +962,231 @@ class _RouterServiceTile extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DiagnosticsCatalogueCard extends ConsumerWidget {
+  const _DiagnosticsCatalogueCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final diagnostics = ref.watch(setupWizardDiagnosticsCatalogueProvider);
+    return AppCard(
+      title: 'دليل تشخيص معالج الإعداد',
+      icon: Icons.manage_search_outlined,
+      actions: [
+        IconButton(
+          tooltip: 'تحديث دليل التشخيص',
+          onPressed: () =>
+              ref.invalidate(setupWizardDiagnosticsCatalogueProvider),
+          icon: const Icon(Icons.refresh_outlined),
+        ),
+      ],
+      child: diagnostics.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => HubErrorState(
+          title: 'تعذر جلب دليل التشخيص',
+          subtitle: visibleErrorMessage(error),
+          onRetry: () =>
+              ref.invalidate(setupWizardDiagnosticsCatalogueProvider),
+        ),
+        data: (items) {
+          if (items.isEmpty) {
+            return const EmptyState(
+              icon: Icons.manage_search_outlined,
+              title: 'لا توجد تشخيصات معرفة',
+              subtitle:
+                  'عند توفر كتالوج التشخيص من الخادم ستظهر هنا الأسباب وخطوات الإصلاح لكل مرحلة.',
+            );
+          }
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'هذا الدليل يشرح رسائل التعطل قبل التطبيق العملي، ويعرض السبب وخطوة الإصلاح وأمر الفحص عند توفره.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTokens.textSecondary,
+                      height: 1.5,
+                    ),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              for (final item in items.take(8)) ...[
+                _DiagnosticCatalogueRow(diagnostic: item),
+                const Divider(height: 1),
+              ],
+              if (items.length > 8) ...[
+                const SizedBox(height: AppTokens.s8),
+                Text(
+                  'يعرض التطبيق أهم ${items.take(8).length} تشخيصات من أصل ${items.length}. استخدم البحث في الويب للتفاصيل الكاملة عند الحاجة.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTokens.textMuted,
+                      ),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _DiagnosticCatalogueRow extends StatelessWidget {
+  const _DiagnosticCatalogueRow({required this.diagnostic});
+
+  final SetupWizardDiagnostic diagnostic;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      diagnostic.title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w900,
+                          ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      diagnostic.phaseLabel,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTokens.textMuted,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppTokens.s8),
+              StatusPill(
+                text: diagnostic.severityLabel,
+                tone: _diagnosticSeverityTone(diagnostic.severity),
+                dot: true,
+              ),
+            ],
+          ),
+          if (diagnostic.explanation.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s8),
+            Text(
+              diagnostic.explanation,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTokens.textSecondary,
+                    height: 1.45,
+                  ),
+            ),
+          ],
+          if (diagnostic.cause.isNotEmpty || diagnostic.fix.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s8),
+            Wrap(
+              spacing: AppTokens.s8,
+              runSpacing: AppTokens.s8,
+              children: [
+                if (diagnostic.cause.isNotEmpty)
+                  _InfoChip(
+                    icon: Icons.help_outline,
+                    label: 'السبب',
+                    value: diagnostic.cause,
+                  ),
+                if (diagnostic.fix.isNotEmpty)
+                  _InfoChip(
+                    icon: Icons.build_outlined,
+                    label: 'الإصلاح',
+                    value: diagnostic.fix,
+                  ),
+              ],
+            ),
+          ],
+          if (diagnostic.inspectCommand.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s8),
+            Container(
+              padding: const EdgeInsets.all(AppTokens.s8),
+              decoration: BoxDecoration(
+                color: AppTokens.soft,
+                borderRadius: BorderRadius.circular(AppTokens.r8),
+                border: Border.all(color: AppTokens.border),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      diagnostic.inspectCommand,
+                      textDirection: TextDirection.ltr,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            fontFamily: 'monospace',
+                            color: AppTokens.sidebarBg,
+                          ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'نسخ أمر الفحص',
+                    onPressed: () {
+                      Clipboard.setData(
+                        ClipboardData(text: diagnostic.inspectCommand),
+                      );
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('تم نسخ أمر الفحص')),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_outlined),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppTokens.brandSoft,
+        borderRadius: BorderRadius.circular(AppTokens.r8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.s8,
+          vertical: AppTokens.s8,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: AppTokens.brandInk),
+            const SizedBox(width: 6),
+            Text(
+              '$label: $value',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTokens.brandInk,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1737,7 +1964,7 @@ class _RunsCard extends StatelessWidget {
               icon: Icons.playlist_add_check_outlined,
               title: 'لا توجد تشغيلات بعد',
               subtitle:
-                  'ابدأ تشغيلًا جديدًا عند تجهيز راوتر جديد، ثم أكمل التطبيق من شاشة الويب المحمية.',
+                  'ابدأ تشغيلًا جديدًا عند تجهيز راوتر جديد، ثم أكمل الخطوات المتاحة من التطبيق مع متابعة التشخيصات والجاهزية.',
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2010,6 +2237,12 @@ PillTone _routerServiceTone(String status) => switch (status) {
       'inactive' => PillTone.neutral,
       'unknown' => PillTone.amber,
       _ => PillTone.neutral,
+    };
+
+PillTone _diagnosticSeverityTone(String severity) => switch (severity) {
+      'error' || 'critical' => PillTone.red,
+      'warning' || 'warn' => PillTone.amber,
+      _ => PillTone.blue,
     };
 
 IconData _routerServiceIcon(String key) {
