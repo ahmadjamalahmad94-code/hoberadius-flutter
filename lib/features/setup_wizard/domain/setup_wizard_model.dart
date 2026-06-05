@@ -219,7 +219,9 @@ class SetupWizardDiagnostic {
         _diagnosticTitle(_string(json['code'])),
       ),
       explanation: _arabicOr(
-        _string(json['explanation_ar']),
+        _string(json['explanation_ar']).isNotEmpty
+            ? _string(json['explanation_ar'])
+            : _string(json['ar_explanation']),
         _diagnosticExplanation(_string(json['code'])),
       ),
     );
@@ -303,12 +305,14 @@ class SetupWizardSafeOperations {
     required this.canCreateRun,
     required this.canApplyRouterChanges,
     required this.canApplyServerPeer,
+    required this.canPlanPhases,
     required this.reason,
   });
 
   final bool canCreateRun;
   final bool canApplyRouterChanges;
   final bool canApplyServerPeer;
+  final bool canPlanPhases;
   final String reason;
 
   factory SetupWizardSafeOperations.fromJson(Map<String, dynamic> json) {
@@ -316,9 +320,153 @@ class SetupWizardSafeOperations {
       canCreateRun: _bool(json['can_create_run']),
       canApplyRouterChanges: _bool(json['can_apply_router_changes']),
       canApplyServerPeer: _bool(json['can_apply_server_peer']),
+      canPlanPhases: _bool(json['can_plan_phases']),
       reason: _string(json['reason_ar']),
     );
   }
+}
+
+class SetupWizardPhasePlanner {
+  const SetupWizardPhasePlanner({
+    required this.phase,
+    required this.title,
+    required this.description,
+    required this.requiredInputs,
+  });
+
+  final String phase;
+  final String title;
+  final String description;
+  final List<String> requiredInputs;
+
+  factory SetupWizardPhasePlanner.fromJson(Map<String, dynamic> json) {
+    return SetupWizardPhasePlanner(
+      phase: _string(json['phase']),
+      title: _arabicOr(
+        _string(json['title_ar']),
+        setupWizardPhaseLabel(_string(json['phase'])),
+      ),
+      description: _arabicOr(
+        _string(json['description_ar']),
+        setupWizardPhaseDescription(_string(json['phase'])),
+      ),
+      requiredInputs: _stringList(json['required_inputs']),
+    );
+  }
+}
+
+class SetupWizardPhasePlanResponse {
+  const SetupWizardPhasePlanResponse({
+    required this.phase,
+    required this.runId,
+    required this.plan,
+    required this.diagnostics,
+  });
+
+  final String phase;
+  final int runId;
+  final SetupWizardPhasePlan plan;
+  final List<SetupWizardDiagnostic> diagnostics;
+
+  factory SetupWizardPhasePlanResponse.fromJson(Map<String, dynamic> json) {
+    final rawDiagnostics = json['diagnostics'];
+    return SetupWizardPhasePlanResponse(
+      phase: _string(json['phase']),
+      runId: _int(json['run_id']),
+      plan: SetupWizardPhasePlan.fromJson(_map(json['plan'])),
+      diagnostics: rawDiagnostics is List
+          ? rawDiagnostics
+              .whereType<Map>()
+              .map((item) => SetupWizardDiagnostic.fromJson(_map(item)))
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class SetupWizardPhasePlan {
+  const SetupWizardPhasePlan({
+    required this.phase,
+    required this.isApplicable,
+    required this.canApply,
+    required this.script,
+    required this.rollbackScript,
+    required this.validationCommands,
+    required this.warnings,
+    required this.notes,
+    required this.tags,
+    required this.blockingErrors,
+  });
+
+  final String phase;
+  final bool isApplicable;
+  final bool canApply;
+  final String script;
+  final String rollbackScript;
+  final List<String> validationCommands;
+  final List<String> warnings;
+  final List<String> notes;
+  final List<String> tags;
+  final List<String> blockingErrors;
+
+  factory SetupWizardPhasePlan.fromJson(Map<String, dynamic> json) {
+    return SetupWizardPhasePlan(
+      phase: _string(json['phase']),
+      isApplicable: _bool(json['is_applicable']),
+      canApply: _bool(json['can_apply']),
+      script: _string(json['script']),
+      rollbackScript: _string(json['rollback_script']),
+      validationCommands: _stringList(json['validation_commands']),
+      warnings: _stringList(json['warnings']),
+      notes: _stringList(json['notes']),
+      tags: _stringList(json['tags']),
+      blockingErrors: _stringList(json['blocking_errors']),
+    );
+  }
+}
+
+String setupWizardPhaseLabel(String phase) {
+  return switch (phase) {
+    'internet' => 'وصلة الإنترنت',
+    'vpn_radius' => 'الربط الآمن وخدمة الريدياس',
+    'hotspot' => 'بوابة الدخول',
+    'broadband' => 'اشتراكات PPPoE',
+    'added_services' => 'خدمات إضافية',
+    _ => phase.isEmpty ? 'مرحلة غير محددة' : phase,
+  };
+}
+
+String setupWizardPhaseDescription(String phase) {
+  return switch (phase) {
+    'internet' => 'تجهيز منفذ الإنترنت الخارج للراوتر.',
+    'vpn_radius' => 'تجهيز الربط الآمن وخدمة RADIUS.',
+    'hotspot' => 'تجهيز بوابة الدخول على المنافذ المختارة.',
+    'broadband' => 'تجهيز PPPoE للخطوط الثابتة.',
+    'added_services' => 'إضافة خدمات تشغيلية مثل الحجب أو المواقع المفتوحة.',
+    _ => 'مرحلة من مراحل معالج إعداد الراوتر.',
+  };
+}
+
+String setupWizardInputLabel(String key) {
+  return switch (key) {
+    'source_type' => 'نوع وصلة الإنترنت',
+    'interface' => 'منفذ الإنترنت',
+    'nat_enabled' => 'تفعيل NAT',
+    'router_vpn_ip' => 'عنوان الراوتر داخل النفق',
+    'vps_vpn_ip' => 'عنوان الخادم داخل النفق',
+    'vps_public_endpoint' => 'عنوان الخادم العام',
+    'radius_secret' => 'سر RADIUS',
+    'server_public_key' => 'مفتاح الخادم العام',
+    'selected_interfaces' => 'المنافذ المختارة',
+    'subnet_base' => 'شبكة Hotspot الأساسية',
+    'local_address' => 'عنوان PPPoE المحلي',
+    'remote_pool_cidr' => 'مدى عناوين المشتركين',
+    'service_key' => 'الخدمة الإضافية',
+    'domains' => 'النطاقات',
+    'destinations' => 'الوجهات',
+    'wireguard_interface_name' => 'واجهة WireGuard',
+    _ => key,
+  };
 }
 
 const _readinessLabels = {
@@ -392,7 +540,8 @@ const _diagnosticExplanations = {
   'missing_wg_listen_port': 'اضبط منفذ النفق المتوقع قبل المتابعة.',
   'missing_backup_dir': 'حدد مكان حفظ النسخ الاحتياطية قبل أي تطبيق عملي.',
   'missing_rollback_strategy': 'حدد آلية الرجوع قبل تمكين أي خطوة تطبيق.',
-  'missing_command_timeout': 'حدد مهلة قصيرة لأوامر القراءة حتى لا تعلق الفحوص.',
+  'missing_command_timeout':
+      'حدد مهلة قصيرة لأوامر القراءة حتى لا تعلق الفحوص.',
   'missing_interface_allowlist': 'حدد الواجهات المسموح فحصها لحماية الخادم.',
   'wg_interface_not_allowlisted': 'لا يتم فحص واجهة غير مصرّح بها.',
   'command_runner_disabled': 'لا توجد أوامر قراءة حقيقية مفعلة من التطبيق.',
@@ -415,6 +564,17 @@ String _string(Object? value, {String fallback = ''}) {
   if (value == null) return fallback;
   final text = value.toString();
   return text.isEmpty ? fallback : text;
+}
+
+List<String> _stringList(Object? value) {
+  if (value is List) {
+    return value
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
+  }
+  final text = _string(value).trim();
+  return text.isEmpty ? const [] : [text];
 }
 
 String _arabicOr(String value, String fallback) {
@@ -440,7 +600,8 @@ String _readinessNextAction(String status, String rawAction) {
   };
 }
 
-String _diagnosticTitle(String code) => _diagnosticTitles[code] ?? 'تنبيه جاهزية';
+String _diagnosticTitle(String code) =>
+    _diagnosticTitles[code] ?? 'تنبيه جاهزية';
 
 String _diagnosticExplanation(String code) {
   return _diagnosticExplanations[code] ??
