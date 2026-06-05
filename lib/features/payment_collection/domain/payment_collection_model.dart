@@ -370,6 +370,35 @@ class PaymentProofResult {
   }
 }
 
+class PaymentRequestDetail {
+  const PaymentRequestDetail({
+    required this.request,
+    required this.proofs,
+    required this.applyAttempts,
+  });
+
+  final PaymentRequestRecord request;
+  final List<PaymentProofRecord> proofs;
+  final List<PaymentApplyAttempt> applyAttempts;
+
+  factory PaymentRequestDetail.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    return PaymentRequestDetail(
+      request: PaymentRequestRecord.fromJson(_map(data['request'])),
+      proofs: _list(data['proofs'])
+          .map((item) => PaymentProofRecord.fromJson(_map(item)))
+          .toList(),
+      applyAttempts: _list(data['apply_attempts'])
+          .map((item) => PaymentApplyAttempt.fromJson(_map(item)))
+          .toList(),
+    );
+  }
+
+  bool get hasProofs => proofs.isNotEmpty;
+
+  bool get hasApplyAttempts => applyAttempts.isNotEmpty;
+}
+
 class PaymentRequestRecord {
   const PaymentRequestRecord({
     required this.id,
@@ -382,8 +411,12 @@ class PaymentRequestRecord {
     required this.receiverWallet,
     required this.referenceCode,
     required this.status,
+    required this.ledgerEntryId,
+    required this.ledgerAppliedAt,
     required this.expiresAt,
     required this.serviceApplyStatus,
+    required this.serviceApplyAttemptId,
+    required this.serviceAppliedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -398,8 +431,12 @@ class PaymentRequestRecord {
   final String receiverWallet;
   final String referenceCode;
   final String status;
+  final int ledgerEntryId;
+  final DateTime? ledgerAppliedAt;
   final DateTime? expiresAt;
   final String serviceApplyStatus;
+  final int serviceApplyAttemptId;
+  final DateTime? serviceAppliedAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -415,11 +452,15 @@ class PaymentRequestRecord {
       receiverWallet: _string(json['receiver_wallet']),
       referenceCode: _string(json['reference_code']),
       status: _string(json['status']),
+      ledgerEntryId: _int(json['ledger_entry_id']),
+      ledgerAppliedAt: _date(json['ledger_applied_at']),
       expiresAt: _date(json['expires_at']),
       serviceApplyStatus: _string(
         json['service_apply_status'],
         fallback: 'not_applied',
       ),
+      serviceApplyAttemptId: _int(json['service_apply_attempt_id']),
+      serviceAppliedAt: _date(json['service_applied_at']),
       createdAt: _date(json['created_at']),
       updatedAt: _date(json['updated_at']),
     );
@@ -438,6 +479,9 @@ class PaymentRequestRecord {
   String get amountLabel => '${_formatAmount(amount)} $currency';
 
   String get statusLabel => _paymentStatusLabel(status);
+
+  String get referenceCodeOrId =>
+      referenceCode.isEmpty ? '#$id' : referenceCode;
 
   String get purposeLabel => switch (purpose) {
         'card_purchase' => 'شراء كروت',
@@ -466,6 +510,9 @@ class PaymentRequestRecord {
             ? 'غير محدد'
             : 'حالة تطبيق غير معروفة',
       };
+
+  String get ledgerLabel =>
+      ledgerEntryId > 0 ? 'قيد مالي #$ledgerEntryId' : 'لم يرحل بعد';
 }
 
 class PaymentReviewResult {
@@ -491,19 +538,31 @@ class PaymentReviewResult {
 class PaymentApplyAttempt {
   const PaymentApplyAttempt({
     required this.id,
+    required this.paymentRequestId,
     required this.status,
+    required this.actor,
     required this.result,
+    required this.errorMessage,
+    required this.createdAt,
   });
 
   final int id;
+  final int paymentRequestId;
   final String status;
+  final String actor;
   final Map<String, dynamic> result;
+  final String errorMessage;
+  final DateTime? createdAt;
 
   factory PaymentApplyAttempt.fromJson(Map<String, dynamic> json) {
     return PaymentApplyAttempt(
       id: _int(json['id']),
+      paymentRequestId: _int(json['payment_request_id']),
       status: _string(json['status']),
+      actor: _string(json['actor']),
       result: _map(json['result']),
+      errorMessage: _string(json['error_message']),
+      createdAt: _date(json['created_at']),
     );
   }
 
@@ -512,6 +571,19 @@ class PaymentApplyAttempt {
   String get serviceKey => _string(result['service_key']);
 
   String get serviceLabel => _string(result['service_label']);
+
+  String get statusLabel => switch (status) {
+        'applied' => 'تم التطبيق',
+        'failed' => 'فشل التطبيق',
+        'pending' => 'بانتظار التطبيق',
+        _ => status.trim().isEmpty ? 'غير محدد' : 'حالة غير معروفة',
+      };
+
+  String get modeLabel => switch (_string(result['mode'])) {
+        'local_entitlement_only' => 'تحديث الاستحقاق المحلي',
+        'record_only' => 'تسجيل إداري فقط',
+        _ => 'تسجيل إداري فقط',
+      };
 
   String get successMessage {
     if (appliedLocalEntitlement) {

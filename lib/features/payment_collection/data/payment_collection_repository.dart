@@ -39,6 +39,11 @@ class PaymentCollectionRepository {
     return PaymentRequestPage.fromJson(res);
   }
 
+  Future<PaymentRequestDetail> detail(int id) async {
+    final res = await _api.get('/api/v1/payments/requests/$id');
+    return PaymentRequestDetail.fromJson(res);
+  }
+
   Future<PaymentInstructions> instructions(int id) async {
     final res = await _api.get('/api/v1/payments/requests/$id/instructions');
     return PaymentInstructions.fromJson(res);

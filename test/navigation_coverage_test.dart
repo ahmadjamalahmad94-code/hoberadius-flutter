@@ -45,5 +45,8 @@ void main() {
         reason: 'المسار ${entry.key} موجود في الراوتر وغير ظاهر في التنقل',
       );
     }
+
+    expect(router, contains("name: 'payment-request-detail'"));
+    expect(router, contains("path: ':id'"));
   });
 }

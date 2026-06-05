@@ -224,6 +224,71 @@ void main() {
     expect(result.request.purposeLabel, 'شراء كروت');
   });
 
+  test('payment request detail parses proofs and apply attempts', () {
+    final detail = PaymentRequestDetail.fromJson({
+      'data': {
+        'request': {
+          'id': 12,
+          'status': 'paid',
+          'purpose': 'monthly_subscription',
+          'amount': 55,
+          'currency': 'ILS',
+          'payer_type': 'subscriber',
+          'payer_id': 4,
+          'reference_code': 'PAY-12',
+          'service_apply_status': 'applied',
+          'ledger_entry_id': 31,
+          'ledger_applied_at': '2026-05-30T12:10:00Z',
+          'service_apply_attempt_id': 9,
+          'service_applied_at': '2026-05-30T12:20:00Z',
+        },
+        'proofs': [
+          {
+            'id': 7,
+            'payment_request_id': 12,
+            'proof_type': 'manual_reference',
+            'reference_number': 'JP-7788',
+            'note': 'تم الدفع',
+            'review_status': 'approved',
+            'review_note': 'تمت المطابقة',
+          },
+        ],
+        'apply_attempts': [
+          {
+            'id': 9,
+            'payment_request_id': 12,
+            'status': 'applied',
+            'actor': 'api-token:1',
+            'result': {
+              'mode': 'local_entitlement_only',
+              'local_service_apply': true,
+              'service_label': 'بوابة العميل',
+            },
+            'error_message': '',
+            'created_at': '2026-05-30T12:00:00Z',
+          },
+        ],
+      },
+    });
+
+    expect(detail.request.referenceCodeOrId, 'PAY-12');
+    expect(detail.request.ledgerEntryId, 31);
+    expect(detail.request.ledgerLabel, 'قيد مالي #31');
+    expect(detail.request.ledgerAppliedAt, isNotNull);
+    expect(detail.request.serviceApplyAttemptId, 9);
+    expect(detail.request.serviceAppliedAt, isNotNull);
+    expect(detail.hasProofs, isTrue);
+    expect(detail.proofs.single.referenceNumber, 'JP-7788');
+    expect(detail.proofs.single.reviewStatusLabel, 'معتمد');
+    expect(detail.hasApplyAttempts, isTrue);
+    expect(detail.applyAttempts.single.statusLabel, 'تم التطبيق');
+    expect(
+      detail.applyAttempts.single.modeLabel,
+      'تحديث الاستحقاق المحلي',
+    );
+    expect(detail.applyAttempts.single.appliedLocalEntitlement, isTrue);
+  });
+
   test('service apply result exposes local entitlement message', () {
     final result = PaymentReviewResult.fromJson({
       'data': {

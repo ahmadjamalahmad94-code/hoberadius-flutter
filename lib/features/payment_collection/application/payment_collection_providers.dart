@@ -24,3 +24,8 @@ final paymentRequestsProvider =
   final status = ref.watch(paymentCollectionStatusProvider);
   return repo.list(status: status);
 });
+
+final paymentRequestDetailProvider =
+    FutureProvider.autoDispose.family<PaymentRequestDetail, int>((ref, id) {
+  return ref.watch(paymentCollectionRepositoryProvider).detail(id);
+});

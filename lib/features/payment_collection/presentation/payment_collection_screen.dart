@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
@@ -835,7 +836,7 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${r.purposeLabel} · ${r.amountLabel}',
+                      '${r.purposeLabel} - ${r.amountLabel}',
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         color: AppTokens.sidebarBg,
@@ -843,7 +844,7 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${r.payerLabel} · مرجع ${r.referenceCode.isEmpty ? '#${r.id}' : r.referenceCode}',
+                      '${r.payerLabel} - مرجع ${r.referenceCodeOrId}',
                       style: const TextStyle(color: AppTokens.textMuted),
                     ),
                   ],
@@ -879,6 +880,16 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
             spacing: AppTokens.s8,
             runSpacing: AppTokens.s8,
             children: [
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => context.goNamed(
+                          'payment-request-detail',
+                          pathParameters: {'id': '${r.id}'},
+                        ),
+                icon: const Icon(Icons.open_in_new_outlined),
+                label: const Text('تفاصيل الطلب'),
+              ),
               OutlinedButton.icon(
                 onPressed: _busy ? null : _showInstructions,
                 icon: const Icon(Icons.receipt_outlined),

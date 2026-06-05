@@ -53,6 +53,7 @@ import '../../features/network_devices/presentation/network_devices_screen.dart'
 import '../../features/network_policy/presentation/network_policy_screen.dart';
 import '../../features/operational_reports/presentation/operational_reports_screen.dart';
 import '../../features/payment_collection/presentation/payment_collection_screen.dart';
+import '../../features/payment_collection/presentation/payment_request_detail_screen.dart';
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
@@ -364,6 +365,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/payment-collection',
             name: 'payment-collection',
             builder: (ctx, st) => const PaymentCollectionScreen(),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'payment-request-detail',
+                builder: (ctx, st) => PaymentRequestDetailScreen(
+                  requestId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/invoices',
