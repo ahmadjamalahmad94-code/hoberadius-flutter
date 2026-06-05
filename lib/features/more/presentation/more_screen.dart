@@ -120,6 +120,12 @@ const _items = <_MoreItem>[
     sub: 'إنشاء فواتير المشتركين ومراجعة التحصيل أو الإرجاع أو الإلغاء',
   ),
   _MoreItem(
+    Icons.account_balance_wallet_outlined,
+    'الخزائن والمحافظ',
+    'wallets',
+    sub: 'إنشاء المحافظ وشحنها أو الخصم منها مع حركات قابلة للتتبع',
+  ),
+  _MoreItem(
     Icons.insert_chart_outlined,
     'التقارير المالية',
     'financial-reports',

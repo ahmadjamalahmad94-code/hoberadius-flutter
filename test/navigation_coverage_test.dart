@@ -18,6 +18,7 @@ void main() {
       'audit': '/audit',
       'payment-collection': '/payment-collection',
       'invoices': '/invoices',
+      'wallets': '/wallets',
       'tickets': '/tickets',
       'customer-portals': '/customer-portals',
       'communications': '/communications',

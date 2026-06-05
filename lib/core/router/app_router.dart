@@ -19,6 +19,7 @@ import '../../features/system_operations/presentation/system_operations_screen.d
 import '../../features/tickets/presentation/ticket_detail_screen.dart';
 import '../../features/tickets/presentation/tickets_list_screen.dart';
 import '../../features/tools/presentation/tools_screen.dart';
+import '../../features/wallets/presentation/wallets_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/backups/presentation/backups_screen.dart';
 import '../../features/bandwidth_schedules/presentation/bandwidth_schedules_screen.dart';
@@ -365,6 +366,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/invoices',
             name: 'invoices',
             builder: (ctx, st) => const InvoicesScreen(),
+          ),
+          GoRoute(
+            path: '/wallets',
+            name: 'wallets',
+            builder: (ctx, st) => const WalletsScreen(),
           ),
           GoRoute(
             path: '/reports',

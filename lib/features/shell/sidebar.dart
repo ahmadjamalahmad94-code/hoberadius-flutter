@@ -49,6 +49,11 @@ const _navItems = <_NavItem>[
   _NavItem(Icons.fact_check_outlined, 'مراجعة المدفوعات', 'payment-collection'),
   _NavItem(Icons.receipt_long_outlined, 'الفواتير', 'invoices'),
   _NavItem(
+    Icons.account_balance_wallet_outlined,
+    'الخزائن والمحافظ',
+    'wallets',
+  ),
+  _NavItem(
     Icons.insert_chart_outlined,
     'التقارير المالية',
     'financial-reports',
@@ -150,6 +155,7 @@ class AppSidebar extends StatelessWidget {
       'ledger': '/ledger',
       'payment-collection': '/payment-collection',
       'invoices': '/invoices',
+      'wallets': '/wallets',
       'financial-reports': '/reports',
       'operational-reports': '/operational-reports',
       'tickets': '/tickets',
