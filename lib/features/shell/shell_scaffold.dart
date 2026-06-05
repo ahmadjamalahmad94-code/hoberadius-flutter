@@ -4,406 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/tokens.dart';
-
-class _NavDest {
-  const _NavDest(this.icon, this.label, this.routeName, this.path);
-  final IconData icon;
-  final String label;
-  final String routeName;
-  final String path;
-}
-
-const _destinations = <_NavDest>[
-  _NavDest(Icons.dashboard_outlined, 'لوحة التحكم', 'dashboard', '/'),
-  _NavDest(Icons.person_outline, 'المشتركون', 'subscribers', '/subscribers'),
-  _NavDest(Icons.credit_card_outlined, 'البطاقات', 'cards', '/cards'),
-  _NavDest(Icons.online_prediction, 'المتصلون الآن', 'sessions', '/sessions'),
-  _NavDest(Icons.more_horiz, 'المزيد', 'more', '/more'),
-];
-
-class _SidebarItem {
-  const _SidebarItem({
-    required this.icon,
-    required this.label,
-    required this.routeName,
-    required this.path,
-  });
-
-  final IconData icon;
-  final String label;
-  final String routeName;
-  final String path;
-}
-
-class _SidebarSection {
-  const _SidebarSection({
-    required this.id,
-    required this.icon,
-    required this.label,
-    required this.items,
-  });
-
-  final String id;
-  final IconData icon;
-  final String label;
-  final List<_SidebarItem> items;
-}
-
-const _dashboardSidebarItem = _SidebarItem(
-  icon: Icons.dashboard_outlined,
-  label: 'لوحة التحكم',
-  routeName: 'dashboard',
-  path: '/',
-);
-
-const _sidebarSections = <_SidebarSection>[
-  _SidebarSection(
-    id: 'subscribers',
-    icon: Icons.groups_2_outlined,
-    label: 'المشتركون',
-    items: [
-      _SidebarItem(
-        icon: Icons.list_alt_outlined,
-        label: 'قائمة المشتركين',
-        routeName: 'subscribers',
-        path: '/subscribers',
-      ),
-      _SidebarItem(
-        icon: Icons.person_add_alt_1_outlined,
-        label: 'إضافة مشترك',
-        routeName: 'subscriber-new',
-        path: '/subscribers/new',
-      ),
-      _SidebarItem(
-        icon: Icons.online_prediction,
-        label: 'المتصلون الآن',
-        routeName: 'sessions',
-        path: '/sessions',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'cards',
-    icon: Icons.credit_card_outlined,
-    label: 'البطاقات',
-    items: [
-      _SidebarItem(
-        icon: Icons.inventory_2_outlined,
-        label: 'حزم البطاقات',
-        routeName: 'cards',
-        path: '/cards',
-      ),
-      _SidebarItem(
-        icon: Icons.fact_check_outlined,
-        label: 'فحص بطاقة',
-        routeName: 'card-checker',
-        path: '/cards/checker',
-      ),
-      _SidebarItem(
-        icon: Icons.add_card_outlined,
-        label: 'حزمة جديدة',
-        routeName: 'card-batch-new',
-        path: '/cards/new',
-      ),
-      _SidebarItem(
-        icon: Icons.upload_file_outlined,
-        label: 'استيراد ملف',
-        routeName: 'card-batch-import',
-        path: '/cards/import',
-      ),
-      _SidebarItem(
-        icon: Icons.people_alt_outlined,
-        label: 'مستخدمو البطاقات',
-        routeName: 'card-users',
-        path: '/card-users',
-      ),
-      _SidebarItem(
-        icon: Icons.add_card_outlined,
-        label: 'كروت الشحن',
-        routeName: 'cards-recharge',
-        path: '/cards/recharge',
-      ),
-      _SidebarItem(
-        icon: Icons.print_outlined,
-        label: 'تصميم وتصدير',
-        routeName: 'print-templates',
-        path: '/print-templates',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'plans',
-    icon: Icons.local_offer_outlined,
-    label: 'العروض والسرعات',
-    items: [
-      _SidebarItem(
-        icon: Icons.sell_outlined,
-        label: 'قائمة العروض',
-        routeName: 'plans',
-        path: '/plans',
-      ),
-      _SidebarItem(
-        icon: Icons.add_business_outlined,
-        label: 'إضافة عرض',
-        routeName: 'plan-new',
-        path: '/plans/new',
-      ),
-      _SidebarItem(
-        icon: Icons.speed_outlined,
-        label: 'جدولة السرعات',
-        routeName: 'bandwidth-schedules',
-        path: '/bandwidth-schedules',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'network',
-    icon: Icons.router_outlined,
-    label: 'الشبكة',
-    items: [
-      _SidebarItem(
-        icon: Icons.dns_outlined,
-        label: 'أجهزة الشبكة',
-        routeName: 'nas',
-        path: '/nas',
-      ),
-      _SidebarItem(
-        icon: Icons.wifi_tethering,
-        label: 'اتصالات ميكروتك',
-        routeName: 'mikrotik',
-        path: '/mikrotik',
-      ),
-      _SidebarItem(
-        icon: Icons.monitor_heart_outlined,
-        label: 'عمليات الراوتر',
-        routeName: 'router-operations',
-        path: '/router-operations',
-      ),
-      _SidebarItem(
-        icon: Icons.playlist_add_check_outlined,
-        label: 'معالج إعداد الراوترات',
-        routeName: 'setup-wizard',
-        path: '/setup-wizard',
-      ),
-      _SidebarItem(
-        icon: Icons.fingerprint_outlined,
-        label: 'بصمات الأجهزة',
-        routeName: 'device-fingerprints',
-        path: '/device-fingerprints',
-      ),
-      _SidebarItem(
-        icon: Icons.devices_other_outlined,
-        label: 'مراقبة أجهزة الشبكة',
-        routeName: 'network-devices',
-        path: '/network-devices',
-      ),
-      _SidebarItem(
-        icon: Icons.notifications_active_outlined,
-        label: 'تنبيهات الراوترات',
-        routeName: 'router-alerts',
-        path: '/router-alerts',
-      ),
-      _SidebarItem(
-        icon: Icons.policy_outlined,
-        label: 'سياسات الشبكة',
-        routeName: 'network-policy',
-        path: '/network-policy',
-      ),
-      _SidebarItem(
-        icon: Icons.hub_outlined,
-        label: 'موارد التشغيل',
-        routeName: 'radius-resources',
-        path: '/radius-resources',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'finance',
-    icon: Icons.account_balance_wallet_outlined,
-    label: 'التحصيل والمحاسبة',
-    items: [
-      _SidebarItem(
-        icon: Icons.receipt_long_outlined,
-        label: 'السجل والتقارير المحاسبية',
-        routeName: 'ledger',
-        path: '/ledger',
-      ),
-      _SidebarItem(
-        icon: Icons.fact_check_outlined,
-        label: 'التحصيل والمدفوعات',
-        routeName: 'payment-collection',
-        path: '/payment-collection',
-      ),
-      _SidebarItem(
-        icon: Icons.receipt_long_outlined,
-        label: 'الفواتير',
-        routeName: 'invoices',
-        path: '/invoices',
-      ),
-      _SidebarItem(
-        icon: Icons.confirmation_number_outlined,
-        label: 'الكوبونات',
-        routeName: 'vouchers',
-        path: '/vouchers',
-      ),
-      _SidebarItem(
-        icon: Icons.account_balance_wallet_outlined,
-        label: 'الخزائن والمحافظ',
-        routeName: 'wallets',
-        path: '/wallets',
-      ),
-      _SidebarItem(
-        icon: Icons.handshake_outlined,
-        label: 'السلف والديون',
-        routeName: 'loans-center',
-        path: '/loans',
-      ),
-      _SidebarItem(
-        icon: Icons.monetization_on_outlined,
-        label: 'الإيرادات',
-        routeName: 'revenue',
-        path: '/revenue',
-      ),
-      _SidebarItem(
-        icon: Icons.bar_chart_outlined,
-        label: 'التقارير المالية',
-        routeName: 'financial-reports',
-        path: '/reports',
-      ),
-      _SidebarItem(
-        icon: Icons.query_stats_outlined,
-        label: 'تقارير التشغيل',
-        routeName: 'operational-reports',
-        path: '/operational-reports',
-      ),
-      _SidebarItem(
-        icon: Icons.support_agent_outlined,
-        label: 'تذاكر الدعم',
-        routeName: 'tickets',
-        path: '/tickets',
-      ),
-      _SidebarItem(
-        icon: Icons.door_front_door_outlined,
-        label: 'بوابات العملاء',
-        routeName: 'customer-portals',
-        path: '/customer-portals',
-      ),
-      _SidebarItem(
-        icon: Icons.campaign_outlined,
-        label: 'التواصل والحملات',
-        routeName: 'communications',
-        path: '/communications',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'admin',
-    icon: Icons.admin_panel_settings_outlined,
-    label: 'الإدارة',
-    items: [
-      _SidebarItem(
-        icon: Icons.account_circle_outlined,
-        label: 'حسابي',
-        routeName: 'account',
-        path: '/account',
-      ),
-      _SidebarItem(
-        icon: Icons.manage_accounts_outlined,
-        label: 'المدراء',
-        routeName: 'admins',
-        path: '/admins',
-      ),
-      _SidebarItem(
-        icon: Icons.security_outlined,
-        label: 'الأدوار',
-        routeName: 'roles',
-        path: '/roles',
-      ),
-      _SidebarItem(
-        icon: Icons.history,
-        label: 'سجل التدقيق',
-        routeName: 'audit',
-        path: '/audit',
-      ),
-      _SidebarItem(
-        icon: Icons.storefront_outlined,
-        label: 'الموزعون',
-        routeName: 'distributors',
-        path: '/distributors',
-      ),
-      _SidebarItem(
-        icon: Icons.restore_from_trash_outlined,
-        label: 'سلة المحذوفات',
-        routeName: 'recycle-bin',
-        path: '/recycle-bin',
-      ),
-      _SidebarItem(
-        icon: Icons.event_repeat_outlined,
-        label: 'الأرشفة التلقائية',
-        routeName: 'lifecycle',
-        path: '/lifecycle',
-      ),
-      _SidebarItem(
-        icon: Icons.backup_outlined,
-        label: 'النسخ الاحتياطي',
-        routeName: 'backups',
-        path: '/backups',
-      ),
-    ],
-  ),
-  _SidebarSection(
-    id: 'tools',
-    icon: Icons.tune_outlined,
-    label: 'التكامل والجسر',
-    items: [
-      _SidebarItem(
-        icon: Icons.monitor_heart_outlined,
-        label: 'عمليات النظام',
-        routeName: 'system-operations',
-        path: '/system-operations',
-      ),
-      _SidebarItem(
-        icon: Icons.verified_user_outlined,
-        label: 'ملف الترخيص والمزامنة',
-        routeName: 'license-file',
-        path: '/license-file',
-      ),
-      _SidebarItem(
-        icon: Icons.event_note_outlined,
-        label: 'مركز الأحداث',
-        routeName: 'events-center',
-        path: '/events',
-      ),
-      _SidebarItem(
-        icon: Icons.settings_outlined,
-        label: 'التحكم الإداري',
-        routeName: 'admin-control',
-        path: '/admin-control',
-      ),
-      _SidebarItem(
-        icon: Icons.build_outlined,
-        label: 'الأدوات',
-        routeName: 'tools',
-        path: '/tools',
-      ),
-      _SidebarItem(
-        icon: Icons.widgets_outlined,
-        label: 'الوحدات التجارية',
-        routeName: 'saas-modules',
-        path: '/saas-modules',
-      ),
-    ],
-  ),
-];
-
-bool _matchesPath(String location, String path) {
-  if (path == '/') return location == '/';
-  return location == path || location.startsWith('$path/');
-}
-
-bool _sectionIsActive(String location, _SidebarSection section) {
-  return section.items.any((item) => _matchesPath(location, item.path));
-}
+import 'navigation_schema.dart';
 
 /// Adaptive shell: bottom nav on phones, NavigationRail on tablets/desktop,
 /// extended rail (sidebar-style) on wide web/desktop screens.
@@ -421,54 +22,7 @@ class ShellScaffold extends ConsumerWidget {
 }
 
 int _indexOfRoute(String location) {
-  for (var i = 0; i < _destinations.length - 1; i++) {
-    final p = _destinations[i].path;
-    if (p == '/'
-        ? location == '/'
-        : (location == p || location.startsWith('$p/'))) {
-      return i;
-    }
-  }
-  if (location == '/more' ||
-      location == '/nas' ||
-      location == '/mikrotik' ||
-      location == '/router-operations' ||
-      location == '/setup-wizard' ||
-      location == '/device-fingerprints' ||
-      location == '/network-devices' ||
-      location == '/router-alerts' ||
-      location == '/network-policy' ||
-      location == '/radius-resources' ||
-      location == '/plans' ||
-      location == '/admins' ||
-      location == '/roles' ||
-      location == '/audit' ||
-      location == '/ledger' ||
-      location == '/payment-collection' ||
-      location == '/invoices' ||
-      location == '/wallets' ||
-      location == '/reports' ||
-      location == '/operational-reports' ||
-      location == '/tickets' ||
-      location.startsWith('/tickets/') ||
-      location == '/account' ||
-      location == '/customer-portals' ||
-      location == '/communications' ||
-      location == '/saas-modules' ||
-      location == '/distributors' ||
-      location == '/recycle-bin' ||
-      location == '/lifecycle' ||
-      location == '/backups' ||
-      location == '/system-operations' ||
-      location == '/license-file' ||
-      location == '/events' ||
-      location == '/admin-control' ||
-      location == '/tools' ||
-      location == '/bandwidth-schedules' ||
-      location == '/print-templates') {
-    return _destinations.length - 1;
-  }
-  return 0;
+  return mobileNavIndexForLocation(location);
 }
 
 class _Mobile extends ConsumerWidget {
@@ -480,7 +34,7 @@ class _Mobile extends ConsumerWidget {
     final location = GoRouterState.of(context).matchedLocation;
     final idx = _indexOfRoute(location);
     return Scaffold(
-      appBar: _MobileAppBar(title: _destinations[idx].label),
+      appBar: _MobileAppBar(title: mobileNavDestinations[idx].label),
       body: SafeArea(
         child: _ContentArea(
           padding: const EdgeInsets.all(AppTokens.s12),
@@ -490,7 +44,7 @@ class _Mobile extends ConsumerWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: idx,
         onDestinationSelected: (i) => _onTap(context, i),
-        destinations: _destinations
+        destinations: mobileNavDestinations
             .map(
               (d) => NavigationDestination(
                 icon: Icon(d.icon),
@@ -531,7 +85,7 @@ class _Rail extends StatelessWidget {
               ),
               unselectedLabelTextStyle:
                   const TextStyle(color: AppTokens.sidebarText),
-              destinations: _destinations
+              destinations: mobileNavDestinations
                   .map(
                     (d) => NavigationRailDestination(
                       icon: Icon(d.icon),
@@ -599,7 +153,7 @@ class _WebSidebarState extends State<_WebSidebar> {
     'plans',
   };
 
-  void _toggleSection(_SidebarSection section) {
+  void _toggleSection(AppNavSection section) {
     if (_collapsed) {
       setState(() => _collapsed = false);
       return;
@@ -681,20 +235,20 @@ class _WebSidebarState extends State<_WebSidebar> {
               padding: const EdgeInsets.symmetric(vertical: AppTokens.s12),
               children: [
                 _StandaloneSidebarTile(
-                  item: _dashboardSidebarItem,
+                  item: dashboardNavItem,
                   active:
-                      _matchesPath(widget.location, _dashboardSidebarItem.path),
+                      navPathMatches(widget.location, dashboardNavItem.path),
                   collapsed: _collapsed,
-                  onTap: () => context.goNamed(_dashboardSidebarItem.routeName),
+                  onTap: () => context.goNamed(dashboardNavItem.routeName),
                 ),
                 const SizedBox(height: AppTokens.s8),
-                for (final section in _sidebarSections)
+                for (final section in appNavSections)
                   _SidebarSectionBlock(
                     section: section,
                     collapsed: _collapsed,
                     open: _openSections.contains(section.id) ||
-                        _sectionIsActive(widget.location, section),
-                    active: _sectionIsActive(widget.location, section),
+                        navSectionIsActive(widget.location, section),
+                    active: navSectionIsActive(widget.location, section),
                     location: widget.location,
                     onHeaderTap: () => _toggleSection(section),
                   ),
@@ -763,7 +317,7 @@ class _StandaloneSidebarTile extends StatelessWidget {
     required this.onTap,
   });
 
-  final _SidebarItem item;
+  final AppNavItem item;
   final bool active;
   final bool collapsed;
   final VoidCallback onTap;
@@ -792,7 +346,7 @@ class _SidebarSectionBlock extends StatelessWidget {
     required this.onHeaderTap,
   });
 
-  final _SidebarSection section;
+  final AppNavSection section;
   final bool collapsed;
   final bool open;
   final bool active;
@@ -829,7 +383,7 @@ class _SidebarSectionBlock extends StatelessWidget {
                     _SidebarActionTile(
                       icon: item.icon,
                       label: item.label,
-                      active: _matchesPath(location, item.path),
+                      active: navPathMatches(location, item.path),
                       collapsed: false,
                       compact: true,
                       onTap: () => context.goNamed(item.routeName),
@@ -1028,5 +582,5 @@ class _DesktopTopBar extends ConsumerWidget {
 }
 
 void _onTap(BuildContext context, int i) {
-  context.goNamed(_destinations[i].routeName);
+  context.goNamed(mobileNavDestinations[i].routeName);
 }

@@ -8,10 +8,12 @@ void main() {
     final router = File('lib/core/router/app_router.dart').readAsStringSync();
     final shell =
         File('lib/features/shell/shell_scaffold.dart').readAsStringSync();
+    final schema =
+        File('lib/features/shell/navigation_schema.dart').readAsStringSync();
     final more = File('lib/features/more/presentation/more_screen.dart')
         .readAsStringSync();
     final sidebar = File('lib/features/shell/sidebar.dart').readAsStringSync();
-    final navigation = '$shell\n$more\n$sidebar';
+    final navigation = '$schema\n$shell\n$more\n$sidebar';
     final schemaByRoute = {
       for (final item in appNavigationItems) item.routeName: item,
     };
@@ -57,6 +59,25 @@ void main() {
 
     expect(router, contains("name: 'payment-request-detail'"));
     expect(router, contains("path: ':id'"));
+  });
+
+  test('shell scaffold uses the shared navigation schema', () {
+    final shell =
+        File('lib/features/shell/shell_scaffold.dart').readAsStringSync();
+
+    expect(shell, contains("import 'navigation_schema.dart';"));
+    expect(shell, isNot(contains('class _NavDest')));
+    expect(shell, isNot(contains('class _SidebarItem')));
+    expect(shell, isNot(contains('class _SidebarSection {')));
+    expect(shell, isNot(contains('const _destinations')));
+    expect(shell, isNot(contains('const _dashboardSidebarItem')));
+    expect(shell, isNot(contains('const _sidebarSections')));
+    expect(shell, isNot(contains("location == '/nas'")));
+    expect(shell, isNot(contains("location == '/license-file'")));
+    expect(shell, contains('mobileNavDestinations'));
+    expect(shell, contains('appNavSections'));
+    expect(shell, contains('dashboardNavItem'));
+    expect(shell, contains('mobileNavIndexForLocation'));
   });
 
   test('navigation schema uses canonical Arabic labels', () {
