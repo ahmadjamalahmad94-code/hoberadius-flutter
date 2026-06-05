@@ -14,7 +14,7 @@ extension OnlineSessionKindApi on OnlineSessionKind {
 
   String get label => switch (this) {
         OnlineSessionKind.all => 'الكل',
-        OnlineSessionKind.subscribers => 'المشتركين',
+        OnlineSessionKind.subscribers => 'المشتركون',
         OnlineSessionKind.cards => 'الكروت',
       };
 }
@@ -46,6 +46,7 @@ class OnlineSessionsQuery {
 
 class SessionsRepository {
   SessionsRepository(this._api);
+
   final ApiClient _api;
 
   Future<List<OnlineSession>> listOnline({
@@ -63,6 +64,15 @@ class SessionsRepository {
         .toList();
   }
 
+  Map<String, String> _sessionBody({
+    required String username,
+    required String sessionId,
+  }) =>
+      {
+        'username': username,
+        'session_id': sessionId,
+      };
+
   Future<void> disconnect({required String username, String? sessionId}) {
     return _api.post(
       '/api/v1/sessions/disconnect',
@@ -71,6 +81,57 @@ class SessionsRepository {
         if (sessionId != null && sessionId.isNotEmpty) 'session_id': sessionId,
       },
     );
+  }
+
+  Future<void> lockMac({
+    required String username,
+    required String sessionId,
+  }) {
+    return _api.post(
+      '/api/v1/sessions/lock-mac',
+      body: _sessionBody(username: username, sessionId: sessionId),
+    );
+  }
+
+  Future<void> lockIp({
+    required String username,
+    required String sessionId,
+  }) {
+    return _api.post(
+      '/api/v1/sessions/lock-ip',
+      body: _sessionBody(username: username, sessionId: sessionId),
+    );
+  }
+
+  Future<Map<String, dynamic>> applyTemporarySpeed({
+    required String username,
+    required String sessionId,
+    required int downloadKbps,
+    required int uploadKbps,
+    required int durationMinutes,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/sessions/temp-speed',
+      body: {
+        'username': username,
+        'session_id': sessionId,
+        'down_kbps': downloadKbps,
+        'up_kbps': uploadKbps,
+        'duration_minutes': durationMinutes,
+      },
+    );
+    return _mapData(res);
+  }
+
+  Future<Map<String, dynamic>> cancelTemporarySpeed({
+    required String username,
+    required String sessionId,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/sessions/temp-speed/cancel',
+      body: _sessionBody(username: username, sessionId: sessionId),
+    );
+    return _mapData(res);
   }
 
   Future<List<AccountingSessionHistory>> listHistory({int limit = 50}) async {
@@ -83,6 +144,15 @@ class SessionsRepository {
         .whereType<Map<String, dynamic>>()
         .map(AccountingSessionHistory.fromJson)
         .toList();
+  }
+
+  Map<String, dynamic> _mapData(Map<String, dynamic> res) {
+    final data = res['data'];
+    if (data is Map<String, dynamic>) return data;
+    if (data is Map) {
+      return data.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return const {};
   }
 }
 
