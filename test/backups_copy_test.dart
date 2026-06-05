@@ -10,10 +10,13 @@ void main() {
     final moreScreen = File(
       'lib/features/more/presentation/more_screen.dart',
     ).readAsStringSync();
+    final navigationSchema = File(
+      'lib/features/shell/navigation_schema.dart',
+    ).readAsStringSync();
 
     expect(backupScreen, isNot(contains('جوجل درايف لاحقًا')));
     expect(moreScreen, isNot(contains('جوجل درايف لاحقًا')));
     expect(backupScreen, contains('حالة جوجل درايف'));
-    expect(moreScreen, contains('ربط جوجل درايف عند تفعيله'));
+    expect(navigationSchema, contains('النسخ الخارجي عند تفعيله'));
   });
 }

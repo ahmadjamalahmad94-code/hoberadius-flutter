@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hoberadius_app/features/shell/navigation_schema.dart';
 
 void main() {
   test('operator navigation exposes critical production routes', () {
@@ -11,6 +12,9 @@ void main() {
         .readAsStringSync();
     final sidebar = File('lib/features/shell/sidebar.dart').readAsStringSync();
     final navigation = '$shell\n$more\n$sidebar';
+    final schemaByRoute = {
+      for (final item in appNavigationItems) item.routeName: item,
+    };
 
     final criticalRoutes = {
       'account': '/account',
@@ -40,6 +44,11 @@ void main() {
       expect(router, contains("name: '${entry.key}'"));
       expect(router, contains("path: '${entry.value}'"));
       expect(
+        schemaByRoute[entry.key]?.path,
+        entry.value,
+        reason: 'المسار ${entry.key} يجب أن يظهر في مصدر التنقل الموحد',
+      );
+      expect(
         navigation,
         contains("routeName: '${entry.key}'"),
         reason: 'المسار ${entry.key} موجود في الراوتر وغير ظاهر في التنقل',
@@ -48,5 +57,29 @@ void main() {
 
     expect(router, contains("name: 'payment-request-detail'"));
     expect(router, contains("path: ':id'"));
+  });
+
+  test('navigation schema uses canonical Arabic labels', () {
+    expect(dashboardNavItem.label, 'لوحة التحكم');
+    expect(
+      mobileNavDestinations.map((item) => item.label),
+      contains('البطاقات'),
+    );
+    expect(
+      appNavSections.map((section) => section.label),
+      contains('التكامل والجسر'),
+    );
+    expect(
+      appNavSections.map((section) => section.label),
+      contains('التحصيل والمحاسبة'),
+    );
+    expect(
+      appNavigationItems.map((item) => item.label),
+      isNot(contains('الكروت')),
+    );
+    expect(
+      mobileNavDestinations.map((item) => item.label),
+      isNot(contains('الرئيسية')),
+    );
   });
 }

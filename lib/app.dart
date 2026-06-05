@@ -17,7 +17,7 @@ class HobeRadiusApp extends ConsumerWidget {
     final router = ref.watch(appRouterProvider);
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp.router(
-      title: 'HobeRadius',
+      title: 'Hobe Hub',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
@@ -41,10 +41,8 @@ class HobeRadiusApp extends ConsumerWidget {
             statusBarColor: Colors.transparent,
             statusBarIconBrightness:
                 isDark ? Brightness.light : Brightness.dark,
-            statusBarBrightness:
-                isDark ? Brightness.dark : Brightness.light,
-            systemNavigationBarColor:
-                isDark ? DarkTokens.card : AppTokens.bg,
+            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+            systemNavigationBarColor: isDark ? DarkTokens.card : AppTokens.bg,
             systemNavigationBarIconBrightness:
                 isDark ? Brightness.light : Brightness.dark,
             systemNavigationBarDividerColor: Colors.transparent,

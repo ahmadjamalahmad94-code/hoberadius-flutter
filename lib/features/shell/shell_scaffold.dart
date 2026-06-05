@@ -14,10 +14,10 @@ class _NavDest {
 }
 
 const _destinations = <_NavDest>[
-  _NavDest(Icons.dashboard_outlined, 'الرئيسية', 'dashboard', '/'),
+  _NavDest(Icons.dashboard_outlined, 'لوحة التحكم', 'dashboard', '/'),
   _NavDest(Icons.person_outline, 'المشتركون', 'subscribers', '/subscribers'),
-  _NavDest(Icons.credit_card_outlined, 'الكروت', 'cards', '/cards'),
-  _NavDest(Icons.online_prediction, 'المتصلون', 'sessions', '/sessions'),
+  _NavDest(Icons.credit_card_outlined, 'البطاقات', 'cards', '/cards'),
+  _NavDest(Icons.online_prediction, 'المتصلون الآن', 'sessions', '/sessions'),
   _NavDest(Icons.more_horiz, 'المزيد', 'more', '/more'),
 ];
 
@@ -85,7 +85,7 @@ const _sidebarSections = <_SidebarSection>[
   _SidebarSection(
     id: 'cards',
     icon: Icons.credit_card_outlined,
-    label: 'الكروت',
+    label: 'البطاقات',
     items: [
       _SidebarItem(
         icon: Icons.inventory_2_outlined,
@@ -113,7 +113,7 @@ const _sidebarSections = <_SidebarSection>[
       ),
       _SidebarItem(
         icon: Icons.people_alt_outlined,
-        label: 'مستخدمو الكروت',
+        label: 'مستخدمو البطاقات',
         routeName: 'card-users',
         path: '/card-users',
       ),
@@ -220,17 +220,17 @@ const _sidebarSections = <_SidebarSection>[
   _SidebarSection(
     id: 'finance',
     icon: Icons.account_balance_wallet_outlined,
-    label: 'المحاسبة',
+    label: 'التحصيل والمحاسبة',
     items: [
       _SidebarItem(
         icon: Icons.receipt_long_outlined,
-        label: 'السجل المالي',
+        label: 'السجل والتقارير المحاسبية',
         routeName: 'ledger',
         path: '/ledger',
       ),
       _SidebarItem(
         icon: Icons.fact_check_outlined,
-        label: 'مراجعة المدفوعات',
+        label: 'التحصيل والمدفوعات',
         routeName: 'payment-collection',
         path: '/payment-collection',
       ),
@@ -354,7 +354,7 @@ const _sidebarSections = <_SidebarSection>[
   _SidebarSection(
     id: 'tools',
     icon: Icons.tune_outlined,
-    label: 'التكامل والأدوات',
+    label: 'التكامل والجسر',
     items: [
       _SidebarItem(
         icon: Icons.monitor_heart_outlined,
@@ -652,7 +652,7 @@ class _WebSidebarState extends State<_WebSidebar> {
                   const SizedBox(width: AppTokens.s12),
                   const Expanded(
                     child: Text(
-                      'HobeRadius',
+                      'Hobe Hub',
                       style: TextStyle(
                         color: _sidebarText,
                         fontWeight: FontWeight.w900,

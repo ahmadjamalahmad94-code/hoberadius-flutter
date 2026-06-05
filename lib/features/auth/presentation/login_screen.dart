@@ -279,12 +279,12 @@ class _Hero extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'HobeRadius',
+              'Hobe Hub',
               style: AppTypography.displayMedium.copyWith(color: Colors.white),
             ),
             const SizedBox(height: 4),
             Text(
-              'إدارة خدمة الإنترنت بالكروت',
+              'إدارة خدمة الإنترنت بالبطاقات',
               style: AppTypography.bodySmall.copyWith(
                 color: Colors.white.withValues(alpha: 0.85),
               ),
