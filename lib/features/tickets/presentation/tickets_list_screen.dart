@@ -41,7 +41,15 @@ class TicketsListScreen extends ConsumerWidget {
                 DropdownMenuItem(value: 'open', child: Text('مفتوحة')),
                 DropdownMenuItem(
                   value: 'pending',
-                  child: Text('بانتظار متابعة'),
+                  child: Text('معلّقة'),
+                ),
+                DropdownMenuItem(
+                  value: 'in_progress',
+                  child: Text('قيد المعالجة'),
+                ),
+                DropdownMenuItem(
+                  value: 'resolved',
+                  child: Text('محلولة'),
                 ),
                 DropdownMenuItem(value: 'closed', child: Text('مغلقة')),
               ],
@@ -190,14 +198,19 @@ class _Status extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusPill(
       text: ticket.statusLabel,
-      tone: ticket.status == 'closed'
-          ? PillTone.neutral
-          : ticket.status == 'pending'
-              ? PillTone.orange
-              : PillTone.green,
+      tone: _ticketStatusTone(ticket.status),
     );
   }
 }
+
+PillTone _ticketStatusTone(String status) => switch (status) {
+      'open' => PillTone.orange,
+      'pending' => PillTone.orange,
+      'in_progress' => PillTone.blue,
+      'resolved' => PillTone.green,
+      'closed' => PillTone.neutral,
+      _ => PillTone.neutral,
+    };
 
 class _Priority extends StatelessWidget {
   const _Priority({required this.ticket});

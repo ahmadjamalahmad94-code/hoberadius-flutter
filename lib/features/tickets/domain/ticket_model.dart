@@ -40,9 +40,9 @@ class SupportTicket {
 
   String get statusLabel => switch (status) {
         'open' => 'مفتوحة',
-        'pending' => 'بانتظار متابعة',
-        'in_progress' => 'قيد التنفيذ',
-        'resolved' => 'تم الحل',
+        'pending' => 'معلّقة',
+        'in_progress' => 'قيد المعالجة',
+        'resolved' => 'محلولة',
         'closed' => 'مغلقة',
         _ => 'حالة غير معروفة',
       };

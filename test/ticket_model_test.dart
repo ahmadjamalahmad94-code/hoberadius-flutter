@@ -50,7 +50,7 @@ void main() {
       },
     });
 
-    expect(detail.ticket.statusLabel, 'بانتظار متابعة');
+    expect(detail.ticket.statusLabel, 'معلّقة');
     expect(detail.replies.single.authorLabel, 'الإدارة');
     expect(detail.replies.single.body, 'تم استلام الطلب');
 
@@ -60,7 +60,15 @@ void main() {
       'status': 'in_progress',
       'priority': 'normal',
     });
-    expect(inProgress.statusLabel, 'قيد التنفيذ');
+    expect(inProgress.statusLabel, 'قيد المعالجة');
+
+    final resolved = SupportTicket.fromJson({
+      'id': 11,
+      'subscriber_id': 12,
+      'status': 'resolved',
+      'priority': 'normal',
+    });
+    expect(resolved.statusLabel, 'محلولة');
 
     final complaint = SupportTicket.fromJson({
       'id': 10,
@@ -137,7 +145,7 @@ void main() {
 
     expect(result.ticketId, 45);
     expect(result.paymentRequestId, 0);
-    expect(result.ticket.statusLabel, 'قيد التنفيذ');
+    expect(result.ticket.statusLabel, 'قيد المعالجة');
     expect(result.paymentRequest, isNull);
     expect(result.localServiceApply, isTrue);
     expect(result.trialDays, 5);
