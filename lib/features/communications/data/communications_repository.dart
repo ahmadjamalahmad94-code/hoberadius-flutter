@@ -92,6 +92,38 @@ class CommunicationsRepository {
     return MessageDeliveryPage.fromJson(res);
   }
 
+  Future<CommunicationChannelPage> channels() async {
+    final res = await _api.get('/api/v1/communications/channels');
+    return CommunicationChannelPage.fromJson(res);
+  }
+
+  Future<CommunicationChannel> saveChannel(
+    CommunicationChannelDraft draft,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/communications/channels/${draft.channel}',
+      body: draft.toBody(),
+    );
+    return CommunicationChannel.fromJson(_nested(res, 'channel'));
+  }
+
+  Future<CommunicationQuotaPage> quota() async {
+    final res = await _api.get('/api/v1/communications/quota');
+    return CommunicationQuotaPage.fromJson(res);
+  }
+
+  Future<CommunicationQuotaCreditResult> creditQuota({
+    required String channel,
+    required int amount,
+    String note = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/communications/quota/$channel/credit',
+      body: {'amount': amount, 'note': note},
+    );
+    return CommunicationQuotaCreditResult.fromJson(res);
+  }
+
   Future<CampaignPage> campaigns() async {
     final res = await _api.get('/api/v1/communications/campaigns');
     return CampaignPage.fromJson(res);

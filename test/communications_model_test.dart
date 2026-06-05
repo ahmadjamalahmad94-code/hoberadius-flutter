@@ -86,6 +86,97 @@ void main() {
     expect(preview.items.single.typeLabel, 'مستخدمي الكروت');
   });
 
+  test('channel settings and quota payloads parse provider contract', () {
+    final channels = CommunicationChannelPage.fromJson({
+      'data': {
+        'count': 2,
+        'methods': ['GET', 'POST'],
+        'modes': [
+          {'key': 'self_api', 'label': 'ربط مباشر من العميل'},
+          {'key': 'admin_quota', 'label': 'رصيد مخصص من الإدارة'},
+        ],
+        'items': [
+          {
+            'channel': 'sms',
+            'label': 'الرسائل القصيرة',
+            'enabled': true,
+            'active': true,
+            'mode': 'admin_quota',
+            'mode_label': 'رصيد مخصص من الإدارة',
+            'config': {
+              'send_url_template':
+                  'https://provider.example/send?to={phone}&text={msg}',
+              'http_method': 'POST',
+              'balance_url': 'https://provider.example/balance',
+            },
+            'quota': {
+              'balance': 150,
+              'used': 12,
+              'is_quota_mode': true,
+            },
+          },
+        ],
+      },
+    });
+    final quota = CommunicationQuotaPage.fromJson({
+      'data': {
+        'count': 1,
+        'items': [
+          {
+            'channel': 'sms',
+            'label': 'الرسائل القصيرة',
+            'mode': 'admin_quota',
+            'mode_label': 'رصيد مخصص من الإدارة',
+            'balance': 150,
+            'used': 12,
+            'is_quota_mode': true,
+            'ledger': [
+              {
+                'ts': '2026-06-05T10:15:00Z',
+                'delta': 100,
+                'by': 'admin:1',
+                'note': 'دفعة شهرية',
+                'balance_after': 150,
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(channels.count, 2);
+    expect(channels.items.single.channel, 'sms');
+    expect(channels.items.single.statusLabel, 'جاهزة للإرسال');
+    expect(channels.items.single.config.httpMethod, 'POST');
+    expect(channels.items.single.quota.balance, 150);
+    expect(channels.modes.last.label, 'رصيد مخصص من الإدارة');
+    expect(quota.items.single.ledger.single.note, 'دفعة شهرية');
+    expect(quota.items.single.ledger.single.tsLabel, '2026-06-05 10:15');
+  });
+
+  test('quota credit result parses Arabic success message', () {
+    final result = CommunicationQuotaCreditResult.fromJson({
+      'data': {
+        'balance_after': 250,
+        'message': 'تمت إضافة 100 رسالة إلى رصيد الرسائل القصيرة.',
+        'quota': {
+          'channel': 'sms',
+          'label': 'الرسائل القصيرة',
+          'mode': 'admin_quota',
+          'mode_label': 'رصيد مخصص من الإدارة',
+          'balance': 250,
+          'used': 12,
+          'is_quota_mode': true,
+          'ledger': [],
+        },
+      },
+    });
+
+    expect(result.balanceAfter, 250);
+    expect(result.message, contains('تمت إضافة'));
+    expect(result.quota.isQuotaMode, isTrue);
+  });
+
   test('generated keys hide technical input from UI while remaining safe', () {
     final key = generatedKey('تنبيه صيانة', 'template');
     expect(key.startsWith('template_'), isTrue);

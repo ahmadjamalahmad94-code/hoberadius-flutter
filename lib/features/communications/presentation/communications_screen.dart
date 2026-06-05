@@ -47,6 +47,8 @@ class CommunicationsScreen extends ConsumerWidget {
           'audience' => const _AudiencePanel(),
           'campaigns' => const _CampaignsPanel(),
           'deliveries' => const _DeliveriesPanel(),
+          'channels' => const _ChannelsPanel(),
+          'quota' => const _QuotaPanel(),
           _ => const _OverviewPanel(),
         },
       ],
@@ -68,6 +70,8 @@ class _TabBar extends ConsumerWidget {
       ('audience', 'الجمهور', Icons.groups_2_outlined),
       ('campaigns', 'الحملات', Icons.campaign_outlined),
       ('deliveries', 'سجل الإرسال', Icons.local_shipping_outlined),
+      ('channels', 'قنوات الإرسال', Icons.settings_input_antenna),
+      ('quota', 'الرصيد والحزم', Icons.account_balance_wallet_outlined),
     ];
     return AppCard(
       child: Wrap(
@@ -647,6 +651,510 @@ class _DeliveriesPanel extends ConsumerWidget {
   }
 }
 
+class _ChannelsPanel extends ConsumerWidget {
+  const _ChannelsPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(communicationChannelsProvider);
+    return page.when(
+      loading: () => const _Loading(),
+      error: (error, _) => HubErrorState(
+        title: 'تعذر تحميل قنوات الإرسال',
+        subtitle: visibleErrorMessage(error),
+        onRetry: () => ref.invalidate(communicationChannelsProvider),
+      ),
+      data: (data) {
+        if (data.items.isEmpty) {
+          return const EmptyState(
+            icon: Icons.settings_input_antenna,
+            title: 'لا توجد قنوات قابلة للضبط',
+            subtitle:
+                'عند توفر قناة إرسال من الخادم ستظهر هنا لتفعيلها وضبط رابط المزود.',
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AppCard(
+              child: Row(
+                children: [
+                  StatusPill(
+                    text: 'إعداد إنتاجي',
+                    tone: PillTone.blue,
+                    icon: Icons.verified_user_outlined,
+                  ),
+                  SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: Text(
+                      'فعّل القناة فقط بعد إدخال رابط إرسال صحيح من مزود الرسائل. استخدم {phone} لرقم الجوال و {msg} لنص الرسالة داخل رابط المزود.',
+                      style:
+                          TextStyle(color: AppTokens.textMuted, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            for (final item in data.items) ...[
+              _ChannelConfigCard(
+                item: item,
+                modes: data.modes,
+                methods: data.methods,
+              ),
+              const SizedBox(height: AppTokens.s12),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ChannelConfigCard extends ConsumerStatefulWidget {
+  const _ChannelConfigCard({
+    required this.item,
+    required this.modes,
+    required this.methods,
+  });
+
+  final CommunicationChannel item;
+  final List<CommunicationModeOption> modes;
+  final List<String> methods;
+
+  @override
+  ConsumerState<_ChannelConfigCard> createState() => _ChannelConfigCardState();
+}
+
+class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
+  late final TextEditingController _sendUrl;
+  late final TextEditingController _balanceUrl;
+  late bool _enabled;
+  late String _mode;
+  late String _method;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _sendUrl = TextEditingController();
+    _balanceUrl = TextEditingController();
+    _resetFromItem();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ChannelConfigCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.item.channel != widget.item.channel) {
+      _resetFromItem();
+    }
+  }
+
+  @override
+  void dispose() {
+    _sendUrl.dispose();
+    _balanceUrl.dispose();
+    super.dispose();
+  }
+
+  void _resetFromItem() {
+    _enabled = widget.item.enabled;
+    _mode = widget.item.mode;
+    _method = widget.item.config.httpMethod;
+    _sendUrl.text = widget.item.config.sendUrlTemplate;
+    _balanceUrl.text = widget.item.config.balanceUrl;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final modeOptions = widget.modes.isEmpty
+        ? const [
+            CommunicationModeOption(
+              key: 'self_api',
+              label: 'ربط مباشر من العميل',
+            ),
+            CommunicationModeOption(
+              key: 'admin_quota',
+              label: 'رصيد مخصص من الإدارة',
+            ),
+          ]
+        : widget.modes;
+    if (!modeOptions.any((item) => item.key == _mode)) {
+      _mode = modeOptions.first.key;
+    }
+    final methodOptions =
+        widget.methods.isEmpty ? const ['GET', 'POST'] : widget.methods;
+    if (!methodOptions.contains(_method)) {
+      _method = methodOptions.first;
+    }
+    return AppCard(
+      title: widget.item.label,
+      icon: Icons.settings_input_antenna,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              StatusPill(
+                text: widget.item.statusLabel,
+                tone: _channelTone(widget.item),
+                dot: true,
+              ),
+              StatusPill(
+                text: widget.item.modeLabel,
+                tone: widget.item.quota.isQuotaMode
+                    ? PillTone.amber
+                    : PillTone.blue,
+                icon: widget.item.quota.isQuotaMode
+                    ? Icons.account_balance_wallet_outlined
+                    : Icons.link_outlined,
+              ),
+              StatusPill(
+                text: 'الرصيد ${widget.item.quota.balance}',
+                tone: PillTone.neutral,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s12),
+          SwitchListTile.adaptive(
+            value: _enabled,
+            contentPadding: EdgeInsets.zero,
+            title: const Text('تفعيل القناة'),
+            subtitle: const Text(
+              'عند الإيقاف لن تستخدم هذه القناة في إرسال الرسائل الخارجية.',
+            ),
+            onChanged: (value) => setState(() => _enabled = value),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 560;
+              final modeField = DropdownButtonFormField<String>(
+                initialValue: _mode,
+                decoration: const InputDecoration(labelText: 'طريقة التشغيل'),
+                items: [
+                  for (final mode in modeOptions)
+                    DropdownMenuItem(value: mode.key, child: Text(mode.label)),
+                ],
+                onChanged: (value) => setState(() => _mode = value ?? _mode),
+              );
+              final methodField = DropdownButtonFormField<String>(
+                initialValue: _method,
+                decoration: const InputDecoration(labelText: 'نوع الطلب'),
+                items: [
+                  for (final method in methodOptions)
+                    DropdownMenuItem(value: method, child: Text(method)),
+                ],
+                onChanged: (value) =>
+                    setState(() => _method = value ?? _method),
+              );
+              if (!wide) {
+                return Column(
+                  children: [
+                    modeField,
+                    const SizedBox(height: AppTokens.s12),
+                    methodField,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: modeField),
+                  const SizedBox(width: AppTokens.s12),
+                  SizedBox(width: 150, child: methodField),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: AppTokens.s12),
+          TextField(
+            controller: _sendUrl,
+            textDirection: TextDirection.ltr,
+            decoration: const InputDecoration(
+              labelText: 'رابط إرسال الرسائل من المزود',
+              hintText: 'https://provider.example/send?to={phone}&text={msg}',
+            ),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          TextField(
+            controller: _balanceUrl,
+            textDirection: TextDirection.ltr,
+            decoration: const InputDecoration(
+              labelText: 'رابط قراءة الرصيد من المزود عند الحاجة',
+              hintText: 'https://provider.example/balance',
+            ),
+          ),
+          const SizedBox(height: AppTokens.s16),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: const Icon(Icons.save_outlined),
+              label: Text(_saving ? 'جار الحفظ' : 'حفظ إعدادات القناة'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await ref.read(communicationsRepositoryProvider).saveChannel(
+            CommunicationChannelDraft(
+              channel: widget.item.channel,
+              enabled: _enabled,
+              mode: _mode,
+              sendUrlTemplate: _sendUrl.text.trim(),
+              httpMethod: _method,
+              balanceUrl: _balanceUrl.text.trim(),
+            ),
+          );
+      _refresh(ref);
+      ref.invalidate(communicationChannelsProvider);
+      ref.invalidate(communicationQuotaProvider);
+      if (mounted) _snack(context, 'تم حفظ إعدادات ${widget.item.label}');
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+class _QuotaPanel extends ConsumerWidget {
+  const _QuotaPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(communicationQuotaProvider);
+    return page.when(
+      loading: () => const _Loading(),
+      error: (error, _) => HubErrorState(
+        title: 'تعذر تحميل رصيد الرسائل',
+        subtitle: visibleErrorMessage(error),
+        onRetry: () => ref.invalidate(communicationQuotaProvider),
+      ),
+      data: (data) {
+        if (data.items.isEmpty) {
+          return const EmptyState(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'لا يوجد رصيد رسائل',
+            subtitle:
+                'القنوات التي تعمل بنظام رصيد الإدارة ستظهر هنا لمتابعة الاستهلاك وإضافة رصيد.',
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final item in data.items) ...[
+              _QuotaCard(item: item),
+              const SizedBox(height: AppTokens.s12),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _QuotaCard extends ConsumerStatefulWidget {
+  const _QuotaCard({required this.item});
+
+  final CommunicationQuotaStatus item;
+
+  @override
+  ConsumerState<_QuotaCard> createState() => _QuotaCardState();
+}
+
+class _QuotaCardState extends ConsumerState<_QuotaCard> {
+  final _amount = TextEditingController();
+  final _note = TextEditingController();
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _amount.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      title: widget.item.label,
+      icon: Icons.account_balance_wallet_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              StatusPill(
+                text: widget.item.modeLabel,
+                tone: widget.item.isQuotaMode ? PillTone.amber : PillTone.blue,
+                icon: widget.item.isQuotaMode
+                    ? Icons.account_balance_wallet_outlined
+                    : Icons.link_outlined,
+              ),
+              StatusPill(
+                text: 'المتوفر ${widget.item.balance}',
+                tone: PillTone.green,
+                dot: true,
+              ),
+              StatusPill(
+                text: 'المستخدم ${widget.item.used}',
+                tone: PillTone.neutral,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s12),
+          if (widget.item.isQuotaMode) ...[
+            const Text(
+              'هذه القناة تستخدم رصيدًا مخصصًا من الإدارة. أضف عدد الرسائل المتفق عليه بعد الدفع أو الموافقة.',
+              style: TextStyle(color: AppTokens.textMuted, height: 1.35),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final wide = constraints.maxWidth >= 760;
+                final amountField = TextField(
+                  controller: _amount,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'عدد الرسائل',
+                    hintText: '100',
+                  ),
+                );
+                final noteField = TextField(
+                  controller: _note,
+                  decoration: const InputDecoration(
+                    labelText: 'ملاحظة داخلية',
+                    hintText: 'مثال: دفعة شهرية أو تجربة مجانية',
+                  ),
+                );
+                final button = FilledButton.icon(
+                  onPressed: _saving ? null : _credit,
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: Text(_saving ? 'جار الإضافة' : 'إضافة رصيد'),
+                );
+                if (!wide) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      amountField,
+                      const SizedBox(height: AppTokens.s12),
+                      noteField,
+                      const SizedBox(height: AppTokens.s12),
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: button,
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    SizedBox(width: 170, child: amountField),
+                    const SizedBox(width: AppTokens.s12),
+                    Expanded(child: noteField),
+                    const SizedBox(width: AppTokens.s12),
+                    button,
+                  ],
+                );
+              },
+            ),
+          ] else
+            const Text(
+              'هذه القناة تعمل بربط مباشر من العميل ولا تستهلك رصيدًا محليًا من الإدارة.',
+              style: TextStyle(color: AppTokens.textMuted, height: 1.35),
+            ),
+          const Divider(height: AppTokens.s24),
+          Text(
+            'آخر الحركات',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          if (widget.item.ledger.isEmpty)
+            const Text(
+              'لا توجد حركات رصيد بعد.',
+              style: TextStyle(color: AppTokens.textMuted),
+            )
+          else
+            for (final entry in widget.item.ledger.take(6))
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: entry.delta >= 0
+                      ? AppTokens.greenSoft
+                      : AppTokens.redSoft,
+                  child: Icon(
+                    entry.delta >= 0
+                        ? Icons.add_outlined
+                        : Icons.remove_outlined,
+                    color: entry.delta >= 0
+                        ? AppTokens.greenInk
+                        : AppTokens.redInk,
+                  ),
+                ),
+                title: Text(
+                  '${entry.delta >= 0 ? '+' : ''}${entry.delta} رسالة',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text(
+                  [
+                    if (entry.note.isNotEmpty) entry.note,
+                    'الرصيد بعد الحركة ${entry.balanceAfter}',
+                    entry.tsLabel,
+                  ].join(' · '),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _credit() async {
+    final amount = int.tryParse(_amount.text.trim()) ?? 0;
+    if (amount <= 0) {
+      _snack(context, 'أدخل عدد رسائل صحيحًا أكبر من صفر');
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final result =
+          await ref.read(communicationsRepositoryProvider).creditQuota(
+                channel: widget.item.channel,
+                amount: amount,
+                note: _note.text.trim(),
+              );
+      ref.invalidate(communicationQuotaProvider);
+      ref.invalidate(communicationChannelsProvider);
+      ref.invalidate(communicationsHomeProvider);
+      _amount.clear();
+      _note.clear();
+      if (mounted) {
+        _snack(
+          context,
+          result.message.isEmpty ? 'تمت إضافة الرصيد' : result.message,
+        );
+      }
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
 class _AudienceFields extends StatelessWidget {
   const _AudienceFields({
     required this.target,
@@ -1105,7 +1613,14 @@ void _refresh(WidgetRef ref) {
   ref.invalidate(messageTemplatesProvider);
   ref.invalidate(audienceSegmentsProvider);
   ref.invalidate(messageDeliveriesProvider);
+  ref.invalidate(communicationChannelsProvider);
+  ref.invalidate(communicationQuotaProvider);
   ref.invalidate(campaignsProvider);
+}
+
+PillTone _channelTone(CommunicationChannel item) {
+  if (!item.enabled) return PillTone.neutral;
+  return item.active ? PillTone.green : PillTone.amber;
 }
 
 void _snack(BuildContext context, String text) {

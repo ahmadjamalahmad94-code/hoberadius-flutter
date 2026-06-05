@@ -25,6 +25,16 @@ final messageDeliveriesProvider =
   return ref.watch(communicationsRepositoryProvider).deliveries();
 });
 
+final communicationChannelsProvider =
+    FutureProvider.autoDispose<CommunicationChannelPage>((ref) {
+  return ref.watch(communicationsRepositoryProvider).channels();
+});
+
+final communicationQuotaProvider =
+    FutureProvider.autoDispose<CommunicationQuotaPage>((ref) {
+  return ref.watch(communicationsRepositoryProvider).quota();
+});
+
 final campaignsProvider = FutureProvider.autoDispose<CampaignPage>((ref) {
   return ref.watch(communicationsRepositoryProvider).campaigns();
 });
