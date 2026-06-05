@@ -236,6 +236,7 @@ class SetupWizardRun {
     required this.routerName,
     required this.routerType,
     required this.routerVpnAddress,
+    required this.nasDeviceId,
     required this.isTerminal,
     required this.createdAt,
     required this.updatedAt,
@@ -247,6 +248,7 @@ class SetupWizardRun {
   final String routerName;
   final String routerType;
   final String routerVpnAddress;
+  final int nasDeviceId;
   final bool isTerminal;
   final String createdAt;
   final String updatedAt;
@@ -262,6 +264,7 @@ class SetupWizardRun {
       routerName: _string(json['router_name']),
       routerType: _string(json['router_type']),
       routerVpnAddress: _string(json['router_vpn_ip']),
+      nasDeviceId: _int(json['nas_device_id']),
       isTerminal: _bool(json['is_terminal']),
       createdAt: _string(json['created_at']),
       updatedAt: _string(json['updated_at']),
@@ -275,6 +278,100 @@ class SetupWizardRun {
         '' => '',
         _ => routerType,
       };
+}
+
+class SetupWizardRouterServiceCard {
+  const SetupWizardRouterServiceCard({
+    required this.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.phasesCount,
+  });
+
+  final String key;
+  final String title;
+  final String subtitle;
+  final String icon;
+  final String color;
+  final int phasesCount;
+
+  factory SetupWizardRouterServiceCard.fromJson(Map<String, dynamic> json) {
+    final key = _string(json['key']);
+    return SetupWizardRouterServiceCard(
+      key: key,
+      title: _arabicOr(
+        _string(json['title_ar']),
+        setupWizardRouterServiceLabel(key),
+      ),
+      subtitle: _string(json['subtitle_ar']),
+      icon: _string(json['icon']),
+      color: _string(json['color']),
+      phasesCount: _int(json['phases_count']),
+    );
+  }
+}
+
+class SetupWizardRouterServicesStatus {
+  const SetupWizardRouterServicesStatus({
+    required this.routerId,
+    required this.services,
+  });
+
+  final int routerId;
+  final List<SetupWizardRouterServiceStatus> services;
+
+  factory SetupWizardRouterServicesStatus.fromJson(Map<String, dynamic> json) {
+    final raw = json['services'];
+    return SetupWizardRouterServicesStatus(
+      routerId: _int(json['router_id']),
+      services: raw is List
+          ? raw
+              .whereType<Map>()
+              .map(
+                (item) => SetupWizardRouterServiceStatus.fromJson(_map(item)),
+              )
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class SetupWizardRouterServiceStatus {
+  const SetupWizardRouterServiceStatus({
+    required this.key,
+    required this.title,
+    required this.enabled,
+    required this.status,
+    required this.statusLabel,
+  });
+
+  final String key;
+  final String title;
+  final bool? enabled;
+  final String status;
+  final String statusLabel;
+
+  factory SetupWizardRouterServiceStatus.fromJson(Map<String, dynamic> json) {
+    final key = _string(json['key']);
+    final rawEnabled = json['enabled'];
+    return SetupWizardRouterServiceStatus(
+      key: key,
+      title: _arabicOr(
+        _string(json['title_ar']),
+        setupWizardRouterServiceLabel(key),
+      ),
+      enabled: rawEnabled is bool ? rawEnabled : null,
+      status: _string(json['status'], fallback: 'unknown'),
+      statusLabel: _arabicOr(
+        _string(json['status_ar']),
+        setupWizardRouterServiceStatusLabel(
+          _string(json['status'], fallback: 'unknown'),
+        ),
+      ),
+    );
+  }
 }
 
 class SetupWizardRunsSummary {
@@ -458,6 +555,27 @@ class SetupWizardPhasePlan {
       blockingErrors: _stringList(json['blocking_errors']),
     );
   }
+}
+
+String setupWizardRouterServiceLabel(String key) {
+  return switch (key) {
+    'hotspot' => 'بوابة الدخول',
+    'broadband' => 'اشتراكات PPPoE',
+    'block-sites' => 'حجب المواقع',
+    'open-sites' => 'المواقع المفتوحة',
+    'public-ip' => 'تغيير عنوان الخروج',
+    'remote-access' => 'الدخول الفني الآمن',
+    _ => key.isEmpty ? 'خدمة راوتر' : key,
+  };
+}
+
+String setupWizardRouterServiceStatusLabel(String status) {
+  return switch (status) {
+    'active' => 'مفعّلة',
+    'inactive' => 'غير مفعّلة',
+    'unknown' => 'غير معروف',
+    _ => 'غير معروف',
+  };
 }
 
 String setupWizardPhaseLabel(String phase) {

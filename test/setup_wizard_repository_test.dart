@@ -63,6 +63,30 @@ class _CaptureAdapter implements HttpClientAdapter {
             },
           ],
         },
+      '/api/v1/setup-wizard/router-services/catalogue' => {
+          'services': [
+            {
+              'key': 'hotspot',
+              'title_ar': 'بوابة الدخول',
+              'subtitle_ar': 'بوابة دخول عامّة',
+              'icon': 'wifi',
+              'color': 'blue',
+              'phases_count': 4,
+            },
+          ],
+        },
+      '/api/v1/setup-wizard/routers/15/services/status' => {
+          'router_id': 15,
+          'services': [
+            {
+              'key': 'hotspot',
+              'title_ar': 'بوابة الدخول',
+              'enabled': true,
+              'status': 'active',
+              'status_ar': 'مفعّلة',
+            },
+          ],
+        },
       String path when path.endsWith('/phase-plan/internet') => {
           'phase': 'internet',
           'run_id': 9,
@@ -135,6 +159,27 @@ void main() {
         'GET /api/v1/setup-wizard/phase-planners',
         'POST /api/v1/setup-wizard/runs/9/phase-plan/internet',
         'GET /api/v1/setup-wizard/diagnostics-catalogue',
+      ],
+    );
+  });
+
+  test('SetupWizardRepository sends router service status requests', () async {
+    final client = ApiClient(_MemoryTokenStorage(), _MemoryEndpointStorage());
+    final adapter = _CaptureAdapter();
+    client.dio.httpClientAdapter = adapter;
+    final repo = SetupWizardRepository(client);
+
+    final catalogue = await repo.routerServiceCatalogue();
+    final status = await repo.routerServicesStatus(15);
+
+    expect(catalogue.single.title, 'بوابة الدخول');
+    expect(status.routerId, 15);
+    expect(status.services.single.statusLabel, 'مفعّلة');
+    expect(
+      adapter.requests.map((request) => '${request.method} ${request.path}'),
+      [
+        'GET /api/v1/setup-wizard/router-services/catalogue',
+        'GET /api/v1/setup-wizard/routers/15/services/status',
       ],
     );
   });

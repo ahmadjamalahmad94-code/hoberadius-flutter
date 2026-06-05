@@ -89,6 +89,8 @@ class _SetupWizardScreenState extends ConsumerState<SetupWizardScreen> {
           enabled: overview.safeOperations.canRunLifecycle,
         ),
         const SizedBox(height: AppTokens.s12),
+        _RouterServicesCard(runs: overview.recentRuns),
+        const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 980;
@@ -710,6 +712,256 @@ class _RunLifecycleCardState extends ConsumerState<_RunLifecycleCard> {
     } finally {
       if (mounted) setState(() => _busyAction = null);
     }
+  }
+}
+
+class _RouterServicesCard extends ConsumerStatefulWidget {
+  const _RouterServicesCard({required this.runs});
+
+  final List<SetupWizardRun> runs;
+
+  @override
+  ConsumerState<_RouterServicesCard> createState() =>
+      _RouterServicesCardState();
+}
+
+class _RouterServicesCardState extends ConsumerState<_RouterServicesCard> {
+  int? _routerId;
+
+  List<SetupWizardRun> get _registeredRuns {
+    final seen = <int>{};
+    final result = <SetupWizardRun>[];
+    for (final run in widget.runs) {
+      if (run.nasDeviceId <= 0) continue;
+      if (seen.add(run.nasDeviceId)) result.add(run);
+    }
+    return result;
+  }
+
+  @override
+  void didUpdateWidget(covariant _RouterServicesCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _ensureRouterSelection();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final registered = _registeredRuns;
+    if (registered.isEmpty) {
+      return const AppCard(
+        title: 'خدمات الراوتر بعد التسجيل',
+        icon: Icons.hub_outlined,
+        child: EmptyState(
+          icon: Icons.router_outlined,
+          title: 'لا يوجد راوتر مسجل بعد',
+          subtitle:
+              'أكمل تشغيل المعالج حتى خطوة تسجيل الراوتر، ثم تظهر هنا حالة الخدمات المستلمة من الراوتر.',
+        ),
+      );
+    }
+    _ensureRouterSelection();
+    final routerId = _routerId ?? registered.first.nasDeviceId;
+    final catalogue = ref.watch(setupWizardRouterServiceCatalogueProvider);
+    final status = ref.watch(setupWizardRouterServicesStatusProvider(routerId));
+    return AppCard(
+      title: 'خدمات الراوتر بعد التسجيل',
+      icon: Icons.hub_outlined,
+      actions: [
+        IconButton(
+          tooltip: 'تحديث حالة الخدمات',
+          onPressed: () {
+            ref.invalidate(setupWizardRouterServiceCatalogueProvider);
+            ref.invalidate(setupWizardRouterServicesStatusProvider(routerId));
+          },
+          icon: const Icon(Icons.refresh_outlined),
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _SelectBox<int>(
+            label: 'الراوتر المسجل',
+            value: routerId,
+            items: [
+              for (final run in registered)
+                DropdownMenuItem(
+                  value: run.nasDeviceId,
+                  child: Text(_registeredRouterLabel(run)),
+                ),
+            ],
+            onChanged: (value) {
+              if (value == null) return;
+              setState(() => _routerId = value);
+            },
+          ),
+          const SizedBox(height: AppTokens.s12),
+          catalogue.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => HubErrorState(
+              title: 'تعذر جلب كتالوج الخدمات',
+              subtitle: visibleErrorMessage(error),
+              onRetry: () =>
+                  ref.invalidate(setupWizardRouterServiceCatalogueProvider),
+            ),
+            data: (cards) => status.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => HubErrorState(
+                title: 'تعذر جلب حالة الخدمات',
+                subtitle: visibleErrorMessage(error),
+                onRetry: () => ref.invalidate(
+                  setupWizardRouterServicesStatusProvider(routerId),
+                ),
+              ),
+              data: (state) => _RouterServicesGrid(
+                cards: cards,
+                status: state,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _ensureRouterSelection() {
+    final registered = _registeredRuns;
+    final ids = registered.map((run) => run.nasDeviceId).toSet();
+    if (_routerId == null || !ids.contains(_routerId)) {
+      _routerId = registered.isEmpty ? null : registered.first.nasDeviceId;
+    }
+  }
+}
+
+class _RouterServicesGrid extends StatelessWidget {
+  const _RouterServicesGrid({required this.cards, required this.status});
+
+  final List<SetupWizardRouterServiceCard> cards;
+  final SetupWizardRouterServicesStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    if (cards.isEmpty) {
+      return const EmptyState(
+        icon: Icons.miscellaneous_services_outlined,
+        title: 'لا توجد خدمات معرفة',
+        subtitle: 'لم يرجع الخادم كتالوج خدمات الراوتر لهذا الإصدار.',
+      );
+    }
+    final statusByKey = {for (final item in status.services) item.key: item};
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 980
+            ? 3
+            : constraints.maxWidth >= 640
+                ? 2
+                : 1;
+        return GridView.count(
+          crossAxisCount: columns,
+          crossAxisSpacing: AppTokens.s8,
+          mainAxisSpacing: AppTokens.s8,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          childAspectRatio: columns == 1 ? 3.2 : 2.5,
+          children: [
+            for (final card in cards)
+              _RouterServiceTile(
+                card: card,
+                status: statusByKey[card.key],
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _RouterServiceTile extends StatelessWidget {
+  const _RouterServiceTile({required this.card, required this.status});
+
+  final SetupWizardRouterServiceCard card;
+  final SetupWizardRouterServiceStatus? status;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = status?.status ?? 'unknown';
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.soft,
+        borderRadius: BorderRadius.circular(AppTokens.r8),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppTokens.brandSoft,
+              borderRadius: BorderRadius.circular(AppTokens.r8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              _routerServiceIcon(card.key),
+              size: 18,
+              color: AppTokens.brandInk,
+            ),
+          ),
+          const SizedBox(width: AppTokens.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        card.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w900,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: AppTokens.s8),
+                    StatusPill(
+                      text: status?.statusLabel ??
+                          setupWizardRouterServiceStatusLabel(state),
+                      tone: _routerServiceTone(state),
+                      dot: true,
+                    ),
+                  ],
+                ),
+                if (card.subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    card.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTokens.textSecondary,
+                          height: 1.35,
+                        ),
+                  ),
+                ],
+                if (card.phasesCount > 0) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    '${card.phasesCount} مراحل إعداد',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTokens.textMuted,
+                        ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1547,6 +1799,7 @@ class _RunRow extends StatelessWidget {
                       'النوع: ${run.routerTypeLabel}',
                     if (run.routerVpnAddress.isNotEmpty)
                       'عنوان النفق: ${run.routerVpnAddress}',
+                    if (run.nasDeviceId > 0) 'رقم الراوتر: ${run.nasDeviceId}',
                     if (run.updatedAt.isNotEmpty) 'آخر تحديث: ${run.updatedAt}',
                   ].join('  •  '),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -1751,6 +2004,31 @@ PillTone _readinessCheckTone(String status) => switch (status) {
       'disabled' => PillTone.neutral,
       _ => PillTone.neutral,
     };
+
+PillTone _routerServiceTone(String status) => switch (status) {
+      'active' => PillTone.green,
+      'inactive' => PillTone.neutral,
+      'unknown' => PillTone.amber,
+      _ => PillTone.neutral,
+    };
+
+IconData _routerServiceIcon(String key) {
+  return switch (key) {
+    'hotspot' => Icons.wifi_outlined,
+    'broadband' => Icons.settings_input_component_outlined,
+    'block-sites' => Icons.block_outlined,
+    'open-sites' => Icons.check_circle_outline,
+    'public-ip' => Icons.public_outlined,
+    'remote-access' => Icons.vpn_key_outlined,
+    _ => Icons.miscellaneous_services_outlined,
+  };
+}
+
+String _registeredRouterLabel(SetupWizardRun run) {
+  final name =
+      run.routerName.trim().isEmpty ? 'راوتر بدون اسم' : run.routerName;
+  return '$name - رقم الراوتر ${run.nasDeviceId}';
+}
 
 String _safeArabicDetail(String value) {
   final text = value.trim();

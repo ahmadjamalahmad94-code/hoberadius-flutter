@@ -45,6 +45,7 @@ void main() {
           'router_name': '',
           'router_type': '',
           'router_vpn_ip': '',
+          'nas_device_id': 15,
           'is_terminal': false,
           'created_at': '2026-06-02T12:00:00Z',
           'updated_at': '2026-06-02T12:00:00Z',
@@ -75,6 +76,7 @@ void main() {
       'فحص الجاهزية معطل',
     );
     expect(overview.recentRuns.single.id, 9);
+    expect(overview.recentRuns.single.nasDeviceId, 15);
     expect(overview.recentRuns.single.stateLabel, 'جمع بيانات الراوتر');
     expect(overview.runsSummary.byState['COLLECTING'], 1);
     expect(overview.safeOperations.canApplyRouterChanges, isFalse);
@@ -140,5 +142,46 @@ void main() {
     expect(result.shortCode, 'abc123');
     expect(result.containsSensitiveValues, isTrue);
     expect(result.warning, contains('أسرار'));
+  });
+
+  test('router service catalogue and status parse Arabic labels', () {
+    final card = SetupWizardRouterServiceCard.fromJson({
+      'key': 'hotspot',
+      'title_ar': 'بوابة الدخول',
+      'subtitle_ar': 'بوابة دخول عامّة',
+      'icon': 'wifi',
+      'color': 'blue',
+      'phases_count': 4,
+    });
+    final status = SetupWizardRouterServicesStatus.fromJson({
+      'router_id': 15,
+      'services': [
+        {
+          'key': 'hotspot',
+          'title_ar': 'بوابة الدخول',
+          'enabled': true,
+          'status': 'active',
+          'status_ar': 'مفعّلة',
+        },
+        {
+          'key': 'block-sites',
+          'title_ar': 'حجب المواقع',
+          'enabled': null,
+          'status': 'unknown',
+          'status_ar': 'غير معروف',
+        },
+      ],
+    });
+
+    expect(card.title, 'بوابة الدخول');
+    expect(card.phasesCount, 4);
+    expect(status.routerId, 15);
+    expect(status.services.first.enabled, isTrue);
+    expect(status.services.first.statusLabel, 'مفعّلة');
+    expect(status.services.last.enabled, isNull);
+    expect(
+      setupWizardRouterServiceLabel('remote-access'),
+      'الدخول الفني الآمن',
+    );
   });
 }

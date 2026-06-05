@@ -53,6 +53,36 @@ class SetupWizardRepository {
         : const [];
   }
 
+  Future<List<SetupWizardRouterServiceCard>> routerServiceCatalogue() async {
+    final res =
+        await _api.get('/api/v1/setup-wizard/router-services/catalogue');
+    final data = res['data'];
+    final map = data is Map<String, dynamic> ? data : const <String, dynamic>{};
+    final services = map['services'];
+    return services is List
+        ? services
+            .whereType<Map>()
+            .map(
+              (item) => SetupWizardRouterServiceCard.fromJson(
+                item.map((key, value) => MapEntry(key.toString(), value)),
+              ),
+            )
+            .toList()
+        : const [];
+  }
+
+  Future<SetupWizardRouterServicesStatus> routerServicesStatus(
+    int routerId,
+  ) async {
+    final res = await _api.get(
+      '/api/v1/setup-wizard/routers/$routerId/services/status',
+    );
+    final data = res['data'];
+    return SetupWizardRouterServicesStatus.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
+  }
+
   Future<SetupWizardRun> submitRouterInfo(
     int runId, {
     required String routerName,
