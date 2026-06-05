@@ -50,6 +50,16 @@ void main() {
     expect(details.members.single.statusLabel, 'موقوف');
   });
 
+  test('unknown share group member status does not expose backend code', () {
+    final member = ShareGroupMember.fromJson({
+      'id': 5,
+      'username': 'sub-5',
+      'status': 'backend_future_status',
+    });
+
+    expect(member.statusLabel, 'حالة عضو غير معروفة');
+  });
+
   test('snapshot exposes dashboard counters for side explanations', () {
     const snapshot = RadiusResourcesSnapshot(
       pools: [

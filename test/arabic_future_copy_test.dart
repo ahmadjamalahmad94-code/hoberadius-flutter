@@ -107,4 +107,28 @@ void main() {
       }
     }
   });
+
+  test('domain labels avoid raw fallback values in cleaned models', () {
+    final blockedByFile = {
+      'lib/features/network_policy/domain/network_policy_model.dart': [
+        ': deploymentStatus,',
+        ': actionType,',
+        ': status,',
+      ],
+      'lib/features/radius_resources/domain/radius_resources_model.dart': [
+        ': status,',
+      ],
+    };
+
+    for (final entry in blockedByFile.entries) {
+      final source = File(entry.key).readAsStringSync();
+      for (final rawSnippet in entry.value) {
+        expect(
+          source,
+          isNot(contains(rawSnippet)),
+          reason: '${entry.key} still has raw fallback: $rawSnippet',
+        );
+      }
+    }
+  });
 }

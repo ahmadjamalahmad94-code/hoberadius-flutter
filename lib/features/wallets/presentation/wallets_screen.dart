@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -202,7 +203,7 @@ class _WalletSummary extends StatelessWidget {
       );
     }
     final balanceText = balancesByCurrency.entries
-        .map((entry) => '${_money(entry.value)} ${entry.key}')
+        .map((entry) => amountWithCurrency(_money(entry.value), entry.key))
         .join(' / ');
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -320,7 +321,9 @@ class _WalletsTable extends StatelessWidget {
                 cells: [
                   DataCell(Text('${wallet.id}')),
                   DataCell(Text(wallet.ownerLabel)),
-                  DataCell(Text('${wallet.balance} ${wallet.currency}')),
+                  DataCell(
+                    Text(amountWithCurrency(wallet.balance, wallet.currency)),
+                  ),
                   DataCell(
                     StatusPill(
                       text: wallet.statusLabel,
@@ -383,7 +386,7 @@ class _WalletCard extends StatelessWidget {
           const SizedBox(height: AppTokens.s12),
           _InfoLine(
             label: 'الرصيد',
-            value: '${wallet.balance} ${wallet.currency}',
+            value: amountWithCurrency(wallet.balance, wallet.currency),
           ),
           _InfoLine(label: 'آخر تحديث', value: _fmt(wallet.updatedAt)),
           const SizedBox(height: AppTokens.s12),
@@ -517,8 +520,8 @@ Future<void> _changeBalance(
     _snack(
       context,
       credit
-          ? 'تم شحن المحفظة. الرصيد الجديد ${result.wallet.balance} ${result.wallet.currency}'
-          : 'تم خصم الرصيد. الرصيد الجديد ${result.wallet.balance} ${result.wallet.currency}',
+          ? 'تم شحن المحفظة. الرصيد الجديد ${amountWithCurrency(result.wallet.balance, result.wallet.currency)}'
+          : 'تم خصم الرصيد. الرصيد الجديد ${amountWithCurrency(result.wallet.balance, result.wallet.currency)}',
     );
   } catch (error) {
     if (context.mounted) _snack(context, visibleErrorMessage(error));
@@ -598,7 +601,7 @@ class _TransactionRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${tx.amount} ${tx.currency}',
+                  amountWithCurrency(tx.amount, tx.currency),
                   style: const TextStyle(fontWeight: FontWeight.w900),
                 ),
                 Text(
@@ -678,7 +681,7 @@ Future<WalletCreateDraft?> _walletDialog(BuildContext context) async {
                     .map(
                       (value) => DropdownMenuItem(
                         value: value,
-                        child: Text(value),
+                        child: Text(currencyLabel(value)),
                       ),
                     )
                     .toList(),

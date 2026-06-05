@@ -1,3 +1,5 @@
+import '../../../core/l10n/arabic_labels.dart';
+
 class NetworkPolicyKind {
   const NetworkPolicyKind({
     required this.slug,
@@ -119,7 +121,11 @@ class NetworkPolicy {
         'applied' => 'مطبقة',
         'failed' => 'فشل التنفيذ',
         'disabled' => 'معطلة',
-        _ => deploymentStatus.trim().isEmpty ? 'مسودة' : deploymentStatus,
+        _ => unknownStatusLabel(
+            deploymentStatus,
+            emptyLabel: 'مسودة',
+            unknownLabel: 'حالة نشر غير معروفة',
+          ),
       };
 }
 
@@ -374,7 +380,7 @@ class NetworkPolicyChangeSet {
   String get actionLabel => switch (actionType) {
         'apply' => 'تطبيق',
         'rollback' => 'تراجع',
-        _ => actionType.trim().isEmpty ? 'عملية' : actionType,
+        _ => unknownActionLabel(actionType),
       };
 
   String get statusLabel => networkPolicyExecutionStatusLabel(status);
@@ -416,7 +422,10 @@ String networkPolicyExecutionStatusLabel(String status) {
     'partially_rolled_back' => 'تراجع جزئي',
     'pending' => 'قيد الانتظار',
     'skipped' => 'تم التخطي',
-    _ => status.trim().isEmpty ? 'غير محدد' : status,
+    _ => unknownStatusLabel(
+        status,
+        unknownLabel: 'حالة تنفيذ غير معروفة',
+      ),
   };
 }
 

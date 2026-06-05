@@ -1,3 +1,5 @@
+import '../../../core/l10n/arabic_labels.dart';
+
 class RadiusResourcesSnapshot {
   const RadiusResourcesSnapshot({
     required this.pools,
@@ -149,7 +151,10 @@ class ShareGroupMember {
         'disabled' => 'معطل',
         'expired' => 'منتهي',
         'suspended' => 'موقوف',
-        _ => status.isEmpty ? 'غير محدد' : status,
+        _ => unknownStatusLabel(
+            status,
+            unknownLabel: 'حالة عضو غير معروفة',
+          ),
       };
 }
 

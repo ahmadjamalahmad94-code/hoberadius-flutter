@@ -118,4 +118,36 @@ void main() {
     expect(changes.items.single.statusLabel, 'نجحت جزئيًا');
     expect(changes.items.single.targets.single.statusLabel, 'فشلت');
   });
+
+  test('unknown backend policy statuses stay Arabic and user friendly', () {
+    final policy = NetworkPolicy.fromJson({
+      'id': 12,
+      'router_id': 3,
+      'name': 'سياسة غير معروفة',
+      'deployment_status': 'backend_future_state',
+    });
+    expect(policy.deploymentStatusLabel, 'حالة نشر غير معروفة');
+
+    final changes = NetworkPolicyChangeSetPage.fromJson({
+      'data': {
+        'items': [
+          {
+            'id': 1,
+            'action_type': 'backend_future_action',
+            'status': 'backend_future_status',
+            'targets': [
+              {'router_id': 2, 'status': 'target_future_status'},
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(changes.items.single.actionLabel, 'عملية غير معروفة');
+    expect(changes.items.single.statusLabel, 'حالة تنفيذ غير معروفة');
+    expect(
+      changes.items.single.targets.single.statusLabel,
+      'حالة تنفيذ غير معروفة',
+    );
+  });
 }

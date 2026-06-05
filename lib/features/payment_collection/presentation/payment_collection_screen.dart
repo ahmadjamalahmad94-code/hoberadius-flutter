@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -340,9 +341,18 @@ class _PaymentSettingsEditorState
                           decoration:
                               const InputDecoration(labelText: 'العملة'),
                           items: const [
-                            DropdownMenuItem(value: 'ILS', child: Text('ILS')),
-                            DropdownMenuItem(value: 'JOD', child: Text('JOD')),
-                            DropdownMenuItem(value: 'USD', child: Text('USD')),
+                            DropdownMenuItem(
+                              value: 'ILS',
+                              child: Text('شيكل إسرائيلي'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'JOD',
+                              child: Text('دينار أردني'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'USD',
+                              child: Text('دولار أمريكي'),
+                            ),
                           ],
                           onChanged: _saving
                               ? null
@@ -365,7 +375,7 @@ class _PaymentSettingsEditorState
                             ),
                             DropdownMenuItem(
                               value: 'api',
-                              child: Text('اعتماد عبر API'),
+                              child: Text('اعتماد عبر واجهة الربط'),
                             ),
                           ],
                           onChanged: _saving
@@ -1159,7 +1169,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(BuildContext context) async {
                             .map(
                               (value) => DropdownMenuItem(
                                 value: value,
-                                child: Text(value),
+                                child: Text(currencyLabel(value)),
                               ),
                             )
                             .toList(),
@@ -1461,8 +1471,11 @@ double? _optionalAmount(String value) {
 String _confirmationLabel(String mode) {
   return switch (mode) {
     'manual' => 'مراجعة يدوية',
-    'api' => 'اعتماد عبر API',
-    _ => mode.trim().isEmpty ? 'غير محدد' : mode,
+    'api' => 'اعتماد عبر واجهة الربط',
+    _ => unknownStatusLabel(
+        mode,
+        unknownLabel: 'طريقة اعتماد غير معروفة',
+      ),
   };
 }
 
