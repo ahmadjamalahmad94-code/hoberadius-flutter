@@ -105,6 +105,47 @@ class NetworkDevicesRepository {
     );
   }
 
+  Future<NetworkRemoteAccessState> remoteAccessState(int id) async {
+    final res = await _api.get('/api/v1/network-devices/$id/remote-access');
+    final data = res['data'];
+    return NetworkRemoteAccessState.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
+  }
+
+  Future<NetworkRemoteAccessState> openRemoteAccess(
+    int id, {
+    required String protocol,
+    required int ttlMinutes,
+    String notes = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/network-devices/$id/remote-access/open',
+      body: {
+        'protocol': protocol,
+        'ttl_minutes': ttlMinutes,
+        'notes': notes,
+      },
+    );
+    final data = res['data'];
+    return NetworkRemoteAccessState.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
+  }
+
+  Future<NetworkRemoteAccessState> closeRemoteAccess(
+    int id,
+    int sessionId,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/network-devices/$id/remote-access/$sessionId/close',
+    );
+    final data = res['data'];
+    return NetworkRemoteAccessState.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
+  }
+
   NetworkDevice _deviceFromResponse(Map<String, dynamic> res) {
     final data = res['data'];
     final map = data is Map<String, dynamic> ? data : const <String, dynamic>{};

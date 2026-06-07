@@ -422,6 +422,178 @@ class NetworkDeviceBypassRemoveResult {
   }
 }
 
+class NetworkRemoteAccessState {
+  const NetworkRemoteAccessState({
+    required this.device,
+    required this.router,
+    required this.sessions,
+    required this.activeSessions,
+    required this.publicHost,
+    required this.configReady,
+    required this.allowedProtocols,
+    required this.ttlOptions,
+    required this.message,
+    required this.warning,
+    this.session,
+  });
+
+  final NetworkDevice device;
+  final NetworkDeviceRouter router;
+  final List<NetworkRemoteAccessSession> sessions;
+  final List<NetworkRemoteAccessSession> activeSessions;
+  final String publicHost;
+  final bool configReady;
+  final List<NetworkRemoteAccessOption> allowedProtocols;
+  final List<NetworkRemoteAccessTtlOption> ttlOptions;
+  final String message;
+  final String warning;
+  final NetworkRemoteAccessSession? session;
+
+  factory NetworkRemoteAccessState.fromJson(Map<String, dynamic> json) {
+    final rawSessions = json['sessions'];
+    final rawActive = json['active_sessions'];
+    final rawProtocols = json['allowed_protocols'];
+    final rawTtl = json['ttl_options'];
+    final session = json['session'];
+    return NetworkRemoteAccessState(
+      device: NetworkDevice.fromJson(_map(json['device'])),
+      router: NetworkDeviceRouter.fromJson(_map(json['router'])),
+      sessions: rawSessions is List
+          ? rawSessions
+              .whereType<Map>()
+              .map((item) => NetworkRemoteAccessSession.fromJson(_map(item)))
+              .toList()
+          : const [],
+      activeSessions: rawActive is List
+          ? rawActive
+              .whereType<Map>()
+              .map((item) => NetworkRemoteAccessSession.fromJson(_map(item)))
+              .toList()
+          : const [],
+      publicHost: _string(json['public_host']),
+      configReady: _bool(json['config_ready']),
+      allowedProtocols: rawProtocols is List
+          ? rawProtocols
+              .whereType<Map>()
+              .map((item) => NetworkRemoteAccessOption.fromJson(_map(item)))
+              .toList()
+          : const [],
+      ttlOptions: rawTtl is List
+          ? rawTtl
+              .whereType<Map>()
+              .map((item) => NetworkRemoteAccessTtlOption.fromJson(_map(item)))
+              .toList()
+          : const [],
+      message: _string(json['message']),
+      warning: _string(json['warning']),
+      session: session is Map
+          ? NetworkRemoteAccessSession.fromJson(_map(session))
+          : null,
+    );
+  }
+}
+
+class NetworkRemoteAccessSession {
+  const NetworkRemoteAccessSession({
+    required this.id,
+    required this.deviceId,
+    required this.routerId,
+    required this.requestedBy,
+    required this.protocol,
+    required this.protocolLabel,
+    required this.internalIp,
+    required this.internalPort,
+    required this.externalPort,
+    required this.publicEndpoint,
+    required this.publicUrl,
+    required this.status,
+    required this.statusLabel,
+    required this.createdAt,
+    required this.expiresAt,
+    required this.closedAt,
+    required this.notes,
+  });
+
+  final int id;
+  final int deviceId;
+  final int routerId;
+  final String requestedBy;
+  final String protocol;
+  final String protocolLabel;
+  final String internalIp;
+  final int internalPort;
+  final int externalPort;
+  final String publicEndpoint;
+  final String publicUrl;
+  final String status;
+  final String statusLabel;
+  final String createdAt;
+  final String expiresAt;
+  final String closedAt;
+  final String notes;
+
+  factory NetworkRemoteAccessSession.fromJson(Map<String, dynamic> json) {
+    return NetworkRemoteAccessSession(
+      id: _int(json['id']),
+      deviceId: _int(json['device_id']),
+      routerId: _int(json['router_id']),
+      requestedBy: _string(json['requested_by']),
+      protocol: _string(json['protocol'], fallback: 'http'),
+      protocolLabel: _string(json['protocol_label']),
+      internalIp: _string(json['internal_ip']),
+      internalPort: _int(json['internal_port']),
+      externalPort: _int(json['external_port']),
+      publicEndpoint: _string(json['public_endpoint']),
+      publicUrl: _string(json['public_url']),
+      status: _string(json['status']),
+      statusLabel: _string(json['status_label']),
+      createdAt: _string(json['created_at']),
+      expiresAt: _string(json['expires_at']),
+      closedAt: _string(json['closed_at']),
+      notes: _string(json['notes']),
+    );
+  }
+
+  bool get active => status == 'active';
+
+  String get bestAccessText {
+    if (publicUrl.isNotEmpty) return publicUrl;
+    if (publicEndpoint.isNotEmpty) return publicEndpoint;
+    return externalPort == 0 ? '' : 'منفذ $externalPort';
+  }
+}
+
+class NetworkRemoteAccessOption {
+  const NetworkRemoteAccessOption({required this.key, required this.label});
+
+  final String key;
+  final String label;
+
+  factory NetworkRemoteAccessOption.fromJson(Map<String, dynamic> json) {
+    return NetworkRemoteAccessOption(
+      key: _string(json['key']),
+      label: _string(json['label']),
+    );
+  }
+}
+
+class NetworkRemoteAccessTtlOption {
+  const NetworkRemoteAccessTtlOption({
+    required this.minutes,
+    required this.label,
+  });
+
+  final int minutes;
+  final String label;
+
+  factory NetworkRemoteAccessTtlOption.fromJson(Map<String, dynamic> json) {
+    return NetworkRemoteAccessTtlOption(
+      minutes: _int(json['minutes']),
+      label: _string(json['label']),
+    );
+  }
+}
+
 Map<String, dynamic> _map(Object? value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {
@@ -430,7 +602,10 @@ Map<String, dynamic> _map(Object? value) {
   return const {};
 }
 
-String _string(Object? value) => (value ?? '').toString();
+String _string(Object? value, {String fallback = ''}) {
+  final text = (value ?? '').toString();
+  return text.isEmpty ? fallback : text;
+}
 
 int _int(Object? value) {
   if (value is int) return value;

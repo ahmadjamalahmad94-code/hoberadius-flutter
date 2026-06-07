@@ -78,9 +78,19 @@ class _CaptureAdapter implements HttpClientAdapter {
           'steps': {'dhcp_lease': 'created'},
         },
       String path when path.endsWith('/bypass/remove') => {
-          'message': 'تمت إزالة 1 قاعدة من الراوتر.',
+          'message': 'تمت إزالة قاعدة واحدة من الراوتر.',
           'removed': {'dhcp_lease': 1},
           'total_removed': 1,
+        },
+      String path when path.endsWith('/remote-access') => _remoteState(),
+      String path when path.endsWith('/remote-access/open') => {
+          ..._remoteState(),
+          'message': 'تم فتح جلسة الوصول البعيد.',
+          'session': _remoteSession(),
+        },
+      String path when path.endsWith('/remote-access/44/close') => {
+          ..._remoteState(sessions: const []),
+          'message': 'تم إغلاق جلسة الوصول البعيد.',
         },
       _ => {},
     };
@@ -107,11 +117,46 @@ class _CaptureAdapter implements HttpClientAdapter {
         'last_status': 'unknown',
         'last_status_label': 'غير مفحوص',
       };
+
+  Map<String, Object?> _remoteState({
+    List<Map<String, Object?>>? sessions,
+  }) =>
+      {
+        'device': _device(),
+        'router': {'id': 3, 'name': 'راوتر رئيسي', 'address': '10.0.0.1'},
+        'public_host': '203.0.113.10',
+        'config_ready': true,
+        'allowed_protocols': [
+          {'key': 'http', 'label': 'واجهة الويب العادية'},
+          {'key': 'ssh', 'label': 'SSH'},
+        ],
+        'ttl_options': [
+          {'minutes': 30, 'label': '30 دقيقة'},
+        ],
+        'sessions': sessions ?? [_remoteSession()],
+        'active_sessions': sessions ?? [_remoteSession()],
+      };
+
+  Map<String, Object?> _remoteSession() => {
+        'id': 44,
+        'device_id': 7,
+        'router_id': 3,
+        'requested_by': 'admin:1',
+        'protocol': 'http',
+        'protocol_label': 'واجهة الويب العادية',
+        'internal_ip': '10.0.0.50',
+        'internal_port': 80,
+        'external_port': 40044,
+        'public_endpoint': '203.0.113.10:40044',
+        'public_url': 'http://203.0.113.10:40044/',
+        'status': 'active',
+        'status_label': 'نشطة',
+        'expires_at': '2026-06-07T12:30:00Z',
+      };
 }
 
 void main() {
-  test('NetworkDevicesRepository sends scan and bypass actions to API',
-      () async {
+  test('NetworkDevicesRepository sends operational actions to API', () async {
     final client = ApiClient(_MemoryTokenStorage(), _MemoryEndpointStorage());
     final adapter = _CaptureAdapter();
     client.dio.httpClientAdapter = adapter;
@@ -130,12 +175,23 @@ void main() {
       addToAddressList: true,
     );
     final removed = await repo.removeBypass(7);
+    final remote = await repo.remoteAccessState(7);
+    final opened = await repo.openRemoteAccess(
+      7,
+      protocol: 'http',
+      ttlMinutes: 30,
+      notes: 'صيانة',
+    );
+    final closed = await repo.closeRemoteAccess(7, 44);
 
     expect(scan.items.single.address, '10.0.0.50');
     expect(added.name, 'كاميرا المدخل');
     expect(state.dhcpServers.single.name, 'dhcp-lan');
     expect(applied.steps['dhcp_lease'], 'created');
     expect(removed.totalRemoved, 1);
+    expect(remote.sessions.single.publicUrl, 'http://203.0.113.10:40044/');
+    expect(opened.session?.id, 44);
+    expect(closed.activeSessions, isEmpty);
     expect(
       adapter.requests.map((request) => '${request.method} ${request.path}'),
       [
@@ -144,7 +200,11 @@ void main() {
         'GET /api/v1/network-devices/7/bypass',
         'POST /api/v1/network-devices/7/bypass/apply',
         'POST /api/v1/network-devices/7/bypass/remove',
+        'GET /api/v1/network-devices/7/remote-access',
+        'POST /api/v1/network-devices/7/remote-access/open',
+        'POST /api/v1/network-devices/7/remote-access/44/close',
       ],
     );
+    expect((adapter.requests[6].data as Map)['notes'], 'صيانة');
   });
 }

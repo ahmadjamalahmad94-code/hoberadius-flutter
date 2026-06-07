@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/visible_error_message.dart';
@@ -130,6 +131,7 @@ class _NetworkDevicesScreenState extends ConsumerState<NetworkDevicesScreen> {
                 device: item,
               ),
               onBypass: () => _openBypass(item),
+              onRemoteAccess: () => _openRemoteAccess(item),
               onDelete: () => _delete(item),
             ),
             const SizedBox(height: AppTokens.s12),
@@ -152,6 +154,14 @@ class _NetworkDevicesScreenState extends ConsumerState<NetworkDevicesScreen> {
       builder: (context) => _NetworkDeviceBypassDialog(device: item),
     );
     if (changed == true) ref.invalidate(networkDevicesProvider);
+  }
+
+  Future<void> _openRemoteAccess(NetworkDevice item) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _NetworkRemoteAccessDialog(device: item),
+    );
+    ref.invalidate(networkDevicesProvider);
   }
 
   Future<void> _openForm(
@@ -325,6 +335,7 @@ class _NetworkDeviceCard extends StatelessWidget {
     required this.onCheck,
     required this.onEdit,
     required this.onBypass,
+    required this.onRemoteAccess,
     required this.onDelete,
   });
 
@@ -333,6 +344,7 @@ class _NetworkDeviceCard extends StatelessWidget {
   final VoidCallback onCheck;
   final VoidCallback onEdit;
   final VoidCallback onBypass;
+  final VoidCallback onRemoteAccess;
   final VoidCallback onDelete;
 
   @override
@@ -433,6 +445,11 @@ class _NetworkDeviceCard extends StatelessWidget {
                     : onBypass,
                 icon: const Icon(Icons.verified_user_outlined),
                 label: const Text('تجهيز على الراوتر'),
+              ),
+              OutlinedButton.icon(
+                onPressed: item.address.isEmpty ? null : onRemoteAccess,
+                icon: const Icon(Icons.key_outlined),
+                label: const Text('وصول مؤقت'),
               ),
               OutlinedButton.icon(
                 onPressed: onEdit,
@@ -775,6 +792,431 @@ class _ScanItemRow extends StatelessWidget {
                   )
                 : Icon(alreadyAdded ? Icons.check : Icons.add),
             label: Text(alreadyAdded ? 'مضاف' : 'إضافة'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkRemoteAccessDialog extends ConsumerStatefulWidget {
+  const _NetworkRemoteAccessDialog({required this.device});
+
+  final NetworkDevice device;
+
+  @override
+  ConsumerState<_NetworkRemoteAccessDialog> createState() =>
+      _NetworkRemoteAccessDialogState();
+}
+
+class _NetworkRemoteAccessDialogState
+    extends ConsumerState<_NetworkRemoteAccessDialog> {
+  final _notes = TextEditingController();
+  bool _loading = true;
+  bool _busy = false;
+  String? _error;
+  String? _notice;
+  String _protocol = 'http';
+  int _ttlMinutes = 30;
+  NetworkRemoteAccessState? _state;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void dispose() {
+    _notes.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('وصول مؤقت للجهاز'),
+      content: SizedBox(
+        width: _dialogWidth(context, 760),
+        child: SingleChildScrollView(child: _body()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('إغلاق'),
+        ),
+        FilledButton.icon(
+          onPressed: _busy || _state == null || widget.device.address.isEmpty
+              ? null
+              : _open,
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.key_outlined),
+          label: Text(_busy ? 'جار التنفيذ' : 'فتح جلسة'),
+        ),
+      ],
+    );
+  }
+
+  Widget _body() {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(AppTokens.s20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _NoticeBox(
+            icon: Icons.error_outline,
+            text: _error!,
+            tone: PillTone.red,
+          ),
+          const SizedBox(height: AppTokens.s12),
+          OutlinedButton.icon(
+            onPressed: _load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('إعادة المحاولة'),
+          ),
+        ],
+      );
+    }
+    final state = _state;
+    if (state == null) {
+      return const _NoticeBox(
+        icon: Icons.info_outline,
+        text: 'لا توجد بيانات وصول لهذا الجهاز.',
+        tone: PillTone.neutral,
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'الجلسة تفتح منفذًا مؤقتًا عبر خادم الربط ثم تُغلق من الراوتر والخادم عند انتهاء المدة أو عند إغلاقها يدويًا.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTokens.textSecondary,
+                height: 1.45,
+              ),
+        ),
+        const SizedBox(height: AppTokens.s12),
+        Wrap(
+          spacing: AppTokens.s8,
+          runSpacing: AppTokens.s8,
+          children: [
+            _InfoChip(Icons.devices_other_outlined, state.device.name),
+            _InfoChip(Icons.lan_outlined, state.device.address),
+            _InfoChip(Icons.router_outlined, state.router.name),
+            _InfoChip(
+              Icons.public_outlined,
+              state.publicHost.isEmpty
+                  ? 'عنوان خادم الربط غير مضبوط'
+                  : state.publicHost,
+            ),
+          ],
+        ),
+        if (!state.configReady) ...[
+          const SizedBox(height: AppTokens.s12),
+          const _NoticeBox(
+            icon: Icons.warning_outlined,
+            text:
+                'عنوان خادم الربط العام غير مضبوط على الخادم. يمكن إنشاء الجلسة، لكن رابط الوصول لن يظهر كاملًا حتى يتم ضبطه.',
+            tone: PillTone.amber,
+          ),
+        ],
+        if (_notice != null) ...[
+          const SizedBox(height: AppTokens.s12),
+          _NoticeBox(
+            icon: Icons.check_circle_outline,
+            text: _notice!,
+            tone: PillTone.green,
+          ),
+        ],
+        const Divider(height: AppTokens.s24),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final protocol = DropdownButtonFormField<String>(
+              initialValue: _protocol,
+              decoration: const InputDecoration(labelText: 'نوع الوصول'),
+              items: [
+                for (final option in state.allowedProtocols)
+                  DropdownMenuItem(
+                    value: option.key,
+                    child: Text(option.label),
+                  ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _protocol = value ?? _protocol),
+            );
+            final ttl = DropdownButtonFormField<int>(
+              initialValue: _ttlMinutes,
+              decoration: const InputDecoration(labelText: 'مدة الجلسة'),
+              items: [
+                for (final option in state.ttlOptions)
+                  DropdownMenuItem(
+                    value: option.minutes,
+                    child: Text(option.label),
+                  ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (value) =>
+                      setState(() => _ttlMinutes = value ?? _ttlMinutes),
+            );
+            if (constraints.maxWidth < 560) {
+              return Column(
+                children: [
+                  protocol,
+                  const SizedBox(height: AppTokens.s12),
+                  ttl,
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(child: protocol),
+                const SizedBox(width: AppTokens.s12),
+                Expanded(child: ttl),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: AppTokens.s12),
+        TextField(
+          controller: _notes,
+          maxLines: 2,
+          decoration: const InputDecoration(
+            labelText: 'سبب الجلسة أو ملاحظة',
+            hintText: 'مثال: صيانة نقطة وصول في الطابق الثاني',
+          ),
+        ),
+        const Divider(height: AppTokens.s24),
+        Text(
+          'الجلسات الحالية والسابقة',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+                color: AppTokens.sidebarBg,
+              ),
+        ),
+        const SizedBox(height: AppTokens.s12),
+        if (state.sessions.isEmpty)
+          const EmptyState(
+            icon: Icons.key_outlined,
+            title: 'لا توجد جلسات بعد',
+            subtitle:
+                'افتح جلسة مؤقتة عند الحاجة فقط، وستظهر هنا للمتابعة أو الإغلاق.',
+          )
+        else
+          for (final session in state.sessions) ...[
+            _RemoteAccessSessionRow(
+              session: session,
+              busy: _busy,
+              onCopy: session.bestAccessText.isEmpty
+                  ? null
+                  : () => _copySession(session),
+              onClose: session.active ? () => _close(session) : null,
+            ),
+            const SizedBox(height: AppTokens.s8),
+          ],
+      ],
+    );
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final state = await ref
+          .read(networkDevicesRepositoryProvider)
+          .remoteAccessState(widget.device.id);
+      if (!mounted) return;
+      setState(() {
+        _state = state;
+        if (state.allowedProtocols.any((option) => option.key == _protocol) ==
+            false) {
+          _protocol = state.allowedProtocols.isEmpty
+              ? 'http'
+              : state.allowedProtocols.first.key;
+        }
+        if (state.ttlOptions.any((option) => option.minutes == _ttlMinutes) ==
+            false) {
+          _ttlMinutes =
+              state.ttlOptions.isEmpty ? 30 : state.ttlOptions.first.minutes;
+        }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _open() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      final state =
+          await ref.read(networkDevicesRepositoryProvider).openRemoteAccess(
+                widget.device.id,
+                protocol: _protocol,
+                ttlMinutes: _ttlMinutes,
+                notes: _notes.text.trim(),
+              );
+      if (!mounted) return;
+      setState(() {
+        _state = state;
+        _notice = state.session?.bestAccessText.isNotEmpty == true
+            ? 'تم فتح الجلسة. رابط الوصول: ${state.session!.bestAccessText}'
+            : (state.message.isEmpty ? 'تم فتح الجلسة.' : state.message);
+        _notes.clear();
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _close(NetworkRemoteAccessSession session) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+      _notice = null;
+    });
+    try {
+      final state = await ref
+          .read(networkDevicesRepositoryProvider)
+          .closeRemoteAccess(widget.device.id, session.id);
+      if (!mounted) return;
+      setState(() {
+        _state = state;
+        _notice = state.message.isEmpty ? 'تم إغلاق الجلسة.' : state.message;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _copySession(NetworkRemoteAccessSession session) async {
+    await Clipboard.setData(ClipboardData(text: session.bestAccessText));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم نسخ بيانات الوصول')),
+    );
+  }
+}
+
+class _RemoteAccessSessionRow extends StatelessWidget {
+  const _RemoteAccessSessionRow({
+    required this.session,
+    required this.busy,
+    required this.onCopy,
+    required this.onClose,
+  });
+
+  final NetworkRemoteAccessSession session;
+  final bool busy;
+  final VoidCallback? onCopy;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppTokens.r12),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'جلسة #${session.id} - ${session.protocolLabel}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        color: AppTokens.sidebarBg,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      session.bestAccessText.isEmpty
+                          ? 'المنفذ الخارجي ${session.externalPort}'
+                          : session.bestAccessText,
+                      style: const TextStyle(
+                        color: AppTokens.textSecondary,
+                        fontFeatures: [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              StatusPill(
+                text: session.statusLabel,
+                tone: session.active ? PillTone.green : PillTone.neutral,
+                dot: true,
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s8),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              if (session.internalIp.isNotEmpty)
+                _InfoChip(
+                  Icons.lan_outlined,
+                  '${session.internalIp}:${session.internalPort}',
+                ),
+              if (session.expiresAt.isNotEmpty)
+                _InfoChip(Icons.timer_outlined, 'تنتهي ${session.expiresAt}'),
+              if (session.requestedBy.isNotEmpty)
+                _InfoChip(Icons.person_outline, session.requestedBy),
+              if (session.notes.isNotEmpty)
+                _InfoChip(Icons.notes_outlined, session.notes),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s8),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: busy ? null : onCopy,
+                icon: const Icon(Icons.copy_outlined),
+                label: const Text('نسخ الوصول'),
+              ),
+              OutlinedButton.icon(
+                onPressed: busy ? null : onClose,
+                icon: const Icon(Icons.close_outlined),
+                label: const Text('إغلاق الآن'),
+              ),
+            ],
           ),
         ],
       ),
