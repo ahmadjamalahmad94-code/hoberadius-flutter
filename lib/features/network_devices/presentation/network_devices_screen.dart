@@ -39,12 +39,21 @@ class _NetworkDevicesScreenState extends ConsumerState<NetworkDevicesScreen> {
         PageHeader(
           title: 'مراقبة أجهزة الشبكة',
           subtitle:
-              'الأجهزة خلف الراوترات مثل نقاط الوصول والسويتشات والكاميرات والخوادم. هذه الصفحة تدير السجل والفحص اليدوي ولا تنفذ قواعد على الراوتر.',
+              'الأجهزة خلف الراوترات مثل نقاط الوصول والسويتشات والكاميرات والخوادم. المسح يقرأ الأجهزة فقط، والتجهيز يضيف قواعد موثوقة على الراوتر بعد مراجعتك.',
           actions: [
             IconButton(
               tooltip: 'تحديث',
               onPressed: () => ref.invalidate(networkDevicesProvider),
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+            ),
+            async.maybeWhen(
+              data: (state) => OutlinedButton.icon(
+                onPressed:
+                    state.routers.isEmpty ? null : () => _openScan(state),
+                icon: const Icon(Icons.radar_outlined),
+                label: const Text('مسح الشبكة'),
+              ),
+              orElse: () => const SizedBox.shrink(),
             ),
             async.maybeWhen(
               data: (state) => ElevatedButton.icon(
@@ -120,12 +129,29 @@ class _NetworkDevicesScreenState extends ConsumerState<NetworkDevicesScreen> {
                 state.routers,
                 device: item,
               ),
+              onBypass: () => _openBypass(item),
               onDelete: () => _delete(item),
             ),
             const SizedBox(height: AppTokens.s12),
           ],
       ],
     );
+  }
+
+  Future<void> _openScan(NetworkDevicesState state) async {
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (context) => _NetworkScanDialog(routers: state.routers),
+    );
+    if (changed == true) ref.invalidate(networkDevicesProvider);
+  }
+
+  Future<void> _openBypass(NetworkDevice item) async {
+    final changed = await showDialog<bool>(
+      context: context,
+      builder: (context) => _NetworkDeviceBypassDialog(device: item),
+    );
+    if (changed == true) ref.invalidate(networkDevicesProvider);
   }
 
   Future<void> _openForm(
@@ -298,6 +324,7 @@ class _NetworkDeviceCard extends StatelessWidget {
     required this.checking,
     required this.onCheck,
     required this.onEdit,
+    required this.onBypass,
     required this.onDelete,
   });
 
@@ -305,6 +332,7 @@ class _NetworkDeviceCard extends StatelessWidget {
   final bool checking;
   final VoidCallback onCheck;
   final VoidCallback onEdit;
+  final VoidCallback onBypass;
   final VoidCallback onDelete;
 
   @override
@@ -400,6 +428,13 @@ class _NetworkDeviceCard extends StatelessWidget {
                 label: Text(checking ? 'جار الفحص' : 'فحص الآن'),
               ),
               OutlinedButton.icon(
+                onPressed: item.address.isEmpty || item.physicalAddress.isEmpty
+                    ? null
+                    : onBypass,
+                icon: const Icon(Icons.verified_user_outlined),
+                label: const Text('تجهيز على الراوتر'),
+              ),
+              OutlinedButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined),
                 label: const Text('تعديل'),
@@ -438,6 +473,640 @@ class _InfoChip extends StatelessWidget {
           Icon(icon, size: 16, color: AppTokens.textMuted),
           const SizedBox(width: 6),
           Text(text, style: const TextStyle(color: AppTokens.textSecondary)),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkScanDialog extends ConsumerStatefulWidget {
+  const _NetworkScanDialog({required this.routers});
+
+  final List<NetworkDeviceRouter> routers;
+
+  @override
+  ConsumerState<_NetworkScanDialog> createState() => _NetworkScanDialogState();
+}
+
+class _NetworkScanDialogState extends ConsumerState<_NetworkScanDialog> {
+  late int _routerId;
+  bool _loading = false;
+  bool _changed = false;
+  String? _error;
+  NetworkScanResult? _result;
+  final Set<String> _adding = {};
+  final Set<String> _added = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _routerId = widget.routers.first.id;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('مسح الشبكة'),
+      content: SizedBox(
+        width: _dialogWidth(context, 720),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'المسح يقرأ ARP و DHCP والجيران من الراوتر المحدد ولا يغيّر إعدادات الراوتر.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTokens.textSecondary,
+                    ),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final selector = DropdownButtonFormField<int>(
+                    initialValue: _routerId,
+                    decoration:
+                        const InputDecoration(labelText: 'اختر الراوتر'),
+                    items: [
+                      for (final router in widget.routers)
+                        DropdownMenuItem(
+                          value: router.id,
+                          child: Text(
+                            router.address.isEmpty
+                                ? router.name
+                                : '${router.name} - ${router.address}',
+                          ),
+                        ),
+                    ],
+                    onChanged: _loading
+                        ? null
+                        : (value) {
+                            if (value != null) {
+                              setState(() => _routerId = value);
+                            }
+                          },
+                  );
+                  final button = FilledButton.icon(
+                    onPressed: _loading ? null : _scan,
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.radar_outlined),
+                    label: Text(_loading ? 'جار المسح' : 'ابدأ المسح'),
+                  );
+                  if (constraints.maxWidth < 520) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        selector,
+                        const SizedBox(height: AppTokens.s8),
+                        button,
+                      ],
+                    );
+                  }
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: selector),
+                      const SizedBox(width: AppTokens.s8),
+                      button,
+                    ],
+                  );
+                },
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: AppTokens.s12),
+                _NoticeBox(
+                  icon: Icons.error_outline,
+                  text: _error!,
+                  tone: PillTone.red,
+                ),
+              ],
+              const SizedBox(height: AppTokens.s12),
+              _scanBody(),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_changed),
+          child: const Text('إغلاق'),
+        ),
+      ],
+    );
+  }
+
+  Widget _scanBody() {
+    final result = _result;
+    if (_loading && result == null) {
+      return const Padding(
+        padding: EdgeInsets.all(AppTokens.s20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (result == null) {
+      return const _NoticeBox(
+        icon: Icons.info_outline,
+        text: 'اختر الراوتر ثم ابدأ المسح لعرض الأجهزة المكتشفة.',
+        tone: PillTone.blue,
+      );
+    }
+    if (result.items.isEmpty) {
+      return const EmptyState(
+        icon: Icons.devices_other_outlined,
+        title: 'لم يتم العثور على أجهزة',
+        subtitle:
+            'تأكد أن بيانات API للراوتر صحيحة وأن الأجهزة ظاهرة في ARP أو DHCP.',
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: AppTokens.s8,
+          runSpacing: AppTokens.s8,
+          children: [
+            StatusPill(
+              text: 'تم العثور على ${result.items.length} جهاز',
+              tone: PillTone.blue,
+              dot: true,
+            ),
+            StatusPill(
+              text: 'موجود مسبقًا ${result.knownIps.length}',
+              tone: PillTone.neutral,
+              dot: true,
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
+        for (final item in result.items) ...[
+          _ScanItemRow(
+            item: item,
+            adding: _adding.contains(item.address),
+            added: _added.contains(item.address),
+            onAdd: () => _addItem(item),
+          ),
+          const SizedBox(height: AppTokens.s8),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _scan() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final result = await ref
+          .read(networkDevicesRepositoryProvider)
+          .scanRouter(_routerId);
+      if (!mounted) return;
+      setState(() {
+        _result = result;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _addItem(NetworkScanItem item) async {
+    setState(() {
+      _adding.add(item.address);
+      _error = null;
+    });
+    try {
+      await ref.read(networkDevicesRepositoryProvider).addScannedDevice(
+            routerId: _routerId,
+            item: item,
+          );
+      if (!mounted) return;
+      setState(() {
+        _changed = true;
+        _added.add(item.address);
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) {
+        setState(() => _adding.remove(item.address));
+      }
+    }
+  }
+}
+
+class _ScanItemRow extends StatelessWidget {
+  const _ScanItemRow({
+    required this.item,
+    required this.adding,
+    required this.added,
+    required this.onAdd,
+  });
+
+  final NetworkScanItem item;
+  final bool adding;
+  final bool added;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final alreadyAdded = item.known || added;
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.devices_other_outlined, color: AppTokens.brand),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.displayName,
+                  style: const TextStyle(
+                    color: AppTokens.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: AppTokens.s8,
+                  runSpacing: AppTokens.s8,
+                  children: [
+                    _InfoChip(Icons.lan_outlined, item.address),
+                    if (item.physicalAddress.isNotEmpty)
+                      _InfoChip(Icons.badge_outlined, item.physicalAddress),
+                    if (item.interfaceName.isNotEmpty)
+                      _InfoChip(
+                        Icons.settings_input_component_outlined,
+                        item.interfaceName,
+                      ),
+                    if (item.vendor.isNotEmpty)
+                      _InfoChip(Icons.business_outlined, item.vendor),
+                    if (item.sources.isNotEmpty)
+                      _InfoChip(Icons.hub_outlined, item.sources.join('، ')),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppTokens.s8),
+          OutlinedButton.icon(
+            onPressed: alreadyAdded || adding ? null : onAdd,
+            icon: adding
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(alreadyAdded ? Icons.check : Icons.add),
+            label: Text(alreadyAdded ? 'مضاف' : 'إضافة'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkDeviceBypassDialog extends ConsumerStatefulWidget {
+  const _NetworkDeviceBypassDialog({required this.device});
+
+  final NetworkDevice device;
+
+  @override
+  ConsumerState<_NetworkDeviceBypassDialog> createState() =>
+      _NetworkDeviceBypassDialogState();
+}
+
+class _NetworkDeviceBypassDialogState
+    extends ConsumerState<_NetworkDeviceBypassDialog> {
+  bool _loading = true;
+  bool _busy = false;
+  bool _changed = false;
+  bool _bypassHotspot = true;
+  bool _addToAddressList = true;
+  String? _error;
+  String? _notice;
+  String _dhcpServerName = '';
+  NetworkDeviceBypassState? _state;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('تجهيز الجهاز على الراوتر'),
+      content: SizedBox(
+        width: _dialogWidth(context, 680),
+        child: SingleChildScrollView(child: _body()),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(_changed),
+          child: const Text('إغلاق'),
+        ),
+        OutlinedButton.icon(
+          onPressed: _busy || _state == null ? null : _remove,
+          icon: const Icon(Icons.cleaning_services_outlined),
+          label: const Text('إزالة التجهيز'),
+        ),
+        FilledButton.icon(
+          onPressed: _busy || _state?.ready != true || _dhcpServerName.isEmpty
+              ? null
+              : _apply,
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.verified_user_outlined),
+          label: Text(_busy ? 'جار التنفيذ' : 'تنفيذ التجهيز'),
+        ),
+      ],
+    );
+  }
+
+  Widget _body() {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.all(AppTokens.s20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_error != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _NoticeBox(
+            icon: Icons.error_outline,
+            text: _error!,
+            tone: PillTone.red,
+          ),
+          const SizedBox(height: AppTokens.s12),
+          OutlinedButton.icon(
+            onPressed: _load,
+            icon: const Icon(Icons.refresh),
+            label: const Text('إعادة المحاولة'),
+          ),
+        ],
+      );
+    }
+    final state = _state;
+    if (state == null) {
+      return const _NoticeBox(
+        icon: Icons.info_outline,
+        text: 'لا توجد بيانات تجهيز لهذا الجهاز.',
+        tone: PillTone.neutral,
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'التجهيز يضيف lease ثابت، ويمكنه إضافة IP binding وقائمة عناوين للأجهزة الموثوقة.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTokens.textSecondary,
+              ),
+        ),
+        const SizedBox(height: AppTokens.s12),
+        Wrap(
+          spacing: AppTokens.s8,
+          runSpacing: AppTokens.s8,
+          children: [
+            _InfoChip(Icons.devices_other_outlined, state.device.name),
+            _InfoChip(Icons.lan_outlined, state.device.address),
+            _InfoChip(Icons.badge_outlined, state.device.physicalAddress),
+            _InfoChip(Icons.router_outlined, state.router.name),
+            if (state.addressListName.isNotEmpty)
+              _InfoChip(Icons.list_alt_outlined, state.addressListName),
+          ],
+        ),
+        if (!state.ready) ...[
+          const SizedBox(height: AppTokens.s12),
+          const _NoticeBox(
+            icon: Icons.warning_outlined,
+            text:
+                'احفظ عنوان الجهاز والعنوان الفيزيائي قبل تنفيذ التجهيز على الراوتر.',
+            tone: PillTone.amber,
+          ),
+        ],
+        if (state.dhcpError.isNotEmpty) ...[
+          const SizedBox(height: AppTokens.s12),
+          _NoticeBox(
+            icon: Icons.warning_outlined,
+            text: state.dhcpError,
+            tone: PillTone.amber,
+          ),
+        ],
+        const SizedBox(height: AppTokens.s12),
+        DropdownButtonFormField<String>(
+          initialValue: _dhcpServerName.isEmpty ? null : _dhcpServerName,
+          decoration: const InputDecoration(labelText: 'خادم DHCP'),
+          items: [
+            for (final server in state.dhcpServers)
+              DropdownMenuItem(
+                value: server.name,
+                enabled: !server.disabled,
+                child: Text(
+                  server.interfaceName.isEmpty
+                      ? server.name
+                      : '${server.name} - ${server.interfaceName}',
+                ),
+              ),
+          ],
+          onChanged: _busy
+              ? null
+              : (value) {
+                  if (value != null) {
+                    setState(() => _dhcpServerName = value);
+                  }
+                },
+        ),
+        const SizedBox(height: AppTokens.s8),
+        SwitchListTile(
+          value: _bypassHotspot,
+          onChanged:
+              _busy ? null : (value) => setState(() => _bypassHotspot = value),
+          title: const Text('تجاوز الهوتسبوت للجهاز الموثوق'),
+          subtitle:
+              const Text('يضيف IP binding للجهاز حتى لا يمر بصفحة الدخول.'),
+        ),
+        SwitchListTile(
+          value: _addToAddressList,
+          onChanged: _busy
+              ? null
+              : (value) => setState(() => _addToAddressList = value),
+          title: const Text('إضافة إلى قائمة العناوين'),
+          subtitle:
+              const Text('يفيد قواعد الجدار الناري أو الاستثناءات لاحقًا.'),
+        ),
+        if (_notice != null) ...[
+          const SizedBox(height: AppTokens.s12),
+          _NoticeBox(
+            icon: Icons.check_circle_outline,
+            text: _notice!,
+            tone: PillTone.green,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final state = await ref
+          .read(networkDevicesRepositoryProvider)
+          .bypassState(widget.device.id);
+      if (!mounted) return;
+      final enabledServers =
+          state.dhcpServers.where((server) => !server.disabled).toList();
+      setState(() {
+        _state = state;
+        _dhcpServerName =
+            enabledServers.isEmpty ? '' : enabledServers.first.name;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _apply() async {
+    setState(() {
+      _busy = true;
+      _notice = null;
+      _error = null;
+    });
+    try {
+      final result =
+          await ref.read(networkDevicesRepositoryProvider).applyBypass(
+                widget.device.id,
+                dhcpServerName: _dhcpServerName,
+                bypassHotspot: _bypassHotspot,
+                addToAddressList: _addToAddressList,
+              );
+      if (!mounted) return;
+      setState(() {
+        _changed = true;
+        _notice = result.message.isEmpty ? 'تم تنفيذ التجهيز.' : result.message;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _remove() async {
+    setState(() {
+      _busy = true;
+      _notice = null;
+      _error = null;
+    });
+    try {
+      final result = await ref
+          .read(networkDevicesRepositoryProvider)
+          .removeBypass(widget.device.id);
+      if (!mounted) return;
+      setState(() {
+        _changed = true;
+        _notice = result.message.isEmpty
+            ? 'تمت إزالة التجهيز من الراوتر.'
+            : result.message;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+class _NoticeBox extends StatelessWidget {
+  const _NoticeBox({
+    required this.icon,
+    required this.text,
+    required this.tone,
+  });
+
+  final IconData icon;
+  final String text;
+  final PillTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg, border) = switch (tone) {
+      PillTone.green => (
+          AppTokens.greenSoft,
+          AppTokens.greenInk,
+          AppTokens.successMed,
+        ),
+      PillTone.amber || PillTone.orange => (
+          AppTokens.amberSoft,
+          AppTokens.amberInk,
+          AppTokens.warningMed,
+        ),
+      PillTone.red => (
+          AppTokens.redSoft,
+          AppTokens.redInk,
+          AppTokens.dangerMed,
+        ),
+      PillTone.blue => (
+          AppTokens.blueSoft,
+          AppTokens.blueInk,
+          AppTokens.infoMed,
+        ),
+      _ => (
+          AppTokens.surfaceMuted,
+          AppTokens.textSecondary,
+          AppTokens.border,
+        ),
+    };
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        border: Border.all(color: border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 18, color: fg),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+            ),
+          ),
         ],
       ),
     );
@@ -515,16 +1184,19 @@ class _NetworkDeviceDialogState extends State<_NetworkDeviceDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.device == null ? 'إضافة جهاز مراقبة' : 'تعديل جهاز مراقبة'),
+      title: Text(
+        widget.device == null ? 'إضافة جهاز مراقبة' : 'تعديل جهاز مراقبة',
+      ),
       content: SizedBox(
-        width: 560,
+        width: _dialogWidth(context, 560),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<int>(
                 initialValue: _routerId,
-                decoration: const InputDecoration(labelText: 'الراوتر التابع له'),
+                decoration:
+                    const InputDecoration(labelText: 'الراوتر التابع له'),
                 items: [
                   for (final router in widget.routers)
                     DropdownMenuItem(
@@ -644,6 +1316,12 @@ class _NetworkDeviceDialogState extends State<_NetworkDeviceDialog> {
       ),
     );
   }
+}
+
+double _dialogWidth(BuildContext context, double maxWidth) {
+  final available = MediaQuery.sizeOf(context).width - 48;
+  if (available < 280) return 280;
+  return available > maxWidth ? maxWidth : available;
 }
 
 IconData _typeIcon(String type) {

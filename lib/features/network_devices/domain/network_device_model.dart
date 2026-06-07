@@ -250,6 +250,178 @@ class NetworkDeviceCheckResult {
   }
 }
 
+class NetworkScanResult {
+  const NetworkScanResult({
+    required this.router,
+    required this.items,
+    required this.knownIps,
+  });
+
+  final NetworkDeviceRouter router;
+  final List<NetworkScanItem> items;
+  final List<String> knownIps;
+
+  factory NetworkScanResult.fromJson(Map<String, dynamic> json) {
+    final rawItems = json['items'];
+    final rawKnown = json['known_ips'];
+    return NetworkScanResult(
+      router: NetworkDeviceRouter.fromJson(_map(json['router'])),
+      items: rawItems is List
+          ? rawItems
+              .whereType<Map>()
+              .map((item) => NetworkScanItem.fromJson(_map(item)))
+              .toList()
+          : const [],
+      knownIps: rawKnown is List
+          ? rawKnown
+              .map((item) => _string(item))
+              .where((item) => item.isNotEmpty)
+              .toList()
+          : const [],
+    );
+  }
+}
+
+class NetworkScanItem {
+  const NetworkScanItem({
+    required this.address,
+    required this.physicalAddress,
+    required this.hostname,
+    required this.interfaceName,
+    required this.vendor,
+    required this.sources,
+    required this.known,
+  });
+
+  final String address;
+  final String physicalAddress;
+  final String hostname;
+  final String interfaceName;
+  final String vendor;
+  final List<String> sources;
+  final bool known;
+
+  factory NetworkScanItem.fromJson(Map<String, dynamic> json) {
+    final rawSources = json['sources'];
+    return NetworkScanItem(
+      address: _string(json['ip']),
+      physicalAddress: _string(json['mac']),
+      hostname: _string(json['hostname']),
+      interfaceName: _string(json['interface']),
+      vendor: _string(json['vendor']),
+      sources: rawSources is List
+          ? rawSources
+              .map((item) => _string(item))
+              .where((item) => item.isNotEmpty)
+              .toList()
+          : const [],
+      known: _bool(json['known']),
+    );
+  }
+
+  String get displayName => hostname.isNotEmpty ? hostname : 'جهاز $address';
+}
+
+class NetworkDeviceBypassState {
+  const NetworkDeviceBypassState({
+    required this.device,
+    required this.router,
+    required this.dhcpServers,
+    required this.ready,
+    required this.dhcpError,
+    required this.addressListName,
+  });
+
+  final NetworkDevice device;
+  final NetworkDeviceRouter router;
+  final List<NetworkDhcpServer> dhcpServers;
+  final bool ready;
+  final String dhcpError;
+  final String addressListName;
+
+  factory NetworkDeviceBypassState.fromJson(Map<String, dynamic> json) {
+    final rawServers = json['dhcp_servers'];
+    return NetworkDeviceBypassState(
+      device: NetworkDevice.fromJson(_map(json['device'])),
+      router: NetworkDeviceRouter.fromJson(_map(json['router'])),
+      dhcpServers: rawServers is List
+          ? rawServers
+              .whereType<Map>()
+              .map((item) => NetworkDhcpServer.fromJson(_map(item)))
+              .toList()
+          : const [],
+      ready: _bool(json['ready']),
+      dhcpError: _string(json['dhcp_error']),
+      addressListName: _string(json['address_list_name']),
+    );
+  }
+}
+
+class NetworkDhcpServer {
+  const NetworkDhcpServer({
+    required this.name,
+    required this.interfaceName,
+    required this.disabled,
+  });
+
+  final String name;
+  final String interfaceName;
+  final bool disabled;
+
+  factory NetworkDhcpServer.fromJson(Map<String, dynamic> json) {
+    return NetworkDhcpServer(
+      name: _string(json['name']),
+      interfaceName: _string(json['interface']),
+      disabled: _bool(json['disabled']),
+    );
+  }
+}
+
+class NetworkDeviceBypassResult {
+  const NetworkDeviceBypassResult({
+    required this.message,
+    required this.steps,
+  });
+
+  final String message;
+  final Map<String, String> steps;
+
+  factory NetworkDeviceBypassResult.fromJson(Map<String, dynamic> json) {
+    final rawSteps = json['steps'];
+    return NetworkDeviceBypassResult(
+      message: _string(json['message']),
+      steps: rawSteps is Map
+          ? rawSteps
+              .map((key, value) => MapEntry(key.toString(), _string(value)))
+          : const {},
+    );
+  }
+}
+
+class NetworkDeviceBypassRemoveResult {
+  const NetworkDeviceBypassRemoveResult({
+    required this.message,
+    required this.removed,
+    required this.totalRemoved,
+  });
+
+  final String message;
+  final Map<String, int> removed;
+  final int totalRemoved;
+
+  factory NetworkDeviceBypassRemoveResult.fromJson(Map<String, dynamic> json) {
+    final rawRemoved = json['removed'];
+    return NetworkDeviceBypassRemoveResult(
+      message: _string(json['message']),
+      removed: rawRemoved is Map
+          ? rawRemoved
+              .map((key, value) => MapEntry(key.toString(), _int(value)))
+          : const {},
+      totalRemoved: _int(json['total_removed']),
+    );
+  }
+}
+
 Map<String, dynamic> _map(Object? value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) {
