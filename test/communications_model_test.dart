@@ -182,4 +182,57 @@ void main() {
     expect(key.startsWith('template_'), isTrue);
     expect(key.contains(' '), isFalse);
   });
+
+  test('WhatsApp bridge state parses official panel contract', () {
+    final state = WhatsappBridgeState.fromJson({
+      'data': {
+        'status': {
+          'ok': true,
+          'status': 'success',
+          'enabled': true,
+          'connected': true,
+          'onboarding': 'connected',
+          'onboarding_label': 'متصل',
+          'phone': '+970599000000',
+          'business': 'Hobe Radius',
+          'usage': {'sent': 7, 'remaining': 93, 'limit': 100},
+        },
+        'events': [
+          {
+            'key': 'otp',
+            'label': 'رمز التحقق عند الدخول',
+            'help': 'إرسال رمز تحقق للمشترك.',
+            'setting_key': 'whatsapp.send.otp',
+            'enabled': true,
+          },
+        ],
+        'panel_portal_url': 'https://hoberadius.com/portal/whatsapp',
+        'principles': ['الإرسال الرسمي يتم عبر لوحة التراخيص فقط.'],
+      },
+    });
+
+    expect(state.status.onboardingLabel, 'متصل');
+    expect(state.status.sentLabel, '7');
+    expect(state.status.remainingLabel, '93');
+    expect(state.events.single.label, 'رمز التحقق عند الدخول');
+    expect(state.events.single.enabled, isTrue);
+    expect(state.panelPortalUrl, startsWith('https://hoberadius.com'));
+
+    final saved = WhatsappBridgeSettingsResult.fromJson({
+      'data': {
+        'message': 'تم حفظ إعدادات رسائل واتساب للمشتركين.',
+        'events': [
+          {
+            'key': 'otp',
+            'label': 'رمز التحقق عند الدخول',
+            'help': '',
+            'setting_key': 'whatsapp.send.otp',
+            'enabled': false,
+          },
+        ],
+      },
+    });
+    expect(saved.events.single.enabled, isFalse);
+    expect(saved.message, contains('تم حفظ'));
+  });
 }

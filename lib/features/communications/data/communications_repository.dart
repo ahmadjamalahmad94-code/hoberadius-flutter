@@ -124,6 +124,45 @@ class CommunicationsRepository {
     return CommunicationQuotaCreditResult.fromJson(res);
   }
 
+  Future<WhatsappBridgeState> whatsappBridge() async {
+    final res = await _api.get('/api/v1/whatsapp');
+    return WhatsappBridgeState.fromJson(res);
+  }
+
+  Future<WhatsappBridgeSettingsResult> saveWhatsappToggles(
+    Map<String, bool> toggles,
+  ) async {
+    final res = await _api.patch(
+      '/api/v1/whatsapp/settings',
+      body: {'toggles': toggles},
+    );
+    return WhatsappBridgeSettingsResult.fromJson(res);
+  }
+
+  Future<String> sendWhatsappTest(String recipientPhone) async {
+    final res = await _api.post(
+      '/api/v1/whatsapp/test',
+      body: {'recipient_phone': recipientPhone},
+    );
+    return _string(_data(res)['message']);
+  }
+
+  Future<String> sendWhatsappCloudTest({
+    required String recipientPhone,
+    String templateName = '',
+    String language = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/whatsapp/cloud-test',
+      body: {
+        'recipient_phone': recipientPhone,
+        'template_name': templateName,
+        'language': language,
+      },
+    );
+    return _string(_data(res)['message']);
+  }
+
   Future<CampaignPage> campaigns() async {
     final res = await _api.get('/api/v1/communications/campaigns');
     return CampaignPage.fromJson(res);
@@ -176,3 +215,5 @@ int _int(Object? value) {
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
 }
+
+String _string(Object? value) => value?.toString().trim() ?? '';

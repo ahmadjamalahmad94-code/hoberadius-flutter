@@ -48,6 +48,7 @@ class CommunicationsScreen extends ConsumerWidget {
           'campaigns' => const _CampaignsPanel(),
           'deliveries' => const _DeliveriesPanel(),
           'channels' => const _ChannelsPanel(),
+          'whatsapp' => const _WhatsappBridgePanel(),
           'quota' => const _QuotaPanel(),
           _ => const _OverviewPanel(),
         },
@@ -71,6 +72,7 @@ class _TabBar extends ConsumerWidget {
       ('campaigns', 'الحملات', Icons.campaign_outlined),
       ('deliveries', 'سجل الإرسال', Icons.local_shipping_outlined),
       ('channels', 'قنوات الإرسال', Icons.settings_input_antenna),
+      ('whatsapp', 'واتساب الرسمي', Icons.mark_chat_read_outlined),
       ('quota', 'الرصيد والحزم', Icons.account_balance_wallet_outlined),
     ];
     return AppCard(
@@ -926,6 +928,388 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
   }
 }
 
+class _MiniMetric extends StatelessWidget {
+  const _MiniMetric(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppTokens.textMuted,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppTokens.textPrimary,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhatsappBridgePanel extends ConsumerWidget {
+  const _WhatsappBridgePanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final page = ref.watch(whatsappBridgeProvider);
+    return page.when(
+      loading: () => const _Loading(),
+      error: (error, _) => HubErrorState(
+        title: 'تعذر تحميل إعدادات واتساب',
+        subtitle: visibleErrorMessage(error),
+        onRetry: () => ref.invalidate(whatsappBridgeProvider),
+      ),
+      data: (state) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _WhatsappStatusCard(state: state),
+          const SizedBox(height: AppTokens.s12),
+          _WhatsappEventsCard(events: state.events),
+          const SizedBox(height: AppTokens.s12),
+          const _WhatsappTestCard(),
+        ],
+      ),
+    );
+  }
+}
+
+class _WhatsappStatusCard extends StatelessWidget {
+  const _WhatsappStatusCard({required this.state});
+
+  final WhatsappBridgeState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = state.status;
+    final tone = !status.ok
+        ? PillTone.red
+        : status.connected
+            ? PillTone.green
+            : PillTone.amber;
+    return AppCard(
+      title: 'حالة الربط الرسمي',
+      icon: Icons.mark_chat_read_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              StatusPill(
+                text: status.onboardingLabel,
+                tone: tone,
+                dot: true,
+              ),
+              StatusPill(
+                text: status.enabled ? 'الإرسال مفعّل' : 'الإرسال غير مفعّل',
+                tone: status.enabled ? PillTone.green : PillTone.neutral,
+              ),
+              if (status.business.isNotEmpty)
+                StatusPill(text: status.business, tone: PillTone.brand),
+              if (status.phone.isNotEmpty)
+                StatusPill(text: status.phone, tone: PillTone.blue),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s12),
+          Text(
+            status.ok
+                ? 'الربط الرسمي وإرسال الرسائل تتم إدارتهما من لوحة التراخيص. الريدياس هنا يحدد فقط أنواع الرسائل المسموح بطلب إرسالها.'
+                : 'تعذر جلب حالة واتساب من لوحة التراخيص. تأكد من رابط لوحة التراخيص وسر الربط في ملف الترخيص ثم حدّث الصفحة.',
+            style:
+                const TextStyle(color: AppTokens.textSecondary, height: 1.45),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              _MiniMetric('المُرسَل', status.sentLabel),
+              _MiniMetric('المتبقي', status.remainingLabel),
+              _MiniMetric('الحد المتاح', status.limitLabel),
+            ],
+          ),
+          if (state.panelPortalUrl.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s12),
+            SelectableText(
+              'إدارة الربط من لوحة التراخيص: ${state.panelPortalUrl}',
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(color: AppTokens.textMuted),
+            ),
+          ],
+          if (state.principles.isNotEmpty) ...[
+            const Divider(height: AppTokens.s24),
+            for (final line in state.principles)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.check_circle_outline,
+                      size: 16,
+                      color: AppTokens.greenInk,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: const TextStyle(
+                          color: AppTokens.textSecondary,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _WhatsappEventsCard extends ConsumerStatefulWidget {
+  const _WhatsappEventsCard({required this.events});
+
+  final List<WhatsappBridgeEvent> events;
+
+  @override
+  ConsumerState<_WhatsappEventsCard> createState() =>
+      _WhatsappEventsCardState();
+}
+
+class _WhatsappEventsCardState extends ConsumerState<_WhatsappEventsCard> {
+  late Map<String, bool> _toggles;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load(widget.events);
+  }
+
+  @override
+  void didUpdateWidget(covariant _WhatsappEventsCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.events != widget.events) _load(widget.events);
+  }
+
+  void _load(List<WhatsappBridgeEvent> events) {
+    _toggles = {for (final event in events) event.key: event.enabled};
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      title: 'أنواع الرسائل المسموح بها',
+      icon: Icons.rule_folder_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'فعّل فقط أنواع الرسائل المتفق عليها. هذه مفاتيح سماح محلية ولا تحتوي على أي بيانات ربط أو أسرار.',
+            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          for (final event in widget.events)
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: _toggles[event.key] ?? false,
+              title: Text(event.label),
+              subtitle: Text(event.help),
+              onChanged: _saving
+                  ? null
+                  : (value) => setState(() => _toggles[event.key] = value),
+            ),
+          const SizedBox(height: AppTokens.s12),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: FilledButton.icon(
+              onPressed: _saving ? null : _save,
+              icon: const Icon(Icons.save_outlined),
+              label: Text(_saving ? 'جار الحفظ' : 'حفظ السماح'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final result = await ref
+          .read(communicationsRepositoryProvider)
+          .saveWhatsappToggles(_toggles);
+      ref.invalidate(whatsappBridgeProvider);
+      if (mounted) {
+        _snack(
+          context,
+          result.message.isEmpty ? 'تم حفظ إعدادات واتساب' : result.message,
+        );
+      }
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+class _WhatsappTestCard extends ConsumerStatefulWidget {
+  const _WhatsappTestCard();
+
+  @override
+  ConsumerState<_WhatsappTestCard> createState() => _WhatsappTestCardState();
+}
+
+class _WhatsappTestCardState extends ConsumerState<_WhatsappTestCard> {
+  final _phone = TextEditingController();
+  final _template = TextEditingController();
+  final _language = TextEditingController(text: 'ar');
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _phone.dispose();
+    _template.dispose();
+    _language.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      title: 'رسالة اختبار',
+      icon: Icons.send_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'يتم إرسال الاختبار عبر لوحة التراخيص فقط. لا يرسل تطبيق الريدياس أي رسالة واتساب مباشرة.',
+            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          TextField(
+            controller: _phone,
+            textDirection: TextDirection.ltr,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'رقم المستلم بصيغة دولية',
+              hintText: '970599000000',
+            ),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final wide = constraints.maxWidth >= 620;
+              final template = TextField(
+                controller: _template,
+                textDirection: TextDirection.ltr,
+                decoration: const InputDecoration(
+                  labelText: 'اسم قالب الاختبار السحابي',
+                  hintText: 'اختياري',
+                ),
+              );
+              final language = TextField(
+                controller: _language,
+                textDirection: TextDirection.ltr,
+                decoration: const InputDecoration(
+                  labelText: 'لغة القالب',
+                  hintText: 'ar',
+                ),
+              );
+              if (!wide) {
+                return Column(
+                  children: [
+                    template,
+                    const SizedBox(height: AppTokens.s12),
+                    language,
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: template),
+                  const SizedBox(width: AppTokens.s12),
+                  SizedBox(width: 160, child: language),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: AppTokens.s16),
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              FilledButton.icon(
+                onPressed: _sending ? null : () => _send(cloud: false),
+                icon: const Icon(Icons.mark_chat_read_outlined),
+                label: Text(_sending ? 'جار الإرسال' : 'إرسال اختبار'),
+              ),
+              OutlinedButton.icon(
+                onPressed: _sending ? null : () => _send(cloud: true),
+                icon: const Icon(Icons.cloud_outlined),
+                label: const Text('اختبار الربط السحابي'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _send({required bool cloud}) async {
+    final phone = _phone.text.trim();
+    if (phone.isEmpty) {
+      _snack(context, 'أدخل رقم هاتف لإرسال رسالة الاختبار');
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      final repo = ref.read(communicationsRepositoryProvider);
+      final message = cloud
+          ? await repo.sendWhatsappCloudTest(
+              recipientPhone: phone,
+              templateName: _template.text.trim(),
+              language: _language.text.trim(),
+            )
+          : await repo.sendWhatsappTest(phone);
+      if (mounted) {
+        _snack(context, message.isEmpty ? 'تم إرسال رسالة الاختبار' : message);
+      }
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+}
+
 class _QuotaPanel extends ConsumerWidget {
   const _QuotaPanel();
 
@@ -1615,6 +1999,7 @@ void _refresh(WidgetRef ref) {
   ref.invalidate(messageDeliveriesProvider);
   ref.invalidate(communicationChannelsProvider);
   ref.invalidate(communicationQuotaProvider);
+  ref.invalidate(whatsappBridgeProvider);
   ref.invalidate(campaignsProvider);
 }
 

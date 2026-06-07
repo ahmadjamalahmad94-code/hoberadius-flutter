@@ -72,6 +72,48 @@ class _CaptureAdapter implements HttpClientAdapter {
           'balance_after': 250,
           'message': 'تمت إضافة 100 رسالة إلى رصيد الرسائل القصيرة.',
         },
+      'GET /api/v1/whatsapp' => {
+          'status': {
+            'ok': true,
+            'status': 'success',
+            'enabled': true,
+            'connected': true,
+            'onboarding': 'connected',
+            'onboarding_label': 'متصل',
+            'phone': '+970599000000',
+            'business': 'Hobe Radius',
+            'usage': {'sent': 7, 'remaining': 93},
+          },
+          'events': [
+            {
+              'key': 'otp',
+              'label': 'رمز التحقق عند الدخول',
+              'help': 'إرسال رمز تحقق للمشترك.',
+              'setting_key': 'whatsapp.send.otp',
+              'enabled': false,
+            },
+          ],
+          'panel_portal_url': 'https://hoberadius.com/portal/whatsapp',
+          'principles': ['الإرسال الرسمي يتم عبر لوحة التراخيص فقط.'],
+        },
+      'PATCH /api/v1/whatsapp/settings' => {
+          'events': [
+            {
+              'key': 'otp',
+              'label': 'رمز التحقق عند الدخول',
+              'help': 'إرسال رمز تحقق للمشترك.',
+              'setting_key': 'whatsapp.send.otp',
+              'enabled': true,
+            },
+          ],
+          'message': 'تم حفظ إعدادات رسائل واتساب للمشتركين.',
+        },
+      'POST /api/v1/whatsapp/test' => {
+          'message': 'تم إرسال رسالة الاختبار عبر لوحة التراخيص.',
+        },
+      'POST /api/v1/whatsapp/cloud-test' => {
+          'message': 'تم إرسال رسالة الاختبار عبر بيانات اللوحة.',
+        },
       _ => <String, dynamic>{},
     };
     return ResponseBody.fromString(
@@ -150,11 +192,23 @@ void main() {
       amount: 100,
       note: 'دفعة شهرية',
     );
+    final whatsapp = await repo.whatsappBridge();
+    final whatsappSaved = await repo.saveWhatsappToggles({'otp': true});
+    final whatsappTest = await repo.sendWhatsappTest('+970599000000');
+    final whatsappCloudTest = await repo.sendWhatsappCloudTest(
+      recipientPhone: '+970599000000',
+      templateName: 'hello_world',
+      language: 'ar',
+    );
 
     expect(channels.items.single.label, 'الرسائل القصيرة');
     expect(saved.active, isTrue);
     expect(quota.items.single.balance, 150);
     expect(credit.balanceAfter, 250);
+    expect(whatsapp.status.connected, isTrue);
+    expect(whatsappSaved.events.single.enabled, isTrue);
+    expect(whatsappTest, contains('لوحة التراخيص'));
+    expect(whatsappCloudTest, contains('بيانات اللوحة'));
     expect(
       adapter.requests.map((request) => '${request.method} ${request.path}'),
       [
@@ -162,6 +216,10 @@ void main() {
         'POST /api/v1/communications/channels/sms',
         'GET /api/v1/communications/quota',
         'POST /api/v1/communications/quota/sms/credit',
+        'GET /api/v1/whatsapp',
+        'PATCH /api/v1/whatsapp/settings',
+        'POST /api/v1/whatsapp/test',
+        'POST /api/v1/whatsapp/cloud-test',
       ],
     );
     expect(adapter.requests[1].data, {
@@ -175,6 +233,17 @@ void main() {
     expect(adapter.requests[3].data, {
       'amount': 100,
       'note': 'دفعة شهرية',
+    });
+    expect(adapter.requests[5].data, {
+      'toggles': {'otp': true},
+    });
+    expect(adapter.requests[6].data, {
+      'recipient_phone': '+970599000000',
+    });
+    expect(adapter.requests[7].data, {
+      'recipient_phone': '+970599000000',
+      'template_name': 'hello_world',
+      'language': 'ar',
     });
   });
 }

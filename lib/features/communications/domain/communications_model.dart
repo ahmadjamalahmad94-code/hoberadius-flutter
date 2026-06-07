@@ -580,6 +580,140 @@ class CommunicationQuotaCreditResult {
   }
 }
 
+class WhatsappBridgeState {
+  const WhatsappBridgeState({
+    required this.status,
+    required this.events,
+    required this.panelPortalUrl,
+    required this.principles,
+  });
+
+  final WhatsappBridgeStatus status;
+  final List<WhatsappBridgeEvent> events;
+  final String panelPortalUrl;
+  final List<String> principles;
+
+  factory WhatsappBridgeState.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    return WhatsappBridgeState(
+      status: WhatsappBridgeStatus.fromJson(_map(data['status'])),
+      events: _list(data['events'])
+          .map((item) => WhatsappBridgeEvent.fromJson(_map(item)))
+          .toList(),
+      panelPortalUrl: _string(data['panel_portal_url']),
+      principles: _strings(data['principles']),
+    );
+  }
+}
+
+class WhatsappBridgeStatus {
+  const WhatsappBridgeStatus({
+    required this.ok,
+    required this.status,
+    required this.enabled,
+    required this.connected,
+    required this.onboarding,
+    required this.onboardingLabel,
+    required this.phone,
+    required this.business,
+    required this.usage,
+  });
+
+  final bool ok;
+  final String status;
+  final bool enabled;
+  final bool connected;
+  final String onboarding;
+  final String onboardingLabel;
+  final String phone;
+  final String business;
+  final Map<String, dynamic> usage;
+
+  factory WhatsappBridgeStatus.fromJson(Map<String, dynamic> json) {
+    final onboarding = _string(json['onboarding'], fallback: 'needs_setup');
+    return WhatsappBridgeStatus(
+      ok: _bool(json['ok']),
+      status: _string(json['status'], fallback: 'unavailable'),
+      enabled: _bool(json['enabled']),
+      connected: _bool(json['connected']),
+      onboarding: onboarding,
+      onboardingLabel: _string(
+        json['onboarding_label'],
+        fallback: whatsappOnboardingLabel(onboarding, _bool(json['ok'])),
+      ),
+      phone: _string(json['phone']),
+      business: _string(json['business']),
+      usage: _map(json['usage']),
+    );
+  }
+
+  String get sentLabel => _usageLabel('sent');
+  String get remainingLabel => _usageLabel('remaining');
+  String get limitLabel => _usageLabel('limit');
+
+  String _usageLabel(String key) {
+    final value = usage[key];
+    final text = value?.toString().trim() ?? '';
+    return text.isEmpty ? 'غير محدد' : text;
+  }
+}
+
+class WhatsappBridgeEvent {
+  const WhatsappBridgeEvent({
+    required this.key,
+    required this.label,
+    required this.help,
+    required this.settingKey,
+    required this.enabled,
+  });
+
+  final String key;
+  final String label;
+  final String help;
+  final String settingKey;
+  final bool enabled;
+
+  factory WhatsappBridgeEvent.fromJson(Map<String, dynamic> json) {
+    return WhatsappBridgeEvent(
+      key: _string(json['key']),
+      label: _string(json['label']),
+      help: _string(json['help']),
+      settingKey: _string(json['setting_key']),
+      enabled: _bool(json['enabled']),
+    );
+  }
+}
+
+class WhatsappBridgeSettingsResult {
+  const WhatsappBridgeSettingsResult({
+    required this.events,
+    required this.message,
+  });
+
+  final List<WhatsappBridgeEvent> events;
+  final String message;
+
+  factory WhatsappBridgeSettingsResult.fromJson(Map<String, dynamic> json) {
+    final data = _data(json);
+    return WhatsappBridgeSettingsResult(
+      events: _list(data['events'])
+          .map((item) => WhatsappBridgeEvent.fromJson(_map(item)))
+          .toList(),
+      message: _string(data['message']),
+    );
+  }
+}
+
+String whatsappOnboardingLabel(String value, bool ok) {
+  if (!ok) return 'غير متوفّرة';
+  return switch (value) {
+    'connected' => 'متصل',
+    'not_connected' => 'غير متصل',
+    'needs_setup' => 'بحاجة إلى الإعداد',
+    _ => 'بحاجة إلى الإعداد',
+  };
+}
+
 String communicationChannelLabel(String value) {
   return switch (value) {
     'internal' => 'رسالة داخلية',
