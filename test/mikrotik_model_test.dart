@@ -196,6 +196,49 @@ void main() {
     expect(page.backups.single.routerStatusLabel, 'موجودة على الراوتر');
   });
 
+  test('MikrotikGuidedChecklist parses assistant steps and choices', () {
+    final checklist = MikrotikGuidedChecklist.fromJson({
+      'nas_id': 5,
+      'operation': 'programming_hotspot',
+      'operation_label_ar': 'برمجة بوابة الدخول',
+      'can_proceed': false,
+      'apply_href': '/admin/radius/mt/5/program',
+      'blocking_count': 1,
+      'warning_count': 1,
+      'operation_choices': [
+        {
+          'code': 'programming_hotspot',
+          'label_ar': 'برمجة بوابة الدخول',
+        },
+      ],
+      'steps': [
+        {
+          'key': 'health',
+          'label_ar': 'صحة الراوتر',
+          'state': 'ok',
+          'detail_ar': 'الحالة سليمة.',
+          'href': '/admin/radius/mt/5/overview',
+        },
+        {
+          'key': 'backup',
+          'label_ar': 'النسخة الاحتياطية',
+          'state': 'blocking',
+          'detail_ar': 'خذ نسخة قبل المتابعة.',
+        },
+      ],
+    });
+
+    expect(checklist.routerId, 5);
+    expect(checklist.operation, 'programming_hotspot');
+    expect(checklist.operationLabel, 'برمجة بوابة الدخول');
+    expect(checklist.canProceed, isFalse);
+    expect(checklist.blockingCount, 1);
+    expect(checklist.warningCount, 1);
+    expect(checklist.operationChoices.single.label, 'برمجة بوابة الدخول');
+    expect(checklist.steps.last.isBlocking, isTrue);
+    expect(checklist.steps.last.stateLabel, 'مانع');
+  });
+
   test('MikrotikLiveSnapshot keeps failed sections isolated', () {
     final failed = MikrotikLiveSection.failed(
       key: 'logs',

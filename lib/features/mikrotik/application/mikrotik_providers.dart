@@ -20,6 +20,18 @@ final mikrotikRouterOverviewProvider =
   return ref.watch(mikrotikRepositoryProvider).routerOverview(id);
 });
 
+typedef MikrotikGuidedAssistantRequest = ({int routerId, String operation});
+
+final mikrotikGuidedAssistantProvider = FutureProvider.autoDispose
+    .family<MikrotikGuidedChecklist, MikrotikGuidedAssistantRequest>(
+  (ref, request) {
+    return ref.watch(mikrotikRepositoryProvider).guidedAssistant(
+          request.routerId,
+          operation: request.operation,
+        );
+  },
+);
+
 final mikrotikLiveSnapshotProvider =
     FutureProvider.autoDispose.family<MikrotikLiveSnapshot, int>((ref, id) {
   return ref.watch(mikrotikRepositoryProvider).liveSnapshot(id);

@@ -46,6 +46,25 @@ class _CaptureAdapter implements HttpClientAdapter {
     requests.add(options);
     final path = options.path;
     final data = switch (path) {
+      String p when p.endsWith('/assistant') => {
+          'nas_id': 3,
+          'operation': 'backup_save',
+          'operation_label_ar': 'حفظ نسخة احتياطية',
+          'can_proceed': true,
+          'blocking_count': 0,
+          'warning_count': 0,
+          'operation_choices': [
+            {'code': 'backup_save', 'label_ar': 'حفظ نسخة احتياطية'},
+          ],
+          'steps': [
+            {
+              'key': 'health',
+              'label_ar': 'صحة الراوتر',
+              'state': 'ok',
+              'detail_ar': 'الحالة سليمة.',
+            },
+          ],
+        },
       String p when p.endsWith('/backups') => {
           'router_id': 3,
           'count': 1,
@@ -123,6 +142,10 @@ void main() {
     await repo.syncRouterNtp(3);
     await repo.flushRouterDnsCache(3);
     await repo.rebootRouter(3, reason: 'صيانة مجدولة');
+    final assistant = await repo.guidedAssistant(
+      3,
+      operation: 'backup_save',
+    );
     final backups = await repo.routerBackups(3);
     final manifest = await repo.routerBackupManifest(3, 8);
     await repo.restoreRouterBackup(3, 8, notes: 'استعادة بعد اختبار');
@@ -130,6 +153,8 @@ void main() {
 
     expect(backup.backupId, 8);
     expect(identity.newName, 'branch-router');
+    expect(assistant.canProceed, isTrue);
+    expect(assistant.operation, 'backup_save');
     expect(backups.backups.single.id, 8);
     expect(manifest['manifest_summary'], 'Hotspot');
     expect(
@@ -140,6 +165,7 @@ void main() {
         'POST /api/v1/mikrotik/3/system/ntp/sync',
         'POST /api/v1/mikrotik/3/ip/dns/cache/flush',
         'POST /api/v1/mikrotik/3/system/reboot',
+        'GET /api/v1/mikrotik/3/assistant',
         'GET /api/v1/mikrotik/3/backups',
         'GET /api/v1/mikrotik/3/backups/8/manifest',
         'POST /api/v1/mikrotik/3/backups/8/restore',
@@ -155,7 +181,8 @@ void main() {
       'confirm': true,
       'reason': 'صيانة مجدولة',
     });
-    expect(adapter.requests[7].data, {
+    expect(adapter.requests[5].queryParameters, {'op': 'backup_save'});
+    expect(adapter.requests[8].data, {
       'confirm': true,
       'notes': 'استعادة بعد اختبار',
     });

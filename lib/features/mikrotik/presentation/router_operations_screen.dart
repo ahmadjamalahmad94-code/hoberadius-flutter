@@ -118,6 +118,8 @@ class _RouterOperationsScreenState
           ),
         ),
         const SizedBox(height: AppTokens.s12),
+        _GuidedAssistantPanel(routerId: selected.id!),
+        const SizedBox(height: AppTokens.s12),
         _RouterProtectedActions(
           routerId: selected.id!,
           routerName: selected.name,
@@ -290,6 +292,202 @@ class _RouterProtectedActions extends ConsumerWidget {
                 label: const Text('تحديث الحالة'),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GuidedAssistantPanel extends ConsumerStatefulWidget {
+  const _GuidedAssistantPanel({required this.routerId});
+
+  final int routerId;
+
+  @override
+  ConsumerState<_GuidedAssistantPanel> createState() =>
+      _GuidedAssistantPanelState();
+}
+
+class _GuidedAssistantPanelState extends ConsumerState<_GuidedAssistantPanel> {
+  String _operation = 'programming_hotspot';
+
+  @override
+  Widget build(BuildContext context) {
+    final request = (routerId: widget.routerId, operation: _operation);
+    final async = ref.watch(mikrotikGuidedAssistantProvider(request));
+    return AppCard(
+      title: 'مساعد ما قبل التنفيذ',
+      icon: Icons.fact_check_outlined,
+      actions: [
+        IconButton(
+          tooltip: 'تحديث الفحص',
+          onPressed: () => ref.invalidate(
+            mikrotikGuidedAssistantProvider(request),
+          ),
+          icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+        ),
+      ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'يفحص حالة الراوتر، صلاحية المستخدم، النسخة الاحتياطية، وآخر العمليات قبل تنفيذ أي تغيير حساس. الفحص للقراءة فقط ولا يرسل أوامر للراوتر.',
+            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          DropdownButtonFormField<String>(
+            initialValue: _operation,
+            decoration: const InputDecoration(labelText: 'نوع العملية'),
+            items: [
+              for (final choice in _guidedFallbackChoices)
+                DropdownMenuItem(
+                  value: choice.code,
+                  child: Text(choice.label),
+                ),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _operation = value);
+            },
+          ),
+          const SizedBox(height: AppTokens.s12),
+          async.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => HubErrorState(
+              title: 'تعذر تحميل فحص العملية',
+              subtitle: visibleErrorMessage(error),
+              onRetry: () => ref.invalidate(
+                mikrotikGuidedAssistantProvider(request),
+              ),
+            ),
+            data: _assistantBody,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _assistantBody(MikrotikGuidedChecklist checklist) {
+    final choices = checklist.operationChoices.isEmpty
+        ? _guidedFallbackChoices
+        : checklist.operationChoices;
+    final selectedLabel = _guidedOperationLabel(choices, checklist.operation);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Wrap(
+          spacing: AppTokens.s8,
+          runSpacing: AppTokens.s8,
+          children: [
+            StatusPill(
+              text: checklist.canProceed ? 'جاهز للمتابعة' : 'يوجد مانع',
+              tone: checklist.canProceed ? PillTone.green : PillTone.red,
+              dot: true,
+            ),
+            StatusPill(
+              text: '${checklist.blockingCount} مانع',
+              tone:
+                  checklist.blockingCount > 0 ? PillTone.red : PillTone.neutral,
+            ),
+            StatusPill(
+              text: '${checklist.warningCount} تنبيه',
+              tone: checklist.warningCount > 0
+                  ? PillTone.amber
+                  : PillTone.neutral,
+            ),
+            if ((selectedLabel.isEmpty
+                    ? checklist.operationLabel
+                    : selectedLabel)
+                .isNotEmpty)
+              StatusPill(
+                text: selectedLabel.isEmpty
+                    ? checklist.operationLabel
+                    : selectedLabel,
+                tone: PillTone.blue,
+              ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
+        if (checklist.steps.isEmpty)
+          const EmptyState(
+            icon: Icons.fact_check_outlined,
+            title: 'لا توجد خطوات فحص',
+            subtitle: 'لم يرجع الخادم خطوات لهذه العملية بعد.',
+          )
+        else
+          Column(
+            children: [
+              for (final step in checklist.steps) ...[
+                _GuidedStepRow(step: step),
+                const SizedBox(height: AppTokens.s8),
+              ],
+            ],
+          ),
+        if (checklist.canProceed) ...[
+          const SizedBox(height: AppTokens.s8),
+          const Text(
+            'يمكن المتابعة من أوامر الراوتر المحمية أو من شاشة العملية المناسبة عند توفرها داخل التطبيق.',
+            style: TextStyle(color: AppTokens.greenInk, height: 1.45),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _GuidedStepRow extends StatelessWidget {
+  const _GuidedStepRow({required this.step});
+
+  final MikrotikGuidedStep step;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppTokens.r12),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(_guidedIcon(step.state), color: _guidedColor(step.state)),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: AppTokens.s8,
+                  runSpacing: AppTokens.s8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      step.label.isEmpty ? 'خطوة فحص' : step.label,
+                      style: const TextStyle(
+                        color: AppTokens.textPrimary,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    StatusPill(
+                      text: step.stateLabel,
+                      tone: _guidedTone(step.state),
+                    ),
+                  ],
+                ),
+                if (step.detail.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    step.detail,
+                    style: const TextStyle(
+                      color: AppTokens.textSecondary,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
@@ -1293,6 +1491,69 @@ Future<bool> _confirm(
     ),
   );
   return result == true;
+}
+
+const _guidedFallbackChoices = <MikrotikGuidedOperationChoice>[
+  MikrotikGuidedOperationChoice(
+    code: 'programming_hotspot',
+    label: 'برمجة بوابة الدخول',
+  ),
+  MikrotikGuidedOperationChoice(
+    code: 'programming_pppoe',
+    label: 'برمجة البرودباند',
+  ),
+  MikrotikGuidedOperationChoice(
+    code: 'unprogramming',
+    label: 'تراجع وإزالة برمجة',
+  ),
+  MikrotikGuidedOperationChoice(
+    code: 'restore',
+    label: 'استعادة من نسخة احتياطية',
+  ),
+  MikrotikGuidedOperationChoice(
+    code: 'backup_save',
+    label: 'حفظ نسخة احتياطية',
+  ),
+];
+
+String _guidedOperationLabel(
+  List<MikrotikGuidedOperationChoice> choices,
+  String code,
+) {
+  for (final choice in choices) {
+    if (choice.code == code) return choice.label;
+  }
+  return '';
+}
+
+PillTone _guidedTone(String state) {
+  return switch (state) {
+    'ok' => PillTone.green,
+    'warning' => PillTone.amber,
+    'blocking' => PillTone.red,
+    'info' => PillTone.blue,
+    _ => PillTone.neutral,
+  };
+}
+
+IconData _guidedIcon(String state) {
+  return switch (state) {
+    'ok' => Icons.check_circle_outline,
+    'warning' => Icons.warning_amber_outlined,
+    'blocking' => Icons.block,
+    'info' => Icons.info_outline,
+    _ => Icons.help_outline,
+  };
+}
+
+Color _guidedColor(String state) {
+  return switch (state) {
+    'ok' => AppTokens.greenInk,
+    'warning' => AppTokens.amberInk,
+    'blocking' => AppTokens.redInk,
+    'info' => AppTokens.blueInk,
+    _ => AppTokens.textMuted,
+  };
 }
 
 String _value(

@@ -339,6 +339,116 @@ class MikrotikRouterBackupsPage {
   }
 }
 
+class MikrotikGuidedChecklist {
+  const MikrotikGuidedChecklist({
+    required this.routerId,
+    required this.operation,
+    required this.operationLabel,
+    required this.canProceed,
+    required this.applyHref,
+    required this.blockingCount,
+    required this.warningCount,
+    required this.steps,
+    required this.operationChoices,
+  });
+
+  final int routerId;
+  final String operation;
+  final String operationLabel;
+  final bool canProceed;
+  final String applyHref;
+  final int blockingCount;
+  final int warningCount;
+  final List<MikrotikGuidedStep> steps;
+  final List<MikrotikGuidedOperationChoice> operationChoices;
+
+  factory MikrotikGuidedChecklist.fromJson(Map<String, dynamic> json) {
+    final rawSteps = json['steps'];
+    final rawChoices = json['operation_choices'];
+    final steps = rawSteps is List
+        ? rawSteps
+            .whereType<Map<String, dynamic>>()
+            .map(MikrotikGuidedStep.fromJson)
+            .toList()
+        : const <MikrotikGuidedStep>[];
+    final choices = rawChoices is List
+        ? rawChoices
+            .whereType<Map<String, dynamic>>()
+            .map(MikrotikGuidedOperationChoice.fromJson)
+            .toList()
+        : const <MikrotikGuidedOperationChoice>[];
+    final blocking = _asIntOrNull(json['blocking_count']) ??
+        steps.where((step) => step.isBlocking).length;
+    final warnings = _asIntOrNull(json['warning_count']) ??
+        steps.where((step) => step.isWarning).length;
+    return MikrotikGuidedChecklist(
+      routerId: _asInt(json['nas_id'] ?? json['router_id']),
+      operation: _string(json['operation']),
+      operationLabel: _string(json['operation_label_ar']),
+      canProceed: _bool(json['can_proceed']),
+      applyHref: _string(json['apply_href']),
+      blockingCount: blocking,
+      warningCount: warnings,
+      steps: steps,
+      operationChoices: choices,
+    );
+  }
+}
+
+class MikrotikGuidedOperationChoice {
+  const MikrotikGuidedOperationChoice({
+    required this.code,
+    required this.label,
+  });
+
+  final String code;
+  final String label;
+
+  factory MikrotikGuidedOperationChoice.fromJson(Map<String, dynamic> json) {
+    return MikrotikGuidedOperationChoice(
+      code: _string(json['code']),
+      label: _string(json['label_ar']),
+    );
+  }
+}
+
+class MikrotikGuidedStep {
+  const MikrotikGuidedStep({
+    required this.key,
+    required this.label,
+    required this.state,
+    required this.detail,
+    required this.href,
+  });
+
+  final String key;
+  final String label;
+  final String state;
+  final String detail;
+  final String href;
+
+  factory MikrotikGuidedStep.fromJson(Map<String, dynamic> json) {
+    return MikrotikGuidedStep(
+      key: _string(json['key']),
+      label: _string(json['label_ar']),
+      state: _string(json['state']),
+      detail: _string(json['detail_ar']),
+      href: _string(json['href']),
+    );
+  }
+
+  bool get isBlocking => state == 'blocking';
+  bool get isWarning => state == 'warning';
+
+  String get stateLabel => switch (state) {
+        'ok' => 'سليم',
+        'warning' => 'تنبيه',
+        'blocking' => 'مانع',
+        'info' => 'معلومة',
+        _ => 'حالة غير معروفة',
+      };
+}
+
 class MikrotikLiveSection {
   const MikrotikLiveSection({
     required this.key,

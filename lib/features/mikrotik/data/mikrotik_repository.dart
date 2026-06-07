@@ -71,6 +71,17 @@ class MikrotikRepository {
     return MikrotikRouterOverview.fromJson(_data(res));
   }
 
+  Future<MikrotikGuidedChecklist> guidedAssistant(
+    int nasId, {
+    String operation = 'programming_hotspot',
+  }) async {
+    final res = await _api.get(
+      '/api/v1/mikrotik/$nasId/assistant',
+      query: {'op': operation},
+    );
+    return MikrotikGuidedChecklist.fromJson(_data(res));
+  }
+
   Future<MikrotikLiveSnapshot> liveSnapshot(int nasId) async {
     final sections = await Future.wait(
       _liveSectionSpecs.map((spec) => _liveSection(nasId, spec)),
