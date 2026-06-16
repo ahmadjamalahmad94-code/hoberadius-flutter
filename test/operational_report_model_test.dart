@@ -27,9 +27,10 @@ void main() {
     expect(snapshot.items.single['payload'], isA<Map<String, dynamic>>());
   });
 
-  test('Operational reports screen exposes all web operational report slugs', () {
+  test('Operational report catalog exposes all web operational report slugs',
+      () {
     final screen = File(
-      'lib/features/operational_reports/presentation/operational_reports_screen.dart',
+      'lib/features/operational_reports/domain/operational_report_catalog.dart',
     ).readAsStringSync();
 
     for (final slug in [

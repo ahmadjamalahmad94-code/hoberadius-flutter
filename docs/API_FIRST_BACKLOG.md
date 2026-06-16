@@ -11,10 +11,14 @@ Still to build (all have a working admin `/api/v1`; just need Flutter UI):
    Wires `GET /business/summary` (KPI hero), `GET /finance/ledger` +
    `POST /finance/ledger/corrections`, `GET|POST /pricing/snapshots`. Test:
    `test/business_ops_repository_test.dart`.
-2. **Operational-reports bespoke UX (item 5)** — per-slug tailored columns/
-   date-filters/drill-downs over the existing 15 `/operational-reports`
-   slugs, + a reports_center hub (KPI hero + catalog). Data already wired in
-   `operational_reports` (generic table).
+2. ✅ **Operational-reports bespoke UX** — DONE. New `reports_center_screen`
+   hub (KPI strip + category-grouped report cards) at `/operational-reports`;
+   `operational_report_detail_screen` at `/operational-reports/:slug` with
+   curated per-slug columns (catalog in `domain/operational_report_catalog`),
+   per-kind cell formatting (date/bytes/duration/bool/amount), server search,
+   and a client-side date-range drill-down on each report's primary timestamp
+   (API only exposes q/limit/offset). Old generic dropdown screen removed.
+   Tests: `operational_report_catalog_test` + repointed model test.
 3. **Per-permission Arabic labels (item 5)** — map raw permission keys via a
    `_perm_labels` catalogue in `role_form_screen` (the permissions API may
    expose labels; otherwise hardcode the catalogue).

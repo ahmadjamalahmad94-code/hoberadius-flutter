@@ -53,7 +53,8 @@ import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
 import '../../features/network_devices/presentation/network_devices_screen.dart';
 import '../../features/network_policy/presentation/network_policy_screen.dart';
-import '../../features/operational_reports/presentation/operational_reports_screen.dart';
+import '../../features/operational_reports/presentation/operational_report_detail_screen.dart';
+import '../../features/operational_reports/presentation/reports_center_screen.dart';
 import '../../features/payment_collection/presentation/payment_collection_screen.dart';
 import '../../features/payment_collection/presentation/payment_request_detail_screen.dart';
 import '../../features/plans/presentation/plan_form_screen.dart';
@@ -432,7 +433,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/operational-reports',
             name: 'operational-reports',
-            builder: (ctx, st) => const OperationalReportsScreen(),
+            builder: (ctx, st) => const ReportsCenterScreen(),
+            routes: [
+              GoRoute(
+                path: ':slug',
+                name: 'operational-report-detail',
+                builder: (ctx, st) => OperationalReportDetailScreen(
+                  slug: st.pathParameters['slug'] ?? '',
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/business-ops',
