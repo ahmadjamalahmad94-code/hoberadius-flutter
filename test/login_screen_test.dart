@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/core/api/api_endpoint_storage.dart';
 import 'package:hoberadius_app/core/auth/auth_controller.dart';
+import 'package:hoberadius_app/core/auth/security_key_storage.dart';
 import 'package:hoberadius_app/core/auth/token_storage.dart';
 import 'package:hoberadius_app/features/auth/presentation/login_screen.dart';
 
@@ -13,6 +14,15 @@ class _FakeEndpointStorage implements ApiEndpointStorage {
   Future<String> readBaseUrl() async => 'https://demo.hoberadius.test';
   @override
   Future<void> writeBaseUrl(String baseUrl) async {}
+}
+
+class _FakeSecurityKeyStorage implements SecurityKeyStorage {
+  @override
+  Future<String?> read() async => null;
+  @override
+  Future<void> write(String key) async {}
+  @override
+  Future<void> clear() async {}
 }
 
 /// Token read never completes, so [AuthController]'s constructor `_restore()`
@@ -35,6 +45,7 @@ class _FakeAuthController extends AuthController {
     required String baseUrl,
     required String username,
     required String password,
+    String securityKey = '',
   }) async {}
 }
 
@@ -49,6 +60,7 @@ Future<void> _pumpLogin(WidgetTester tester, AuthState state) async {
       overrides: [
         apiEndpointStorageProvider.overrideWithValue(_FakeEndpointStorage()),
         tokenStorageProvider.overrideWithValue(_PendingTokenStorage()),
+        securityKeyStorageProvider.overrideWithValue(_FakeSecurityKeyStorage()),
         authControllerProvider.overrideWith(
           (ref) => _FakeAuthController(ref, state),
         ),

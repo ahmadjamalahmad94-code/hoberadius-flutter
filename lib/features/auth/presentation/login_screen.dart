@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/api_endpoint_storage.dart';
 import '../../../core/auth/auth_controller.dart';
+import '../../../core/auth/security_key_storage.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -18,11 +19,13 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
   final _server = TextEditingController();
+  final _securityKey = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   String _scheme = 'https';
   bool _obscure = true;
+  bool _obscureKey = true;
   late final AnimationController _heroAnim;
 
   @override
@@ -37,17 +40,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   Future<void> _loadServer() async {
     final saved = await ref.read(apiEndpointStorageProvider).readBaseUrl();
+    final savedKey = await ref.read(securityKeyStorageProvider).read();
     final uri = Uri.tryParse(saved);
-    if (!mounted || uri == null || uri.host.isEmpty) return;
+    if (!mounted) return;
     setState(() {
-      _scheme = uri.scheme == 'http' ? 'http' : 'https';
-      _server.text = uri.authority;
+      if (uri != null && uri.host.isNotEmpty) {
+        _scheme = uri.scheme == 'http' ? 'http' : 'https';
+        _server.text = uri.authority;
+      }
+      if (savedKey != null && savedKey.isNotEmpty) {
+        _securityKey.text = savedKey;
+      }
     });
   }
 
   @override
   void dispose() {
     _server.dispose();
+    _securityKey.dispose();
     _username.dispose();
     _password.dispose();
     _heroAnim.dispose();
@@ -73,6 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           baseUrl: baseUrl,
           username: _username.text.trim(),
           password: _password.text,
+          securityKey: _securityKey.text.trim(),
         );
   }
 
@@ -139,6 +150,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   }
                                 },
                                 validator: _validateServer,
+                              ),
+                              const SizedBox(height: AppTokens.s12),
+                              TextFormField(
+                                controller: _securityKey,
+                                obscureText: _obscureKey,
+                                textInputAction: TextInputAction.next,
+                                autocorrect: false,
+                                enableSuggestions: false,
+                                decoration: InputDecoration(
+                                  labelText: 'مفتاح الأمان (X-API-Key)',
+                                  helperText:
+                                      'مفتاح الخادم المؤمّن — اتركه فارغًا إن لم يطلبه خادمك.',
+                                  prefixIcon: const Icon(Icons.key_outlined),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscureKey
+                                          ? Icons.visibility_off_outlined
+                                          : Icons.visibility_outlined,
+                                    ),
+                                    onPressed: () => setState(
+                                      () => _obscureKey = !_obscureKey,
+                                    ),
+                                  ),
+                                ),
                               ),
                               const SizedBox(height: AppTokens.s12),
                               TextFormField(

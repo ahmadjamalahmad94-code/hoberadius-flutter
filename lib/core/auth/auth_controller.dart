@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoint_storage.dart';
 import '../api/api_exception.dart';
+import 'security_key_storage.dart';
 import 'token_storage.dart';
 
 class AuthAdmin {
@@ -124,6 +125,7 @@ class AuthController extends StateNotifier<AuthState> {
     required String baseUrl,
     required String username,
     required String password,
+    String securityKey = '',
   }) async {
     state = state.copyWith(
       loading: true,
@@ -133,6 +135,16 @@ class AuthController extends StateNotifier<AuthState> {
     try {
       await _ref.read(tokenStorageProvider).clear();
       await _ref.read(apiEndpointStorageProvider).writeBaseUrl(baseUrl);
+      // Persist the per-deployment security key BEFORE the login call so the
+      // request itself carries `X-API-Key` (a gateway in front of Flask may
+      // require it even on the public login route). Empty clears any stale key.
+      final secStore = _ref.read(securityKeyStorageProvider);
+      final trimmedKey = securityKey.trim();
+      if (trimmedKey.isEmpty) {
+        await secStore.clear();
+      } else {
+        await secStore.write(trimmedKey);
+      }
       final res = await _ref.read(apiClientProvider).post(
         '/api/admin/login',
         body: {'username': username, 'password': password},
