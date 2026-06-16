@@ -22,6 +22,9 @@ class PlanFormSelections {
     required this.prepaid,
     required this.planTier,
     required this.allowedDays,
+    required this.loanEnabled,
+    required this.speedOverrideAllowed,
+    required this.forceMacAddress,
   });
 
   final String planType;
@@ -39,6 +42,9 @@ class PlanFormSelections {
   final bool prepaid;
   final String planTier;
   final Set<String> allowedDays;
+  final bool loanEnabled;
+  final bool speedOverrideAllowed;
+  final bool forceMacAddress;
 }
 
 void applyPlanToForm(Plan p, Map<String, TextEditingController> c) {
@@ -54,6 +60,14 @@ void applyPlanToForm(Plan p, Map<String, TextEditingController> c) {
   c['quota_total_mb']!.text = p.quotaTotalMb.toString();
   c['quota_daily_mb']!.text = p.quotaDailyMb.toString();
   c['quota_monthly_mb']!.text = p.quotaMonthlyMb.toString();
+  c['daily_download_quota_mb']!.text = p.dailyDownloadQuotaMb.toString();
+  c['daily_upload_quota_mb']!.text = p.dailyUploadQuotaMb.toString();
+  c['daily_combined_quota_mb']!.text = p.dailyCombinedQuotaMb.toString();
+  c['monthly_download_quota_mb']!.text = p.monthlyDownloadQuotaMb.toString();
+  c['monthly_upload_quota_mb']!.text = p.monthlyUploadQuotaMb.toString();
+  c['monthly_combined_quota_mb']!.text = p.monthlyCombinedQuotaMb.toString();
+  c['max_loan_minutes']!.text = p.maxLoanMinutes.toString();
+  c['allowed_devices_count']!.text = p.allowedDevicesCount.toString();
   c['speed_down_kbps']!.text = p.speedDownKbps.toString();
   c['speed_up_kbps']!.text = p.speedUpKbps.toString();
   c['cir_down_kbps']!.text = p.cirDownKbps.toString();
@@ -90,6 +104,9 @@ PlanFormSelections selectionsFromPlan(Plan p) => PlanFormSelections(
       allowedDays: Set<String>.from(
         p.allowedDays.isEmpty ? wheelDayKeys : p.allowedDays,
       ),
+      loanEnabled: p.loanEnabled,
+      speedOverrideAllowed: p.speedOverrideAllowed,
+      forceMacAddress: p.forceMacAddress,
     );
 
 Plan buildPlanFromForm(
@@ -117,6 +134,12 @@ Plan buildPlanFromForm(
     quotaTotalMb: parseInt('quota_total_mb'),
     quotaDailyMb: parseInt('quota_daily_mb'),
     quotaMonthlyMb: parseInt('quota_monthly_mb'),
+    dailyDownloadQuotaMb: parseInt('daily_download_quota_mb'),
+    dailyUploadQuotaMb: parseInt('daily_upload_quota_mb'),
+    dailyCombinedQuotaMb: parseInt('daily_combined_quota_mb'),
+    monthlyDownloadQuotaMb: parseInt('monthly_download_quota_mb'),
+    monthlyUploadQuotaMb: parseInt('monthly_upload_quota_mb'),
+    monthlyCombinedQuotaMb: parseInt('monthly_combined_quota_mb'),
     speedDownKbps: parseInt('speed_down_kbps'),
     speedUpKbps: parseInt('speed_up_kbps'),
     speedControlEnabled: sel.speedControl,
@@ -146,5 +169,10 @@ Plan buildPlanFromForm(
     pppEnabled: sel.pppEnabled,
     bindMac: sel.bindMac,
     bindIp: sel.bindIp,
+    loanEnabled: sel.loanEnabled,
+    maxLoanMinutes: parseInt('max_loan_minutes'),
+    speedOverrideAllowed: sel.speedOverrideAllowed,
+    allowedDevicesCount: parseInt('allowed_devices_count'),
+    forceMacAddress: sel.forceMacAddress,
   );
 }

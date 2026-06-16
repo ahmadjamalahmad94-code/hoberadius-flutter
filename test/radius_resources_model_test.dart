@@ -91,4 +91,32 @@ void main() {
     expect(snapshot.assignedPoolRouters, 1);
     expect(snapshot.activeGroups, 1);
   });
+
+  test('BandwidthProfileResource parses and serialises', () {
+    final p = BandwidthProfileResource.fromJson({
+      'id': 3,
+      'name': 'Fiber-50',
+      'rate_down': 50,
+      'rate_down_unit': 'Mbps',
+      'rate_up': 25,
+      'rate_up_unit': 'Mbps',
+      'burst': '60M/30M',
+      'priority': 5,
+    });
+    expect(p.name, 'Fiber-50');
+    expect(p.rateDown, 50);
+    expect(p.rateDownUnit, 'Mbps');
+    expect(p.rateUp, 25);
+    expect(p.burst, '60M/30M');
+    expect(p.priority, 5);
+    expect(p.rateLabel, contains('50 Mbps'));
+
+    final body = p.toBody();
+    expect(body['name'], 'Fiber-50');
+    expect(body['rate_down'], 50);
+    expect(body['rate_down_unit'], 'Mbps');
+    expect(body['rate_up'], 25);
+    expect(body['burst'], '60M/30M');
+    expect(body['priority'], 5);
+  });
 }

@@ -38,7 +38,11 @@ class RadiusResourcesScreen extends ConsumerWidget {
               onPressed: () => _openCreate(context, ref, tab),
               icon: const Icon(Icons.add),
               label: Text(
-                tab == RadiusResourcesTab.pools ? 'تجمع جديد' : 'مجموعة جديدة',
+                switch (tab) {
+                  RadiusResourcesTab.pools => 'تجمع جديد',
+                  RadiusResourcesTab.shareGroups => 'مجموعة جديدة',
+                  RadiusResourcesTab.bandwidthProfiles => 'ملف سرعة جديد',
+                },
               ),
             ),
           ],
@@ -60,9 +64,13 @@ class RadiusResourcesScreen extends ConsumerWidget {
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 1080;
               final side = _SideGuide(snapshot: data, tab: tab);
-              final list = tab == RadiusResourcesTab.pools
-                  ? _PoolsPanel(items: data.pools)
-                  : _ShareGroupsPanel(items: data.shareGroups);
+              final list = switch (tab) {
+                RadiusResourcesTab.pools => _PoolsPanel(items: data.pools),
+                RadiusResourcesTab.shareGroups =>
+                  _ShareGroupsPanel(items: data.shareGroups),
+                RadiusResourcesTab.bandwidthProfiles =>
+                  _BandwidthProfilesPanel(items: data.bandwidthProfiles),
+              };
               if (!wide) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -93,10 +101,13 @@ class RadiusResourcesScreen extends ConsumerWidget {
     WidgetRef ref,
     RadiusResourcesTab tab,
   ) {
-    if (tab == RadiusResourcesTab.pools) {
-      _showPoolDialog(context: context, ref: ref);
-    } else {
-      _showShareGroupDialog(context: context, ref: ref);
+    switch (tab) {
+      case RadiusResourcesTab.pools:
+        _showPoolDialog(context: context, ref: ref);
+      case RadiusResourcesTab.shareGroups:
+        _showShareGroupDialog(context: context, ref: ref);
+      case RadiusResourcesTab.bandwidthProfiles:
+        _showBandwidthProfileDialog(context: context, ref: ref);
     }
   }
 }
@@ -121,6 +132,11 @@ class _Tabs extends ConsumerWidget {
           value: RadiusResourcesTab.shareGroups,
           icon: Icon(Icons.groups_2_outlined),
           label: Text('مجموعات المشاركة'),
+        ),
+        ButtonSegment(
+          value: RadiusResourcesTab.bandwidthProfiles,
+          icon: Icon(Icons.speed_outlined),
+          label: Text('ملفات السرعة'),
         ),
       ],
       onSelectionChanged: (selection) {
@@ -885,6 +901,326 @@ class _PoolDialogState extends ConsumerState<_PoolDialog> {
       if (!mounted) return;
       Navigator.of(context).pop();
       _snack(context, 'تم حفظ تجمع العناوين');
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+}
+
+class _BandwidthProfilesPanel extends ConsumerWidget {
+  const _BandwidthProfilesPanel({required this.items});
+
+  final List<BandwidthProfileResource> items;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (items.isEmpty) {
+      return EmptyState(
+        icon: Icons.speed_outlined,
+        title: 'لا توجد ملفات سرعة بعد',
+        subtitle: 'أنشئ ملف سرعة لإعادة استخدامه عبر الباقات والمشتركين.',
+        action: ElevatedButton.icon(
+          onPressed: () => _showBandwidthProfileDialog(context: context, ref: ref),
+          icon: const Icon(Icons.add),
+          label: const Text('ملف سرعة جديد'),
+        ),
+      );
+    }
+    return AppCard(
+      padding: EdgeInsets.zero,
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: items.length,
+        separatorBuilder: (_, __) => const Divider(height: 1),
+        itemBuilder: (context, index) =>
+            _BandwidthProfileTile(profile: items[index]),
+      ),
+    );
+  }
+}
+
+class _BandwidthProfileTile extends ConsumerStatefulWidget {
+  const _BandwidthProfileTile({required this.profile});
+
+  final BandwidthProfileResource profile;
+
+  @override
+  ConsumerState<_BandwidthProfileTile> createState() =>
+      _BandwidthProfileTileState();
+}
+
+class _BandwidthProfileTileState extends ConsumerState<_BandwidthProfileTile> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = widget.profile;
+    return Padding(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const CircleAvatar(
+            backgroundColor: AppTokens.brandSoft,
+            child: Icon(Icons.speed_outlined, color: AppTokens.brandInk),
+          ),
+          const SizedBox(width: AppTokens.s12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  p.name.isEmpty ? 'ملف سرعة #${p.id}' : p.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: AppTokens.sidebarBg,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Wrap(
+                  spacing: AppTokens.s8,
+                  runSpacing: AppTokens.s8,
+                  children: [
+                    StatusPill(text: p.rateLabel, tone: PillTone.blue),
+                    if (p.burst.isNotEmpty)
+                      StatusPill(text: 'دفعة ${p.burst}', tone: PillTone.amber),
+                    StatusPill(
+                      text: 'أولوية ${p.priority}',
+                      tone: PillTone.purple,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: AppTokens.s8),
+          Wrap(
+            spacing: AppTokens.s8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _busy
+                    ? null
+                    : () => _showBandwidthProfileDialog(
+                          context: context,
+                          ref: ref,
+                          profile: p,
+                        ),
+                icon: const Icon(Icons.edit_outlined),
+                label: const Text('تعديل'),
+              ),
+              IconButton(
+                tooltip: 'حذف',
+                onPressed: _busy ? null : _delete,
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _delete() async {
+    final ok = await _confirm(
+      context,
+      title: 'حذف ملف السرعة؟',
+      message: 'سيتم حذف الملف من الخادم. تأكد أنه غير مستخدم في باقة نشطة.',
+    );
+    if (!ok) return;
+    setState(() => _busy = true);
+    try {
+      await ref
+          .read(radiusResourcesRepositoryProvider)
+          .deleteBandwidthProfile(widget.profile.id);
+      ref.invalidate(radiusResourcesSnapshotProvider);
+      if (mounted) _snack(context, 'تم حذف ملف السرعة');
+    } catch (error) {
+      if (mounted) _snack(context, visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+Future<void> _showBandwidthProfileDialog({
+  required BuildContext context,
+  required WidgetRef ref,
+  BandwidthProfileResource? profile,
+}) async {
+  await showDialog<void>(
+    context: context,
+    builder: (_) => _BandwidthProfileDialog(profile: profile),
+  );
+}
+
+class _BandwidthProfileDialog extends ConsumerStatefulWidget {
+  const _BandwidthProfileDialog({this.profile});
+
+  final BandwidthProfileResource? profile;
+
+  @override
+  ConsumerState<_BandwidthProfileDialog> createState() =>
+      _BandwidthProfileDialogState();
+}
+
+class _BandwidthProfileDialogState
+    extends ConsumerState<_BandwidthProfileDialog> {
+  final _form = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _down;
+  late final TextEditingController _up;
+  late final TextEditingController _burst;
+  late final TextEditingController _priority;
+  String _downUnit = 'Kbps';
+  String _upUnit = 'Kbps';
+  bool _saving = false;
+
+  bool get _editing => widget.profile != null;
+
+  static const _units = ['Kbps', 'Mbps', 'Gbps'];
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.profile;
+    _name = TextEditingController(text: p?.name ?? '');
+    _down = TextEditingController(text: _optionalNumber(p?.rateDown));
+    _up = TextEditingController(text: _optionalNumber(p?.rateUp));
+    _burst = TextEditingController(text: p?.burst ?? '');
+    _priority = TextEditingController(text: _optionalNumber(p?.priority));
+    _downUnit = _units.contains(p?.rateDownUnit) ? p!.rateDownUnit : 'Kbps';
+    _upUnit = _units.contains(p?.rateUpUnit) ? p!.rateUpUnit : 'Kbps';
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _down.dispose();
+    _up.dispose();
+    _burst.dispose();
+    _priority.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(_editing ? 'تعديل ملف السرعة' : 'ملف سرعة جديد'),
+      content: SizedBox(
+        width: 560,
+        child: Form(
+          key: _form,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'اسم ملف السرعة'),
+                validator: _required,
+              ),
+              const SizedBox(height: AppTokens.s12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _NumberField(controller: _down, label: 'التنزيل'),
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _downUnit,
+                      decoration: const InputDecoration(labelText: 'وحدة'),
+                      items: [
+                        for (final u in _units)
+                          DropdownMenuItem(value: u, child: Text(u)),
+                      ],
+                      onChanged: (v) => setState(() => _downUnit = v ?? 'Kbps'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTokens.s12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _NumberField(controller: _up, label: 'الرفع'),
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _upUnit,
+                      decoration: const InputDecoration(labelText: 'وحدة'),
+                      items: [
+                        for (final u in _units)
+                          DropdownMenuItem(value: u, child: Text(u)),
+                      ],
+                      onChanged: (v) => setState(() => _upUnit = v ?? 'Kbps'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTokens.s12),
+              TextFormField(
+                controller: _burst,
+                textDirection: TextDirection.ltr,
+                decoration: const InputDecoration(
+                  labelText: 'إعداد الدفعة (Burst)',
+                  hintText: 'اختياري — مثال: 2M/4M',
+                ),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              _NumberField(controller: _priority, label: 'الأولوية'),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton.icon(
+          onPressed: _saving ? null : _save,
+          icon: _saving
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.save_outlined),
+          label: const Text('حفظ'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _save() async {
+    if (!(_form.currentState?.validate() ?? false)) return;
+    setState(() => _saving = true);
+    try {
+      final existing = widget.profile;
+      final profile = BandwidthProfileResource(
+        id: existing?.id ?? 0,
+        name: _name.text.trim(),
+        rateDown: _number(_down),
+        rateDownUnit: _downUnit,
+        rateUp: _number(_up),
+        rateUpUnit: _upUnit,
+        burst: _burst.text.trim(),
+        priority: _number(_priority),
+      );
+      final repo = ref.read(radiusResourcesRepositoryProvider);
+      if (existing == null) {
+        await repo.createBandwidthProfile(profile);
+      } else {
+        await repo.updateBandwidthProfile(profile);
+      }
+      ref.invalidate(radiusResourcesSnapshotProvider);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      _snack(context, 'تم حفظ ملف السرعة');
     } catch (error) {
       if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {

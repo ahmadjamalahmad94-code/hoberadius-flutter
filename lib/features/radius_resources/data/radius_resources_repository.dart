@@ -12,11 +12,48 @@ class RadiusResourcesRepository {
     final results = await Future.wait([
       listPools(),
       listShareGroups(),
+      listBandwidthProfiles(),
     ]);
     return RadiusResourcesSnapshot(
       pools: results[0] as List<IpPoolResource>,
       shareGroups: results[1] as List<ShareGroupResource>,
+      bandwidthProfiles: results[2] as List<BandwidthProfileResource>,
     );
+  }
+
+  Future<List<BandwidthProfileResource>> listBandwidthProfiles() async {
+    final res = await _api.get('/api/v1/bandwidth-profiles');
+    final data = unwrapData(res);
+    final items = data['items'];
+    if (items is! List) return const [];
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(BandwidthProfileResource.fromJson)
+        .toList();
+  }
+
+  Future<BandwidthProfileResource> createBandwidthProfile(
+    BandwidthProfileResource profile,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/bandwidth-profiles',
+      body: profile.toBody(),
+    );
+    return BandwidthProfileResource.fromJson(unwrapData(res));
+  }
+
+  Future<BandwidthProfileResource> updateBandwidthProfile(
+    BandwidthProfileResource profile,
+  ) async {
+    final res = await _api.patch(
+      '/api/v1/bandwidth-profiles/${profile.id}',
+      body: profile.toBody(),
+    );
+    return BandwidthProfileResource.fromJson(unwrapData(res));
+  }
+
+  Future<void> deleteBandwidthProfile(int profileId) async {
+    await _api.delete('/api/v1/bandwidth-profiles/$profileId');
   }
 
   Future<List<IpPoolResource>> listPools() async {

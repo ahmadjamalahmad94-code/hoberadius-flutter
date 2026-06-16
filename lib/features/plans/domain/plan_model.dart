@@ -28,6 +28,13 @@ class Plan {
     this.quotaDailyMb = 0,
     this.quotaMonthlyMb = 0,
     this.quotaResetStrategy = 'rolling',
+    // RM-H3 split quotas (daily / monthly per-direction)
+    this.dailyDownloadQuotaMb = 0,
+    this.dailyUploadQuotaMb = 0,
+    this.dailyCombinedQuotaMb = 0,
+    this.monthlyDownloadQuotaMb = 0,
+    this.monthlyUploadQuotaMb = 0,
+    this.monthlyCombinedQuotaMb = 0,
     // — speed
     this.speedDownKbps = 0,
     this.speedUpKbps = 0,
@@ -66,6 +73,11 @@ class Plan {
     this.workingHoursLimit = 0,
     this.hotspotEnabled = false,
     this.pppEnabled = false,
+    this.loanEnabled = false,
+    this.maxLoanMinutes = 0,
+    this.speedOverrideAllowed = false,
+    this.allowedDevicesCount = 0,
+    this.forceMacAddress = false,
     this.offerHoursFrom = '',
     this.offerHoursTo = '',
     // — opaque
@@ -95,6 +107,12 @@ class Plan {
   final int quotaDailyMb;
   final int quotaMonthlyMb;
   final String quotaResetStrategy;
+  final int dailyDownloadQuotaMb;
+  final int dailyUploadQuotaMb;
+  final int dailyCombinedQuotaMb;
+  final int monthlyDownloadQuotaMb;
+  final int monthlyUploadQuotaMb;
+  final int monthlyCombinedQuotaMb;
 
   final int speedDownKbps;
   final int speedUpKbps;
@@ -133,6 +151,11 @@ class Plan {
   final int workingHoursLimit;
   final bool hotspotEnabled;
   final bool pppEnabled;
+  final bool loanEnabled;
+  final int maxLoanMinutes;
+  final bool speedOverrideAllowed;
+  final int allowedDevicesCount;
+  final bool forceMacAddress;
   final String offerHoursFrom;
   final String offerHoursTo;
 
@@ -165,6 +188,12 @@ class Plan {
       quotaDailyMb: _int(j['quota_daily_mb']) ?? 0,
       quotaMonthlyMb: _int(j['quota_monthly_mb']) ?? 0,
       quotaResetStrategy: (j['quota_reset_strategy'] ?? 'rolling').toString(),
+      dailyDownloadQuotaMb: _int(j['daily_download_quota_mb']) ?? 0,
+      dailyUploadQuotaMb: _int(j['daily_upload_quota_mb']) ?? 0,
+      dailyCombinedQuotaMb: _int(j['daily_combined_quota_mb']) ?? 0,
+      monthlyDownloadQuotaMb: _int(j['monthly_download_quota_mb']) ?? 0,
+      monthlyUploadQuotaMb: _int(j['monthly_upload_quota_mb']) ?? 0,
+      monthlyCombinedQuotaMb: _int(j['monthly_combined_quota_mb']) ?? 0,
       speedDownKbps: _int(j['speed_down_kbps']) ?? 0,
       speedUpKbps: _int(j['speed_up_kbps']) ?? 0,
       speedControlEnabled: j['speed_control_enabled'] == true,
@@ -199,6 +228,11 @@ class Plan {
       workingHoursLimit: _int(j['working_hours_limit']) ?? 0,
       hotspotEnabled: j['hotspot_enabled'] == true,
       pppEnabled: j['ppp_enabled'] == true,
+      loanEnabled: j['loan_enabled'] == true,
+      maxLoanMinutes: _int(j['max_loan_minutes']) ?? 0,
+      speedOverrideAllowed: j['speed_override_allowed'] == true,
+      allowedDevicesCount: _int(j['allowed_devices_count']) ?? 0,
+      forceMacAddress: j['force_mac_address'] == true,
       offerHoursFrom: (j['offer_hours_from'] ?? '').toString(),
       offerHoursTo: (j['offer_hours_to'] ?? '').toString(),
       metadata: meta,
@@ -227,6 +261,12 @@ class Plan {
         'quota_daily_mb': quotaDailyMb,
         'quota_monthly_mb': quotaMonthlyMb,
         'quota_reset_strategy': quotaResetStrategy,
+        'daily_download_quota_mb': dailyDownloadQuotaMb,
+        'daily_upload_quota_mb': dailyUploadQuotaMb,
+        'daily_combined_quota_mb': dailyCombinedQuotaMb,
+        'monthly_download_quota_mb': monthlyDownloadQuotaMb,
+        'monthly_upload_quota_mb': monthlyUploadQuotaMb,
+        'monthly_combined_quota_mb': monthlyCombinedQuotaMb,
         'speed_down_kbps': speedDownKbps,
         'speed_up_kbps': speedUpKbps,
         'speed_control_enabled': speedControlEnabled,
@@ -261,6 +301,11 @@ class Plan {
         'working_hours_limit': workingHoursLimit,
         'hotspot_enabled': hotspotEnabled,
         'ppp_enabled': pppEnabled,
+        'loan_enabled': loanEnabled,
+        'max_loan_minutes': maxLoanMinutes,
+        'speed_override_allowed': speedOverrideAllowed,
+        'allowed_devices_count': allowedDevicesCount,
+        'force_mac_address': forceMacAddress,
         'offer_hours_from': offerHoursFrom,
         'offer_hours_to': offerHoursTo,
         'metadata': metadata,
@@ -312,6 +357,12 @@ class Plan {
     int? quotaDailyMb,
     int? quotaMonthlyMb,
     String? quotaResetStrategy,
+    int? dailyDownloadQuotaMb,
+    int? dailyUploadQuotaMb,
+    int? dailyCombinedQuotaMb,
+    int? monthlyDownloadQuotaMb,
+    int? monthlyUploadQuotaMb,
+    int? monthlyCombinedQuotaMb,
     int? speedDownKbps,
     int? speedUpKbps,
     bool? speedControlEnabled,
@@ -346,6 +397,11 @@ class Plan {
     int? workingHoursLimit,
     bool? hotspotEnabled,
     bool? pppEnabled,
+    bool? loanEnabled,
+    int? maxLoanMinutes,
+    bool? speedOverrideAllowed,
+    int? allowedDevicesCount,
+    bool? forceMacAddress,
     String? offerHoursFrom,
     String? offerHoursTo,
     Map<String, dynamic>? metadata,
@@ -370,6 +426,14 @@ class Plan {
         quotaDailyMb: quotaDailyMb ?? this.quotaDailyMb,
         quotaMonthlyMb: quotaMonthlyMb ?? this.quotaMonthlyMb,
         quotaResetStrategy: quotaResetStrategy ?? this.quotaResetStrategy,
+        dailyDownloadQuotaMb: dailyDownloadQuotaMb ?? this.dailyDownloadQuotaMb,
+        dailyUploadQuotaMb: dailyUploadQuotaMb ?? this.dailyUploadQuotaMb,
+        dailyCombinedQuotaMb: dailyCombinedQuotaMb ?? this.dailyCombinedQuotaMb,
+        monthlyDownloadQuotaMb:
+            monthlyDownloadQuotaMb ?? this.monthlyDownloadQuotaMb,
+        monthlyUploadQuotaMb: monthlyUploadQuotaMb ?? this.monthlyUploadQuotaMb,
+        monthlyCombinedQuotaMb:
+            monthlyCombinedQuotaMb ?? this.monthlyCombinedQuotaMb,
         speedDownKbps: speedDownKbps ?? this.speedDownKbps,
         speedUpKbps: speedUpKbps ?? this.speedUpKbps,
         speedControlEnabled: speedControlEnabled ?? this.speedControlEnabled,
@@ -404,6 +468,11 @@ class Plan {
         workingHoursLimit: workingHoursLimit ?? this.workingHoursLimit,
         hotspotEnabled: hotspotEnabled ?? this.hotspotEnabled,
         pppEnabled: pppEnabled ?? this.pppEnabled,
+        loanEnabled: loanEnabled ?? this.loanEnabled,
+        maxLoanMinutes: maxLoanMinutes ?? this.maxLoanMinutes,
+        speedOverrideAllowed: speedOverrideAllowed ?? this.speedOverrideAllowed,
+        allowedDevicesCount: allowedDevicesCount ?? this.allowedDevicesCount,
+        forceMacAddress: forceMacAddress ?? this.forceMacAddress,
         offerHoursFrom: offerHoursFrom ?? this.offerHoursFrom,
         offerHoursTo: offerHoursTo ?? this.offerHoursTo,
         metadata: metadata ?? this.metadata,

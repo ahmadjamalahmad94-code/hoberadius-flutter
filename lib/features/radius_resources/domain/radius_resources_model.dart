@@ -4,15 +4,65 @@ class RadiusResourcesSnapshot {
   const RadiusResourcesSnapshot({
     required this.pools,
     required this.shareGroups,
+    this.bandwidthProfiles = const [],
   });
 
   final List<IpPoolResource> pools;
   final List<ShareGroupResource> shareGroups;
+  final List<BandwidthProfileResource> bandwidthProfiles;
 
   int get activeGroups => shareGroups.where((group) => group.enabled).length;
 
   int get assignedPoolRouters =>
       pools.where((pool) => pool.routerId != null && pool.routerId! > 0).length;
+}
+
+/// Mirrors `/api/v1/bandwidth-profiles` (BandwidthProfile DTO).
+class BandwidthProfileResource {
+  const BandwidthProfileResource({
+    required this.id,
+    required this.name,
+    this.rateDown = 0,
+    this.rateDownUnit = 'Kbps',
+    this.rateUp = 0,
+    this.rateUpUnit = 'Kbps',
+    this.burst = '',
+    this.priority = 0,
+  });
+
+  final int id;
+  final String name;
+  final int rateDown;
+  final String rateDownUnit;
+  final int rateUp;
+  final String rateUpUnit;
+  final String burst;
+  final int priority;
+
+  String get rateLabel => '$rateDown $rateDownUnit ↓ / $rateUp $rateUpUnit ↑';
+
+  factory BandwidthProfileResource.fromJson(Map<String, dynamic> json) {
+    return BandwidthProfileResource(
+      id: _int(json['id']),
+      name: _string(json['name']),
+      rateDown: _int(json['rate_down']),
+      rateDownUnit: _string(json['rate_down_unit'], fallback: 'Kbps'),
+      rateUp: _int(json['rate_up']),
+      rateUpUnit: _string(json['rate_up_unit'], fallback: 'Kbps'),
+      burst: _string(json['burst']),
+      priority: _int(json['priority']),
+    );
+  }
+
+  Map<String, dynamic> toBody() => {
+        'name': name,
+        'rate_down': rateDown,
+        'rate_down_unit': rateDownUnit,
+        'rate_up': rateUp,
+        'rate_up_unit': rateUpUnit,
+        'burst': burst,
+        'priority': priority,
+      };
 }
 
 class IpPoolResource {

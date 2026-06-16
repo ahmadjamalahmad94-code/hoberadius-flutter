@@ -179,6 +179,22 @@ class PlanQuotaSection extends StatelessWidget {
               keyboardType: TextInputType.number,
             ),
           ),
+          const Divider(height: 24),
+          for (final f in const [
+            ('daily_download_quota_mb', 'كوتا تنزيل يومية (MB)'),
+            ('daily_upload_quota_mb', 'كوتا رفع يومية (MB)'),
+            ('daily_combined_quota_mb', 'كوتا مدمجة يومية (MB)'),
+            ('monthly_download_quota_mb', 'كوتا تنزيل شهرية (MB)'),
+            ('monthly_upload_quota_mb', 'كوتا رفع شهرية (MB)'),
+            ('monthly_combined_quota_mb', 'كوتا مدمجة شهرية (MB)'),
+          ])
+            FormFieldRow(
+              label: f.$2,
+              child: TextFormField(
+                controller: controllers[f.$1],
+                keyboardType: TextInputType.number,
+              ),
+            ),
         ],
       ),
     );
@@ -484,6 +500,74 @@ class PlanServicesSection extends StatelessWidget {
             child: Switch(
               value: singleUseOnce,
               onChanged: onSingleUseChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Loan / speed-override / device-binding policy section (RM-H3 fields).
+class PlanLoanDeviceSection extends StatelessWidget {
+  const PlanLoanDeviceSection({
+    super.key,
+    required this.controllers,
+    required this.loanEnabled,
+    required this.onLoanEnabledChanged,
+    required this.speedOverrideAllowed,
+    required this.onSpeedOverrideChanged,
+    required this.forceMacAddress,
+    required this.onForceMacChanged,
+  });
+
+  final Map<String, TextEditingController> controllers;
+  final bool loanEnabled;
+  final ValueChanged<bool> onLoanEnabledChanged;
+  final bool speedOverrideAllowed;
+  final ValueChanged<bool> onSpeedOverrideChanged;
+  final bool forceMacAddress;
+  final ValueChanged<bool> onForceMacChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return CollapsibleSection(
+      storageKey: 'plan.loan_device',
+      icon: Icons.policy_outlined,
+      title: 'السلف والأجهزة',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          FormFieldRow(
+            label: 'السماح بالسلف',
+            child: Switch(value: loanEnabled, onChanged: onLoanEnabledChanged),
+          ),
+          FormFieldRow(
+            label: 'أقصى دقائق السلفة',
+            child: TextFormField(
+              controller: controllers['max_loan_minutes'],
+              keyboardType: TextInputType.number,
+            ),
+          ),
+          FormFieldRow(
+            label: 'السماح بتجاوز السرعة',
+            child: Switch(
+              value: speedOverrideAllowed,
+              onChanged: onSpeedOverrideChanged,
+            ),
+          ),
+          FormFieldRow(
+            label: 'عدد الأجهزة المسموحة',
+            child: TextFormField(
+              controller: controllers['allowed_devices_count'],
+              keyboardType: TextInputType.number,
+            ),
+          ),
+          FormFieldRow(
+            label: 'إلزام ربط الـ MAC',
+            child: Switch(
+              value: forceMacAddress,
+              onChanged: onForceMacChanged,
             ),
           ),
         ],

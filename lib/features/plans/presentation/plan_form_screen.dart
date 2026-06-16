@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/page_header.dart';
+import '../../admin_control/application/admin_control_providers.dart';
 import '../application/plan_form_controller.dart';
 import '../application/plan_form_mapper.dart';
 import 'widgets/plan_form_dialogs.dart';
@@ -37,6 +38,9 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   bool _bindIp = false;
   bool _singleUseOnce = false;
   bool _prepaid = true;
+  bool _loanEnabled = false;
+  bool _speedOverrideAllowed = false;
+  bool _forceMacAddress = false;
   String _planTier = 'Personal';
   final Set<String> _allowedDays = {
     'sun',
@@ -64,6 +68,14 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     'quota_total_mb',
     'quota_daily_mb',
     'quota_monthly_mb',
+    'daily_download_quota_mb',
+    'daily_upload_quota_mb',
+    'daily_combined_quota_mb',
+    'monthly_download_quota_mb',
+    'monthly_upload_quota_mb',
+    'monthly_combined_quota_mb',
+    'max_loan_minutes',
+    'allowed_devices_count',
     'speed_down_kbps',
     'speed_up_kbps',
     'cir_down_kbps',
@@ -89,7 +101,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   void initState() {
     super.initState();
     _c = {for (final k in _fields) k: TextEditingController()};
-    _c['currency']!.text = 'JOD';
+    _c['currency']!.text = ref.read(tenantCurrencyProvider);
     _c['color']!.text = '#2BAACC';
     _c['concurrent_sessions']!.text = '1';
     _c['priority']!.text = '100';
@@ -120,6 +132,9 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
         prepaid: _prepaid,
         planTier: _planTier,
         allowedDays: _allowedDays,
+        loanEnabled: _loanEnabled,
+        speedOverrideAllowed: _speedOverrideAllowed,
+        forceMacAddress: _forceMacAddress,
       );
 
   Future<void> _loadExisting() async {
@@ -144,6 +159,9 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       _bindIp = sel.bindIp;
       _singleUseOnce = sel.singleUseOnce;
       _prepaid = sel.prepaid;
+      _loanEnabled = sel.loanEnabled;
+      _speedOverrideAllowed = sel.speedOverrideAllowed;
+      _forceMacAddress = sel.forceMacAddress;
       _planTier = sel.planTier;
       _allowedDays
         ..clear()
@@ -287,6 +305,17 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             onHotspotChanged: (v) => setState(() => _hotspotEnabled = v),
             onPppChanged: (v) => setState(() => _pppEnabled = v),
             onSingleUseChanged: (v) => setState(() => _singleUseOnce = v),
+          ),
+          const SizedBox(height: AppTokens.s16),
+          PlanLoanDeviceSection(
+            controllers: _c,
+            loanEnabled: _loanEnabled,
+            onLoanEnabledChanged: (v) => setState(() => _loanEnabled = v),
+            speedOverrideAllowed: _speedOverrideAllowed,
+            onSpeedOverrideChanged: (v) =>
+                setState(() => _speedOverrideAllowed = v),
+            forceMacAddress: _forceMacAddress,
+            onForceMacChanged: (v) => setState(() => _forceMacAddress = v),
           ),
           const SizedBox(height: AppTokens.s16),
           PlanMetaSection(controllers: _c),
