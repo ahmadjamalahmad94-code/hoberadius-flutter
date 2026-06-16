@@ -40,6 +40,20 @@ CardRenderModel buildCardRenderModel(
   final accentColor = _safeHex(layout['accent_color'], '#f59e0b');
   final surfaceColor = _safeHex(layout['surface_color'], '#e8f7fb');
 
+  // Designer styling keys (mirror card_renderer.py). Per-credential surface
+  // colours fall back to the shared surface; QR colours/size honour the
+  // designer so saved web templates render the same here.
+  final credInk = _safeHex(layout['credential_text_color'], '#0f172a');
+  final credLabelColor = _safeHex(layout['credential_label_color'], '#64748b');
+  final userSurface = _safeHex(layout['username_surface_color'], surfaceColor);
+  final passSurface = _safeHex(layout['password_surface_color'], surfaceColor);
+  final qrColor = _safeHex(layout['qr_color'], '#0f172a');
+  final qrBg = _safeHex(layout['qr_background_color'], '#ffffff');
+  final qrSizePct = _double(layout['qr_size_pct'], 0).clamp(0.0, 0.48);
+  // Credential label language: arabic engines use اسم المستخدم/كلمة المرور,
+  // latin engines use USER/PASS (matches _credential_label in the web).
+  final labels = _credentialLabels(layout);
+
   final extracted = _extractCardFields(card);
   final username = extracted.username;
   final password = extracted.password;
@@ -94,12 +108,14 @@ CardRenderModel buildCardRenderModel(
   if (show['username']! && username.isNotEmpty) {
     elements.add(_pillElement(
       id: 'user',
-      label: 'اسم الدخول',
+      label: labels.user,
       value: username,
       pos: positions['user']!,
       canvasW: canvasW,
       canvasH: canvasH,
-      surfaceColor: surfaceColor,
+      surfaceColor: userSurface,
+      ink: credInk,
+      labelColor: credLabelColor,
       isPassword: false,
     ),
   );
@@ -109,12 +125,14 @@ CardRenderModel buildCardRenderModel(
   if (show['password']! && password.isNotEmpty) {
     elements.add(_pillElement(
       id: 'pass',
-      label: 'كلمة المرور',
+      label: labels.pass,
       value: password,
       pos: positions['pass']!,
       canvasW: canvasW,
       canvasH: canvasH,
-      surfaceColor: surfaceColor,
+      surfaceColor: passSurface,
+      ink: credInk,
+      labelColor: credLabelColor,
       isPassword: true,
     ),
   );
@@ -126,14 +144,15 @@ CardRenderModel buildCardRenderModel(
     final payload = username.isNotEmpty
         ? username
         : (cardId.isNotEmpty ? cardId : 'SAMPLE');
+    final qrSize = (qrSizePct > 0 ? qrSizePct : qr['size']!) * canvasW;
     elements.add(CardQr(
       id: 'qr',
       payload: payload,
       x: qr['x']! * canvasW,
       y: qr['y']! * canvasH,
-      size: qr['size']! * canvasW,
-      background: '#ffffff',
-      foreground: '#0f172a',
+      size: qrSize,
+      background: qrBg,
+      foreground: qrColor,
     ),
   );
   }
@@ -318,6 +337,8 @@ CardPill _pillElement({
   required double canvasH,
   required String surfaceColor,
   required bool isPassword,
+  String ink = '#0f172a',
+  String labelColor = '#64748b',
 }) {
   final width = (pos['width'] ?? 0.46) * canvasW;
   final height = (pos['height'] ?? 0.13) * canvasH;
@@ -330,13 +351,33 @@ CardPill _pillElement({
     width: width,
     height: height,
     surface: surfaceColor,
-    ink: '#0f172a',
-    labelColor: '#64748b',
+    ink: ink,
+    labelColor: labelColor,
     isPassword: isPassword,
     valueFontSize: height * 0.52,
     labelFontSize: height * 0.30,
     paddingX: height * 0.32,
   );
+}
+
+/// Credential pill labels resolved from the render engine / language, mirroring
+/// `_credential_label` in card_renderer.py.
+class _CredentialLabels {
+  const _CredentialLabels(this.user, this.pass);
+  final String user;
+  final String pass;
+}
+
+_CredentialLabels _credentialLabels(Map<String, dynamic> layout) {
+  final lang = (layout['credential_label_language'] ?? '').toString().trim().toLowerCase();
+  final engine = (layout['render_engine'] ?? '').toString().trim().toLowerCase();
+  final dir = (layout['text_direction'] ?? '').toString().trim().toLowerCase();
+  final isLatin = lang == 'latin' ||
+      lang == 'en' ||
+      engine.contains('latin') ||
+      dir == 'ltr';
+  if (isLatin) return const _CredentialLabels('USER', 'PASS');
+  return const _CredentialLabels('اسم المستخدم', 'كلمة المرور');
 }
 
 // ── tiny utilities ────────────────────────────────────────────────

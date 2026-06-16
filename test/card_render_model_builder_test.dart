@@ -205,4 +205,42 @@ void main() {
       expect(a.elements[i].id, equals(b.elements[i].id));
     }
   });
+
+  test('honours designer QR + per-credential styling keys', () {
+    final model = buildCardRenderModel(
+      template(layoutOverrides: {
+        'qr_color': '#112233',
+        'qr_background_color': '#fafafa',
+        'qr_size_pct': 0.30,
+        'credential_text_color': '#222222',
+        'credential_label_color': '#888888',
+        'username_surface_color': '#abcdef',
+      }),
+      card: sampleCard(),
+    );
+    final qr = model.elements.whereType<CardQr>().single;
+    expect(qr.foreground, '#112233');
+    expect(qr.background, '#fafafa');
+    expect(qr.size, closeTo(0.30 * 1000, 0.01));
+    final user =
+        model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
+    expect(user.ink, '#222222');
+    expect(user.labelColor, '#888888');
+    expect(user.surface, '#abcdef');
+  });
+
+  test('credential label language switches latin vs arabic', () {
+    final latin = buildCardRenderModel(
+      template(layoutOverrides: {'credential_label_language': 'latin'}),
+      card: sampleCard(),
+    );
+    final latinUser =
+        latin.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
+    expect(latinUser.label, 'USER');
+
+    final arabic = buildCardRenderModel(template(), card: sampleCard());
+    final arUser =
+        arabic.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
+    expect(arUser.label, 'اسم المستخدم');
+  });
 }
