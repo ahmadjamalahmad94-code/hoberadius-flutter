@@ -229,18 +229,67 @@ void main() {
     expect(user.surface, '#abcdef');
   });
 
-  test('credential label language switches latin vs arabic', () {
-    final latin = buildCardRenderModel(
-      template(layoutOverrides: {'credential_label_language': 'latin'}),
-      card: sampleCard(),
-    );
+  test('credential label language: default is english, arabic engine flips', () {
+    // Web rule: default (no keys) resolves to the en engine -> USER/PASS.
+    final latin = buildCardRenderModel(template(), card: sampleCard());
     final latinUser =
         latin.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
     expect(latinUser.label, 'USER');
 
-    final arabic = buildCardRenderModel(template(), card: sampleCard());
+    final arabic = buildCardRenderModel(
+      template(layoutOverrides: {'credential_label_language': 'arabic'}),
+      card: sampleCard(),
+    );
     final arUser =
         arabic.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
     expect(arUser.label, 'اسم المستخدم');
+  });
+
+  test('portrait engine uses portrait default positions (not top-left stack)', () {
+    final model = buildCardRenderModel(
+      template(layoutOverrides: {'render_engine': 'en_vertical'}),
+      card: sampleCard(),
+    );
+    expect(model.canvas, equals(const CardCanvasSize(600, 1000)));
+    final user =
+        model.elements.whereType<CardPill>().firstWhere((e) => e.id == 'user');
+    // Portrait user pill sits at y=0.50*1000=500 (web portrait table),
+    // never stacked in the top-left corner.
+    expect(user.y, closeTo(0.50 * 1000, 0.01));
+    expect(user.x, closeTo(0.07 * 600, 0.01));
+  });
+
+  test('logo element emitted only when a data-url logo is present', () {
+    final without = buildCardRenderModel(template(), card: sampleCard());
+    expect(without.elements.whereType<CardImage>(), isEmpty);
+
+    final withLogo = buildCardRenderModel(
+      template(layoutOverrides: {
+        'logo_image_data_url': 'data:image/png;base64,AAAA',
+        'logo_size_pct': 20,
+      },),
+      card: sampleCard(),
+    );
+    final logo = withLogo.elements.whereType<CardImage>().single;
+    expect(logo.id, 'logo');
+    expect(logo.width, closeTo(0.20 * 1000, 0.01));
+  });
+
+  test('arabic engine flips composition to the right (RTL)', () {
+    final ltr = buildCardRenderModel(
+      template(layoutOverrides: {'render_engine': 'en_horizontal'}),
+      card: sampleCard(),
+    );
+    final rtl = buildCardRenderModel(
+      template(layoutOverrides: {'render_engine': 'ar_horizontal'}),
+      card: sampleCard(),
+    );
+    final ltrBrand =
+        ltr.elements.whereType<CardText>().firstWhere((e) => e.id == 'brand');
+    final rtlBrand =
+        rtl.elements.whereType<CardText>().firstWhere((e) => e.id == 'brand');
+    // RTL brand x is mirrored: 1 - 0.06 - 0.55 = 0.39 -> *1000.
+    expect(rtlBrand.x, greaterThan(ltrBrand.x));
+    expect(rtlBrand.x, closeTo((1.0 - 0.06 - 0.55) * 1000, 0.5));
   });
 }

@@ -68,6 +68,8 @@ String renderCardSvg(CardRenderModel model, {bool maskPassword = true}) {
         buf.write(_svgPill(el, maskPassword: maskPassword));
       case CardQr():
         buf.write(_svgQr(el));
+      case CardImage():
+        buf.write(_svgImage(el));
     }
   }
 
@@ -136,6 +138,14 @@ Iterable<String> _svgBackground(CardBackground bg, int w, int h) sync* {
     yield '<rect x="0" y="0" width="$w" height="$h" '
         'fill="url(#card-pattern)"/>';
   }
+}
+
+String _svgImage(CardImage el) {
+  return '<image href="${_xml(el.href)}" '
+      'x="${el.x.toStringAsFixed(1)}" y="${el.y.toStringAsFixed(1)}" '
+      'width="${el.width.toStringAsFixed(1)}" '
+      'height="${el.height.toStringAsFixed(1)}" '
+      'preserveAspectRatio="xMidYMid meet"/>';
 }
 
 String _svgRect(CardRect el) {

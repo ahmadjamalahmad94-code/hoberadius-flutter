@@ -17,16 +17,17 @@ CardRenderModel buildCardRenderModel(
   final layout = _hydrateLayout(template);
   final ov = overrides ?? const <String, String>{};
 
-  final orient = CardOrientationParse.fromString(
-    layout['card_orientation'] as String?,
-  );
+  // Resolve the render engine (orientation + direction + label language),
+  // mirroring normalize_render_engine + _ENGINE_PROFILES in card_renderer.py.
+  final engine = _resolveEngine(layout);
+  final orient = engine.orientation;
   final canvas = orient == CardOrientation.vertical
       ? CardCanvas.portrait
       : CardCanvas.landscape;
   final canvasW = canvas.width.toDouble();
   final canvasH = canvas.height.toDouble();
 
-  final positions = _resolvePositions(template, layout, canvas);
+  final positions = _resolvePositions(template, layout, canvas, engine);
   final show = _resolveShowFlags(layout);
 
   final brandText = _override(ov, 'brand_name', layout, 'HobeRadius');
@@ -52,7 +53,9 @@ CardRenderModel buildCardRenderModel(
   final qrSizePct = _double(layout['qr_size_pct'], 0).clamp(0.0, 0.48);
   // Credential label language: arabic engines use اسم المستخدم/كلمة المرور,
   // latin engines use USER/PASS (matches _credential_label in the web).
-  final labels = _credentialLabels(layout);
+  final labels = engine.labelLanguage == 'arabic'
+      ? const _CredentialLabels('اسم المستخدم', 'كلمة المرور')
+      : const _CredentialLabels('USER', 'PASS');
 
   final extracted = _extractCardFields(card);
   final username = extracted.username;
@@ -73,6 +76,10 @@ CardRenderModel buildCardRenderModel(
     cornerRadius: acc['height']! * canvasH / 2,
   ),
   );
+
+  // ── Logo (opt-in) ─────────────────────────────────────────────
+  final logo = _logoElement(layout, canvasW, canvasH);
+  if (logo != null) elements.add(logo);
 
   // ── Brand ─────────────────────────────────────────────────────
   if (show['brand']! && brandText.isNotEmpty) {
@@ -222,33 +229,97 @@ Map<String, Map<String, double>> _resolvePositions(
   Map<String, dynamic> template,
   Map<String, dynamic> layout,
   CardCanvasSize canvas,
+  _RenderEngine engine,
 ) {
   final cardWMm = _doubleClamp(layout['card_width_mm'], 85, 1.0);
   final cardHMm = _doubleClamp(layout['card_height_mm'], 54, 1.0);
+  final vertical = engine.orientation == CardOrientation.vertical;
 
-  // Deep-copy the defaults so callers don't observe shared state.
+  // Engine default positions: portrait substitution + RTL composition flip
+  // (mirror of _engine_default_positions in card_renderer.py).
+  final base = vertical
+      ? CardDefaultPositions.portraitTable
+      : CardDefaultPositions.table;
   final positions = <String, Map<String, double>>{
-    for (final entry in CardDefaultPositions.table.entries)
+    for (final entry in base.entries)
       entry.key: Map<String, double>.from(entry.value),
   };
 
+  if (engine.direction == 'rtl') {
+    final widthByKey = <String, double>{
+      'brand': vertical ? 0.78 : 0.55,
+      'title': vertical ? 0.78 : 0.55,
+      'meta': vertical ? 0.80 : 0.88,
+      'footer': vertical ? 0.80 : 0.88,
+    };
+    positions.forEach((key, pos) {
+      final span =
+          widthByKey[key] ?? pos['width'] ?? pos['size'] ?? 0.0;
+      if (span > 0) {
+        pos['x'] = (1.0 - (pos['x'] ?? 0.0) - span).clamp(0.0, 1.0);
+      }
+    });
+  }
+
+  // Custom dragged mm coordinates are absolute in the active engine,
+  // applied after the engine defaults (so dragging never mirrors twice).
   const legacyKeys = [
     ['username', 'user'],
     ['password', 'pass'],
     ['qr', 'qr'],
   ];
   for (final pair in legacyKeys) {
-    final legacy = pair[0];
-    final target = pair[1];
-    final rawX = _double(template['${legacy}_x'], 0);
-    final rawY = _double(template['${legacy}_y'], 0);
+    final rawX = _double(template['${pair[0]}_x'], 0);
+    final rawY = _double(template['${pair[0]}_y'], 0);
     if (rawX == 0 && rawY == 0) continue; // keep defaults
-    final fx = (rawX / cardWMm).clamp(0.0, 1.0);
-    final fy = (rawY / cardHMm).clamp(0.0, 1.0);
-    positions[target]!['x'] = fx;
-    positions[target]!['y'] = fy;
+    positions[pair[1]]!['x'] = (rawX / cardWMm).clamp(0.0, 1.0);
+    positions[pair[1]]!['y'] = (rawY / cardHMm).clamp(0.0, 1.0);
+  }
+
+  // qr_size_pct overrides the QR slot size (clamp 0.08..0.48).
+  final qrSizePct = _double(layout['qr_size_pct'], 0);
+  if (qrSizePct > 0) {
+    positions['qr']!['size'] = (qrSizePct / 100.0).clamp(0.08, 0.48);
   }
   return positions;
+}
+
+/// Resolved render engine — orientation + direction + credential label
+/// language. Mirror of normalize_render_engine + _ENGINE_PROFILES.
+class _RenderEngine {
+  const _RenderEngine(this.orientation, this.direction, this.labelLanguage);
+  final CardOrientation orientation;
+  final String direction; // 'ltr' | 'rtl'
+  final String labelLanguage; // 'arabic' | 'english'
+}
+
+_RenderEngine _resolveEngine(Map<String, dynamic> layout) {
+  const profiles = {
+    'en_horizontal': (CardOrientation.horizontal, 'ltr', 'english'),
+    'en_vertical': (CardOrientation.vertical, 'ltr', 'english'),
+    'ar_horizontal': (CardOrientation.horizontal, 'rtl', 'arabic'),
+    'ar_vertical': (CardOrientation.vertical, 'rtl', 'arabic'),
+  };
+  final raw = (layout['render_engine'] ?? '').toString().trim().toLowerCase();
+  final profile = profiles[raw];
+  if (profile != null) {
+    return _RenderEngine(profile.$1, profile.$2, profile.$3);
+  }
+  // Derive from legacy keys (card_orientation + text_direction + lang).
+  final orient = CardOrientationParse.fromString(
+    layout['card_orientation'] as String?,
+  );
+  final dirRaw = (layout['text_direction'] ?? '').toString().trim().toLowerCase();
+  final langRaw =
+      (layout['credential_label_language'] ?? '').toString().trim().toLowerCase();
+  // Web rule: language = "ar" if direction=="rtl" OR label_language=="arabic",
+  // else "en". So the default (both empty) is the LTR/english engine.
+  final isArabic = dirRaw == 'rtl' || langRaw == 'arabic';
+  return _RenderEngine(
+    orient,
+    isArabic ? 'rtl' : 'ltr',
+    isArabic ? 'arabic' : 'english',
+  );
 }
 
 Map<String, bool> _resolveShowFlags(Map<String, dynamic> layout) {
@@ -256,6 +327,41 @@ Map<String, bool> _resolveShowFlags(Map<String, dynamic> layout) {
     for (final entry in CardDefaultPositions.showFlags.entries)
       entry.key: _boolish(layout['show_${entry.key}'], entry.value),
   };
+}
+
+/// Optional logo image element — mirror of `_logo_element` in
+/// card_renderer.py. Position is mm in logo_x/logo_y; logo_size_pct is the
+/// box width as % of card width (fallback 18%); (0,0) → top-left inset.
+CardImage? _logoElement(
+  Map<String, dynamic> layout,
+  double canvasW,
+  double canvasH,
+) {
+  final href = (layout['logo_image_data_url'] ?? '').toString();
+  if (!href.startsWith('data:image/')) return null;
+  final cardWMm = _doubleClamp(layout['card_width_mm'], 85, 1.0);
+  final cardHMm = _doubleClamp(layout['card_height_mm'], 54, 1.0);
+  final sizePct = _double(layout['logo_size_pct'], 0);
+  final sizeFrac = sizePct > 0 ? (sizePct / 100.0).clamp(0.05, 0.6) : 0.18;
+  final box = sizeFrac * canvasW;
+  final rawX = _double(layout['logo_x'], 0);
+  final rawY = _double(layout['logo_y'], 0);
+  double x, y;
+  if (rawX == 0 && rawY == 0) {
+    x = canvasW * 0.06;
+    y = canvasH * 0.06;
+  } else {
+    x = (rawX / cardWMm).clamp(0.0, 1.0) * canvasW;
+    y = (rawY / cardHMm).clamp(0.0, 1.0) * canvasH;
+  }
+  return CardImage(
+    id: 'logo',
+    href: href,
+    x: x,
+    y: y,
+    width: box,
+    height: box,
+  );
 }
 
 CardBackground _background(Map<String, dynamic> layout) {
@@ -368,17 +474,6 @@ class _CredentialLabels {
   final String pass;
 }
 
-_CredentialLabels _credentialLabels(Map<String, dynamic> layout) {
-  final lang = (layout['credential_label_language'] ?? '').toString().trim().toLowerCase();
-  final engine = (layout['render_engine'] ?? '').toString().trim().toLowerCase();
-  final dir = (layout['text_direction'] ?? '').toString().trim().toLowerCase();
-  final isLatin = lang == 'latin' ||
-      lang == 'en' ||
-      engine.contains('latin') ||
-      dir == 'ltr';
-  if (isLatin) return const _CredentialLabels('USER', 'PASS');
-  return const _CredentialLabels('اسم المستخدم', 'كلمة المرور');
-}
 
 // ── tiny utilities ────────────────────────────────────────────────
 
