@@ -28,6 +28,19 @@
   quick-filter — `/api/v1/sessions/online` doesn't return per-session speed
   data (computed server-side in the web template).
 
+## Advanced control (P4 — web-only pages, no `/api/v1`)
+- **Site exit** (`site_exit.html`, 806 ln) — per-router VPS/tunnel selected-
+  sites exit manager. No JSON API.
+- **Events risk / investigations / security** (`events_risk.html`,
+  `events_investigations.html`, `events_security.html`) — risk-rule engine,
+  fraud flags + `risk_score`, investigation workflow. No JSON API.
+- **Event detail / entity timeline** (`events_detail.html`) — `/events` has no
+  per-event detail endpoint.
+- **Network Telegram alerts** (`network_telegram_settings.html`) — bot_token/
+  chat_id/thread_id for network-device alerts. No JSON API.
+- **WhatsApp auto-reply bot** (`communications_bot.html`) — keyword→reply
+  config. No JSON API.
+
 ## Client-side follow-ups (API EXISTS — needs a new Flutter screen, NOT API-first)
 - **Store admin console** — `store.py` (1027 ln) + `store_support.html`:
   packages, deposits (list/create/approve), withdrawals, chat. Large new

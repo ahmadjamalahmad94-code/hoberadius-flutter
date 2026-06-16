@@ -614,7 +614,9 @@ class _PreviewDialog extends StatelessWidget {
                   ),
                   if (preview.healthScore > 0)
                     StatusPill(
-                      text: 'الصحة ${preview.healthScore}%',
+                      text: preview.healthGrade.isNotEmpty
+                          ? 'الصحة ${preview.healthScore}% · ${preview.healthGrade}'
+                          : 'الصحة ${preview.healthScore}%',
                       tone: preview.healthScore >= 70
                           ? PillTone.green
                           : PillTone.amber,
@@ -624,6 +626,10 @@ class _PreviewDialog extends StatelessWidget {
               const SizedBox(height: AppTokens.s12),
               if (preview.explanation.isNotEmpty)
                 Text(preview.explanation, style: const TextStyle(height: 1.45)),
+              if (preview.recommendations.isNotEmpty) ...[
+                const SizedBox(height: AppTokens.s12),
+                _RecommendationsBox(items: preview.recommendations),
+              ],
               if (blockers.isNotEmpty) ...[
                 const SizedBox(height: AppTokens.s12),
                 _MessageBox(
@@ -937,6 +943,59 @@ class _ChangeSetCard extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Renders the preview's smart-recommendations intelligence (title +
+/// explanation per recommendation, highest priority first).
+class _RecommendationsBox extends StatelessWidget {
+  const _RecommendationsBox({required this.items});
+  final List<PolicyRecommendation> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = [...items]..sort((a, b) => b.priority.compareTo(a.priority));
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.brandSoft,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        border: Border.all(color: AppTokens.brandLine),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb_outline, size: 18, color: AppTokens.brandInk),
+              SizedBox(width: AppTokens.s8),
+              Text(
+                'توصيات ذكية',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: AppTokens.brandInk,
+                ),
+              ),
+            ],
+          ),
+          for (final r in sorted) ...[
+            const SizedBox(height: AppTokens.s8),
+            Text(
+              r.title,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+            if (r.explanation.isNotEmpty)
+              Text(
+                r.explanation,
+                style: const TextStyle(
+                  color: AppTokens.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+          ],
+        ],
       ),
     );
   }

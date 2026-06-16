@@ -226,7 +226,9 @@ class NetworkPolicyPreview {
     required this.forwardScript,
     required this.rollbackScript,
     required this.healthScore,
+    required this.healthGrade,
     required this.explanation,
+    required this.recommendations,
   });
 
   final String service;
@@ -240,13 +242,22 @@ class NetworkPolicyPreview {
   final String forwardScript;
   final String rollbackScript;
   final int healthScore;
+  final String healthGrade;
   final String explanation;
+  final List<PolicyRecommendation> recommendations;
 
   factory NetworkPolicyPreview.fromJson(Map<String, dynamic> json) {
     final data = _data(json);
     final summary = _map(data['summary']);
     final health = _map(data['health_score']);
     final beginner = _map(data['beginner_explanation']);
+    final smart = _map(data['smart_recommendations']);
+    final recos = (smart['recommendations'] as List? ?? const [])
+        .whereType<Map>()
+        .map(
+          (e) => PolicyRecommendation.fromJson(Map<String, dynamic>.from(e)),
+        )
+        .toList();
     return NetworkPolicyPreview(
       service: _string(data['service']),
       policyId: _int(data['policy_id']),
@@ -262,10 +273,40 @@ class NetworkPolicyPreview {
         health['score'],
         fallback: _int(health['health_score']),
       ),
+      healthGrade: _string(
+        health['grade_ar'],
+        fallback: _string(health['grade']),
+      ),
       explanation: _string(
         beginner['plain_text'],
         fallback: _string(beginner['summary']),
       ),
+      recommendations: recos,
+    );
+  }
+}
+
+/// One smart recommendation from the network-policy preview intelligence
+/// (`smart_recommendations.recommendations[]`).
+class PolicyRecommendation {
+  const PolicyRecommendation({
+    required this.title,
+    required this.explanation,
+    required this.priority,
+  });
+
+  final String title;
+  final String explanation;
+  final int priority;
+
+  factory PolicyRecommendation.fromJson(Map<String, dynamic> json) {
+    return PolicyRecommendation(
+      title: _string(json['title_ar'], fallback: _string(json['title'])),
+      explanation: _string(
+        json['explanation_ar'],
+        fallback: _string(json['explanation']),
+      ),
+      priority: _int(json['priority']),
     );
   }
 }
