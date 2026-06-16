@@ -39,6 +39,38 @@ class CardUsersRepository {
     return CardUser.fromJson(json is Map<String, dynamic> ? json : const {});
   }
 
+  /// Creates a marketplace/pricing package (web card_marketplace / card_pricing).
+  /// Mirrors `POST /api/v1/card-marketplace/packages`.
+  Future<MarketplacePackage> createPackage({
+    required String name,
+    int? planId,
+    required num price,
+    required String currency,
+    int durationMinutes = 0,
+    int speedDownKbps = 0,
+    int speedUpKbps = 0,
+    String cardColor = '#14b8a6',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/card-marketplace/packages',
+      body: {
+        'name': name,
+        if (planId != null) 'plan_id': planId,
+        'price': price,
+        'currency': currency,
+        'duration_minutes': durationMinutes,
+        'speed_down_kbps': speedDownKbps,
+        'speed_up_kbps': speedUpKbps,
+        'card_color': cardColor,
+      },
+    );
+    final data = res['data'];
+    final json = data is Map<String, dynamic> ? data['package'] : null;
+    return MarketplacePackage.fromJson(
+      json is Map<String, dynamic> ? json : const {},
+    );
+  }
+
   Future<List<MarketplacePackage>> listPackages({bool active = true}) async {
     final res = await _api.get(
       '/api/v1/card-marketplace/packages',

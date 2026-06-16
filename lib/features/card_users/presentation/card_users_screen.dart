@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
+import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_kpi.dart';
@@ -35,6 +37,11 @@ class CardUsersScreen extends ConsumerWidget {
               },
               icon: const Icon(Icons.refresh),
               label: const Text('تحديث'),
+            ),
+            OutlinedButton.icon(
+              onPressed: () => _showCreatePackageDialog(context, ref),
+              icon: const Icon(Icons.sell_outlined),
+              label: const Text('باقة جديدة'),
             ),
             ElevatedButton.icon(
               onPressed: () => _showCreateUserDialog(context, ref),
@@ -415,6 +422,135 @@ class _MiniMetric extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<void> _showCreatePackageDialog(
+  BuildContext context,
+  WidgetRef ref,
+) async {
+  final name = TextEditingController();
+  final planId = TextEditingController();
+  final price = TextEditingController();
+  final duration = TextEditingController();
+  final down = TextEditingController();
+  final up = TextEditingController();
+  final currency = ref.read(tenantCurrencyProvider);
+  var busy = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (dialogContext, setState) {
+        Future<void> submit() async {
+          if (name.text.trim().isEmpty) return;
+          setState(() => busy = true);
+          try {
+            await ref.read(cardUsersRepositoryProvider).createPackage(
+                  name: name.text.trim(),
+                  planId: int.tryParse(planId.text.trim()),
+                  price: num.tryParse(price.text.trim().replaceAll(',', '.')) ?? 0,
+                  currency: currency,
+                  durationMinutes: int.tryParse(duration.text.trim()) ?? 0,
+                  speedDownKbps: int.tryParse(down.text.trim()) ?? 0,
+                  speedUpKbps: int.tryParse(up.text.trim()) ?? 0,
+                );
+            ref.invalidate(cardMarketplacePackagesProvider);
+            if (dialogContext.mounted) Navigator.pop(dialogContext);
+          } catch (error) {
+            if (!dialogContext.mounted) return;
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              SnackBar(content: Text(visibleErrorMessage(error))),
+            );
+          } finally {
+            if (dialogContext.mounted) setState(() => busy = false);
+          }
+        }
+
+        return AlertDialog(
+          title: const Text('باقة سوق إلكتروني جديدة'),
+          content: SizedBox(
+            width: 420,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'اسم الباقة'),
+                ),
+                const SizedBox(height: AppTokens.s8),
+                TextField(
+                  controller: planId,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'رقم الباقة المرتبطة (اختياري)',
+                  ),
+                ),
+                const SizedBox(height: AppTokens.s8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: price,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(labelText: 'السعر'),
+                      ),
+                    ),
+                    const SizedBox(width: AppTokens.s8),
+                    Expanded(child: CurrencyField(currency: currency)),
+                  ],
+                ),
+                const SizedBox(height: AppTokens.s8),
+                TextField(
+                  controller: duration,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'المدة (دقائق)',
+                  ),
+                ),
+                const SizedBox(height: AppTokens.s8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: down,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'تنزيل (kbps)',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppTokens.s8),
+                    Expanded(
+                      child: TextField(
+                        controller: up,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'رفع (kbps)',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.pop(dialogContext),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton.icon(
+              onPressed: busy ? null : submit,
+              icon: const Icon(Icons.save_outlined),
+              label: const Text('حفظ'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
