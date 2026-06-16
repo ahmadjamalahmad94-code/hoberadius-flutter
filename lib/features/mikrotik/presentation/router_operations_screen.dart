@@ -117,6 +117,15 @@ class _RouterOperationsScreenState
                 label: const Text('تشخيص'),
               ),
               const SizedBox(width: AppTokens.s8),
+              OutlinedButton.icon(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => _HealthDialog(routerId: selected.id!),
+                ),
+                icon: const Icon(Icons.health_and_safety_outlined),
+                label: const Text('المخاطر'),
+              ),
+              const SizedBox(width: AppTokens.s8),
               IconButton(
                 tooltip: 'تحديث الحالة',
                 onPressed: () {
@@ -1862,6 +1871,119 @@ class _DiagnosticsDialogState extends ConsumerState<_DiagnosticsDialog> {
                 )
               : const Icon(Icons.play_arrow),
           label: const Text('تشغيل'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Router risk-signals panel (P7 /health: loops / flapping / overlap),
+/// using MikrotikRepository.routerHealth.
+class _HealthDialog extends ConsumerStatefulWidget {
+  const _HealthDialog({required this.routerId});
+
+  final int routerId;
+
+  @override
+  ConsumerState<_HealthDialog> createState() => _HealthDialogState();
+}
+
+class _HealthDialogState extends ConsumerState<_HealthDialog> {
+  late Future<Map<String, dynamic>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future =
+        ref.read(mikrotikRepositoryProvider).routerHealth(widget.routerId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('صحة الراوتر والمخاطر'),
+      content: SizedBox(
+        width: 560,
+        child: FutureBuilder<Map<String, dynamic>>(
+          future: _future,
+          builder: (context, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Padding(
+                padding: EdgeInsets.all(AppTokens.s24),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snap.hasError) {
+              return HubErrorState(
+                title: 'تعذر قراءة المخاطر',
+                subtitle: visibleErrorMessage(snap.error),
+                onRetry: () => setState(() {
+                  _future = ref
+                      .read(mikrotikRepositoryProvider)
+                      .routerHealth(widget.routerId);
+                }),
+              );
+            }
+            final data = snap.data ?? const {};
+            final signals = (data['signals'] ?? data['risks'] ?? data['items'])
+                as List?;
+            if (signals == null || signals.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(AppTokens.s16),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified_outlined, color: AppTokens.successFg),
+                    SizedBox(width: AppTokens.s8),
+                    Expanded(
+                      child: Text('لا توجد إشارات خطر حالية على هذا الراوتر.'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final s in signals.whereType<Map>())
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 18,
+                          color: AppTokens.warningFg,
+                        ),
+                        const SizedBox(width: AppTokens.s8),
+                        Expanded(
+                          child: Text(
+                            (s['message'] ??
+                                    s['title'] ??
+                                    s['kind'] ??
+                                    s.toString())
+                                .toString(),
+                            style: const TextStyle(height: 1.4),
+                          ),
+                        ),
+                        if ((s['level'] ?? s['severity']) != null)
+                          StatusPill(
+                            text: (s['level'] ?? s['severity']).toString(),
+                            tone: PillTone.amber,
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('إغلاق'),
         ),
       ],
     );

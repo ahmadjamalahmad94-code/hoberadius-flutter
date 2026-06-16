@@ -54,10 +54,15 @@
   not yet in the Flutter admin form (client-side).
 - **Audit `user_agent`** — returned by `/audit`, not rendered (minor).
 
+## Reclassified to API-first (discovered during client-side build)
+- **Store admin console** — RECLASSIFIED: every `/api/v1/store/*` endpoint
+  requires a **store token** (customer/operator login via `_require_store_token`),
+  NOT the admin token the Flutter app holds. `store_support.html` is a
+  Flask server-rendered admin page with no admin-authenticated `/api/v1`.
+  Needs new admin-token endpoints (list/approve deposits + withdrawals,
+  admin chat, package admin) before a Flutter console can exist.
+
 ## Client-side follow-ups (API EXISTS — needs a new Flutter screen, NOT API-first)
-- **Store admin console** — `store.py` (1027 ln) + `store_support.html`:
-  packages, deposits (list/create/approve), withdrawals, chat. Large new
-  screen.
 - **Business-operators console** — wire `business_os` `POST /finance/ledger/
   corrections` and `/pricing/snapshots` (GET/POST) into a dedicated console.
 - **Company inventory & expenses** — `company_inventory_expenses.html`.
