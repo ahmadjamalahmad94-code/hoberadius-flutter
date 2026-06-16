@@ -10,6 +10,7 @@ import '../../../shared/widgets/empty_state.dart';
 import '../application/print_templates_controller.dart';
 import '../domain/print_template_model.dart';
 import 'desktop/export_room.dart';
+import 'widgets/template_designer_section.dart';
 import 'widgets/template_form.dart';
 import 'widgets/template_list.dart';
 import 'widgets/template_preview_card.dart';
@@ -48,9 +49,37 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
   final _qy = TextEditingController(text: '0');
   final _font = TextEditingController(text: '12');
   final _color = TextEditingController(text: '#1f2937');
+  // — designer styling —
+  final _gradStart = TextEditingController(text: '#0f172a');
+  final _gradEnd = TextEditingController(text: '#22a7bd');
+  final _accent = TextEditingController(text: '#f59e0b');
+  final _textColor = TextEditingController(text: '#ffffff');
+  final _surface = TextEditingController(text: '#e8f7fb');
+  final _qrColor = TextEditingController(text: '#0f172a');
+  final _qrSizePct = TextEditingController(text: '');
+  String _pattern = 'signal';
+  String _renderEngine = 'ar_horizontal';
+  String _bgImageDataUrl = '';
   String _orientation = 'portrait';
   String _pageSize = 'A4';
   bool _showQr = true;
+
+  Map<String, dynamic> _designerLayout() {
+    final qrPct = double.tryParse(_qrSizePct.text.trim());
+    return {
+      'render_engine': _renderEngine,
+      'gradient_start': _gradStart.text.trim(),
+      'gradient_end': _gradEnd.text.trim(),
+      'pattern_style': _pattern,
+      'accent_color': _accent.text.trim(),
+      'text_color': _textColor.text.trim(),
+      'surface_color': _surface.text.trim(),
+      'qr_color': _qrColor.text.trim(),
+      if (qrPct != null && qrPct > 0) 'qr_size_pct': qrPct,
+      if (_bgImageDataUrl.isNotEmpty)
+        'background_image_data_url': _bgImageDataUrl,
+    };
+  }
 
   @override
   void dispose() {
@@ -68,6 +97,13 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
       _qy,
       _font,
       _color,
+      _gradStart,
+      _gradEnd,
+      _accent,
+      _textColor,
+      _surface,
+      _qrColor,
+      _qrSizePct,
     ]) {
       c.dispose();
     }
@@ -153,29 +189,52 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 980;
-            final form = TemplateForm(
-              formKey: _formKey,
-              name: _name,
-              row: _row,
-              col: _col,
-              width: _width,
-              height: _height,
-              ux: _ux,
-              uy: _uy,
-              px: _px,
-              py: _py,
-              qx: _qx,
-              qy: _qy,
-              font: _font,
-              color: _color,
-              orientation: _orientation,
-              pageSize: _pageSize,
-              showQr: _showQr,
-              saving: action.saving,
-              onOrientation: (v) => setState(() => _orientation = v),
-              onPageSize: (v) => setState(() => _pageSize = v),
-              onShowQr: (v) => setState(() => _showQr = v),
-              onSubmit: _save,
+            final form = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TemplateForm(
+                  formKey: _formKey,
+                  name: _name,
+                  row: _row,
+                  col: _col,
+                  width: _width,
+                  height: _height,
+                  ux: _ux,
+                  uy: _uy,
+                  px: _px,
+                  py: _py,
+                  qx: _qx,
+                  qy: _qy,
+                  font: _font,
+                  color: _color,
+                  orientation: _orientation,
+                  pageSize: _pageSize,
+                  showQr: _showQr,
+                  saving: action.saving,
+                  onOrientation: (v) => setState(() => _orientation = v),
+                  onPageSize: (v) => setState(() => _pageSize = v),
+                  onShowQr: (v) => setState(() => _showQr = v),
+                  onSubmit: _save,
+                ),
+                const SizedBox(height: AppTokens.s12),
+                TemplateDesignerSection(
+                  renderEngine: _renderEngine,
+                  pattern: _pattern,
+                  gradientStart: _gradStart,
+                  gradientEnd: _gradEnd,
+                  accent: _accent,
+                  textColor: _textColor,
+                  surface: _surface,
+                  qrColor: _qrColor,
+                  qrSizePct: _qrSizePct,
+                  bgImageDataUrl: _bgImageDataUrl,
+                  onRenderEngine: (v) => setState(() => _renderEngine = v),
+                  onPattern: (v) => setState(() => _pattern = v),
+                  onBgImage: (dataUrl) =>
+                      setState(() => _bgImageDataUrl = dataUrl),
+                  onBgClear: () => setState(() => _bgImageDataUrl = ''),
+                ),
+              ],
             );
             final list = templates.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -232,6 +291,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
               color: _color.text.trim(),
               cardWidthMm: _toDouble(_width.text, 85),
               cardHeightMm: _toDouble(_height.text, 54),
+              layout: _designerLayout(),
             );
     if (!mounted) return;
     if (error == null) {

@@ -81,6 +81,7 @@ class PrintTemplatesActionController
     required String color,
     required double cardWidthMm,
     required double cardHeightMm,
+    Map<String, dynamic> layout = const {},
   }) async {
     state = state.withFlags(saving: true);
     try {
@@ -101,6 +102,7 @@ class PrintTemplatesActionController
             color: color,
             cardWidthMm: cardWidthMm,
             cardHeightMm: cardHeightMm,
+            layout: layout,
           );
       ref.invalidate(printTemplatesProvider);
       return null;
