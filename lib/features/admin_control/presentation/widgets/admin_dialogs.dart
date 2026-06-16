@@ -103,6 +103,12 @@ Future<TenantRecord?> showAdminTenantDialog(
   );
   final maxNas = TextEditingController(text: '${existing?.maxNas ?? 1}');
   final apiRpm = TextEditingController(text: '${existing?.apiRpm ?? 0}');
+  final currency = TextEditingController(text: existing?.currency ?? 'JOD');
+  final timezone =
+      TextEditingController(text: existing?.timezone ?? 'Asia/Amman');
+  final primaryColor =
+      TextEditingController(text: existing?.primaryColor ?? '#2BAACC');
+  final logoUrl = TextEditingController(text: existing?.logoUrl ?? '');
   var tier =
       existing?.planTier.isNotEmpty == true ? existing!.planTier : 'starter';
   var status =
@@ -185,6 +191,28 @@ Future<TenantRecord?> showAdminTenantDialog(
                     labelText: 'حد طلبات الربط بالدقيقة، 0 يعني بدون حد',
                   ),
                 ),
+                TextField(
+                  controller: currency,
+                  decoration: const InputDecoration(labelText: 'العملة'),
+                ),
+                TextField(
+                  controller: timezone,
+                  decoration: const InputDecoration(labelText: 'المنطقة الزمنية'),
+                ),
+                TextField(
+                  controller: primaryColor,
+                  decoration: const InputDecoration(
+                    labelText: 'اللون الأساسي للعلامة',
+                    hintText: '#2BAACC',
+                  ),
+                ),
+                TextField(
+                  controller: logoUrl,
+                  decoration: const InputDecoration(
+                    labelText: 'رابط الشعار',
+                    hintText: 'https://…',
+                  ),
+                ),
               ],
             ),
           ),
@@ -205,14 +233,20 @@ Future<TenantRecord?> showAdminTenantDialog(
                   displayName: displayName.text.trim(),
                   email: email.text.trim(),
                   phone: phone.text.trim(),
-                  currency: existing?.currency ?? 'JOD',
+                  currency: currency.text.trim().isEmpty
+                      ? 'JOD'
+                      : currency.text.trim(),
                   locale: existing?.locale ?? 'ar',
-                  timezone: existing?.timezone ?? 'Asia/Amman',
+                  timezone: timezone.text.trim().isEmpty
+                      ? 'Asia/Amman'
+                      : timezone.text.trim(),
                   status: status,
                   planTier: tier,
                   maxSubscribers: int.tryParse(maxSubscribers.text) ?? 0,
                   maxNas: int.tryParse(maxNas.text) ?? 0,
                   apiRpm: int.tryParse(apiRpm.text) ?? 0,
+                  primaryColor: primaryColor.text.trim(),
+                  logoUrl: logoUrl.text.trim(),
                 ),
               );
             },
@@ -230,5 +264,9 @@ Future<TenantRecord?> showAdminTenantDialog(
   maxSubscribers.dispose();
   maxNas.dispose();
   apiRpm.dispose();
+  currency.dispose();
+  timezone.dispose();
+  primaryColor.dispose();
+  logoUrl.dispose();
   return result;
 }

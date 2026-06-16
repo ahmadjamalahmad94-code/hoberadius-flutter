@@ -96,6 +96,8 @@ class TenantRecord {
     required this.maxSubscribers,
     required this.maxNas,
     required this.apiRpm,
+    this.primaryColor = '',
+    this.logoUrl = '',
   });
 
   final int id;
@@ -112,6 +114,8 @@ class TenantRecord {
   final int maxSubscribers;
   final int maxNas;
   final int apiRpm;
+  final String primaryColor;
+  final String logoUrl;
 
   factory TenantRecord.fromJson(Map<String, dynamic> json) {
     return TenantRecord(
@@ -129,6 +133,8 @@ class TenantRecord {
       maxSubscribers: _int(json['max_subscribers']),
       maxNas: _int(json['max_nas']),
       apiRpm: _int(json['api_rpm']),
+      primaryColor: _string(json['primary_color']),
+      logoUrl: _string(json['logo_url']),
     );
   }
 
@@ -147,6 +153,8 @@ class TenantRecord {
       'max_subscribers': maxSubscribers,
       'max_nas': maxNas,
       'api_rpm': apiRpm,
+      if (primaryColor.isNotEmpty) 'primary_color': primaryColor,
+      if (logoUrl.isNotEmpty) 'logo_url': logoUrl,
     };
   }
 }

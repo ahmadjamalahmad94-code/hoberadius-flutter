@@ -215,7 +215,7 @@ void main() {
         'credential_text_color': '#222222',
         'credential_label_color': '#888888',
         'username_surface_color': '#abcdef',
-      }),
+      },),
       card: sampleCard(),
     );
     final qr = model.elements.whereType<CardQr>().single;

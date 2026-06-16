@@ -41,6 +41,19 @@
 - **WhatsApp auto-reply bot** (`communications_bot.html`) — keyword→reply
   config. No JSON API.
 
+## Reports / admin (P6 — refinements; data parity already met)
+- **Operational reports per-report UX** — all 15 API slugs are covered by a
+  generic dropdown+table; the web ships 19 bespoke `rep_*` pages with tailored
+  columns, date filters, and drill-downs (client-side polish, API exists).
+- **`reports_center` hub** — KPI hero + report catalog landing (client-side).
+- **`rep_login_states_detail`** drill-down — no API slug (API-first).
+- **Per-permission Arabic labels** — role form shows raw permission keys; web
+  `_perm_labels.html` localizes each (client-side mapping; needs the label
+  catalogue, ideally exposed by the permissions API).
+- **Admin form `avatar_url` + `profile_notes`** — accepted by the admins API,
+  not yet in the Flutter admin form (client-side).
+- **Audit `user_agent`** — returned by `/audit`, not rendered (minor).
+
 ## Client-side follow-ups (API EXISTS — needs a new Flutter screen, NOT API-first)
 - **Store admin console** — `store.py` (1027 ln) + `store_support.html`:
   packages, deposits (list/create/approve), withdrawals, chat. Large new
