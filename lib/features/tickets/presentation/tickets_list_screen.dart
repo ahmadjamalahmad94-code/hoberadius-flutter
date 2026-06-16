@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
+import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -290,7 +292,7 @@ Future<void> _showServiceRequestDialog(
   var service = _serviceOptions.first;
   var requestType = _requestTypeOptions.first;
   var createPayment = false;
-  var currency = 'ILS';
+  final currency = ref.read(tenantCurrencyProvider);
   var busy = false;
 
   await showDialog<void>(
@@ -471,30 +473,7 @@ Future<void> _showServiceRequestDialog(
                         ),
                         const SizedBox(width: AppTokens.s8),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: currency,
-                            decoration:
-                                const InputDecoration(labelText: 'العملة'),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'ILS',
-                                child: Text('شيكل'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'USD',
-                                child: Text('دولار'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'JOD',
-                                child: Text('دينار'),
-                              ),
-                            ],
-                            onChanged: busy
-                                ? null
-                                : (value) => setState(
-                                      () => currency = value ?? 'ILS',
-                                    ),
-                          ),
+                          child: CurrencyField(currency: currency),
                         ),
                       ],
                     ),

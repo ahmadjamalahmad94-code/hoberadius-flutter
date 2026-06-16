@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
+import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -323,7 +325,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
     final amount = TextEditingController();
     final trialDays = TextEditingController(text: '7');
     final withTrial = decision == 'trial';
-    var currency = 'ILS';
+    final currency = ref.read(tenantCurrencyProvider);
     var dialogBusy = false;
     await showDialog<void>(
       context: context,
@@ -422,30 +424,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                         ),
                         const SizedBox(width: AppTokens.s8),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
-                            initialValue: currency,
-                            decoration:
-                                const InputDecoration(labelText: 'العملة'),
-                            items: const [
-                              DropdownMenuItem(
-                                value: 'ILS',
-                                child: Text('شيكل'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'USD',
-                                child: Text('دولار'),
-                              ),
-                              DropdownMenuItem(
-                                value: 'JOD',
-                                child: Text('دينار'),
-                              ),
-                            ],
-                            onChanged: dialogBusy
-                                ? null
-                                : (value) => setDialogState(
-                                      () => currency = value ?? 'ILS',
-                                    ),
-                          ),
+                          child: CurrencyField(currency: currency),
                         ),
                       ],
                     ),

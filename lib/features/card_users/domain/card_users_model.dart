@@ -1,3 +1,5 @@
+import '../../../core/format/currency.dart';
+
 class CardUser {
   const CardUser({
     required this.id,
@@ -37,7 +39,7 @@ class CardUser {
       balance: _num(json['balance']),
       pendingBalance: _num(json['pending_balance']),
       spent: _num(json['spent']),
-      walletCurrency: _string(json['wallet_currency'], fallback: 'ILS'),
+      walletCurrency: _string(json['wallet_currency'], fallback: kDefaultCurrency),
       purchaseCount: _int(json['purchase_count']),
       ownedCardsCount: _int(json['owned_cards_count']),
       hasPortalPassword: _bool(json['has_portal_password']),
@@ -81,7 +83,7 @@ class CardUsersSummary {
       cards: _int(json['cards']),
       purchases: _int(json['purchases']),
       balance: _num(json['balance']),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
     );
   }
 }
@@ -145,7 +147,7 @@ class MarketplacePackage {
       name: _string(json['name']),
       planName: _string(json['plan_name']),
       price: _num(json['price']),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       durationMinutes: _int(
         json['display_duration_minutes'] ?? json['duration_minutes'],
       ),
@@ -193,7 +195,7 @@ class CardUserWallet {
     return CardUserWallet(
       id: _int(json['id']),
       balance: _string(json['balance'], fallback: '0.00'),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       status: _string(json['status'], fallback: 'active'),
     );
   }
@@ -224,7 +226,7 @@ class CardUserPurchase {
       packageId: _int(json['package_id']),
       cardId: _int(json['card_id']),
       amount: _string(json['amount'], fallback: '0.00'),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       status: _string(json['status']),
       createdAt: _date(json['created_at']),
     );

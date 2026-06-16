@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/format/currency.dart';
 import '../domain/ticket_model.dart';
 
 class TicketsRepository {
@@ -56,7 +57,7 @@ class TicketsRepository {
     String priority = 'normal',
     String notes = '',
     double? amount,
-    String currency = 'ILS',
+    String currency = kDefaultCurrency,
     String purpose = 'monthly_subscription',
   }) async {
     final res = await _api.post(
@@ -85,7 +86,7 @@ class TicketsRepository {
     String note = '',
     double? amount,
     int? trialDays,
-    String currency = 'ILS',
+    String currency = kDefaultCurrency,
     String purpose = 'monthly_subscription',
   }) async {
     final res = await _api.post(

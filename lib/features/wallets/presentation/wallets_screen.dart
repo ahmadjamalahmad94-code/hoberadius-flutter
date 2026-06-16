@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../../core/api/visible_error_message.dart';
 import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
@@ -27,8 +29,6 @@ const _statusOptions = [
   (value: 'suspended', label: 'موقوفة'),
   (value: 'closed', label: 'مغلقة'),
 ];
-
-const _currencyOptions = ['ILS', 'JOD', 'USD'];
 
 const _referenceTypeOptions = [
   (value: 'manual', label: 'تسجيل يدوي'),
@@ -172,7 +172,7 @@ class _WalletsScreenState extends ConsumerState<WalletsScreen> {
   }
 
   Future<void> _createWallet() async {
-    final draft = await _walletDialog(context);
+    final draft = await _walletDialog(context, ref.read(tenantCurrencyProvider));
     if (draft == null) return;
     try {
       final created = await ref.read(walletsRepositoryProvider).create(draft);
@@ -626,11 +626,14 @@ class _TransactionRow extends StatelessWidget {
   }
 }
 
-Future<WalletCreateDraft?> _walletDialog(BuildContext context) async {
+Future<WalletCreateDraft?> _walletDialog(
+  BuildContext context,
+  String tenantCurrency,
+) async {
   final formKey = GlobalKey<FormState>();
   final ownerId = TextEditingController();
   var ownerType = 'company';
-  var currency = 'ILS';
+  final currency = tenantCurrency;
   final result = await showDialog<WalletCreateDraft>(
     context: context,
     builder: (_) => StatefulBuilder(
@@ -674,19 +677,7 @@ Future<WalletCreateDraft?> _walletDialog(BuildContext context) async {
                 },
               ),
               const SizedBox(height: AppTokens.s12),
-              DropdownButtonFormField<String>(
-                initialValue: currency,
-                decoration: const InputDecoration(labelText: 'العملة'),
-                items: _currencyOptions
-                    .map(
-                      (value) => DropdownMenuItem(
-                        value: value,
-                        child: Text(currencyLabel(value)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) => setState(() => currency = value ?? 'ILS'),
-              ),
+              CurrencyField(currency: currency),
             ],
           ),
         ),

@@ -1,3 +1,5 @@
+import '../../../core/format/currency.dart';
+
 class WalletPage {
   const WalletPage({required this.items, required this.count});
 
@@ -45,7 +47,7 @@ class WalletRecord {
       id: _int(json['id']),
       ownerType: _string(json['owner_type'], fallback: 'company'),
       ownerId: _nullableInt(json['owner_id']),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       balance: _moneyString(json['balance']),
       status: _string(json['status'], fallback: 'active'),
       createdAt: _date(json['created_at']),
@@ -76,7 +78,7 @@ class WalletCreateDraft {
     return {
       'owner_type': ownerType,
       if (ownerId != null && ownerId! > 0) 'owner_id': ownerId,
-      'currency': currency.trim().isEmpty ? 'ILS' : currency.trim(),
+      'currency': normalizeCurrency(currency),
     };
   }
 }
@@ -182,7 +184,7 @@ class WalletTransaction {
       amount: _moneyString(json['amount']),
       beforeBalance: _moneyString(json['before_balance']),
       afterBalance: _moneyString(json['after_balance']),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       referenceType: _string(json['reference_type']),
       referenceId: _nullableInt(json['reference_id']),
       actorType: _string(json['actor_type']),

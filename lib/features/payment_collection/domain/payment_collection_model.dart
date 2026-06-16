@@ -1,3 +1,5 @@
+import '../../../core/format/currency.dart';
+
 class PaymentRequestPage {
   const PaymentRequestPage({required this.items, required this.count});
 
@@ -106,7 +108,7 @@ class PaymentCollectionSettings {
       enabled: _bool(source['enabled']),
       walletNumber: _string(source['wallet_number']),
       walletOwnerName: _string(source['wallet_owner_name']),
-      currency: _string(source['currency'], fallback: 'ILS'),
+      currency: _string(source['currency'], fallback: kDefaultCurrency),
       confirmationMode:
           _string(source['confirmation_mode'], fallback: 'manual'),
       autoApply: _bool(source['auto_apply']),
@@ -234,7 +236,7 @@ class PaymentReconciliationItem {
       id: _int(json['id']),
       referenceCode: _string(json['reference_code']),
       amount: _double(json['amount']),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       status: _string(json['status']),
       serviceApplyStatus: _string(json['service_apply_status']),
       ledgerEntryId: _int(json['ledger_entry_id']),
@@ -286,7 +288,7 @@ class PaymentInstructions {
         _map(data['instructions']).isEmpty ? json : _map(data['instructions']);
     return PaymentInstructions(
       amount: _double(source['amount']),
-      currency: _string(source['currency'], fallback: 'ILS'),
+      currency: _string(source['currency'], fallback: kDefaultCurrency),
       receiverWallet: _string(source['receiver_wallet']),
       walletOwnerName: _string(source['wallet_owner_name']),
       referenceCode: _string(source['reference_code']),
@@ -449,7 +451,7 @@ class PaymentRequestRecord {
       payerId: _int(json['payer_id']),
       purpose: _string(json['purpose']),
       amount: _double(json['amount']),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       provider: _string(json['provider']),
       receiverWallet: _string(json['receiver_wallet']),
       referenceCode: _string(json['reference_code']),

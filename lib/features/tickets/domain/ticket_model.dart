@@ -1,3 +1,5 @@
+import '../../../core/format/currency.dart';
+
 class SupportTicket {
   const SupportTicket({
     required this.id,
@@ -159,7 +161,7 @@ class ServicePaymentRequest {
     return ServicePaymentRequest(
       id: _int(json['id']),
       amount: _double(json['amount']),
-      currency: _string(json['currency'], fallback: 'ILS'),
+      currency: _string(json['currency'], fallback: kDefaultCurrency),
       referenceCode: _string(json['reference_code']),
       status: _string(json['status'], fallback: 'pending'),
     );

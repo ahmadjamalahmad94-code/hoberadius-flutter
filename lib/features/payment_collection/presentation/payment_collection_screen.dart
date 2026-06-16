@@ -3,9 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/currency.dart';
 import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_toggle_switch.dart';
@@ -337,27 +340,23 @@ class _PaymentSettingsEditorState
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: _currency,
+                          initialValue: kSupportedCurrencies.contains(_currency)
+                              ? _currency
+                              : kDefaultCurrency,
                           decoration:
                               const InputDecoration(labelText: 'العملة'),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'ILS',
-                              child: Text('شيكل إسرائيلي'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'JOD',
-                              child: Text('دينار أردني'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'USD',
-                              child: Text('دولار أمريكي'),
-                            ),
-                          ],
+                          items: kSupportedCurrencies
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text('${currencyLabel(value)} — $value'),
+                                ),
+                              )
+                              .toList(),
                           onChanged: _saving
                               ? null
                               : (value) => setState(
-                                    () => _currency = value ?? 'ILS',
+                                    () => _currency = normalizeCurrency(value),
                                   ),
                         ),
                       ),
@@ -1041,8 +1040,6 @@ const _paymentPurposeOptions = [
   (value: 'loan_settlement', label: 'تسوية سلفة'),
 ];
 
-const _currencyOptions = ['ILS', 'JOD', 'USD'];
-
 const _proofTypeOptions = [
   (value: 'manual_reference', label: 'مرجع عملية'),
   (value: 'image', label: 'صورة إثبات'),
@@ -1053,7 +1050,8 @@ Future<void> _showCreatePaymentRequestDialog(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final draft = await _paymentRequestDialog(context);
+  final draft =
+      await _paymentRequestDialog(context, ref.read(tenantCurrencyProvider));
   if (draft == null) return;
   try {
     final created = await ref
@@ -1074,13 +1072,16 @@ Future<void> _showCreatePaymentRequestDialog(
   }
 }
 
-Future<PaymentRequestDraft?> _paymentRequestDialog(BuildContext context) async {
+Future<PaymentRequestDraft?> _paymentRequestDialog(
+  BuildContext context,
+  String tenantCurrency,
+) async {
   final formKey = GlobalKey<FormState>();
   final payerId = TextEditingController();
   final amount = TextEditingController();
   var payerType = 'subscriber';
   var purpose = 'subscriber_renewal';
-  var currency = 'ILS';
+  final currency = tenantCurrency;
   final result = await showDialog<PaymentRequestDraft>(
     context: context,
     builder: (_) => StatefulBuilder(
@@ -1161,21 +1162,8 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(BuildContext context) async {
                     ),
                     const SizedBox(width: AppTokens.s12),
                     SizedBox(
-                      width: 112,
-                      child: DropdownButtonFormField<String>(
-                        initialValue: currency,
-                        decoration: const InputDecoration(labelText: 'العملة'),
-                        items: _currencyOptions
-                            .map(
-                              (value) => DropdownMenuItem(
-                                value: value,
-                                child: Text(currencyLabel(value)),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => currency = value ?? 'ILS'),
-                      ),
+                      width: 150,
+                      child: CurrencyField(currency: currency),
                     ),
                   ],
                 ),
