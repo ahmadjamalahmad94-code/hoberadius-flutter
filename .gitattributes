@@ -1,0 +1,51 @@
+# Normalize all text files to LF in the repository and on checkout.
+# This is the durable fix for CRLF/LF churn regardless of each machine's
+# core.autocrlf setting. See chore/normalize-eol.
+* text=auto eol=lf
+
+# --- Windows-only scripts keep CRLF (they are run by cmd.exe / PowerShell) ---
+*.bat   text eol=crlf
+*.cmd   text eol=crlf
+*.ps1   text eol=crlf
+
+# --- Unix shell scripts must stay LF ---
+*.sh    text eol=lf
+
+# --- Source / config: explicit LF (defensive; covered by * above) ---
+*.dart  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.html  text eol=lf
+*.txt   text eol=lf
+*.iss   text eol=lf
+
+# --- Binary files: never apply EOL or text normalization ---
+*.png    -text
+*.jpg    -text
+*.jpeg   -text
+*.gif    -text
+*.ico    -text
+*.bmp    -text
+*.webp   -text
+*.ttf    -text
+*.otf    -text
+*.woff   -text
+*.woff2  -text
+*.eot    -text
+*.zip    -text
+*.gz     -text
+*.exe    -text
+*.dll    -text
+*.so     -text
+*.dylib  -text
+*.jar    -text
+*.aar    -text
+*.apk    -text
+*.aab    -text
+*.ipa    -text
+*.keystore -text
+*.jks    -text
+*.p12    -text
+*.pdf    -text
