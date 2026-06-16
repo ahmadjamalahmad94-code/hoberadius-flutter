@@ -10,6 +10,7 @@ import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../nas/domain/nas_model.dart';
 import '../application/mikrotik_providers.dart';
+import '../data/mikrotik_repository.dart';
 import '../domain/mikrotik_model.dart';
 
 class RouterOperationsScreen extends ConsumerStatefulWidget {
@@ -106,6 +107,16 @@ class _RouterOperationsScreenState
                 ),
               ),
               const SizedBox(width: AppTokens.s12),
+              OutlinedButton.icon(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) =>
+                      _DiagnosticsDialog(routerId: selected.id!),
+                ),
+                icon: const Icon(Icons.troubleshoot_outlined),
+                label: const Text('تشخيص'),
+              ),
+              const SizedBox(width: AppTokens.s8),
               IconButton(
                 tooltip: 'تحديث الحالة',
                 onPressed: () {
@@ -1730,4 +1741,129 @@ String _modeLabel(String mode) {
     'direct' => 'مباشر',
     _ => mode.isEmpty ? 'غير محدد' : mode,
   };
+}
+
+/// Diagnostics dialog — ping / traceroute / DNS-resolve run from the router
+/// (mt_diagnostics.html). Backed by the /tools/* mikrotik-control endpoints.
+class _DiagnosticsDialog extends ConsumerStatefulWidget {
+  const _DiagnosticsDialog({required this.routerId});
+
+  final int routerId;
+
+  @override
+  ConsumerState<_DiagnosticsDialog> createState() => _DiagnosticsDialogState();
+}
+
+class _DiagnosticsDialogState extends ConsumerState<_DiagnosticsDialog> {
+  String _tool = 'ping';
+  final _target = TextEditingController(text: '8.8.8.8');
+  bool _busy = false;
+  String _output = '';
+
+  @override
+  void dispose() {
+    _target.dispose();
+    super.dispose();
+  }
+
+  Future<void> _run() async {
+    final target = _target.text.trim();
+    if (target.isEmpty) return;
+    setState(() {
+      _busy = true;
+      _output = '';
+    });
+    try {
+      final repo = ref.read(mikrotikRepositoryProvider);
+      final Map<String, dynamic> data = switch (_tool) {
+        'traceroute' => await repo.tracerouteFromRouter(widget.routerId, target),
+        'dns' => await repo.dnsResolveFromRouter(widget.routerId, target),
+        _ => await repo.pingFromRouter(widget.routerId, target),
+      };
+      setState(() => _output = _formatOutput(data));
+    } catch (error) {
+      setState(() => _output = visibleErrorMessage(error));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  String _formatOutput(Map<String, dynamic> data) {
+    final result = data['result'] ?? data['output'] ?? data['rows'] ?? data;
+    if (result is List) {
+      return result.map((e) => e.toString()).join('\n');
+    }
+    return result.toString();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('تشخيص الراوتر'),
+      content: SizedBox(
+        width: 560,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SegmentedButton<String>(
+              showSelectedIcon: false,
+              selected: {_tool},
+              segments: const [
+                ButtonSegment(value: 'ping', label: Text('Ping')),
+                ButtonSegment(value: 'traceroute', label: Text('Traceroute')),
+                ButtonSegment(value: 'dns', label: Text('DNS')),
+              ],
+              onSelectionChanged: (s) => setState(() => _tool = s.first),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            TextField(
+              controller: _target,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(
+                labelText: _tool == 'dns' ? 'اسم النطاق' : 'العنوان الهدف',
+                hintText: _tool == 'dns' ? 'example.com' : '8.8.8.8',
+              ),
+              onSubmitted: (_) => _busy ? null : _run(),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            Container(
+              width: double.infinity,
+              constraints: const BoxConstraints(minHeight: 120, maxHeight: 280),
+              padding: const EdgeInsets.all(AppTokens.s12),
+              decoration: BoxDecoration(
+                color: AppTokens.surfaceMuted,
+                borderRadius: BorderRadius.circular(AppTokens.r10),
+                border: Border.all(color: AppTokens.border),
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  _output.isEmpty ? 'اكتب الهدف ثم اضغط تشغيل.' : _output,
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(fontFamily: 'monospace', height: 1.4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('إغلاق'),
+        ),
+        FilledButton.icon(
+          onPressed: _busy ? null : _run,
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.play_arrow),
+          label: const Text('تشغيل'),
+        ),
+      ],
+    );
+  }
 }

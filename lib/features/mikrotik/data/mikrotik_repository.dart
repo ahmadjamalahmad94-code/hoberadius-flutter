@@ -144,6 +144,113 @@ class MikrotikRepository {
     return MikrotikActionResult.fromJson(_data(res));
   }
 
+  // ── Diagnostics (mt_diagnostics.html) ──────────────────────────────
+  Future<Map<String, dynamic>> pingFromRouter(
+    int nasId,
+    String target, {
+    int count = 4,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/tools/ping',
+      body: {'target': target, 'count': count},
+    );
+    return _data(res);
+  }
+
+  Future<Map<String, dynamic>> tracerouteFromRouter(
+    int nasId,
+    String target, {
+    int count = 3,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/tools/traceroute',
+      body: {'target': target, 'count': count},
+    );
+    return _data(res);
+  }
+
+  Future<Map<String, dynamic>> dnsResolveFromRouter(
+    int nasId,
+    String name, {
+    String server = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/tools/dns-resolve',
+      body: {'name': name, if (server.isNotEmpty) 'server': server},
+    );
+    return _data(res);
+  }
+
+  // ── Active-session disconnect from the router ──────────────────────
+  Future<MikrotikActionResult> disconnectHotspotSession(
+    int nasId,
+    String sessionId,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/hotspot/active/$sessionId/disconnect',
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikActionResult> disconnectPppSession(
+    int nasId,
+    String sessionId,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/ppp/active/$sessionId/disconnect',
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  // ── Simple-queue edit (K6) ─────────────────────────────────────────
+  Future<MikrotikActionResult> setSimpleQueue(
+    int nasId,
+    String queueId,
+    Map<String, dynamic> changes,
+  ) async {
+    final res = await _api.put(
+      '/api/v1/mikrotik/$nasId/queues/simple/$queueId',
+      body: changes,
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  // ── Firewall address-list CRUD (K6) ────────────────────────────────
+  Future<MikrotikActionResult> addAddressListEntry(
+    int nasId, {
+    required String list,
+    required String address,
+    String comment = '',
+    String timeout = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/firewall/address-lists',
+      body: {
+        'list': list,
+        'address': address,
+        if (comment.isNotEmpty) 'comment': comment,
+        if (timeout.isNotEmpty) 'timeout': timeout,
+      },
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  Future<MikrotikActionResult> removeAddressListEntry(
+    int nasId,
+    String entryId,
+  ) async {
+    final res = await _api.delete(
+      '/api/v1/mikrotik/$nasId/firewall/address-lists/$entryId',
+    );
+    return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  // ── P7 risk signals (loops / flapping / overlap) ───────────────────
+  Future<Map<String, dynamic>> routerHealth(int nasId) async {
+    final res = await _api.get('/api/v1/mikrotik/$nasId/health');
+    return _data(res);
+  }
+
   Future<MikrotikRouterBackupsPage> routerBackups(int nasId) async {
     final res = await _api.get('/api/v1/mikrotik/$nasId/backups');
     return MikrotikRouterBackupsPage.fromJson(_data(res));
