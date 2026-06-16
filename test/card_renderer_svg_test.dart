@@ -178,9 +178,11 @@ void main() {
     test('emits <image> only when a data-url logo is present', () {
       expect(renderCardSvg(modelOf()), isNot(contains('<image ')));
       final withLogo = renderCardSvg(
-        modelOf(layoutOverrides: {
-          'logo_image_data_url': 'data:image/png;base64,AAAA',
-        }),
+        modelOf(
+          layoutOverrides: {
+            'logo_image_data_url': 'data:image/png;base64,AAAA',
+          },
+        ),
       );
       expect(withLogo, contains('<image '));
       expect(withLogo, contains('data:image/png;base64,AAAA'));
