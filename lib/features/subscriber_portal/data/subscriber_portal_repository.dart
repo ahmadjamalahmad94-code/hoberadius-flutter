@@ -74,6 +74,22 @@ class SubscriberPortalRepository {
         .toList();
   }
 
+  Future<SubscriberPortalRequest> requestDetail({
+    required String token,
+    required int requestId,
+    int tenantId = 1,
+  }) async {
+    final payload = await _get(
+      '/api/v1/subscriber-portal/requests/$requestId',
+      token: token,
+      tenantId: tenantId,
+    );
+    final item = payload['request'] ?? payload['item'] ?? payload;
+    return SubscriberPortalRequest.fromJson(
+      _map(item is Map ? item : payload),
+    );
+  }
+
   Future<SubscriberPortalRequest> loanRequest({
     required String token,
     required int requestedMinutes,

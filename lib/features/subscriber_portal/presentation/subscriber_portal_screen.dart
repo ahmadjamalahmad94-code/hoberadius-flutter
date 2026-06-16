@@ -660,31 +660,99 @@ class _FinanceCard extends StatelessWidget {
     return AppCard(
       title: 'الرصيد والمدفوعات',
       icon: Icons.account_balance_wallet_outlined,
-      child: Wrap(
-        spacing: AppTokens.s8,
-        runSpacing: AppTokens.s8,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _MetricTile(
-            icon: Icons.wallet_outlined,
-            label: 'رصيد المحفظة',
-            value: dashboard.wallet.balanceLabel,
-            helper: 'الرصيد المتاح في حسابك',
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              _MetricTile(
+                icon: Icons.wallet_outlined,
+                label: 'رصيد المحفظة',
+                value: dashboard.wallet.balanceLabel,
+                helper: 'الرصيد المتاح في حسابك',
+              ),
+              _MetricTile(
+                icon: Icons.receipt_long_outlined,
+                label: 'الدين',
+                value: dashboard.hasDebt
+                    ? dashboard.debt.toStringAsFixed(2)
+                    : 'لا يوجد دين',
+                helper: 'حسب سجل الحساب',
+              ),
+              _MetricTile(
+                icon: Icons.handshake_outlined,
+                label: 'السلفة',
+                value: dashboard.loanPolicy.allowedLabel,
+                helper: dashboard.loanPolicy.autoApprove
+                    ? 'اعتماد تلقائي حسب الباقة'
+                    : 'تحتاج مراجعة الإدارة',
+              ),
+            ],
           ),
-          _MetricTile(
-            icon: Icons.receipt_long_outlined,
-            label: 'الدين',
-            value: dashboard.hasDebt
-                ? dashboard.debt.toStringAsFixed(2)
-                : 'لا يوجد دين',
-            helper: 'حسب سجل الحساب',
+          if (dashboard.payments.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s12),
+            const Text(
+              'آخر المدفوعات',
+              style: TextStyle(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: AppTokens.s8),
+            for (final p in dashboard.payments.take(8))
+              _PaymentRow(payment: p),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One row of the subscriber-portal recent-payments list (`dashboard.payments`).
+class _PaymentRow extends StatelessWidget {
+  const _PaymentRow({required this.payment});
+  final Map<String, dynamic> payment;
+
+  @override
+  Widget build(BuildContext context) {
+    String s(List<String> keys) {
+      for (final k in keys) {
+        final v = payment[k];
+        if (v != null && v.toString().trim().isNotEmpty) return v.toString();
+      }
+      return '';
+    }
+
+    final amount = s(['amount', 'value', 'total']);
+    final currency = s(['currency']);
+    final when = s(['created_at', 'date', 'paid_at']);
+    final status = s(['status', 'state']);
+    final note = s(['note', 'reference', 'reference_code', 'purpose']);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.payments_outlined,
+            size: 16,
+            color: AppTokens.brand,
           ),
-          _MetricTile(
-            icon: Icons.handshake_outlined,
-            label: 'السلفة',
-            value: dashboard.loanPolicy.allowedLabel,
-            helper: dashboard.loanPolicy.autoApprove
-                ? 'اعتماد تلقائي حسب الباقة'
-                : 'تحتاج مراجعة الإدارة',
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Text(
+              [if (note.isNotEmpty) note, if (when.isNotEmpty) when]
+                  .join(' · '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppTokens.textSecondary),
+            ),
+          ),
+          if (status.isNotEmpty) ...[
+            Text(status, style: const TextStyle(color: AppTokens.textMuted)),
+            const SizedBox(width: AppTokens.s8),
+          ],
+          Text(
+            '$amount $currency'.trim(),
+            style: const TextStyle(fontWeight: FontWeight.w900),
           ),
         ],
       ),
