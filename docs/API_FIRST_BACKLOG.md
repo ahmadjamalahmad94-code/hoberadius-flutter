@@ -19,9 +19,13 @@ Still to build (all have a working admin `/api/v1`; just need Flutter UI):
    and a client-side date-range drill-down on each report's primary timestamp
    (API only exposes q/limit/offset). Old generic dropdown screen removed.
    Tests: `operational_report_catalog_test` + repointed model test.
-3. **Per-permission Arabic labels (item 5)** — map raw permission keys via a
-   `_perm_labels` catalogue in `role_form_screen` (the permissions API may
-   expose labels; otherwise hardcode the catalogue).
+3. ✅ **Per-permission Arabic labels** — DONE. `/api/v1/permissions` localises
+   only the group prefix (10/16) and returns raw permission keys, so the full
+   `_perm_labels` catalogue is mirrored client-side in
+   `admins/domain/permission_labels.dart` (PERM_LABELS + GROUP_LABELS +
+   GROUP_META icon/colours). `role_form_screen` now shows the Arabic label per
+   chip (raw key in tooltip) + group icon/label. Test:
+   `permission_labels_test`.
 4. **Deeper mikrotik control UI (item 4)** — per-row disconnect on active
    hotspot/ppp lists, simple-queue edit dialog, address-list CRUD UI, file
    download. Repo methods already exist (P1f: disconnectHotspotSession/

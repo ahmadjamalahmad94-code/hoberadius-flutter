@@ -8,6 +8,7 @@ import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../data/admins_repository.dart';
 import '../domain/admin_model.dart';
+import '../domain/permission_labels.dart';
 
 class RoleFormScreen extends ConsumerStatefulWidget {
   const RoleFormScreen({super.key, this.roleId});
@@ -47,7 +48,8 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final r = await ref.read(adminsRepositoryProvider).getRole(widget.roleId!);
+      final r =
+          await ref.read(adminsRepositoryProvider).getRole(widget.roleId!);
       _loaded = r;
       _name.text = r.name;
       _displayName.text = r.displayName;
@@ -185,7 +187,8 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                 color: AppTokens.dangerBg,
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child: Text(_error!, style: const TextStyle(color: AppTokens.red)),
+              child:
+                  Text(_error!, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           if (isSystem) ...[
@@ -267,8 +270,14 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                       children: [
                         Row(
                           children: [
+                            Icon(
+                              permissionGroupStyle(g.key).icon,
+                              size: 16,
+                              color: permissionGroupStyle(g.key).ink,
+                            ),
+                            const SizedBox(width: 6),
                             Text(
-                              g.label,
+                              permissionGroupLabel(g.key, fallback: g.label),
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
                                 color: AppTokens.sidebarBgElev1,
@@ -295,16 +304,19 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                           runSpacing: 6,
                           children: g.permissions.map((p) {
                             final selected = _permissions.contains(p);
-                            return FilterChip(
-                              label: Text(p),
-                              selected: selected,
-                              onSelected: (v) => setState(() {
-                                if (v) {
-                                  _permissions.add(p);
-                                } else {
-                                  _permissions.remove(p);
-                                }
-                              }),
+                            return Tooltip(
+                              message: p,
+                              child: FilterChip(
+                                label: Text(permissionLabel(p)),
+                                selected: selected,
+                                onSelected: (v) => setState(() {
+                                  if (v) {
+                                    _permissions.add(p);
+                                  } else {
+                                    _permissions.remove(p);
+                                  }
+                                }),
+                              ),
                             );
                           }).toList(),
                         ),
