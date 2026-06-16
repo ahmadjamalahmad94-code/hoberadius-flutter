@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
@@ -60,10 +60,41 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
             status: status,
             running: _running,
             onRun: _runBackup,
+            onConnectDrive: _connectDrive,
           ),
         ),
       ],
     );
+  }
+
+  Future<void> _connectDrive() async {
+    final repo = ref.read(backupsRepositoryProvider);
+    Map<String, dynamic> info;
+    try {
+      info = await repo.connectGoogleDrive();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      return;
+    }
+    if (!mounted) return;
+    final code = (info['user_code'] ?? '').toString();
+    final url = (info['verification_url'] ?? '').toString();
+    final done = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => _DriveConnectDialog(
+        userCode: code,
+        verificationUrl: url,
+        onPoll: () => repo.pollGoogleDrive(),
+      ),
+    );
+    if (done == true && mounted) {
+      ref.invalidate(backupStatusProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تم ربط جوجل درايف')),
+      );
+    }
   }
 
   Future<void> _runBackup() async {
@@ -110,11 +141,13 @@ class _Body extends StatelessWidget {
     required this.status,
     required this.running,
     required this.onRun,
+    required this.onConnectDrive,
   });
 
   final BackupStatus status;
   final bool running;
   final VoidCallback onRun;
+  final VoidCallback onConnectDrive;
 
   @override
   Widget build(BuildContext context) {
@@ -179,9 +212,13 @@ class _Body extends StatelessWidget {
                 label: Text(running ? 'جاري النسخ...' : 'تشغيل نسخة محلية'),
               ),
               OutlinedButton.icon(
-                onPressed: null,
-                icon: const Icon(Icons.cloud_outlined),
-                label: const Text('جوجل درايف غير مفعل'),
+                onPressed: status.googleDrive.connected ? null : onConnectDrive,
+                icon: const Icon(Icons.cloud_sync_outlined),
+                label: Text(
+                  status.googleDrive.connected
+                      ? 'جوجل درايف مربوط'
+                      : 'ربط جوجل درايف',
+                ),
               ),
             ],
           ),
@@ -380,4 +417,131 @@ class _StatCard extends StatelessWidget {
 String _fmt(DateTime? value) {
   if (value == null) return '—';
   return DateFormat('yyyy-MM-dd HH:mm').format(value);
+}
+
+/// Google Drive limited-input device-flow dialog: shows the user_code +
+/// verification URL, and polls until the operator authorises (or cancels).
+class _DriveConnectDialog extends StatefulWidget {
+  const _DriveConnectDialog({
+    required this.userCode,
+    required this.verificationUrl,
+    required this.onPoll,
+  });
+
+  final String userCode;
+  final String verificationUrl;
+  final Future<Map<String, dynamic>> Function() onPoll;
+
+  @override
+  State<_DriveConnectDialog> createState() => _DriveConnectDialogState();
+}
+
+class _DriveConnectDialogState extends State<_DriveConnectDialog> {
+  bool _polling = false;
+  String _message = '';
+
+  Future<void> _poll() async {
+    setState(() {
+      _polling = true;
+      _message = '';
+    });
+    try {
+      final res = await widget.onPoll();
+      if (res['connected'] == true) {
+        if (mounted) Navigator.of(context).pop(true);
+        return;
+      }
+      setState(
+        () => _message = (res['pending'] == true)
+            ? 'بانتظار موافقتك على جوجل... أكمل في المتصفح ثم تحقق مجددًا.'
+            : (res['detail'] ?? 'لم يكتمل الربط بعد.').toString(),
+      );
+    } catch (e) {
+      setState(() => _message = visibleErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _polling = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('ربط جوجل درايف'),
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'افتح الرابط التالي على أي جهاز وأدخل الرمز للموافقة، ثم اضغط '
+              '«تحقّق من الربط».',
+              style: TextStyle(height: 1.6),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            _CopyRow(label: 'الرابط', value: widget.verificationUrl),
+            const SizedBox(height: AppTokens.s8),
+            _CopyRow(label: 'الرمز', value: widget.userCode),
+            if (_message.isNotEmpty) ...[
+              const SizedBox(height: AppTokens.s12),
+              Text(
+                _message,
+                style: const TextStyle(color: AppTokens.textSecondary),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _polling ? null : () => Navigator.of(context).pop(false),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton.icon(
+          onPressed: _polling ? null : _poll,
+          icon: _polling
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.verified_outlined),
+          label: const Text('تحقّق من الربط'),
+        ),
+      ],
+    );
+  }
+}
+
+class _CopyRow extends StatelessWidget {
+  const _CopyRow({required this.label, required this.value});
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(AppTokens.r8),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Row(
+        children: [
+          Text('$label: ', style: const TextStyle(color: AppTokens.textMuted)),
+          Expanded(
+            child: SelectableText(
+              value.isEmpty ? '—' : value,
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -23,6 +23,21 @@ class BackupsRepository {
     final run = data['run'];
     return run is Map<String, dynamic> ? BackupRun.fromJson(run) : null;
   }
+
+  /// Starts the Google Drive limited-input device flow. Returns
+  /// {user_code, verification_url, expires_in, interval}.
+  Future<Map<String, dynamic>> connectGoogleDrive() async {
+    final res = await _api.post('/api/v1/backups/google-drive/connect');
+    final data = res['data'];
+    return data is Map<String, dynamic> ? data : const {};
+  }
+
+  /// Polls the pending device flow. Returns {connected, pending, email, ...}.
+  Future<Map<String, dynamic>> pollGoogleDrive() async {
+    final res = await _api.post('/api/v1/backups/google-drive/poll');
+    final data = res['data'];
+    return data is Map<String, dynamic> ? data : const {};
+  }
 }
 
 final backupsRepositoryProvider = Provider<BackupsRepository>((ref) {

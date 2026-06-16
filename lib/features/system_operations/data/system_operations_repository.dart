@@ -74,6 +74,37 @@ class SystemOperationsRepository {
     return BridgeEventsState.fromJson(_data(res));
   }
 
+  Future<Map<String, dynamic>> capacityStatus() async {
+    final res = await _api.get('/api/v1/system/admin-bridge/capacity-status');
+    return _data(res);
+  }
+
+  Future<Map<String, dynamic>> usageReport() async {
+    final res = await _api.get('/api/v1/system/admin-bridge/usage-report');
+    return _data(res);
+  }
+
+  /// Backup restore via the licensing bridge. `restorePoll` lists restorable
+  /// references; `restoreSnapshot` previews one; `restoreApply` applies it.
+  Future<Map<String, dynamic>> restorePoll() async {
+    final res = await _api.post('/api/v1/system/admin-bridge/restore/poll');
+    return _data(res);
+  }
+
+  Future<Map<String, dynamic>> restoreSnapshot(String reference) async {
+    final res = await _api.post(
+      '/api/v1/system/admin-bridge/restore/$reference/snapshot',
+    );
+    return _data(res);
+  }
+
+  Future<Map<String, dynamic>> restoreApply(String reference) async {
+    final res = await _api.post(
+      '/api/v1/system/admin-bridge/restore/$reference/apply',
+    );
+    return _data(res);
+  }
+
   Map<String, dynamic> _data(Map<String, dynamic> response) {
     final data = response['data'];
     return data is Map<String, dynamic> ? data : const {};
