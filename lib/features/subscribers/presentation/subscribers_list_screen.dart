@@ -13,6 +13,7 @@ import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
+import 'widgets/subscriber_dialogs.dart';
 
 final subscribersListProvider =
     FutureProvider.autoDispose.family<List<Subscriber>, String?>((ref, status) {
@@ -154,13 +155,61 @@ class _StatusChips extends StatelessWidget {
   }
 }
 
-class _Table extends StatelessWidget {
+class _Table extends ConsumerWidget {
   const _Table({required this.items, required this.density});
   final List<Subscriber> items;
   final _Density density;
 
+  Future<void> _runAction(
+    BuildContext context,
+    WidgetRef ref,
+    Subscriber s,
+    String action,
+  ) async {
+    final repo = ref.read(subscribersRepositoryProvider);
+    final messenger = ScaffoldMessenger.of(context);
+    void snack(String m) =>
+        messenger.showSnackBar(SnackBar(content: Text(m)));
+    try {
+      switch (action) {
+        case 'edit':
+          context.goNamed(
+            'subscriber-edit',
+            pathParameters: {'username': s.username},
+          );
+          return;
+        case 'toggle':
+          if (s.status == 'disabled') {
+            await repo.enable(s.username);
+            snack('تم التفعيل');
+          } else {
+            await repo.disable(s.username);
+            snack('تم التعطيل');
+          }
+        case 'extend':
+          final mins = await askExtendMinutes(context);
+          if (mins == null) return;
+          await repo.extendTime(s.username, mins);
+          snack('تم التمديد $mins دقيقة');
+        case 'reset':
+          final pw = await askNewPassword(context);
+          if (pw == null) return;
+          await repo.resetPassword(s.username, pw);
+          snack('تمّ تحديث كلمة المرور');
+        case 'delete':
+          final ok = await confirmDeleteSubscriber(context, s.username);
+          if (!ok) return;
+          await repo.delete(s.username);
+          snack('تم حذف ${s.username}');
+      }
+      ref.invalidate(subscribersListProvider);
+    } catch (e) {
+      snack(visibleErrorMessage(e));
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final df = DateFormat('yyyy-MM-dd');
     final p = AppPalette.of(context);
     return ListView.separated(
@@ -236,6 +285,54 @@ class _Table extends StatelessWidget {
                     pathParameters: {'username': s.username},
                   ),
                   icon: const Icon(Icons.account_balance_wallet_outlined),
+                ),
+                PopupMenuButton<String>(
+                  tooltip: 'إجراءات',
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: (action) => _runAction(ctx, ref, s, action),
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: ListTile(
+                        leading: Icon(Icons.edit_outlined),
+                        title: Text('تعديل'),
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'toggle',
+                      child: ListTile(
+                        leading: Icon(
+                          s.status == 'disabled'
+                              ? Icons.play_circle_outline
+                              : Icons.pause_circle_outline,
+                        ),
+                        title: Text(
+                          s.status == 'disabled' ? 'تفعيل' : 'تعطيل',
+                        ),
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'extend',
+                      child: ListTile(
+                        leading: Icon(Icons.more_time_outlined),
+                        title: Text('تمديد الوقت'),
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'reset',
+                      child: ListTile(
+                        leading: Icon(Icons.password_outlined),
+                        title: Text('إعادة تعيين كلمة المرور'),
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: ListTile(
+                        leading: Icon(Icons.delete_outline),
+                        title: Text('حذف'),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

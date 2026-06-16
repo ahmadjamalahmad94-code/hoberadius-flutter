@@ -28,6 +28,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   late final Map<String, TextEditingController> _c;
   String _status = 'enabled';
   String _userType = 'subscriber';
+  String _serviceType = 'Hotspot';
+  String _accountType = 'Personal';
+  int? _managerId;
   String _mtService = 'pppoe';
   String _subscriptionType = 'fixed';
   DateTime? _expireAt;
@@ -35,6 +38,13 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   bool _disableOnFirstUse = false;
   bool _notifyOnLogin = false;
   bool _autoRenew = false;
+  bool _bandwidthControlEnabled = false;
+  bool _customSpeed = false;
+  bool _temporarySpeed = false;
+  bool _quotaLimitEnabled = false;
+  bool _connectionTimeLimitEnabled = false;
+  bool _equalShareDownload = false;
+  bool _equalShareUpload = false;
 
   static const _controllerKeys = [
     'username',
@@ -48,6 +58,35 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
     'static_ip',
     'plan_id',
     'custom_price',
+    'balance',
+    'group',
+    'pool',
+    'father_name',
+    'national_id',
+    'nationality',
+    'country',
+    'address',
+    'city',
+    'district',
+    'state',
+    'zip',
+    'coordinates',
+    'payment_method',
+    'payment_reference',
+    'download_speed_kbps',
+    'upload_speed_kbps',
+    'combined_quota_mb',
+    'download_quota_mb',
+    'upload_quota_mb',
+    'total_connection_time_min',
+    'daily_connection_time_min',
+    'vlan_id',
+    'device_count',
+    'allowed_macs',
+    'device_connection_file',
+    'pppoe_username',
+    'pppoe_password',
+    'pppoe_ip',
     'mt_profile',
     'mt_rate_limit',
     'mt_ip_pool',
@@ -98,6 +137,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   SubscriberFormSelections get _selections => SubscriberFormSelections(
         status: _status,
         userType: _userType,
+        serviceType: _serviceType,
+        accountType: _accountType,
+        managerId: _managerId,
         mtService: _mtService,
         subscriptionType: _subscriptionType,
         expireAt: _expireAt,
@@ -105,6 +147,13 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         disableOnFirstUse: _disableOnFirstUse,
         notifyOnLogin: _notifyOnLogin,
         autoRenew: _autoRenew,
+        bandwidthControlEnabled: _bandwidthControlEnabled,
+        customSpeed: _customSpeed,
+        temporarySpeed: _temporarySpeed,
+        quotaLimitEnabled: _quotaLimitEnabled,
+        connectionTimeLimitEnabled: _connectionTimeLimitEnabled,
+        equalShareDownload: _equalShareDownload,
+        equalShareUpload: _equalShareUpload,
       );
 
   Future<void> _loadExisting() async {
@@ -117,6 +166,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
     setState(() {
       _status = sel.status;
       _userType = sel.userType;
+      _serviceType = sel.serviceType;
+      _accountType = sel.accountType;
+      _managerId = sel.managerId;
       _mtService = sel.mtService;
       _subscriptionType = sel.subscriptionType;
       _expireAt = sel.expireAt;
@@ -126,6 +178,13 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       _disableOnFirstUse = sel.disableOnFirstUse;
       _notifyOnLogin = sel.notifyOnLogin;
       _autoRenew = sel.autoRenew;
+      _bandwidthControlEnabled = sel.bandwidthControlEnabled;
+      _customSpeed = sel.customSpeed;
+      _temporarySpeed = sel.temporarySpeed;
+      _quotaLimitEnabled = sel.quotaLimitEnabled;
+      _connectionTimeLimitEnabled = sel.connectionTimeLimitEnabled;
+      _equalShareDownload = sel.equalShareDownload;
+      _equalShareUpload = sel.equalShareUpload;
     });
   }
 
@@ -254,11 +313,53 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             isEdit: widget.isEdit,
             status: _status,
             userType: _userType,
+            serviceType: _serviceType,
             expireAt: _expireAt,
             onStatusChanged: (v) => setState(() => _status = v),
             onUserTypeChanged: (v) => setState(() => _userType = v),
+            onServiceTypeChanged: (v) => setState(() => _serviceType = v),
             onExpireChanged: (d) => setState(() => _expireAt = d),
           ),
+          const SizedBox(height: AppTokens.s16),
+          SubscriberManagementSection(
+            controllers: _c,
+            managerId: _managerId,
+            onManagerChanged: (v) => setState(() => _managerId = v),
+          ),
+          const SizedBox(height: AppTokens.s16),
+          SubscriberPersonalSection(
+            controllers: _c,
+            accountType: _accountType,
+            onAccountTypeChanged: (v) => setState(() => _accountType = v),
+          ),
+          const SizedBox(height: AppTokens.s16),
+          SubscriberSpeedSection(
+            controllers: _c,
+            bandwidthControlEnabled: _bandwidthControlEnabled,
+            onBandwidthControlChanged: (v) =>
+                setState(() => _bandwidthControlEnabled = v),
+            customSpeed: _customSpeed,
+            onCustomSpeedChanged: (v) => setState(() => _customSpeed = v),
+            temporarySpeed: _temporarySpeed,
+            onTemporarySpeedChanged: (v) => setState(() => _temporarySpeed = v),
+          ),
+          const SizedBox(height: AppTokens.s16),
+          SubscriberQuotaSection(
+            controllers: _c,
+            quotaLimitEnabled: _quotaLimitEnabled,
+            onQuotaLimitChanged: (v) => setState(() => _quotaLimitEnabled = v),
+            connectionTimeLimitEnabled: _connectionTimeLimitEnabled,
+            onConnectionTimeLimitChanged: (v) =>
+                setState(() => _connectionTimeLimitEnabled = v),
+            equalShareDownload: _equalShareDownload,
+            onEqualShareDownloadChanged: (v) =>
+                setState(() => _equalShareDownload = v),
+            equalShareUpload: _equalShareUpload,
+            onEqualShareUploadChanged: (v) =>
+                setState(() => _equalShareUpload = v),
+          ),
+          const SizedBox(height: AppTokens.s16),
+          SubscriberPppoeSection(controllers: _c),
           const SizedBox(height: AppTokens.s16),
           SubscriberMtSection(
             controllers: _c,

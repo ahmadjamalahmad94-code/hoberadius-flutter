@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_time_picker_circular.dart';
 import '../../../../shared/widgets/hub_toggle_switch.dart';
 import '../../../../shared/widgets/wheel_picker_fields.dart';
+import '../../../admins/data/admins_repository.dart';
 import 'expire_picker.dart';
 import 'plan_picker.dart';
+
+/// Number-only text field used across the new parity sections.
+class _NumField extends StatelessWidget {
+  const _NumField({required this.controller});
+  final TextEditingController controller;
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    );
+  }
+}
 
 /// Subscriber form — basic identity + plan + expiry.
 class SubscriberCoreSection extends StatelessWidget {
@@ -16,9 +31,11 @@ class SubscriberCoreSection extends StatelessWidget {
     required this.isEdit,
     required this.status,
     required this.userType,
+    required this.serviceType,
     required this.expireAt,
     required this.onStatusChanged,
     required this.onUserTypeChanged,
+    required this.onServiceTypeChanged,
     required this.onExpireChanged,
   });
 
@@ -26,9 +43,11 @@ class SubscriberCoreSection extends StatelessWidget {
   final bool isEdit;
   final String status;
   final String userType;
+  final String serviceType;
   final DateTime? expireAt;
   final ValueChanged<String> onStatusChanged;
   final ValueChanged<String> onUserTypeChanged;
+  final ValueChanged<String> onServiceTypeChanged;
   final ValueChanged<DateTime?> onExpireChanged;
 
   @override
@@ -100,6 +119,28 @@ class SubscriberCoreSection extends StatelessWidget {
                 DropdownMenuItem(value: 'employee', child: Text('موظف')),
               ],
               onChanged: (v) => onUserTypeChanged(v ?? 'subscriber'),
+            ),
+          ),
+          FormFieldRow(
+            label: 'نوع الخدمة',
+            child: DropdownButtonFormField<String>(
+              initialValue: const [
+                'Hotspot',
+                'PPPoE',
+                'Balance',
+                'Voucher',
+                'Others',
+              ].contains(serviceType)
+                  ? serviceType
+                  : 'Hotspot',
+              items: const [
+                DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
+                DropdownMenuItem(value: 'PPPoE', child: Text('PPPoE')),
+                DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
+                DropdownMenuItem(value: 'Voucher', child: Text('كوبون')),
+                DropdownMenuItem(value: 'Others', child: Text('أخرى')),
+              ],
+              onChanged: (v) => onServiceTypeChanged(v ?? 'Hotspot'),
             ),
           ),
           FormFieldRow(
@@ -258,7 +299,7 @@ class SubscriberLockSection extends StatelessWidget {
     return CollapsibleSection(
       storageKey: 'sub.macip',
       icon: Icons.lock_outline,
-      title: 'القفل: MAC / IP',
+      title: 'الشبكة وقيود الاتصال',
       initiallyExpanded: false,
       child: Column(
         children: [
@@ -268,8 +309,396 @@ class SubscriberLockSection extends StatelessWidget {
             child: TextFormField(controller: controllers['mac_lock']),
           ),
           FormFieldRow(
+            label: 'العناوين المسموحة (MAC)',
+            hint: 'قِيَم MAC مفصولة بفواصل',
+            child: TextFormField(controller: controllers['allowed_macs']),
+          ),
+          FormFieldRow(
             label: 'IP ثابت',
             child: TextFormField(controller: controllers['static_ip']),
+          ),
+          FormFieldRow(
+            label: 'عدد الأجهزة المسموحة',
+            hint: 'الحد الأقصى للجلسات المتزامنة',
+            child: _NumField(controller: controllers['device_count']!),
+          ),
+          FormFieldRow(
+            label: 'VLAN',
+            child: _NumField(controller: controllers['vlan_id']!),
+          ),
+          FormFieldRow(
+            label: 'ملف اتصال الجهاز',
+            child:
+                TextFormField(controller: controllers['device_connection_file']),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Management section — manager (dropdown of admins), group, pool, balance.
+class SubscriberManagementSection extends ConsumerWidget {
+  const SubscriberManagementSection({
+    super.key,
+    required this.controllers,
+    required this.managerId,
+    required this.onManagerChanged,
+  });
+
+  final Map<String, TextEditingController> controllers;
+  final int? managerId;
+  final ValueChanged<int?> onManagerChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final admins = ref.watch(adminsListProvider);
+    return CollapsibleSection(
+      storageKey: 'sub.management',
+      icon: Icons.manage_accounts_outlined,
+      title: 'الإدارة والربط',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          FormFieldRow(
+            label: 'المدير المسؤول',
+            hint: 'اختر المدير الذي يتابع هذا الحساب',
+            child: admins.when(
+              loading: () => const LinearProgressIndicator(),
+              error: (_, __) => TextFormField(
+                initialValue: managerId?.toString() ?? '',
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  hintText: 'رقم المدير (تعذّر جلب القائمة)',
+                ),
+                onChanged: (v) => onManagerChanged(int.tryParse(v.trim())),
+              ),
+              data: (list) => DropdownButtonFormField<int?>(
+                initialValue: list.any((a) => a.id == managerId)
+                    ? managerId
+                    : null,
+                items: [
+                  const DropdownMenuItem<int?>(
+                    value: null,
+                    child: Text('بدون مدير'),
+                  ),
+                  for (final a in list)
+                    DropdownMenuItem<int?>(
+                      value: a.id,
+                      child: Text(
+                        a.fullName.isEmpty ? a.username : a.fullName,
+                      ),
+                    ),
+                ],
+                onChanged: onManagerChanged,
+              ),
+            ),
+          ),
+          FormFieldRow(
+            label: 'المجموعة',
+            hint: 'اسم مجموعة المشتركين',
+            child: TextFormField(controller: controllers['group']),
+          ),
+          FormFieldRow(
+            label: 'مجموعة العناوين (Pool)',
+            child: TextFormField(controller: controllers['pool']),
+          ),
+          FormFieldRow(
+            label: 'الرصيد',
+            hint: 'رصيد الحساب الحالي',
+            child: _NumField(controller: controllers['balance']!),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Personal information section.
+class SubscriberPersonalSection extends StatelessWidget {
+  const SubscriberPersonalSection({
+    super.key,
+    required this.controllers,
+    required this.accountType,
+    required this.onAccountTypeChanged,
+  });
+
+  final Map<String, TextEditingController> controllers;
+  final String accountType;
+  final ValueChanged<String> onAccountTypeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return CollapsibleSection(
+      storageKey: 'sub.personal',
+      icon: Icons.badge_outlined,
+      title: 'المعلومات الشخصية',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          FormFieldRow(
+            label: 'نوع الحساب',
+            child: DropdownButtonFormField<String>(
+              initialValue:
+                  accountType == 'Business' ? 'Business' : 'Personal',
+              items: const [
+                DropdownMenuItem(value: 'Personal', child: Text('شخصي')),
+                DropdownMenuItem(value: 'Business', child: Text('تجاري')),
+              ],
+              onChanged: (v) => onAccountTypeChanged(v ?? 'Personal'),
+            ),
+          ),
+          FormFieldRow(
+            label: 'اسم الأب',
+            child: TextFormField(controller: controllers['father_name']),
+          ),
+          FormFieldRow(
+            label: 'الرقم الوطني',
+            child: TextFormField(controller: controllers['national_id']),
+          ),
+          FormFieldRow(
+            label: 'الجنسية',
+            child: TextFormField(controller: controllers['nationality']),
+          ),
+          FormFieldRow(
+            label: 'الدولة',
+            child: TextFormField(controller: controllers['country']),
+          ),
+          FormFieldRow(
+            label: 'المدينة',
+            child: TextFormField(controller: controllers['city']),
+          ),
+          FormFieldRow(
+            label: 'المنطقة / الحي',
+            child: TextFormField(controller: controllers['district']),
+          ),
+          FormFieldRow(
+            label: 'العنوان',
+            child: TextFormField(controller: controllers['address']),
+          ),
+          FormFieldRow(
+            label: 'المحافظة / الولاية',
+            child: TextFormField(controller: controllers['state']),
+          ),
+          FormFieldRow(
+            label: 'الرمز البريدي',
+            child: TextFormField(controller: controllers['zip']),
+          ),
+          FormFieldRow(
+            label: 'الإحداثيات',
+            hint: 'lat,lng',
+            child: TextFormField(controller: controllers['coordinates']),
+          ),
+          FormFieldRow(
+            label: 'طريقة الدفع المفضلة',
+            child: TextFormField(controller: controllers['payment_method']),
+          ),
+          FormFieldRow(
+            label: 'مرجع الدفع',
+            child: TextFormField(controller: controllers['payment_reference']),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Speed-override section (mirrors web "السرعة").
+class SubscriberSpeedSection extends StatelessWidget {
+  const SubscriberSpeedSection({
+    super.key,
+    required this.controllers,
+    required this.bandwidthControlEnabled,
+    required this.onBandwidthControlChanged,
+    required this.customSpeed,
+    required this.onCustomSpeedChanged,
+    required this.temporarySpeed,
+    required this.onTemporarySpeedChanged,
+  });
+
+  final Map<String, TextEditingController> controllers;
+  final bool bandwidthControlEnabled;
+  final ValueChanged<bool> onBandwidthControlChanged;
+  final bool customSpeed;
+  final ValueChanged<bool> onCustomSpeedChanged;
+  final bool temporarySpeed;
+  final ValueChanged<bool> onTemporarySpeedChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return CollapsibleSection(
+      storageKey: 'sub.speed',
+      icon: Icons.speed_outlined,
+      title: 'السرعة',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          FormFieldRow(
+            label: 'سرعة أساسية مخصّصة',
+            hint: 'قيم ثابتة تتجاوز سرعة الباقة',
+            child: HubToggleSwitch(
+              value: bandwidthControlEnabled,
+              onChanged: onBandwidthControlChanged,
+            ),
+          ),
+          FormFieldRow(
+            label: 'تفعيل السرعة المخصصة',
+            hint: 'فعّلها لتطبيق سرعة خاصة بدل سرعة الباقة',
+            child: HubToggleSwitch(
+              value: customSpeed,
+              onChanged: onCustomSpeedChanged,
+            ),
+          ),
+          FormFieldRow(
+            label: 'سرعة التنزيل (kbps)',
+            hint: '0 = استخدم قيمة الباقة',
+            child: _NumField(controller: controllers['download_speed_kbps']!),
+          ),
+          FormFieldRow(
+            label: 'سرعة الرفع (kbps)',
+            hint: '0 = استخدم قيمة الباقة',
+            child: _NumField(controller: controllers['upload_speed_kbps']!),
+          ),
+          FormFieldRow(
+            label: 'سرعة مؤقتة',
+            hint: 'رفع مؤقت بدون تغيير الباقة',
+            child: HubToggleSwitch(
+              value: temporarySpeed,
+              onChanged: onTemporarySpeedChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Quota + connection-time limits section (mirrors web "الحصة والوقت").
+class SubscriberQuotaSection extends StatelessWidget {
+  const SubscriberQuotaSection({
+    super.key,
+    required this.controllers,
+    required this.quotaLimitEnabled,
+    required this.onQuotaLimitChanged,
+    required this.connectionTimeLimitEnabled,
+    required this.onConnectionTimeLimitChanged,
+    required this.equalShareDownload,
+    required this.onEqualShareDownloadChanged,
+    required this.equalShareUpload,
+    required this.onEqualShareUploadChanged,
+  });
+
+  final Map<String, TextEditingController> controllers;
+  final bool quotaLimitEnabled;
+  final ValueChanged<bool> onQuotaLimitChanged;
+  final bool connectionTimeLimitEnabled;
+  final ValueChanged<bool> onConnectionTimeLimitChanged;
+  final bool equalShareDownload;
+  final ValueChanged<bool> onEqualShareDownloadChanged;
+  final bool equalShareUpload;
+  final ValueChanged<bool> onEqualShareUploadChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return CollapsibleSection(
+      storageKey: 'sub.quota',
+      icon: Icons.data_usage_outlined,
+      title: 'الحصة والوقت',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          FormFieldRow(
+            label: 'كوتا مدمجة (MB)',
+            hint: 'تحلّ محل كوتا التنزيل/الرفع. 0 = غير محدودة',
+            child: _NumField(controller: controllers['combined_quota_mb']!),
+          ),
+          FormFieldRow(
+            label: 'كوتا التنزيل (MB)',
+            hint: '0 = غير محدودة',
+            child: _NumField(controller: controllers['download_quota_mb']!),
+          ),
+          FormFieldRow(
+            label: 'كوتا الرفع (MB)',
+            hint: '0 = غير محدودة',
+            child: _NumField(controller: controllers['upload_quota_mb']!),
+          ),
+          FormFieldRow(
+            label: 'إجمالي وقت الاتصال (دقيقة)',
+            hint: '0 = بلا حد',
+            child:
+                _NumField(controller: controllers['total_connection_time_min']!),
+          ),
+          FormFieldRow(
+            label: 'وقت الاتصال اليومي (دقيقة)',
+            hint: '0 = بلا حد',
+            child:
+                _NumField(controller: controllers['daily_connection_time_min']!),
+          ),
+          FormFieldRow(
+            label: 'تطبيق حد الكوتا',
+            child: HubToggleSwitch(
+              value: quotaLimitEnabled,
+              onChanged: onQuotaLimitChanged,
+            ),
+          ),
+          FormFieldRow(
+            label: 'تطبيق حد وقت الاتصال',
+            child: HubToggleSwitch(
+              value: connectionTimeLimitEnabled,
+              onChanged: onConnectionTimeLimitChanged,
+            ),
+          ),
+          FormFieldRow(
+            label: 'توزيع متساوٍ للتنزيل',
+            child: HubToggleSwitch(
+              value: equalShareDownload,
+              onChanged: onEqualShareDownloadChanged,
+            ),
+          ),
+          FormFieldRow(
+            label: 'توزيع متساوٍ للرفع',
+            child: HubToggleSwitch(
+              value: equalShareUpload,
+              onChanged: onEqualShareUploadChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// PPPoE / broadband section (mirrors web "البرودباند").
+class SubscriberPppoeSection extends StatelessWidget {
+  const SubscriberPppoeSection({super.key, required this.controllers});
+
+  final Map<String, TextEditingController> controllers;
+
+  @override
+  Widget build(BuildContext context) {
+    return CollapsibleSection(
+      storageKey: 'sub.pppoe',
+      icon: Icons.cable_outlined,
+      title: 'البرودباند (PPPoE)',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          FormFieldRow(
+            label: 'اسم دخول البرودباند',
+            hint: 'اتركه فارغًا لاستخدام اسم الدخول الأساسي',
+            child: TextFormField(controller: controllers['pppoe_username']),
+          ),
+          FormFieldRow(
+            label: 'كلمة مرور البرودباند',
+            hint: 'اتركها فارغة لاستخدام كلمة المرور الأساسية',
+            child: TextFormField(
+              controller: controllers['pppoe_password'],
+              obscureText: true,
+            ),
+          ),
+          FormFieldRow(
+            label: 'عنوان البرودباند',
+            child: TextFormField(controller: controllers['pppoe_ip']),
           ),
         ],
       ),
