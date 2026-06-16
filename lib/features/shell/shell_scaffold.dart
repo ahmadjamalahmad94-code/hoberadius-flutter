@@ -4,10 +4,15 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/tokens.dart';
+import '../../shared/widgets/responsive_layout.dart';
 import 'navigation_schema.dart';
 
-/// Adaptive shell: bottom nav on phones, NavigationRail on tablets/desktop,
-/// extended rail (sidebar-style) on wide web/desktop screens.
+/// Adaptive shell. The full web-style sidebar persists on desktop AND
+/// tablet-landscape; it collapses to an icon rail on narrow desktop / large
+/// tablet-portrait, and only genuinely narrow (phone) viewports fall back to
+/// the bottom-nav layout. The decision is width-based via
+/// [shellLayoutModeForWidth] — shrinking a desktop window somewhat no longer
+/// drops the whole sidebar.
 class ShellScaffold extends ConsumerWidget {
   const ShellScaffold({super.key, required this.child});
   final Widget child;
@@ -15,9 +20,11 @@ class ShellScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.sizeOf(context).width;
-    if (width >= AppTokens.bpDesktop) return _Wide(child: child);
-    if (width >= AppTokens.bpTablet) return _Rail(child: child);
-    return _Mobile(child: child);
+    return switch (shellLayoutModeForWidth(width)) {
+      ShellLayoutMode.fullSidebar => _Wide(child: child),
+      ShellLayoutMode.iconRail => _Wide(compact: true, child: child),
+      ShellLayoutMode.drawer => _Mobile(child: child),
+    };
   }
 }
 
@@ -58,54 +65,10 @@ class _Mobile extends ConsumerWidget {
   }
 }
 
-class _Rail extends StatelessWidget {
-  const _Rail({required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    final idx = _indexOfRoute(location);
-    return Scaffold(
-      body: SafeArea(
-        child: Row(
-          children: [
-            NavigationRail(
-              extended: false,
-              selectedIndex: idx,
-              onDestinationSelected: (i) => _onTap(context, i),
-              labelType: NavigationRailLabelType.all,
-              backgroundColor: AppTokens.sidebarBg,
-              selectedIconTheme: const IconThemeData(color: AppTokens.brand),
-              unselectedIconTheme:
-                  const IconThemeData(color: AppTokens.sidebarText),
-              selectedLabelTextStyle: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
-              unselectedLabelTextStyle:
-                  const TextStyle(color: AppTokens.sidebarText),
-              destinations: mobileNavDestinations
-                  .map(
-                    (d) => NavigationRailDestination(
-                      icon: Icon(d.icon),
-                      label: Text(d.label),
-                    ),
-                  )
-                  .toList(),
-            ),
-            const VerticalDivider(width: 1),
-            Expanded(child: _ContentArea(child: child)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _Wide extends ConsumerWidget {
-  const _Wide({required this.child});
+  const _Wide({required this.child, this.compact = false});
   final Widget child;
+  final bool compact;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -114,7 +77,11 @@ class _Wide extends ConsumerWidget {
     return Scaffold(
       body: Row(
         children: [
-          _WebSidebar(location: location, admin: auth.admin),
+          _WebSidebar(
+            location: location,
+            admin: auth.admin,
+            compact: compact,
+          ),
           Expanded(
             child: _ContentArea(
               showTopBar: true,
@@ -129,9 +96,18 @@ class _Wide extends ConsumerWidget {
 }
 
 class _WebSidebar extends StatefulWidget {
-  const _WebSidebar({required this.location, this.admin});
+  const _WebSidebar({
+    required this.location,
+    this.admin,
+    this.compact = false,
+  });
   final String location;
   final AuthAdmin? admin;
+
+  /// When true the sidebar starts collapsed to its icon rail (the shell's
+  /// middle-width band). Crossing the breakpoint syncs the collapsed state, but
+  /// the user can still toggle manually within a band.
+  final bool compact;
 
   @override
   State<_WebSidebar> createState() => _WebSidebarState();
@@ -146,12 +122,23 @@ class _WebSidebarState extends State<_WebSidebar> {
   static const _iconBg = Color(0xFFEBE7F4);
   static const _brand = Color(0xFF6B5AED);
 
-  bool _collapsed = false;
+  late bool _collapsed = widget.compact;
   final Set<String> _openSections = {
     'subscribers',
     'cards',
     'plans',
   };
+
+  @override
+  void didUpdateWidget(_WebSidebar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Crossing the full ⇄ rail breakpoint resyncs the collapsed state so a
+    // resized window lands in the right mode; manual toggles inside a band are
+    // preserved because `compact` doesn't change within a band.
+    if (widget.compact != oldWidget.compact) {
+      _collapsed = widget.compact;
+    }
+  }
 
   void _toggleSection(AppNavSection section) {
     if (_collapsed) {
@@ -185,50 +172,72 @@ class _WebSidebarState extends State<_WebSidebar> {
             decoration: const BoxDecoration(
               border: Border(bottom: BorderSide(color: _sidebarBorder)),
             ),
-            alignment: Alignment.centerRight,
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: _brand,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.wifi_tethering,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                ),
-                if (!_collapsed) ...[
-                  const SizedBox(width: AppTokens.s12),
-                  const Expanded(
-                    child: Text(
-                      'Hobe Hub',
-                      style: TextStyle(
-                        color: _sidebarText,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 18,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+            alignment: Alignment.center,
+            child: _collapsed
+                // Collapsed rail: the brand chip itself is the expand button —
+                // a separate toggle won't fit in the 72px rail.
+                ? IconButton(
+                    tooltip: 'توسيع القائمة',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints.tightFor(
+                      width: 36,
+                      height: 36,
                     ),
+                    onPressed: () => setState(() => _collapsed = false),
+                    icon: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: _brand,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(
+                        Icons.wifi_tethering,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: _brand,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.wifi_tethering,
+                          color: Colors.white,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: AppTokens.s12),
+                      const Expanded(
+                        child: Text(
+                          'Hobe Hub',
+                          style: TextStyle(
+                            color: _sidebarText,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'تصغير القائمة',
+                        onPressed: () => setState(() => _collapsed = true),
+                        icon: const Icon(
+                          Icons.keyboard_double_arrow_right,
+                          color: _sidebarMuted,
+                          size: 18,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-                IconButton(
-                  tooltip: _collapsed ? 'توسيع القائمة' : 'تصغير القائمة',
-                  onPressed: () => setState(() => _collapsed = !_collapsed),
-                  icon: Icon(
-                    _collapsed
-                        ? Icons.keyboard_double_arrow_left
-                        : Icons.keyboard_double_arrow_right,
-                    color: _sidebarMuted,
-                    size: 18,
-                  ),
-                ),
-              ],
-            ),
           ),
           Expanded(
             child: ListView(
@@ -551,9 +560,9 @@ class _DesktopTopBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       height: AppTokens.topbarHeight,
-      color: AppTokens.card,
       padding: const EdgeInsets.symmetric(horizontal: AppTokens.s20),
       decoration: const BoxDecoration(
+        color: AppTokens.card,
         border: Border(bottom: BorderSide(color: AppTokens.border)),
       ),
       child: Row(

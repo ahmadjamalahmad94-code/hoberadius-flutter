@@ -2,6 +2,32 @@ import 'package:flutter/material.dart';
 
 import '../../core/theme/tokens.dart';
 
+/// Which navigation chrome the app shell renders for a given viewport width.
+///
+/// The decision is purely width-based (the owner's requirement): a desktop
+/// window shrunk somewhat — or a tablet in landscape — keeps the full web-style
+/// sidebar, and only genuinely narrow viewports fall back to the phone layout.
+enum ShellLayoutMode {
+  /// Full expanded sidebar (desktop + tablet-landscape).
+  fullSidebar,
+
+  /// Same sidebar component, collapsed to an icon rail (narrow desktop /
+  /// large tablet-portrait). All groups stay reachable via tooltips.
+  iconRail,
+
+  /// Phone layout — bottom navigation bar.
+  drawer,
+}
+
+/// Maps a viewport [width] to the shell navigation mode using the
+/// `AppTokens.bpSidebar*` breakpoints. Pure + side-effect free so the shell
+/// decision is unit-testable without pumping a widget tree.
+ShellLayoutMode shellLayoutModeForWidth(double width) {
+  if (width >= AppTokens.bpSidebarFull) return ShellLayoutMode.fullSidebar;
+  if (width >= AppTokens.bpSidebarRail) return ShellLayoutMode.iconRail;
+  return ShellLayoutMode.drawer;
+}
+
 /// Lightweight responsive helper for list/detail-style screens.
 ///
 /// On phones (≤ AppTokens.bpTablet) renders [list] full-width.
