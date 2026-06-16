@@ -129,6 +129,7 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                           item: item,
                           busy: _busy,
                           onRestore: () => _restore(item),
+                          onArchive: () => _archive(item),
                         ),
                         const SizedBox(height: AppTokens.s12),
                       ],
@@ -190,12 +191,23 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                                   ),
                                 ),
                                 DataCell(
-                                  TextButton.icon(
-                                    onPressed: _busy || !item.restoreAllowed
-                                        ? null
-                                        : () => _restore(item),
-                                    icon: const Icon(Icons.restore),
-                                    label: const Text('استعادة'),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextButton.icon(
+                                        onPressed: _busy || !item.restoreAllowed
+                                            ? null
+                                            : () => _restore(item),
+                                        icon: const Icon(Icons.restore),
+                                        label: const Text('استعادة'),
+                                      ),
+                                      TextButton.icon(
+                                        onPressed:
+                                            _busy ? null : () => _archive(item),
+                                        icon: const Icon(Icons.inventory_2_outlined),
+                                        label: const Text('أرشفة'),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
@@ -249,6 +261,45 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
       if (mounted) setState(() => _busy = false);
     }
   }
+
+  Future<void> _archive(RecycleBinItem item) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('أرشفة نهائية'),
+        content: Text(
+          'سيتم نقل "${item.label}" إلى الأرشيف النهائي. لا يمكن استعادته بعدها '
+          'من سلة المحذوفات.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('أرشفة'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    setState(() => _busy = true);
+    try {
+      await ref.read(recycleBinRepositoryProvider).archive(item);
+      ref.invalidate(_recycleProvider(_entityType));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تمت الأرشفة')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 }
 
 class _RecycleCard extends StatelessWidget {
@@ -256,11 +307,13 @@ class _RecycleCard extends StatelessWidget {
     required this.item,
     required this.busy,
     required this.onRestore,
+    required this.onArchive,
   });
 
   final RecycleBinItem item;
   final bool busy;
   final VoidCallback onRestore;
+  final VoidCallback onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -304,13 +357,20 @@ class _RecycleCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppTokens.s12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: busy || !item.restoreAllowed ? null : onRestore,
-              icon: const Icon(Icons.restore),
-              label: const Text('استعادة'),
-            ),
+          Wrap(
+            spacing: AppTokens.s8,
+            children: [
+              OutlinedButton.icon(
+                onPressed: busy || !item.restoreAllowed ? null : onRestore,
+                icon: const Icon(Icons.restore),
+                label: const Text('استعادة'),
+              ),
+              OutlinedButton.icon(
+                onPressed: busy ? null : onArchive,
+                icon: const Icon(Icons.inventory_2_outlined),
+                label: const Text('أرشفة'),
+              ),
+            ],
           ),
         ],
       ),

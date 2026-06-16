@@ -26,6 +26,12 @@ class RecycleBinRepository {
     await _api
         .post('/api/v1/recycle-bin/${item.entityType}/${item.id}/restore');
   }
+
+  /// Permanently archives a soft-deleted item (web recycle_bin archive).
+  Future<void> archive(RecycleBinItem item) async {
+    await _api
+        .post('/api/v1/recycle-bin/${item.entityType}/${item.id}/archive');
+  }
 }
 
 final recycleBinRepositoryProvider = Provider<RecycleBinRepository>((ref) {

@@ -28,6 +28,21 @@
   quick-filter — `/api/v1/sessions/online` doesn't return per-session speed
   data (computed server-side in the web template).
 
+## Client-side follow-ups (API EXISTS — needs a new Flutter screen, NOT API-first)
+- **Store admin console** — `store.py` (1027 ln) + `store_support.html`:
+  packages, deposits (list/create/approve), withdrawals, chat. Large new
+  screen.
+- **Business-operators console** — wire `business_os` `POST /finance/ledger/
+  corrections` and `/pricing/snapshots` (GET/POST) into a dedicated console.
+- **Company inventory & expenses** — `company_inventory_expenses.html`.
+- **Print-templates editable designer** — gradient/pattern/preset/colors/
+  fonts/logo/QR-style controls; revive `bg_image_picker`; logo element +
+  portrait position table + render-engine RTL composition profiles +
+  `pattern_color/opacity` (CardBackground model fields).
+- **MikroTik control UI** — disconnect buttons on active lists, simple-queue
+  edit dialog, address-list management UI, `/health` risk panel, file
+  download, live-traffic SSE (repository methods already wired in P1f).
+
 ## MikroTik (web-only pages, no `/api/v1`)
 - `mt_topology` (network topology), `mt_login_designer` (hotspot login page
   designer), `mt_programming` (router script programming), `mt_audit_timeline`,
