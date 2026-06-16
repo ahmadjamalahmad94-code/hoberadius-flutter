@@ -1,3 +1,33 @@
+# RESUME HERE — client-side backlog remaining (branch feat/parity-p1-daily-ops)
+
+Done this session: print-templates **editable designer** (render engine
+byte-faithful: portrait/RTL/engine/logo/QR/credential + designer UI + revived
+bg-picker), store console **reclassified → API-first**, mikrotik **/health
+risk panel**, admin **avatar_url** field.
+
+Still to build (all have a working admin `/api/v1`; just need Flutter UI):
+1. **Business-operators console (item 3)** — `business_os` admin endpoints
+   (require_api_token): `POST /finance/ledger/corrections`,
+   `GET|POST /pricing/snapshots`. Needs model + repo + screen + route + nav
+   entry. (company_inventory_expenses.html → verify it has a v1 API; likely
+   web-only → API-first.)
+2. **Operational-reports bespoke UX (item 5)** — per-slug tailored columns/
+   date-filters/drill-downs over the existing 15 `/operational-reports`
+   slugs, + a reports_center hub (KPI hero + catalog). Data already wired in
+   `operational_reports` (generic table).
+3. **Per-permission Arabic labels (item 5)** — map raw permission keys via a
+   `_perm_labels` catalogue in `role_form_screen` (the permissions API may
+   expose labels; otherwise hardcode the catalogue).
+4. **Deeper mikrotik control UI (item 4)** — per-row disconnect on active
+   hotspot/ppp lists, simple-queue edit dialog, address-list CRUD UI, file
+   download. Repo methods already exist (P1f: disconnectHotspotSession/
+   disconnectPppSession/setSimpleQueue/add+removeAddressListEntry). Requires
+   threading routerId+ref+section-type into the generic `_LiveSectionCard`.
+5. **Print-designer minor** — `pattern_color`/`pattern_opacity` (add to
+   CardBackground model + SVG adapter); optional drag-canvas for positions.
+
+---
+
 # API-First Backlog — Flutter parity items needing a NEW web-side API
 
 > Every item here is a parity gap the Flutter app **cannot** close until the

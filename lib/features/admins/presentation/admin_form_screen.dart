@@ -29,6 +29,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
   final _password = TextEditingController();
   final _passwordConfirm = TextEditingController();
   final _tags = TextEditingController();
+  final _avatar = TextEditingController();
 
   int? _roleId;
   bool _isSuperAdmin = false;
@@ -55,6 +56,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       _password,
       _passwordConfirm,
       _tags,
+      _avatar,
     ]) {
       c.dispose();
     }
@@ -82,6 +84,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
     _mobile.text = a.mobile;
     _phone.text = a.phone;
     _tags.text = a.tags;
+    _avatar.text = a.avatarUrl;
     setState(() {
       _roleId = a.roleId;
       _isSuperAdmin = a.isSuperAdmin;
@@ -98,6 +101,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       mobile: _mobile.text.trim(),
       phone: _phone.text.trim(),
       tags: _tags.text.trim(),
+      avatarUrl: _avatar.text.trim(),
       roleId: _roleId,
       clearRoleId: _roleId == null,
       isSuperAdmin: _isSuperAdmin,
@@ -248,7 +252,15 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                   child: TextFormField(controller: _phone),
                 ),
                 FormFieldRow(
-                  label: 'الوسوم',
+                  label: 'رابط الصورة الرمزية',
+                  hint: 'https://…',
+                  child: TextFormField(
+                    controller: _avatar,
+                    textDirection: TextDirection.ltr,
+                  ),
+                ),
+                FormFieldRow(
+                  label: 'الوسوم والملاحظات',
                   hint: 'قِيَم مفصولة بفواصل',
                   child: TextFormField(controller: _tags),
                 ),
