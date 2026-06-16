@@ -6,11 +6,11 @@ bg-picker), store console **reclassified → API-first**, mikrotik **/health
 risk panel**, admin **avatar_url** field.
 
 Still to build (all have a working admin `/api/v1`; just need Flutter UI):
-1. **Business-operators console (item 3)** — `business_os` admin endpoints
-   (require_api_token): `POST /finance/ledger/corrections`,
-   `GET|POST /pricing/snapshots`. Needs model + repo + screen + route + nav
-   entry. (company_inventory_expenses.html → verify it has a v1 API; likely
-   web-only → API-first.)
+1. ✅ **Business-operators console** — DONE. `lib/features/business_ops/`
+   (model+repo+screen), route `/business-ops` + nav entry under finance.
+   Wires `GET /business/summary` (KPI hero), `GET /finance/ledger` +
+   `POST /finance/ledger/corrections`, `GET|POST /pricing/snapshots`. Test:
+   `test/business_ops_repository_test.dart`.
 2. **Operational-reports bespoke UX (item 5)** — per-slug tailored columns/
    date-filters/drill-downs over the existing 15 `/operational-reports`
    slugs, + a reports_center hub (KPI hero + catalog). Data already wired in

@@ -301,6 +301,14 @@ const appNavSections = <AppNavSection>[
         path: '/operational-reports',
         description: 'جلسات، محاولات دخول، أحداث، وسجل تشغيل.',
       ),
+      AppNavItem(
+        icon: Icons.business_center_outlined,
+        label: 'مشغّلو الأعمال',
+        routeName: 'business-ops',
+        path: '/business-ops',
+        description:
+            'السجل المالي للأعمال، قيود التصحيح، ولقطات التسعير الثابتة.',
+      ),
     ],
   ),
   AppNavSection(

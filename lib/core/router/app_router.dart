@@ -24,6 +24,7 @@ import '../../features/vouchers/presentation/vouchers_screen.dart';
 import '../../features/wallets/presentation/wallets_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/backups/presentation/backups_screen.dart';
+import '../../features/business_ops/presentation/business_ops_screen.dart';
 import '../../features/bandwidth_schedules/presentation/bandwidth_schedules_screen.dart';
 import '../../features/card_users/presentation/card_user_360_screen.dart';
 import '../../features/card_users/presentation/card_users_screen.dart';
@@ -432,6 +433,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/operational-reports',
             name: 'operational-reports',
             builder: (ctx, st) => const OperationalReportsScreen(),
+          ),
+          GoRoute(
+            path: '/business-ops',
+            name: 'business-ops',
+            builder: (ctx, st) => const BusinessOpsScreen(),
           ),
           GoRoute(
             path: '/events',
