@@ -26,11 +26,13 @@ Still to build (all have a working admin `/api/v1`; just need Flutter UI):
    GROUP_META icon/colours). `role_form_screen` now shows the Arabic label per
    chip (raw key in tooltip) + group icon/label. Test:
    `permission_labels_test`.
-4. **Deeper mikrotik control UI (item 4)** — per-row disconnect on active
-   hotspot/ppp lists, simple-queue edit dialog, address-list CRUD UI, file
-   download. Repo methods already exist (P1f: disconnectHotspotSession/
-   disconnectPppSession/setSimpleQueue/add+removeAddressListEntry). Requires
-   threading routerId+ref+section-type into the generic `_LiveSectionCard`.
+4. ✅ **Deeper mikrotik control UI** — DONE. Threaded routerId+onChanged into
+   `_LiveSnapshotPanel`→`_LiveSectionCard`→`_RouterRowPreview` and added a
+   `_RouterRowActions` consumer that renders per-section controls: disconnect
+   on hotspot_active/ppp_active (reads row `.id`), simple-queue edit dialog
+   (max-limit + disable), address-list delete + section-level add dialog, and
+   file download (new repo `downloadRouterFile` → FileSaver). Test:
+   `mikrotik_repository_control_test`.
 5. **Print-designer minor** — `pattern_color`/`pattern_opacity` (add to
    CardBackground model + SVG adapter); optional drag-canvas for positions.
 

@@ -37,17 +37,14 @@ class MikrotikConfigCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: config.enabled
-                      ? AppTokens.brandSoft
-                      : AppTokens.slate100,
+                  color:
+                      config.enabled ? AppTokens.brandSoft : AppTokens.slate100,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 alignment: Alignment.center,
                 child: Icon(
                   Icons.router_outlined,
-                  color: config.enabled
-                      ? AppTokens.brand
-                      : AppTokens.textMuted,
+                  color: config.enabled ? AppTokens.brand : AppTokens.textMuted,
                   size: 20,
                 ),
               ),

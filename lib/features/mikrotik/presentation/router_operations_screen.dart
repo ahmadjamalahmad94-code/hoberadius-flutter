@@ -1,3 +1,4 @@
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -110,8 +111,7 @@ class _RouterOperationsScreenState
               OutlinedButton.icon(
                 onPressed: () => showDialog<void>(
                   context: context,
-                  builder: (_) =>
-                      _DiagnosticsDialog(routerId: selected.id!),
+                  builder: (_) => _DiagnosticsDialog(routerId: selected.id!),
                 ),
                 icon: const Icon(Icons.troubleshoot_outlined),
                 label: const Text('تشخيص'),
@@ -174,6 +174,7 @@ class _RouterOperationsScreenState
             ),
           ),
           data: (snapshot) => _LiveSnapshotPanel(
+            routerId: selected.id!,
             snapshot: snapshot,
             onRefresh: () => ref.invalidate(
               mikrotikLiveSnapshotProvider(selected.id!),
@@ -969,10 +970,12 @@ class _InfoChip extends StatelessWidget {
 
 class _LiveSnapshotPanel extends StatelessWidget {
   const _LiveSnapshotPanel({
+    required this.routerId,
     required this.snapshot,
     required this.onRefresh,
   });
 
+  final int routerId;
   final MikrotikLiveSnapshot snapshot;
   final VoidCallback onRefresh;
 
@@ -1027,7 +1030,11 @@ class _LiveSnapshotPanel extends StatelessWidget {
             final wide = constraints.maxWidth >= 960;
             final cards = [
               for (final section in snapshot.sections)
-                _LiveSectionCard(section: section),
+                _LiveSectionCard(
+                  routerId: routerId,
+                  section: section,
+                  onChanged: onRefresh,
+                ),
             ];
             if (!wide) {
               return Column(
@@ -1056,9 +1063,15 @@ class _LiveSnapshotPanel extends StatelessWidget {
 }
 
 class _LiveSectionCard extends StatelessWidget {
-  const _LiveSectionCard({required this.section});
+  const _LiveSectionCard({
+    required this.routerId,
+    required this.section,
+    required this.onChanged,
+  });
 
+  final int routerId;
   final MikrotikLiveSection section;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1074,6 +1087,8 @@ class _LiveSectionCard extends StatelessWidget {
         ),
         if (section.cached)
           const StatusPill(text: 'من الذاكرة المؤقتة', tone: PillTone.neutral),
+        if (section.key == 'address_lists' && section.ok)
+          _AddAddressListButton(routerId: routerId, onChanged: onChanged),
       ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1108,7 +1123,12 @@ class _LiveSectionCard extends StatelessWidget {
             Column(
               children: [
                 for (final row in rows) ...[
-                  _RouterRowPreview(sectionKey: section.key, row: row),
+                  _RouterRowPreview(
+                    routerId: routerId,
+                    sectionKey: section.key,
+                    row: row,
+                    onChanged: onChanged,
+                  ),
                   const SizedBox(height: AppTokens.s8),
                 ],
                 if (section.rows.length > rows.length)
@@ -1152,12 +1172,16 @@ class _MiniFact extends StatelessWidget {
 
 class _RouterRowPreview extends StatelessWidget {
   const _RouterRowPreview({
+    required this.routerId,
     required this.sectionKey,
     required this.row,
+    required this.onChanged,
   });
 
+  final int routerId;
   final String sectionKey;
   final Map<String, dynamic> row;
+  final VoidCallback onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -1169,7 +1193,437 @@ class _RouterRowPreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTokens.r10),
         border: Border.all(color: AppTokens.border),
       ),
-      child: _KeyValueGrid(values: values),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: _KeyValueGrid(values: values)),
+          _RouterRowActions(
+            routerId: routerId,
+            sectionKey: sectionKey,
+            row: row,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Reads the MikroTik internal id (`.id`) from a live row; falls back to `id`.
+String? _rowMikrotikId(Map<String, dynamic> row) {
+  final raw = row['.id'] ?? row['id'];
+  final value = raw?.toString().trim() ?? '';
+  return value.isEmpty ? null : value;
+}
+
+/// Per-row control surface for the live sections — only the sections whose web
+/// `/api/v1/mikrotik/<id>/…` mutations exist render a button (disconnect /
+/// queue edit / address-list delete / file download). Everything else is
+/// read-only and shows nothing.
+class _RouterRowActions extends ConsumerStatefulWidget {
+  const _RouterRowActions({
+    required this.routerId,
+    required this.sectionKey,
+    required this.row,
+    required this.onChanged,
+  });
+
+  final int routerId;
+  final String sectionKey;
+  final Map<String, dynamic> row;
+  final VoidCallback onChanged;
+
+  @override
+  ConsumerState<_RouterRowActions> createState() => _RouterRowActionsState();
+}
+
+class _RouterRowActionsState extends ConsumerState<_RouterRowActions> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final id = _rowMikrotikId(widget.row);
+    final Widget? button = switch (widget.sectionKey) {
+      'hotspot_active' || 'ppp_active' when id != null => IconButton(
+          tooltip: 'قطع الجلسة',
+          visualDensity: VisualDensity.compact,
+          color: AppTokens.redInk,
+          onPressed: _busy ? null : () => _disconnect(id),
+          icon: const Icon(Icons.link_off, size: 18),
+        ),
+      'queues' when id != null => IconButton(
+          tooltip: 'تعديل الطابور',
+          visualDensity: VisualDensity.compact,
+          onPressed: _busy ? null : () => _editQueue(id),
+          icon: const Icon(Icons.tune, size: 18),
+        ),
+      'address_lists' when id != null => IconButton(
+          tooltip: 'حذف العنصر',
+          visualDensity: VisualDensity.compact,
+          color: AppTokens.redInk,
+          onPressed: _busy ? null : () => _removeAddress(id),
+          icon: const Icon(Icons.delete_outline, size: 18),
+        ),
+      'files' => IconButton(
+          tooltip: 'تنزيل الملف',
+          visualDensity: VisualDensity.compact,
+          onPressed: _busy ? null : _downloadFile,
+          icon: const Icon(Icons.download_outlined, size: 18),
+        ),
+      _ => null,
+    };
+    if (button == null) return const SizedBox.shrink();
+    if (_busy) {
+      return const Padding(
+        padding: EdgeInsets.all(8),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+    return button;
+  }
+
+  Future<void> _run(Future<MikrotikActionResult> Function() action) async {
+    setState(() => _busy = true);
+    try {
+      final result = await action();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.visibleMessage)),
+      );
+      if (result.ok) widget.onChanged();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(visibleErrorMessage(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _disconnect(String id) async {
+    final who = (widget.row['user'] ?? widget.row['name'] ?? id).toString();
+    final confirmed = await _confirm(
+      context,
+      title: 'قطع الجلسة',
+      body: 'سيتم فصل «$who» عن الراوتر فورًا. متابعة؟',
+      confirmLabel: 'قطع',
+      danger: true,
+    );
+    if (confirmed != true) return;
+    final repo = ref.read(mikrotikRepositoryProvider);
+    await _run(
+      () => widget.sectionKey == 'hotspot_active'
+          ? repo.disconnectHotspotSession(widget.routerId, id)
+          : repo.disconnectPppSession(widget.routerId, id),
+    );
+  }
+
+  Future<void> _removeAddress(String id) async {
+    final addr = (widget.row['address'] ?? id).toString();
+    final confirmed = await _confirm(
+      context,
+      title: 'حذف عنصر من قائمة العناوين',
+      body: 'سيُحذف العنوان «$addr» من قائمة العناوين على الراوتر. متابعة؟',
+      confirmLabel: 'حذف',
+      danger: true,
+    );
+    if (confirmed != true) return;
+    final repo = ref.read(mikrotikRepositoryProvider);
+    await _run(() => repo.removeAddressListEntry(widget.routerId, id));
+  }
+
+  Future<void> _editQueue(String id) async {
+    final changes = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _QueueEditDialog(row: widget.row),
+    );
+    if (changes == null || changes.isEmpty) return;
+    final repo = ref.read(mikrotikRepositoryProvider);
+    await _run(() => repo.setSimpleQueue(widget.routerId, id, changes));
+  }
+
+  Future<void> _downloadFile() async {
+    final name = (widget.row['name'] ?? '').toString().trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('لا يمكن تحديد اسم الملف.')),
+      );
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      final bytes =
+          await ref.read(mikrotikRepositoryProvider).downloadRouterFile(
+                widget.routerId,
+                name,
+              );
+      final dot = name.lastIndexOf('.');
+      final base = dot > 0 ? name.substring(0, dot) : name;
+      final ext =
+          dot > 0 && dot < name.length - 1 ? name.substring(dot + 1) : 'bin';
+      await FileSaver.instance.saveFile(
+        name: base.replaceAll('/', '-'),
+        bytes: bytes,
+        ext: ext,
+        mimeType: MimeType.other,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم تنزيل «$name» (${bytes.length} بايت).')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(visibleErrorMessage(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+}
+
+/// Edits the common simple-queue limits (`max-limit` up/down + enable/disable).
+class _QueueEditDialog extends StatefulWidget {
+  const _QueueEditDialog({required this.row});
+
+  final Map<String, dynamic> row;
+
+  @override
+  State<_QueueEditDialog> createState() => _QueueEditDialogState();
+}
+
+class _QueueEditDialogState extends State<_QueueEditDialog> {
+  late final TextEditingController _maxLimit;
+  late bool _disabled;
+
+  @override
+  void initState() {
+    super.initState();
+    _maxLimit = TextEditingController(
+      text: (widget.row['max-limit'] ?? '').toString(),
+    );
+    final raw = (widget.row['disabled'] ?? 'false').toString().toLowerCase();
+    _disabled = raw == 'true' || raw == 'yes';
+  }
+
+  @override
+  void dispose() {
+    _maxLimit.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final name = (widget.row['name'] ?? widget.row['target'] ?? '').toString();
+    return AlertDialog(
+      title: const Text('تعديل الطابور'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (name.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppTokens.s12),
+              child: Text(
+                name,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppTokens.textSecondary,
+                ),
+              ),
+            ),
+          TextField(
+            controller: _maxLimit,
+            decoration: const InputDecoration(
+              labelText: 'أقصى سرعة (رفع/تنزيل)',
+              helperText: 'مثال: 10M/10M',
+            ),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('تعطيل الطابور'),
+            value: _disabled,
+            onChanged: (v) => setState(() => _disabled = v),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final changes = <String, dynamic>{
+              'disabled': _disabled,
+            };
+            final limit = _maxLimit.text.trim();
+            if (limit.isNotEmpty) changes['max-limit'] = limit;
+            Navigator.pop(context, changes);
+          },
+          child: const Text('حفظ'),
+        ),
+      ],
+    );
+  }
+}
+
+/// Section-level "add entry" action for the firewall address-list card.
+class _AddAddressListButton extends ConsumerWidget {
+  const _AddAddressListButton({
+    required this.routerId,
+    required this.onChanged,
+  });
+
+  final int routerId;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      tooltip: 'إضافة عنوان',
+      visualDensity: VisualDensity.compact,
+      icon: const Icon(Icons.add, size: 18),
+      onPressed: () async {
+        final entry = await showDialog<_AddressListEntry>(
+          context: context,
+          builder: (_) => const _AddressListAddDialog(),
+        );
+        if (entry == null) return;
+        try {
+          final result =
+              await ref.read(mikrotikRepositoryProvider).addAddressListEntry(
+                    routerId,
+                    list: entry.list,
+                    address: entry.address,
+                    comment: entry.comment,
+                    timeout: entry.timeout,
+                  );
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result.visibleMessage)),
+          );
+          if (result.ok) onChanged();
+        } catch (e) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(visibleErrorMessage(e))),
+          );
+        }
+      },
+    );
+  }
+}
+
+class _AddressListEntry {
+  const _AddressListEntry({
+    required this.list,
+    required this.address,
+    required this.comment,
+    required this.timeout,
+  });
+
+  final String list;
+  final String address;
+  final String comment;
+  final String timeout;
+}
+
+class _AddressListAddDialog extends StatefulWidget {
+  const _AddressListAddDialog();
+
+  @override
+  State<_AddressListAddDialog> createState() => _AddressListAddDialogState();
+}
+
+class _AddressListAddDialogState extends State<_AddressListAddDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _list = TextEditingController();
+  final _address = TextEditingController();
+  final _comment = TextEditingController();
+  final _timeout = TextEditingController();
+
+  @override
+  void dispose() {
+    _list.dispose();
+    _address.dispose();
+    _comment.dispose();
+    _timeout.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('إضافة عنوان لقائمة'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _list,
+              decoration: const InputDecoration(
+                labelText: 'اسم القائمة *',
+                helperText: 'مثال: blocked، allowed',
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
+            ),
+            const SizedBox(height: AppTokens.s8),
+            TextFormField(
+              controller: _address,
+              decoration: const InputDecoration(
+                labelText: 'العنوان *',
+                helperText: 'IP أو نطاق، مثال: 192.168.1.5',
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
+            ),
+            const SizedBox(height: AppTokens.s8),
+            TextFormField(
+              controller: _comment,
+              decoration: const InputDecoration(labelText: 'تعليق'),
+            ),
+            const SizedBox(height: AppTokens.s8),
+            TextFormField(
+              controller: _timeout,
+              decoration: const InputDecoration(
+                labelText: 'مهلة (اختياري)',
+                helperText: 'مثال: 1h، 30m',
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (!(_formKey.currentState?.validate() ?? false)) return;
+            Navigator.pop(
+              context,
+              _AddressListEntry(
+                list: _list.text.trim(),
+                address: _address.text.trim(),
+                comment: _comment.text.trim(),
+                timeout: _timeout.text.trim(),
+              ),
+            );
+          },
+          child: const Text('إضافة'),
+        ),
+      ],
     );
   }
 }
@@ -1785,7 +2239,8 @@ class _DiagnosticsDialogState extends ConsumerState<_DiagnosticsDialog> {
     try {
       final repo = ref.read(mikrotikRepositoryProvider);
       final Map<String, dynamic> data = switch (_tool) {
-        'traceroute' => await repo.tracerouteFromRouter(widget.routerId, target),
+        'traceroute' =>
+          await repo.tracerouteFromRouter(widget.routerId, target),
         'dns' => await repo.dnsResolveFromRouter(widget.routerId, target),
         _ => await repo.pingFromRouter(widget.routerId, target),
       };
@@ -1925,8 +2380,8 @@ class _HealthDialogState extends ConsumerState<_HealthDialog> {
               );
             }
             final data = snap.data ?? const {};
-            final signals = (data['signals'] ?? data['risks'] ?? data['items'])
-                as List?;
+            final signals =
+                (data['signals'] ?? data['risks'] ?? data['items']) as List?;
             if (signals == null || signals.isEmpty) {
               return const Padding(
                 padding: EdgeInsets.all(AppTokens.s16),

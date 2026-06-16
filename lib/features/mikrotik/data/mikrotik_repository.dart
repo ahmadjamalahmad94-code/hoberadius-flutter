@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -243,6 +246,15 @@ class MikrotikRepository {
       '/api/v1/mikrotik/$nasId/firewall/address-lists/$entryId',
     );
     return MikrotikActionResult.fromJson(_data(res));
+  }
+
+  // ── Binary file download from the router (K8.1b) ───────────────────
+  Future<Uint8List> downloadRouterFile(int nasId, String filename) async {
+    final res = await _api.dio.get<List<int>>(
+      '/api/v1/mikrotik/$nasId/files/${Uri.encodeComponent(filename)}/download',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data ?? const []);
   }
 
   // ── P7 risk signals (loops / flapping / overlap) ───────────────────
