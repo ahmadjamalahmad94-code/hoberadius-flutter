@@ -59,6 +59,38 @@ void main() {
       expect(svg, contains('viewBox="0 0 600 1000"'));
     });
 
+    test('pattern_color + pattern_opacity drive the decorative overlay', () {
+      // Legacy default: untouched signal template → white deco, 0.180 overlay.
+      final legacy = renderCardSvg(modelOf());
+      expect(legacy, contains('fill="#ffffff"'));
+      expect(legacy, contains('fill="url(#card-pattern)" opacity="0.180"'));
+
+      // Saved values are honoured: grid strokes in the picked colour and the
+      // chosen structural opacity on the overlay rect.
+      final custom = renderCardSvg(
+        modelOf(
+          layoutOverrides: {
+            'pattern_style': 'grid',
+            'pattern_color': '#ff8800',
+            'pattern_opacity': 0.5,
+          },
+        ),
+      );
+      expect(custom, contains('stroke="#ff8800"'));
+      expect(custom, contains('fill="url(#card-pattern)" opacity="0.500"'));
+      expect(custom, isNot(contains('rgba(255,255,255')));
+    });
+
+    test('blank pattern_opacity falls back to the per-pattern legacy default',
+        () {
+      final model = modelOf(
+        layoutOverrides: {'pattern_style': 'wave', 'pattern_opacity': ''},
+      );
+      expect(model.background.patternOpacity, isNull);
+      final svg = renderCardSvg(model);
+      expect(svg, contains('fill="url(#card-pattern)" opacity="0.300"'));
+    });
+
     test('root + every <text> are pinned LTR (RTL safety)', () {
       final svg = renderCardSvg(modelOf());
       // root SVG

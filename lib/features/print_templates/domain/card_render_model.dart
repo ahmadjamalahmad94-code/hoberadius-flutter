@@ -70,6 +70,8 @@ class CardBackground {
     required this.pattern,
     required this.imageDataUrl,
     required this.imageOpacity,
+    this.patternColor = '#ffffff',
+    this.patternOpacity,
   });
 
   /// Top-left gradient stop (web `gradient_start`).
@@ -81,6 +83,16 @@ class CardBackground {
   /// One of `signal | wave | grid | clean`. Renderer skips overlay
   /// entirely on `clean`.
   final String pattern;
+
+  /// Decorative-pattern colour (web `pattern_color`, default `#ffffff`).
+  /// Used for the grid strokes / signal bars / wave highlight instead of the
+  /// legacy hardcoded white.
+  final String patternColor;
+
+  /// Structural overlay opacity for the pattern (web `pattern_opacity`).
+  /// `null` means "use the per-pattern legacy default" so untouched templates
+  /// render exactly as before (grid 0.20, signal 0.18, wave 0.30).
+  final double? patternOpacity;
 
   /// Empty string if no image; otherwise a `data:image/png;base64,…`
   /// URL. The SVG adapter renders it as `<image>` with the same dim
@@ -99,6 +111,8 @@ class CardBackground {
           other.gradientStart == gradientStart &&
           other.gradientEnd == gradientEnd &&
           other.pattern == pattern &&
+          other.patternColor == patternColor &&
+          other.patternOpacity == patternOpacity &&
           other.imageDataUrl == imageDataUrl &&
           other.imageOpacity == imageOpacity);
 
@@ -107,6 +121,8 @@ class CardBackground {
         gradientStart,
         gradientEnd,
         pattern,
+        patternColor,
+        patternOpacity,
         imageDataUrl,
         imageOpacity,
       );

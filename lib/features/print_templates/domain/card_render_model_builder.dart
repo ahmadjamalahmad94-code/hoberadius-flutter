@@ -371,10 +371,20 @@ CardBackground _background(Map<String, dynamic> layout) {
     gradientEnd: _safeHex(layout['gradient_end'], '#22a7bd'),
     pattern:
         (layout['pattern_style'] as String?)?.trim().toLowerCase() ?? 'signal',
+    patternColor: _safeHex(layout['pattern_color'], '#ffffff'),
+    patternOpacity: _patternOpacity(layout['pattern_opacity']),
     imageDataUrl: image.startsWith('data:image/') ? image : '',
     imageOpacity:
         _double(layout['image_opacity'], 0.82).clamp(0.0, 1.0).toDouble(),
   );
+}
+
+/// Mirrors the web `_background()` parse: a blank/absent `pattern_opacity`
+/// stays `null` (legacy per-pattern default); anything set is clamped to 0..1.
+double? _patternOpacity(Object? raw) {
+  if (raw == null) return null;
+  if (raw is String && raw.trim().isEmpty) return null;
+  return _double(raw, 1.0).clamp(0.0, 1.0).toDouble();
 }
 
 String _override(

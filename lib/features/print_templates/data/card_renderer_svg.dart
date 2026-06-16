@@ -89,18 +89,21 @@ Iterable<String> _svgDefs(CardBackground bg, int w, int h) sync* {
       '<stop offset="100%" stop-color="${_xml(bg.gradientEnd)}"/>'
       '</linearGradient>';
 
+  // Decorative pattern colour comes from the saved layout (`pattern_color`);
+  // the structural opacity on the overlay rect is applied in `_svgBackground`.
+  final deco = _xml(bg.patternColor);
   switch (bg.pattern) {
     case 'grid':
       final step = (w * 0.045).clamp(8, double.infinity).round();
       yield '<pattern id="card-pattern" patternUnits="userSpaceOnUse" '
           'width="$step" height="$step">'
           '<path d="M$step 0 L0 0 0 $step" fill="none" '
-          'stroke="rgba(255,255,255,.45)" stroke-width="1"/>'
+          'stroke="$deco" stroke-width="1"/>'
           '</pattern>';
     case 'wave':
       yield '<radialGradient id="card-pattern" cx="20%" cy="30%" r="55%">'
-          '<stop offset="0%"  stop-color="rgba(255,255,255,.30)"/>'
-          '<stop offset="60%" stop-color="rgba(255,255,255,0)"/>'
+          '<stop offset="0%"  stop-color="$deco"/>'
+          '<stop offset="60%" stop-color="$deco" stop-opacity="0"/>'
           '</radialGradient>';
     case 'signal':
       final barStep = (w * 0.025).clamp(6, double.infinity).round();
@@ -111,12 +114,24 @@ Iterable<String> _svgDefs(CardBackground bg, int w, int h) sync* {
       yield '<pattern id="card-pattern" patternUnits="userSpaceOnUse" '
           'width="$barStep" height="$patternH">'
           '<rect x="0" y="$barY" width="$barWidth" '
-          'height="$barH" fill="rgba(255,255,255,.40)"/>'
+          'height="$barH" fill="$deco"/>'
           '</pattern>';
     default:
       // 'clean' emits no overlay.
       break;
   }
+}
+
+/// Legacy per-pattern overlay alpha — kept identical to the web SVG adapter so
+/// templates that never set `pattern_opacity` render exactly as before.
+const Map<String, double> _legacyPatternOverlay = {
+  'grid': 0.20,
+  'signal': 0.18,
+  'wave': 0.30,
+};
+
+double _patternOverlay(CardBackground bg) {
+  return bg.patternOpacity ?? (_legacyPatternOverlay[bg.pattern] ?? 0.30);
 }
 
 Iterable<String> _svgBackground(CardBackground bg, int w, int h) sync* {
@@ -131,12 +146,12 @@ Iterable<String> _svgBackground(CardBackground bg, int w, int h) sync* {
         'fill="rgba(15,23,42,0.32)"/>';
   }
 
-  if (bg.pattern == 'grid' || bg.pattern == 'signal') {
+  if (bg.pattern == 'grid' ||
+      bg.pattern == 'signal' ||
+      bg.pattern == 'wave') {
+    final overlay = _patternOverlay(bg).toStringAsFixed(3);
     yield '<rect x="0" y="0" width="$w" height="$h" '
-        'fill="url(#card-pattern)" opacity="0.45"/>';
-  } else if (bg.pattern == 'wave') {
-    yield '<rect x="0" y="0" width="$w" height="$h" '
-        'fill="url(#card-pattern)"/>';
+        'fill="url(#card-pattern)" opacity="$overlay"/>';
   }
 }
 

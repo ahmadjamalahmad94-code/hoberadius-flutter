@@ -33,8 +33,15 @@ Still to build (all have a working admin `/api/v1`; just need Flutter UI):
    (max-limit + disable), address-list delete + section-level add dialog, and
    file download (new repo `downloadRouterFile` → FileSaver). Test:
    `mikrotik_repository_control_test`.
-5. **Print-designer minor** — `pattern_color`/`pattern_opacity` (add to
-   CardBackground model + SVG adapter); optional drag-canvas for positions.
+5. ✅ **Print-designer minor** — DONE (pattern fields). `pattern_color` +
+   `pattern_opacity` added to `CardBackground` (model + builder parse), SVG
+   adapter now uses the picked colour for grid/signal/wave deco and the
+   saved/legacy overlay opacity (grid 0.20 / signal 0.18 / wave 0.30) — byte-
+   faithful to the web `_svg_defs`/`_svg_background`. Designer exposes a colour
+   + opacity control (hidden on `clean`). Tests added to
+   `card_renderer_svg_test`. Optional drag-canvas for element positions NOT
+   done — left as future polish (positions still set via the numeric x/y
+   fields, which remain functional).
 
 ---
 

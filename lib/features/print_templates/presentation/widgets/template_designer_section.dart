@@ -24,6 +24,8 @@ class TemplateDesignerSection extends StatelessWidget {
     required this.surface,
     required this.qrColor,
     required this.qrSizePct,
+    required this.patternColor,
+    required this.patternOpacity,
     required this.bgImageDataUrl,
     required this.onRenderEngine,
     required this.onPattern,
@@ -40,6 +42,8 @@ class TemplateDesignerSection extends StatelessWidget {
   final TextEditingController surface;
   final TextEditingController qrColor;
   final TextEditingController qrSizePct;
+  final TextEditingController patternColor;
+  final TextEditingController patternOpacity;
   final String bgImageDataUrl;
   final ValueChanged<String> onRenderEngine;
   final ValueChanged<String> onPattern;
@@ -89,6 +93,24 @@ class TemplateDesignerSection extends StatelessWidget {
             ],
             onChanged: (v) => onPattern(v ?? 'signal'),
           ),
+          if (pattern != 'clean') ...[
+            const SizedBox(height: AppTokens.s12),
+            _ColorRow(
+              left: _ColorField(controller: patternColor, label: 'لون النقشة'),
+              right: TextFormField(
+                controller: patternOpacity,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                textDirection: TextDirection.ltr,
+                decoration: const InputDecoration(
+                  labelText: 'شفافية النقشة',
+                  hintText: '0.0 – 1.0',
+                  helperText: 'فارغ = الافتراضي',
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: AppTokens.s12),
           _ColorRow(
             left: _ColorField(controller: gradientStart, label: 'تدرّج البداية'),

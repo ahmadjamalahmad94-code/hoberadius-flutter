@@ -57,6 +57,8 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
   final _surface = TextEditingController(text: '#e8f7fb');
   final _qrColor = TextEditingController(text: '#0f172a');
   final _qrSizePct = TextEditingController(text: '');
+  final _patternColor = TextEditingController(text: '#ffffff');
+  final _patternOpacity = TextEditingController(text: '');
   String _pattern = 'signal';
   String _renderEngine = 'ar_horizontal';
   String _bgImageDataUrl = '';
@@ -71,6 +73,11 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
       'gradient_start': _gradStart.text.trim(),
       'gradient_end': _gradEnd.text.trim(),
       'pattern_style': _pattern,
+      'pattern_color': _patternColor.text.trim().isEmpty
+          ? '#ffffff'
+          : _patternColor.text.trim(),
+      if (_patternOpacity.text.trim().isNotEmpty)
+        'pattern_opacity': double.tryParse(_patternOpacity.text.trim()) ?? '',
       'accent_color': _accent.text.trim(),
       'text_color': _textColor.text.trim(),
       'surface_color': _surface.text.trim(),
@@ -104,6 +111,8 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
       _surface,
       _qrColor,
       _qrSizePct,
+      _patternColor,
+      _patternOpacity,
     ]) {
       c.dispose();
     }
@@ -227,6 +236,8 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
                   surface: _surface,
                   qrColor: _qrColor,
                   qrSizePct: _qrSizePct,
+                  patternColor: _patternColor,
+                  patternOpacity: _patternOpacity,
                   bgImageDataUrl: _bgImageDataUrl,
                   onRenderEngine: (v) => setState(() => _renderEngine = v),
                   onPattern: (v) => setState(() => _pattern = v),
