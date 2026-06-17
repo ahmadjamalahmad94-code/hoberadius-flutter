@@ -533,6 +533,7 @@ Future<VoucherGenerateDraft?> _voucherDialog(
               ),
               const SizedBox(height: AppTokens.s8),
               DropdownButtonFormField<int?>(
+                isExpanded: true,
                 initialValue: planId,
                 decoration: const InputDecoration(labelText: 'الباقة'),
                 items: [

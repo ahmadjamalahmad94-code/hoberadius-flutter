@@ -523,6 +523,7 @@ Future<InvoiceStatusUpdate?> _statusDialog(
             ),
             const SizedBox(height: AppTokens.s12),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: status,
               decoration: const InputDecoration(labelText: 'الحالة'),
               items: _statusOptions
@@ -599,6 +600,7 @@ Future<InvoiceDraft?> _invoiceDialog(
               children: [
                 if (subscribers.isNotEmpty) ...[
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'اختيار مشترك',
                     ),
@@ -833,6 +835,7 @@ class _SelectField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: options

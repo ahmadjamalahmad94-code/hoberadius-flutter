@@ -188,6 +188,7 @@ class _StatusPanelState extends ConsumerState<_StatusPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _status,
             decoration: const InputDecoration(labelText: 'الحالة'),
             items: const [

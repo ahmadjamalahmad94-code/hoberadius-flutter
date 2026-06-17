@@ -105,7 +105,9 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     _c['color']!.text = '#2BAACC';
     _c['concurrent_sessions']!.text = '1';
     _c['priority']!.text = '100';
-    if (widget.isEdit) _loadExisting();
+    // Defer so the controller's first `state =` runs after initState (modifying
+    // a provider during the build/initState phase is disallowed).
+    if (widget.isEdit) Future.microtask(_loadExisting);
   }
 
   @override
@@ -138,9 +140,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       );
 
   Future<void> _loadExisting() async {
-    final result = await ref
-        .read(planFormActionProvider.notifier)
-        .load(widget.planId!);
+    final result =
+        await ref.read(planFormActionProvider.notifier).load(widget.planId!);
     if (!mounted || result.plan == null) return;
     _loaded = result.plan;
     applyPlanToForm(result.plan!, _c);
@@ -182,9 +183,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   Future<void> _delete() async {
     final ok = await confirmDeletePlan(context, _c['name']!.text);
     if (!mounted || !ok) return;
-    final err = await ref
-        .read(planFormActionProvider.notifier)
-        .delete(widget.planId!);
+    final err =
+        await ref.read(planFormActionProvider.notifier).delete(widget.planId!);
     if (!mounted || err != null) return;
     context.goNamed('plans');
   }
@@ -236,8 +236,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                 color: AppTokens.dangerBg,
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child:
-                  Text(error, style: const TextStyle(color: AppTokens.red)),
+              child: Text(error, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
           const SizedBox(height: AppTokens.s16),

@@ -243,14 +243,12 @@ class _LedgerSection extends StatelessWidget {
               runSpacing: AppTokens.s8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Expanded(
-                  child: Text(
-                    'قيود السجل المالي',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: AppTokens.sidebarBg,
-                    ),
+                const Text(
+                  'قيود السجل المالي',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: AppTokens.sidebarBg,
                   ),
                 ),
                 DropdownButton<String>(
@@ -414,14 +412,12 @@ class _SnapshotsSection extends StatelessWidget {
               runSpacing: AppTokens.s8,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                const Expanded(
-                  child: Text(
-                    'لقطات التسعير',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 16,
-                      color: AppTokens.sidebarBg,
-                    ),
+                const Text(
+                  'لقطات التسعير',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                    color: AppTokens.sidebarBg,
                   ),
                 ),
                 DropdownButton<String>(

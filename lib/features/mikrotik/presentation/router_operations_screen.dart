@@ -91,6 +91,7 @@ class _RouterOperationsScreenState
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
+                  isExpanded: true,
                   initialValue: selected.id,
                   decoration: const InputDecoration(labelText: 'الراوتر'),
                   items: [
@@ -358,6 +359,7 @@ class _GuidedAssistantPanelState extends ConsumerState<_GuidedAssistantPanel> {
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _operation,
             decoration: const InputDecoration(labelText: 'نوع العملية'),
             items: [

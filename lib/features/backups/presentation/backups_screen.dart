@@ -167,7 +167,7 @@ class _Body extends StatelessWidget {
               mainAxisSpacing: AppTokens.s12,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: cols == 1 ? 3.1 : 1.8,
+              childAspectRatio: cols == 1 ? 2.3 : 1.4,
               children: [
                 _StatCard(
                   title: 'الحالة الأخيرة',

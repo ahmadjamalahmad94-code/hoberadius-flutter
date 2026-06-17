@@ -24,8 +24,7 @@ class ToolsMaintenancePanel extends ConsumerStatefulWidget {
       _ToolsMaintenancePanelState();
 }
 
-class _ToolsMaintenancePanelState
-    extends ConsumerState<ToolsMaintenancePanel> {
+class _ToolsMaintenancePanelState extends ConsumerState<ToolsMaintenancePanel> {
   String _action = 'vacuum';
   final _days = TextEditingController(text: '90');
   MaintenancePreview? _preview;
@@ -51,6 +50,7 @@ class _ToolsMaintenancePanelState
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _action,
             decoration: const InputDecoration(labelText: 'نوع الصيانة'),
             items: const [

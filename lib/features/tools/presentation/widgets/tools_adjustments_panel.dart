@@ -48,6 +48,7 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _action,
             decoration: const InputDecoration(labelText: 'الإجراء'),
             items: const [

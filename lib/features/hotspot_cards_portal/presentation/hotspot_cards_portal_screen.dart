@@ -221,6 +221,7 @@ class _LoginPanel extends StatelessWidget {
                     builder: (context, constraints) {
                       final compact = constraints.maxWidth < 440;
                       final schemeField = DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: scheme,
                         decoration: const InputDecoration(
                           labelText: 'نوع الاتصال',

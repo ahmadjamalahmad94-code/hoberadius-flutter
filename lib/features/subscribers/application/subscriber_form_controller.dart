@@ -37,26 +37,38 @@ class ExtendTimeResult {
 
 class SubscriberFormActionController
     extends Notifier<SubscriberFormActionState> {
+  bool _alive = true;
+
   @override
-  SubscriberFormActionState build() => const SubscriberFormActionState();
+  SubscriberFormActionState build() {
+    _alive = true;
+    ref.onDispose(() => _alive = false);
+    return const SubscriberFormActionState();
+  }
+
+  /// Guards `state =` against the provider being disposed mid-await (e.g. the
+  /// user navigates away while a load/submit is in flight) — setting state on a
+  /// disposed Notifier throws.
+  void _set(SubscriberFormActionState next) {
+    if (_alive) state = next;
+  }
 
   Future<LoadSubscriberResult> load(String username) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
-      final s =
-          await ref.read(subscribersRepositoryProvider).get(username);
+      final s = await ref.read(subscribersRepositoryProvider).get(username);
       return LoadSubscriberResult(subscriber: s);
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return LoadSubscriberResult(error: message);
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 
   Future<String?> submit(Subscriber subscriber, {required bool isEdit}) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
       final repo = ref.read(subscribersRepositoryProvider);
       if (isEdit) {
@@ -67,15 +79,15 @@ class SubscriberFormActionController
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return message;
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 
   Future<String?> toggle(String username, {required bool enable}) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
       final repo = ref.read(subscribersRepositoryProvider);
       if (enable) {
@@ -86,15 +98,15 @@ class SubscriberFormActionController
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return message;
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 
   Future<ExtendTimeResult> extendTime(String username, int minutes) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
       final dt = await ref
           .read(subscribersRepositoryProvider)
@@ -102,45 +114,43 @@ class SubscriberFormActionController
       return ExtendTimeResult(newExpire: dt);
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return ExtendTimeResult(error: message);
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 
   Future<String?> resetPassword(String username, String pw) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
-      await ref
-          .read(subscribersRepositoryProvider)
-          .resetPassword(username, pw);
+      await ref.read(subscribersRepositoryProvider).resetPassword(username, pw);
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return message;
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 
   Future<String?> delete(String username) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
       await ref.read(subscribersRepositoryProvider).delete(username);
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return message;
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 }
 
-final subscriberFormActionProvider = NotifierProvider<
-    SubscriberFormActionController, SubscriberFormActionState>(
+final subscriberFormActionProvider =
+    NotifierProvider<SubscriberFormActionController, SubscriberFormActionState>(
   SubscriberFormActionController.new,
 );

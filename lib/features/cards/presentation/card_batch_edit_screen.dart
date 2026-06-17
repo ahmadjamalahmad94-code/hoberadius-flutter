@@ -198,31 +198,44 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: AppTokens.s8,
+                runSpacing: AppTokens.s8,
                 children: [
-                  IconButton(
-                    onPressed: () => context.goNamed(
-                      'card-batch-detail',
-                      pathParameters: {'id': '${batch.id ?? widget.batchId}'},
-                    ),
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                  Expanded(
-                    child: Text(
-                      'تعديل ${batch.batchCode}',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () => context.goNamed(
+                          'card-batch-detail',
+                          pathParameters: {
+                            'id': '${batch.id ?? widget.batchId}',
+                          },
+                        ),
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                      Flexible(
+                        child: Text(
+                          'تعديل ${batch.batchCode}',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 color: AppTokens.sidebarBg,
                               ),
-                    ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                   OutlinedButton.icon(
                     onPressed: () => context.goNamed('bandwidth-schedules'),
                     icon: const Icon(Icons.speed_outlined),
                     label: const Text('سرعات متعددة'),
                   ),
-                  const SizedBox(width: AppTokens.s8),
                   ElevatedButton.icon(
                     onPressed: _saving ? null : () => _save(batch),
                     icon: _saving

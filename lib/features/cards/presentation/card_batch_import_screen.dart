@@ -220,6 +220,7 @@ class _ImportForm extends StatelessWidget {
                     _FieldBox(
                       compact: compact,
                       child: DropdownButtonFormField<int>(
+                        isExpanded: true,
                         initialValue: planId,
                         decoration: const InputDecoration(
                           labelText: 'الباقة المرتبطة',
@@ -239,6 +240,7 @@ class _ImportForm extends StatelessWidget {
                     _FieldBox(
                       compact: compact,
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: sourceType,
                         decoration: const InputDecoration(
                           labelText: 'نوع المصدر',

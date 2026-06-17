@@ -59,6 +59,7 @@ class TemplateDesignerSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: renderEngine,
             decoration: const InputDecoration(labelText: 'محرّك العرض واللغة'),
             items: const [
@@ -83,6 +84,7 @@ class TemplateDesignerSection extends StatelessWidget {
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: pattern,
             decoration: const InputDecoration(labelText: 'النقشة الخلفية'),
             items: const [
@@ -113,7 +115,8 @@ class TemplateDesignerSection extends StatelessWidget {
           ],
           const SizedBox(height: AppTokens.s12),
           _ColorRow(
-            left: _ColorField(controller: gradientStart, label: 'تدرّج البداية'),
+            left:
+                _ColorField(controller: gradientStart, label: 'تدرّج البداية'),
             right: _ColorField(controller: gradientEnd, label: 'تدرّج النهاية'),
           ),
           const SizedBox(height: AppTokens.s12),
@@ -123,7 +126,8 @@ class TemplateDesignerSection extends StatelessWidget {
           ),
           const SizedBox(height: AppTokens.s12),
           _ColorRow(
-            left: _ColorField(controller: surface, label: 'لون البطاقة الداخلية'),
+            left:
+                _ColorField(controller: surface, label: 'لون البطاقة الداخلية'),
             right: _ColorField(controller: qrColor, label: 'لون رمز QR'),
           ),
           const SizedBox(height: AppTokens.s12),

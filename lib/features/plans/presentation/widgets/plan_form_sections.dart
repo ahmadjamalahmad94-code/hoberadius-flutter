@@ -49,6 +49,7 @@ class PlanCoreSection extends StatelessWidget {
           FormFieldRow(
             label: 'نوع الباقة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: planType,
               items: const [
                 DropdownMenuItem(value: 'time', child: Text('وقت')),
@@ -66,6 +67,7 @@ class PlanCoreSection extends StatelessWidget {
           FormFieldRow(
             label: 'نوع الخدمة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: serviceType,
               items: const [
                 DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
@@ -435,6 +437,7 @@ class PlanCommerceSection extends StatelessWidget {
           FormFieldRow(
             label: 'الفئة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: planTier,
               items: const [
                 DropdownMenuItem(value: 'Personal', child: Text('شخصي')),

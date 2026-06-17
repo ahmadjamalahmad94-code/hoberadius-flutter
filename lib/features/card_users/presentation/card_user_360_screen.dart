@@ -268,6 +268,7 @@ class _PurchasePanelState extends ConsumerState<_PurchasePanel> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
                   initialValue: _selectedId,
                   decoration: const InputDecoration(labelText: 'الباقة'),
                   items: [

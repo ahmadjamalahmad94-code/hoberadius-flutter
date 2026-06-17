@@ -20,14 +20,16 @@ class RolesListScreen extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Text(
-              'الأدوار',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.sidebarBg,
-                  ),
+            Expanded(
+              child: Text(
+                'الأدوار',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTokens.sidebarBg,
+                    ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const Spacer(),
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
@@ -76,7 +78,11 @@ class RolesListScreen extends ConsumerWidget {
                   return ListTile(
                     leading: CircleAvatar(
                       backgroundColor: _parseColor(r.color),
-                      child: const Icon(Icons.shield, color: Colors.white, size: 18),
+                      child: const Icon(
+                        Icons.shield,
+                        color: Colors.white,
+                        size: 18,
+                      ),
                     ),
                     title: Row(
                       children: [
@@ -96,7 +102,10 @@ class RolesListScreen extends ConsumerWidget {
                           : '${r.description} • ${r.permissions.length} صلاحية',
                       style: const TextStyle(color: AppTokens.textMuted),
                     ),
-                    trailing: const Icon(Icons.chevron_left, color: AppTokens.textMuted),
+                    trailing: const Icon(
+                      Icons.chevron_left,
+                      color: AppTokens.textMuted,
+                    ),
                     onTap: r.id == null
                         ? null
                         : () => ctx.goNamed(

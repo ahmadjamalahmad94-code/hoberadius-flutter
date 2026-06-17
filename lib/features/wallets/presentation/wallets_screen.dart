@@ -172,7 +172,8 @@ class _WalletsScreenState extends ConsumerState<WalletsScreen> {
   }
 
   Future<void> _createWallet() async {
-    final draft = await _walletDialog(context, ref.read(tenantCurrencyProvider));
+    final draft =
+        await _walletDialog(context, ref.read(tenantCurrencyProvider));
     if (draft == null) return;
     try {
       final created = await ref.read(walletsRepositoryProvider).create(draft);
@@ -817,6 +818,7 @@ class _SelectField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: value,
       decoration: InputDecoration(labelText: label),
       items: options

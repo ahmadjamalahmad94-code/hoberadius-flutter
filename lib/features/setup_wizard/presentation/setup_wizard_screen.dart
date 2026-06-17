@@ -188,7 +188,7 @@ class _SummaryCards extends StatelessWidget {
           mainAxisSpacing: AppTokens.s8,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: cols == 4 ? 2.1 : 2.45,
+          childAspectRatio: cols == 4 ? 2.1 : 1.7,
           children: items.map((item) => _MetricCard(item)).toList(),
         );
       },
@@ -863,7 +863,7 @@ class _RouterServicesGrid extends StatelessWidget {
           mainAxisSpacing: AppTokens.s8,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: columns == 1 ? 3.2 : 2.5,
+          childAspectRatio: columns == 1 ? 2.6 : 1.7,
           children: [
             for (final card in cards)
               _RouterServiceTile(
@@ -1810,6 +1810,7 @@ class _SelectBox<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<T>(
+      isExpanded: true,
       initialValue: value,
       items: items,
       onChanged: onChanged,

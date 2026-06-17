@@ -97,6 +97,7 @@ class SubscriberCoreSection extends StatelessWidget {
           FormFieldRow(
             label: 'الحالة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: status,
               items: const [
                 DropdownMenuItem(value: 'enabled', child: Text('مفعّل')),
@@ -109,6 +110,7 @@ class SubscriberCoreSection extends StatelessWidget {
           FormFieldRow(
             label: 'نوع المستخدم',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: userType,
               items: const [
                 DropdownMenuItem(
@@ -124,6 +126,7 @@ class SubscriberCoreSection extends StatelessWidget {
           FormFieldRow(
             label: 'نوع الخدمة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: const [
                 'Hotspot',
                 'PPPoE',
@@ -204,6 +207,7 @@ class SubscriberMtSection extends StatelessWidget {
           FormFieldRow(
             label: 'الخدمة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: mtService,
               items: const [
                 DropdownMenuItem(value: 'pppoe', child: Text('اتصال PPPoE')),
@@ -328,8 +332,9 @@ class SubscriberLockSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'ملف اتصال الجهاز',
-            child:
-                TextFormField(controller: controllers['device_connection_file']),
+            child: TextFormField(
+              controller: controllers['device_connection_file'],
+            ),
           ),
         ],
       ),
@@ -374,9 +379,9 @@ class SubscriberManagementSection extends ConsumerWidget {
                 onChanged: (v) => onManagerChanged(int.tryParse(v.trim())),
               ),
               data: (list) => DropdownButtonFormField<int?>(
-                initialValue: list.any((a) => a.id == managerId)
-                    ? managerId
-                    : null,
+                isExpanded: true,
+                initialValue:
+                    list.any((a) => a.id == managerId) ? managerId : null,
                 items: [
                   const DropdownMenuItem<int?>(
                     value: null,
@@ -439,8 +444,8 @@ class SubscriberPersonalSection extends StatelessWidget {
           FormFieldRow(
             label: 'نوع الحساب',
             child: DropdownButtonFormField<String>(
-              initialValue:
-                  accountType == 'Business' ? 'Business' : 'Personal',
+              isExpanded: true,
+              initialValue: accountType == 'Business' ? 'Business' : 'Personal',
               items: const [
                 DropdownMenuItem(value: 'Personal', child: Text('شخصي')),
                 DropdownMenuItem(value: 'Business', child: Text('تجاري')),
@@ -625,14 +630,16 @@ class SubscriberQuotaSection extends StatelessWidget {
           FormFieldRow(
             label: 'إجمالي وقت الاتصال (دقيقة)',
             hint: '0 = بلا حد',
-            child:
-                _NumField(controller: controllers['total_connection_time_min']!),
+            child: _NumField(
+              controller: controllers['total_connection_time_min']!,
+            ),
           ),
           FormFieldRow(
             label: 'وقت الاتصال اليومي (دقيقة)',
             hint: '0 = بلا حد',
-            child:
-                _NumField(controller: controllers['daily_connection_time_min']!),
+            child: _NumField(
+              controller: controllers['daily_connection_time_min']!,
+            ),
           ),
           FormFieldRow(
             label: 'تطبيق حد الكوتا',
@@ -848,6 +855,7 @@ class SubscriberSubscriptionSection extends StatelessWidget {
           FormFieldRow(
             label: 'نوع الاشتراك',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: subscriptionType,
               items: const [
                 DropdownMenuItem(value: 'fixed', child: Text('ثابت')),

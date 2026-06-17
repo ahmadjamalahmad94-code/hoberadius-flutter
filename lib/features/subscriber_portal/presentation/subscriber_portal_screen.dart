@@ -308,6 +308,7 @@ class _ServerFields extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final schemeField = DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: scheme,
       decoration: const InputDecoration(labelText: 'نوع الاتصال'),
       items: const [
@@ -698,8 +699,7 @@ class _FinanceCard extends StatelessWidget {
               style: TextStyle(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: AppTokens.s8),
-            for (final p in dashboard.payments.take(8))
-              _PaymentRow(payment: p),
+            for (final p in dashboard.payments.take(8)) _PaymentRow(payment: p),
           ],
         ],
       ),

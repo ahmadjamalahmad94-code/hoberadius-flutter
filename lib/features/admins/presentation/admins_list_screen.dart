@@ -23,14 +23,16 @@ class AdminsListScreen extends ConsumerWidget {
       children: [
         Row(
           children: [
-            Text(
-              'المدراء',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: AppTokens.sidebarBg,
-                  ),
+            Expanded(
+              child: Text(
+                'المدراء',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTokens.sidebarBg,
+                    ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const Spacer(),
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
@@ -148,7 +150,8 @@ class _AdminsTable extends StatelessWidget {
               '@${a.username}',
               if (a.email.isNotEmpty) a.email,
               if (role != null) role.label,
-              if (a.lastLoginAt != null) 'آخر دخول: ${df.format(a.lastLoginAt!)}',
+              if (a.lastLoginAt != null)
+                'آخر دخول: ${df.format(a.lastLoginAt!)}',
               if (a.lastLoginIp.isNotEmpty) a.lastLoginIp,
             ].join(' • '),
             style: const TextStyle(color: AppTokens.textMuted),
@@ -164,7 +167,8 @@ class _AdminsTable extends StatelessWidget {
           ),
           onTap: a.id == null
               ? null
-              : () => ctx.goNamed('admin-edit', pathParameters: {'id': '${a.id}'}),
+              : () =>
+                  ctx.goNamed('admin-edit', pathParameters: {'id': '${a.id}'}),
         );
       },
     );

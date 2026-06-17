@@ -77,6 +77,7 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
               final action = DropdownButton<String?>(
                 value: _action,
                 hint: const Text('الإجراء'),
+                isExpanded: true,
                 underline: const SizedBox(),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('كل الإجراءات')),
@@ -96,6 +97,7 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
               final type = DropdownButton<String?>(
                 value: _targetType,
                 hint: const Text('النوع'),
+                isExpanded: true,
                 underline: const SizedBox(),
                 items: const [
                   DropdownMenuItem(value: null, child: Text('كل الأنواع')),
@@ -151,7 +153,7 @@ class _AuditListScreenState extends ConsumerState<AuditListScreen> {
                   const SizedBox(width: AppTokens.s12),
                   SizedBox(width: 130, child: action),
                   const SizedBox(width: AppTokens.s8),
-                  type,
+                  SizedBox(width: 150, child: type),
                   const SizedBox(width: AppTokens.s8),
                   SizedBox(width: 140, child: targetId),
                   const SizedBox(width: AppTokens.s8),

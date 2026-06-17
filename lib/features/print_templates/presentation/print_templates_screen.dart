@@ -186,8 +186,11 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
           const SizedBox(height: AppTokens.s12),
           LayoutBuilder(
             builder: (context, constraints) {
-              if (!PlatformCapabilities.isDesktop &&
-                  constraints.maxWidth < AppTokens.bpTablet) {
+              // The 3-column desktop export room needs real width. Gate on
+              // available WIDTH regardless of platform so a narrow desktop
+              // window falls back to the single-column form below instead of
+              // overflowing (owner rule #2: no breakage at any width).
+              if (constraints.maxWidth < AppTokens.bpTablet) {
                 return const SizedBox.shrink();
               }
               return const ExportRoom();
@@ -284,26 +287,25 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    final error =
-        await ref.read(printTemplatesActionProvider.notifier).save(
-              name: _name.text.trim(),
-              orientation: _orientation,
-              cardsPerRow: _toInt(_row.text, 2),
-              cardsPerColumn: _toInt(_col.text, 5),
-              pageSize: _pageSize,
-              showQr: _showQr,
-              usernameX: _toDouble(_ux.text),
-              usernameY: _toDouble(_uy.text),
-              passwordX: _toDouble(_px.text),
-              passwordY: _toDouble(_py.text),
-              qrX: _toDouble(_qx.text),
-              qrY: _toDouble(_qy.text),
-              fontSize: _toInt(_font.text, 12),
-              color: _color.text.trim(),
-              cardWidthMm: _toDouble(_width.text, 85),
-              cardHeightMm: _toDouble(_height.text, 54),
-              layout: _designerLayout(),
-            );
+    final error = await ref.read(printTemplatesActionProvider.notifier).save(
+          name: _name.text.trim(),
+          orientation: _orientation,
+          cardsPerRow: _toInt(_row.text, 2),
+          cardsPerColumn: _toInt(_col.text, 5),
+          pageSize: _pageSize,
+          showQr: _showQr,
+          usernameX: _toDouble(_ux.text),
+          usernameY: _toDouble(_uy.text),
+          passwordX: _toDouble(_px.text),
+          passwordY: _toDouble(_py.text),
+          qrX: _toDouble(_qx.text),
+          qrY: _toDouble(_qy.text),
+          fontSize: _toInt(_font.text, 12),
+          color: _color.text.trim(),
+          cardWidthMm: _toDouble(_width.text, 85),
+          cardHeightMm: _toDouble(_height.text, 54),
+          layout: _designerLayout(),
+        );
     if (!mounted) return;
     if (error == null) {
       _name.clear();
@@ -321,8 +323,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
         .read(printTemplatesActionProvider.notifier)
         .previewTemplate(item.id);
     if (!mounted || error == null) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(error)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
   }
 
   Future<void> _exportPdf(CardPrintTemplate item) async {
