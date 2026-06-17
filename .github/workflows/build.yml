@@ -64,6 +64,23 @@ jobs:
               -dname "CN=Android Debug,O=Android,C=US"
           fi
 
+      - name: Patch stale-plugin Android compileSdk
+        # desktop_drop 0.4.4 (desktop-only drag-drop) hardcodes compileSdk 33,
+        # but its transitive androidx deps require consumers compiled against
+        # 34+. The plugin has no use on Android; bump its compileSdk so the
+        # AAR-metadata check passes. CI regenerates the pub cache each run, so
+        # this never touches the committed source.
+        run: |
+          CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
+          found=0
+          for g in $(find "$CACHE" -path "*desktop_drop*/android/build.gradle" 2>/dev/null); do
+            echo "patching $g"
+            sed -i -E 's/compileSdk(Version)?[[:space:]]+33/compileSdk 35/' "$g"
+            grep -nE "compileSdk" "$g" || true
+            found=1
+          done
+          [ "$found" = "1" ] || echo "no desktop_drop gradle found (ok if removed)"
+
       - name: Build release APK
         run: flutter build apk --release
 
