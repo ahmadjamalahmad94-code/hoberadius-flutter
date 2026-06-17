@@ -81,6 +81,22 @@ jobs:
           done
           [ "$found" = "1" ] || echo "no desktop_drop gradle found (ok if removed)"
 
+      - name: Pre-install Android CMake 3.22.1
+        # A transitive plugin (jni) builds native code via CMake 3.22.1. Letting
+        # the Gradle build auto-download it flaked ("Error reading Zip content");
+        # install it up front via sdkmanager with retries so the build is stable.
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMGR="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          ok=0
+          for i in 1 2 3; do
+            if "$SDKMGR" "cmake;3.22.1"; then ok=1; break; fi
+            echo "cmake install attempt $i failed, retrying…"; sleep 10
+          done
+          [ "$ok" = "1" ] || { echo "::error::failed to install cmake;3.22.1"; exit 1; }
+          ls -d "$SDK/cmake/3.22.1" && echo "cmake 3.22.1 ready"
+
       - name: Build release APK
         run: flutter build apk --release
 
