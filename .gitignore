@@ -23,3 +23,6 @@ macos/
 windows/
 .metadata
 pubspec.lock
+
+# Flutter golden-test failure diff output (never commit)
+test/**/failures/
