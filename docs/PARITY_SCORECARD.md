@@ -37,6 +37,25 @@
 - Style/color parity is now at the token level, so it propagates to every
   screen uniformly.
 
+## Quality gate (owner hard requirement)
+Standard applied to every screen built/touched:
+1. **No design breakage** — no overflow/clipping/misalignment at mobile,
+   tablet, or Windows desktop; RTL correct.
+2. **No fake/dead elements** — every widget/button/field/action is real and
+   wired to the live `/api/v1`; if an endpoint doesn't exist it goes to the
+   API-first list, never a stub.
+
+Pass status this audit:
+- Stub/fake scan (coming-soon / placeholder / TODO / mock / dead-handler):
+  **clean** — only legitimate hints, a QR fallback grid, and loading
+  skeletons. The one no-op button (topbar refresh) lived in dead code and
+  was removed.
+- Overflow: dashboard had a real RenderFlex overflow at 360px (KPI tiles +
+  chips) — **fixed**, with a 360px no-overflow guard test added as the
+  template. Apply the same `takeException()`-at-narrow-width guard per dense
+  screen as the systematic continuation (subscriber form, business-ops,
+  operational reports, mikrotik live sections).
+
 ## Remaining non-API client follow-ups (small)
 - Print-templates drag-position canvas (designer positions are editable via
   numeric mm fields today; drag handles are a nicety).
