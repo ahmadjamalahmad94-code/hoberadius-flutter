@@ -54,7 +54,10 @@ import 'package:hoberadius_app/features/revenue/presentation/revenue_screen.dart
 import 'package:hoberadius_app/features/router_alerts/presentation/router_alerts_screen.dart';
 import 'package:hoberadius_app/features/saas_modules/presentation/saas_modules_screen.dart';
 import 'package:hoberadius_app/features/sessions/presentation/sessions_list_screen.dart';
+import 'package:hoberadius_app/features/admin_alerts/presentation/telegram_alerts_screen.dart';
+import 'package:hoberadius_app/features/mikrotik/presentation/mikrotik_programming_screen.dart';
 import 'package:hoberadius_app/features/setup_wizard/presentation/setup_wizard_screen.dart';
+import 'package:hoberadius_app/features/store_admin/presentation/store_admin_screen.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/subscriber_360_screen.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/subscriber_form_screen.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/subscribers_list_screen.dart';
@@ -132,6 +135,9 @@ final screens = <String, ScreenBuilder>{
   'operational-report-detail': () =>
       const OperationalReportDetailScreen(slug: 'sessions'),
   'business-ops': BusinessOpsScreen.new,
+  'telegram-alerts': TelegramAlertsScreen.new,
+  'store-admin': StoreAdminScreen.new,
+  'router-programming': () => const MikrotikProgrammingScreen(routerId: 1),
   'events-center': EventsCenterScreen.new,
   'saas-modules': SaasModulesScreen.new,
   'recycle-bin': RecycleBinScreen.new,

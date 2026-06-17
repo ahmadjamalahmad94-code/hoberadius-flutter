@@ -344,6 +344,13 @@ const appNavSections = <AppNavSection>[
         path: '/saas-modules',
         description: 'الخدمات، القسائم، الفواتير، ومجموعات المشاركة.',
       ),
+      AppNavItem(
+        icon: Icons.storefront_outlined,
+        label: 'إدارة المتجر',
+        routeName: 'store-admin',
+        path: '/store-admin',
+        description: 'دعم المتجر: الإيداعات، السحوبات، محافظ الاستلام، والمحادثات.',
+      ),
     ],
   ),
   AppNavSection(
@@ -434,6 +441,13 @@ const appNavSections = <AppNavSection>[
         routeName: 'events-center',
         path: '/events',
         description: 'الأحداث التشغيلية والأمنية والمالية.',
+      ),
+      AppNavItem(
+        icon: Icons.notifications_active_outlined,
+        label: 'تنبيهات تيليجرام',
+        routeName: 'telegram-alerts',
+        path: '/alerts/telegram',
+        description: 'إعداد بوت تيليجرام وتفعيل تنبيهات النظام واختبارها.',
       ),
       AppNavItem(
         icon: Icons.settings_outlined,
