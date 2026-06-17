@@ -75,13 +75,19 @@ jobs:
           CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
           count=0
           while IFS= read -r g; do
-            if grep -qiE 'compileSdk(Version)?[[:space:]]+3[34]([^0-9]|$)' "$g"; then
-              sed -i -E 's/compileSdk(Version)?[[:space:]]+3[34]([^0-9]|$)/compileSdk 35\2/' "$g"
+            if grep -qiE 'compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)' "$g"; then
+              sed -i -E 's/compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)/compileSdk 36\2/' "$g"
               echo "patched: $g -> $(grep -oiE 'compileSdk[^0-9]*[0-9]+' "$g" | head -1)"
               count=$((count + 1))
             fi
           done < <(find "$CACHE" -path "*/android/build.gradle" -o -path "*/android/build.gradle.kts" 2>/dev/null)
           echo "patched $count plugin gradle file(s)"
+          # Force the app module's compileSdk to 36 too (androidx baseline).
+          for app in android/app/build.gradle android/app/build.gradle.kts; do
+            [ -f "$app" ] || continue
+            sed -i -E 's/compileSdk(Version)?[[:space:]]*=?[[:space:]]*(flutter\.compileSdkVersion|3[0-5])/compileSdk = 36/' "$app"
+            echo "app compileSdk: $(grep -niE 'compileSdk' "$app" | head -1)"
+          done
 
       - name: Pre-install Android CMake 3.22.1
         # A transitive plugin (jni) builds native code via CMake 3.22.1. Letting
