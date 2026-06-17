@@ -36,11 +36,13 @@ class AppTheme {
       scaffoldBackgroundColor: AppTokens.bg,
       textTheme: textTheme.copyWith(
         titleLarge: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        titleMedium: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        titleMedium:
+            textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         titleSmall: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         labelLarge: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         bodyLarge: textTheme.bodyLarge?.copyWith(color: AppTokens.textPrimary),
-        bodyMedium: textTheme.bodyMedium?.copyWith(color: AppTokens.textSecondary),
+        bodyMedium:
+            textTheme.bodyMedium?.copyWith(color: AppTokens.textSecondary),
         bodySmall: textTheme.bodySmall?.copyWith(color: AppTokens.textMuted),
       ),
 
@@ -77,8 +79,7 @@ class AppTheme {
         ),
         labelStyle:
             textTheme.bodyMedium?.copyWith(color: AppTokens.textSecondary),
-        hintStyle:
-            textTheme.bodyMedium?.copyWith(color: AppTokens.textFaint),
+        hintStyle: textTheme.bodyMedium?.copyWith(color: AppTokens.textFaint),
       ),
 
       // ── Buttons ─────────────────────────────────────────────
@@ -198,7 +199,8 @@ class AppTheme {
         labelColor: AppTokens.brandInk,
         unselectedLabelColor: AppTokens.textMuted,
         labelStyle: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-        unselectedLabelStyle: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        unselectedLabelStyle:
+            textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         indicator: const UnderlineTabIndicator(
           borderSide: BorderSide(color: AppTokens.brand, width: 3),
         ),
@@ -264,6 +266,85 @@ class AppTheme {
         linearTrackColor: AppTokens.borderSoft,
         circularTrackColor: AppTokens.borderSoft,
       ),
+
+      // ── Time picker (من/إلى clock) ──────────────────────────
+      // Explicitly styled so the dial is always a readable, branded clock
+      // (the M3 default once rendered dark-on-dark on OS dark mode).
+      timePickerTheme: TimePickerThemeData(
+        backgroundColor: Colors.white,
+        hourMinuteColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTokens.brandSoft
+              : AppTokens.surfaceMuted,
+        ),
+        hourMinuteTextColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTokens.brandInk
+              : AppTokens.textPrimary,
+        ),
+        dayPeriodColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTokens.brandSoft
+              : Colors.white,
+        ),
+        dayPeriodTextColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTokens.brandInk
+              : AppTokens.textSecondary,
+        ),
+        dayPeriodBorderSide: const BorderSide(color: AppTokens.border),
+        dialBackgroundColor: AppTokens.surfaceMuted,
+        dialHandColor: AppTokens.brand,
+        dialTextColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : AppTokens.textPrimary,
+        ),
+        entryModeIconColor: AppTokens.brandInk,
+        helpTextStyle:
+            textTheme.bodySmall?.copyWith(color: AppTokens.textSecondary),
+        dialTextStyle: textTheme.titleMedium,
+        hourMinuteTextStyle:
+            textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.r18),
+        ),
+      ),
+
+      // ── Date picker ─────────────────────────────────────────
+      datePickerTheme: DatePickerThemeData(
+        backgroundColor: Colors.white,
+        headerBackgroundColor: AppTokens.brand,
+        headerForegroundColor: Colors.white,
+        weekdayStyle:
+            textTheme.bodySmall?.copyWith(color: AppTokens.textSecondary),
+        dayForegroundColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : AppTokens.textPrimary,
+        ),
+        dayBackgroundColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTokens.brand
+              : Colors.transparent,
+        ),
+        todayForegroundColor:
+            WidgetStateColor.resolveWith((states) => AppTokens.brandInk),
+        todayBorder: const BorderSide(color: AppTokens.brand),
+        yearForegroundColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? Colors.white
+              : AppTokens.textPrimary,
+        ),
+        yearBackgroundColor: WidgetStateColor.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? AppTokens.brand
+              : Colors.transparent,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.r18),
+        ),
+      ),
     );
   }
 
@@ -302,13 +383,15 @@ class AppTheme {
       ),
       scaffoldBackgroundColor: DarkTokens.bg,
       textTheme: textTheme.copyWith(
-        titleLarge:  textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        titleMedium: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        titleSmall:  textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
-        labelLarge:  textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
-        bodyLarge:   textTheme.bodyLarge?.copyWith(color: DarkTokens.textPrimary),
-        bodyMedium:  textTheme.bodyMedium?.copyWith(color: DarkTokens.textSecondary),
-        bodySmall:   textTheme.bodySmall?.copyWith(color: DarkTokens.textMuted),
+        titleLarge: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+        titleMedium:
+            textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        titleSmall: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        labelLarge: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        bodyLarge: textTheme.bodyLarge?.copyWith(color: DarkTokens.textPrimary),
+        bodyMedium:
+            textTheme.bodyMedium?.copyWith(color: DarkTokens.textSecondary),
+        bodySmall: textTheme.bodySmall?.copyWith(color: DarkTokens.textMuted),
       ),
       cardTheme: CardThemeData(
         color: DarkTokens.card,
@@ -325,7 +408,8 @@ class AppTheme {
         scrolledUnderElevation: 1,
         surfaceTintColor: Colors.transparent,
       ),
-      dividerTheme: const DividerThemeData(color: DarkTokens.borderSoft, thickness: 1),
+      dividerTheme:
+          const DividerThemeData(color: DarkTokens.borderSoft, thickness: 1),
       iconTheme: const IconThemeData(color: DarkTokens.textSecondary),
     );
   }

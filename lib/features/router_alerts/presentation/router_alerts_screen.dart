@@ -6,6 +6,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
+import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../application/router_alerts_providers.dart';
@@ -301,36 +302,39 @@ class _GlobalSettingsCardState extends State<_GlobalSettingsCard> {
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s12,
-            runSpacing: AppTokens.s8,
+          const SizedBox(height: AppTokens.s4),
+          Column(
             children: [
               _SwitchChip(
                 label: 'تشغيل التنبيهات',
                 value: _enabled,
                 onChanged: (value) => setState(() => _enabled = value),
               ),
+              const Divider(height: 1),
               _SwitchChip(
                 label: 'إشعار تيليجرام',
                 value: _telegram,
                 onChanged: (value) => setState(() => _telegram = value),
               ),
+              const Divider(height: 1),
               _SwitchChip(
                 label: 'راوتر مفصول',
                 value: _offline,
                 onChanged: (value) => setState(() => _offline = value),
               ),
+              const Divider(height: 1),
               _SwitchChip(
                 label: 'ترافيك عالٍ',
                 value: _traffic,
                 onChanged: (value) => setState(() => _traffic = value),
               ),
+              const Divider(height: 1),
               _SwitchChip(
                 label: 'استهلاك عالٍ',
                 value: _usage,
                 onChanged: (value) => setState(() => _usage = value),
               ),
+              const Divider(height: 1),
               _SwitchChip(
                 label: 'تتبّع اللوب',
                 value: _loop,
@@ -813,11 +817,8 @@ class _SwitchChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilterChip(
-      selected: value,
-      onSelected: onChanged,
-      avatar: Icon(value ? Icons.check_circle : Icons.circle_outlined),
-      label: Text(label),
-    );
+    // Delegates to the canonical aligned label + compact switch row so every
+    // toggle in this screen reads clearly (no oversized invisible-label pills).
+    return HubSwitchRow(label: label, value: value, onChanged: onChanged);
   }
 }
