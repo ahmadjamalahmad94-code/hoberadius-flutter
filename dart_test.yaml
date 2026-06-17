@@ -1,0 +1,7 @@
+# Test tags. `golden`/`render` mark pixel-comparison tests whose output is
+# font/rendering-platform specific (captured on Windows). CI runs on Linux, so
+# it excludes them: `flutter test --exclude-tags "golden || render"`. Local
+# runs include everything by default.
+tags:
+  golden:
+  render:
