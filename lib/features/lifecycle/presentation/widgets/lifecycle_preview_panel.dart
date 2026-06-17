@@ -28,42 +28,36 @@ class LifecyclePreviewPanel extends StatelessWidget {
           LayoutBuilder(
             builder: (context, constraints) {
               final columns = constraints.maxWidth >= 700 ? 4 : 2;
-              return GridView.count(
-                crossAxisCount: columns,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: AppTokens.s8,
-                mainAxisSpacing: AppTokens.s8,
-                childAspectRatio: columns == 2 ? 2.0 : 1.75,
+              const gap = AppTokens.s8;
+              final tileW =
+                  ((constraints.maxWidth - gap * (columns - 1)) / columns)
+                      .floorToDouble();
+              final metrics = <Widget>[
+                _Metric('كروت ستؤرشف', totals.cards, Icons.credit_card),
+                _Metric('مشتركون سيؤرشفون', totals.subscribers, Icons.person),
+                _Metric('حزم متأثرة', totals.batchesImpacted, Icons.inventory),
+                _Metric('بانتظار الأرشفة', totals.pendingArchive, Icons.timer),
+              ];
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
                 children: [
-                  _Metric('كروت ستؤرشف', totals.cards, Icons.credit_card),
-                  _Metric(
-                    'مشتركون سيؤرشفون',
-                    totals.subscribers,
-                    Icons.person,
-                  ),
-                  _Metric(
-                    'حزم متأثرة',
-                    totals.batchesImpacted,
-                    Icons.inventory,
-                  ),
-                  _Metric(
-                    'بانتظار الأرشفة',
-                    totals.pendingArchive,
-                    Icons.timer,
-                  ),
+                  for (final m in metrics) SizedBox(width: tileW, child: m),
                 ],
               );
             },
           ),
           const SizedBox(height: AppTokens.s12),
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
             children: [
               StatusPill(
                 text: preview.dryRun ? 'معاينة فقط' : 'تنفيذ',
                 tone: preview.dryRun ? PillTone.blue : PillTone.green,
               ),
-              const Spacer(),
               ElevatedButton.icon(
                 onPressed: running ? null : onRun,
                 icon: running

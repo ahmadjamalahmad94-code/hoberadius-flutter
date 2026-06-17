@@ -12,8 +12,11 @@ void main() {
         File('lib/features/shell/navigation_schema.dart').readAsStringSync();
     final more = File('lib/features/more/presentation/more_screen.dart')
         .readAsStringSync();
-    final sidebar = File('lib/features/shell/sidebar.dart').readAsStringSync();
-    final navigation = '$schema\n$shell\n$more\n$sidebar';
+    // The persistent sidebar is the web-style _WebSidebar inside
+    // shell_scaffold, driven by navigation_schema (the legacy standalone
+    // sidebar.dart was removed). Route coverage is asserted against the
+    // unified schema + shell + more sources.
+    final navigation = '$schema\n$shell\n$more';
     final schemaByRoute = {
       for (final item in appNavigationItems) item.routeName: item,
     };

@@ -321,6 +321,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                 FormFieldRow(
                   label: 'الشركة أو النوع',
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _vendor,
                     items: const [
                       DropdownMenuItem(
@@ -341,6 +342,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                 FormFieldRow(
                   label: 'النوع',
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _nasType,
                     items: const [
                       DropdownMenuItem(

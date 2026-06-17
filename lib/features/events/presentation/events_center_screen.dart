@@ -103,6 +103,7 @@ class _EventsSidePanel extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: category,
                 decoration: const InputDecoration(labelText: 'الفئة'),
                 items: [
@@ -119,6 +120,7 @@ class _EventsSidePanel extends ConsumerWidget {
               ),
               const SizedBox(height: AppTokens.s12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: severity,
                 decoration: const InputDecoration(labelText: 'الخطورة'),
                 items: [
@@ -434,6 +436,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _category,
                 decoration: const InputDecoration(labelText: 'الفئة'),
                 items: [
@@ -449,6 +452,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
               ),
               const SizedBox(height: AppTokens.s12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _severity,
                 decoration: const InputDecoration(labelText: 'الخطورة'),
                 items: [
@@ -464,6 +468,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
               ),
               const SizedBox(height: AppTokens.s12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _eventKey,
                 decoration: const InputDecoration(labelText: 'نوع الحدث'),
                 items: [
@@ -492,6 +497,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _actorType,
                       decoration:
                           const InputDecoration(labelText: 'من نفذ الإجراء'),
@@ -523,6 +529,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _targetType,
                       decoration:
                           const InputDecoration(labelText: 'العنصر المتأثر'),

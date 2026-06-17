@@ -1,6 +1,7 @@
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
@@ -87,52 +88,67 @@ class _RouterOperationsScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppCard(
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: selected.id,
-                  decoration: const InputDecoration(labelText: 'الراوتر'),
-                  items: [
-                    for (final router in available)
-                      DropdownMenuItem(
-                        value: router.id,
-                        child: Text('${router.name} - ${router.address}'),
-                      ),
-                  ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() => _selectedRouterId = value);
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: AppTokens.s12),
-              OutlinedButton.icon(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => _DiagnosticsDialog(routerId: selected.id!),
-                ),
-                icon: const Icon(Icons.troubleshoot_outlined),
-                label: const Text('تشخيص'),
-              ),
-              const SizedBox(width: AppTokens.s8),
-              OutlinedButton.icon(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) => _HealthDialog(routerId: selected.id!),
-                ),
-                icon: const Icon(Icons.health_and_safety_outlined),
-                label: const Text('المخاطر'),
-              ),
-              const SizedBox(width: AppTokens.s8),
-              IconButton(
-                tooltip: 'تحديث الحالة',
-                onPressed: () {
-                  ref.invalidate(mikrotikRouterOverviewProvider(selected.id!));
-                  ref.invalidate(mikrotikLiveSnapshotProvider(selected.id!));
+              DropdownButtonFormField<int>(
+                isExpanded: true,
+                initialValue: selected.id,
+                decoration: const InputDecoration(labelText: 'الراوتر'),
+                items: [
+                  for (final router in available)
+                    DropdownMenuItem(
+                      value: router.id,
+                      child: Text('${router.name} - ${router.address}'),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _selectedRouterId = value);
+                  }
                 },
-                icon: const Icon(Icons.sync),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              Wrap(
+                spacing: AppTokens.s8,
+                runSpacing: AppTokens.s8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => _DiagnosticsDialog(routerId: selected.id!),
+                    ),
+                    icon: const Icon(Icons.troubleshoot_outlined),
+                    label: const Text('تشخيص'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => _HealthDialog(routerId: selected.id!),
+                    ),
+                    icon: const Icon(Icons.health_and_safety_outlined),
+                    label: const Text('المخاطر'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => context.go(
+                      '/router-programming/${selected.id!}',
+                    ),
+                    icon: const Icon(Icons.tune_outlined),
+                    label: const Text('برمجة'),
+                  ),
+                  IconButton(
+                    tooltip: 'تحديث الحالة',
+                    onPressed: () {
+                      ref.invalidate(
+                        mikrotikRouterOverviewProvider(selected.id!),
+                      );
+                      ref.invalidate(
+                        mikrotikLiveSnapshotProvider(selected.id!),
+                      );
+                    },
+                    icon: const Icon(Icons.sync),
+                  ),
+                ],
               ),
             ],
           ),
@@ -358,6 +374,7 @@ class _GuidedAssistantPanelState extends ConsumerState<_GuidedAssistantPanel> {
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _operation,
             decoration: const InputDecoration(labelText: 'نوع العملية'),
             items: [

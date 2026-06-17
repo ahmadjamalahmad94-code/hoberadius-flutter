@@ -79,6 +79,7 @@ class CardBatchRuntimeSection extends StatelessWidget {
           FormFieldRow(
             label: 'وحدة الوقت',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: timeUnit,
               items: const [
                 DropdownMenuItem(value: 'minutes', child: Text('دقائق')),
@@ -98,6 +99,7 @@ class CardBatchRuntimeSection extends StatelessWidget {
           FormFieldRow(
             label: 'وضع المدة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: durationMode,
               items: const [
                 DropdownMenuItem(
@@ -112,6 +114,7 @@ class CardBatchRuntimeSection extends StatelessWidget {
           FormFieldRow(
             label: 'عند انتهاء الحصة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: quotaAction,
               items: const [
                 DropdownMenuItem(value: 'stop', child: Text('إيقاف')),

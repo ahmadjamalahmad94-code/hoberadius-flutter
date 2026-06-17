@@ -132,26 +132,37 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
             children: [
-              IconButton(
-                onPressed: () => context.goNamed('cards'),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              Text(
-                'توليد دفعة كروت',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTokens.sidebarBg,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    onPressed: () => context.goNamed('cards'),
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  Flexible(
+                    child: Text(
+                      'توليد دفعة كروت',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppTokens.sidebarBg,
+                              ),
+                      overflow: TextOverflow.ellipsis,
                     ),
+                  ),
+                ],
               ),
-              const Spacer(),
               OutlinedButton.icon(
                 onPressed: () => context.goNamed('bandwidth-schedules'),
                 icon: const Icon(Icons.speed_outlined),
                 label: const Text('سرعات متعددة'),
               ),
-              const SizedBox(width: AppTokens.s8),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: _loading
@@ -257,6 +268,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 FormFieldRow(
                   label: 'موضع البادئة/اللاحقة',
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: _affixMode,
                     items: const [
                       DropdownMenuItem(value: 'none', child: Text('بدون')),
@@ -294,6 +306,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 FormFieldRow(
                   label: 'مستوى التعقيد',
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: _passwordType,
                     items: const [
                       DropdownMenuItem(
@@ -324,6 +337,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 FormFieldRow(
                   label: 'الوحدة',
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     value: _timeUnit,
                     items: const [
                       DropdownMenuItem(value: 'minutes', child: Text('دقائق')),
@@ -336,6 +350,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 FormFieldRow(
                   label: 'عدد الأجهزة المسموحة',
                   child: DropdownButtonFormField<int>(
+                    isExpanded: true,
                     value: _devices,
                     items: const [
                       DropdownMenuItem(value: 1, child: Text('1')),

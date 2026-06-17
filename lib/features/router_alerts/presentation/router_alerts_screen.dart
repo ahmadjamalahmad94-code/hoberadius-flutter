@@ -126,47 +126,49 @@ class _SummaryGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 860;
-        return GridView.count(
-          crossAxisCount: wide ? 3 : 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppTokens.s12,
-          crossAxisSpacing: AppTokens.s12,
-          childAspectRatio: wide ? 3.05 : 2.35,
+        final columns = constraints.maxWidth >= 860 ? 3 : 2;
+        const gap = AppTokens.s12;
+        final tileW = ((constraints.maxWidth - gap * (columns - 1)) / columns)
+            .floorToDouble();
+        final tiles = <Widget>[
+          _MetricTile(
+            icon: Icons.router_outlined,
+            label: 'الراوترات',
+            value: counts.routers.toString(),
+          ),
+          _MetricTile(
+            icon: Icons.sensors_outlined,
+            label: 'تدفع مقاييس',
+            value: counts.pushing.toString(),
+          ),
+          _MetricTile(
+            icon: Icons.tune_outlined,
+            label: 'حدود مخصصة',
+            value: counts.overrides.toString(),
+          ),
+          _MetricTile(
+            icon: Icons.cable_outlined,
+            label: 'مجسّات اللوب',
+            value: counts.loopProbes.toString(),
+          ),
+          _MetricTile(
+            icon: Icons.report_problem_outlined,
+            label: 'حلقات مكتشفة',
+            value: counts.loopDetected.toString(),
+          ),
+          _MetricTile(
+            icon: settings.enabled
+                ? Icons.notifications_active_outlined
+                : Icons.notifications_off_outlined,
+            label: 'الحالة العامة',
+            value: settings.enabled ? 'مفعلة' : 'متوقفة',
+          ),
+        ];
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
           children: [
-            _MetricTile(
-              icon: Icons.router_outlined,
-              label: 'الراوترات',
-              value: counts.routers.toString(),
-            ),
-            _MetricTile(
-              icon: Icons.sensors_outlined,
-              label: 'تدفع مقاييس',
-              value: counts.pushing.toString(),
-            ),
-            _MetricTile(
-              icon: Icons.tune_outlined,
-              label: 'حدود مخصصة',
-              value: counts.overrides.toString(),
-            ),
-            _MetricTile(
-              icon: Icons.cable_outlined,
-              label: 'مجسّات اللوب',
-              value: counts.loopProbes.toString(),
-            ),
-            _MetricTile(
-              icon: Icons.report_problem_outlined,
-              label: 'حلقات مكتشفة',
-              value: counts.loopDetected.toString(),
-            ),
-            _MetricTile(
-              icon: settings.enabled
-                  ? Icons.notifications_active_outlined
-                  : Icons.notifications_off_outlined,
-              label: 'الحالة العامة',
-              value: settings.enabled ? 'مفعلة' : 'متوقفة',
-            ),
+            for (final t in tiles) SizedBox(width: tileW, child: t),
           ],
         );
       },
@@ -367,7 +369,8 @@ class _GlobalSettingsCardState extends State<_GlobalSettingsCard> {
             child: FilledButton.icon(
               onPressed: widget.saving ? null : _submit,
               icon: const Icon(Icons.save_outlined),
-              label: Text(widget.saving ? 'جارٍ الحفظ' : 'حفظ الإعدادات العامة'),
+              label:
+                  Text(widget.saving ? 'جارٍ الحفظ' : 'حفظ الإعدادات العامة'),
             ),
           ),
         ],
@@ -462,7 +465,7 @@ class _LoopProbesCard extends StatelessWidget {
                   physics: const NeverScrollableScrollPhysics(),
                   mainAxisSpacing: AppTokens.s8,
                   crossAxisSpacing: AppTokens.s8,
-                  childAspectRatio: wide ? 4.2 : 3.25,
+                  childAspectRatio: wide ? 4.2 : 2.2,
                   children: [
                     for (final probe in probes) _LoopProbeTile(probe: probe),
                   ],
@@ -505,7 +508,8 @@ class _LoopProbeTile extends StatelessWidget {
             probe.loopDetected
                 ? Icons.report_problem_outlined
                 : Icons.check_circle_outline,
-            color: probe.loopDetected ? AppTokens.dangerFg : AppTokens.successFg,
+            color:
+                probe.loopDetected ? AppTokens.dangerFg : AppTokens.successFg,
           ),
           const SizedBox(width: AppTokens.s8),
           Expanded(
@@ -731,7 +735,7 @@ class _FieldsGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: AppTokens.s8,
           crossAxisSpacing: AppTokens.s8,
-          childAspectRatio: wide ? 3.2 : 2.45,
+          childAspectRatio: wide ? 2.7 : 1.45,
           children: children,
         );
       },
@@ -779,10 +783,10 @@ class _WindowPicker extends StatelessWidget {
             UsageWindowOption(key: 'month', label: 'شهري'),
           ]
         : windows;
-    final safeValue = options.any((item) => item.key == value)
-        ? value
-        : options.first.key;
+    final safeValue =
+        options.any((item) => item.key == value) ? value : options.first.key;
     return DropdownButtonFormField<String>(
+      isExpanded: true,
       initialValue: safeValue,
       decoration: const InputDecoration(labelText: 'نافذة الاستهلاك'),
       items: [

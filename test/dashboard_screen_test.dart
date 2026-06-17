@@ -6,9 +6,10 @@ import 'package:hoberadius_app/features/dashboard/presentation/dashboard_screen.
 
 Future<void> _pumpDashboard(
   WidgetTester tester,
-  DashboardMetrics metrics,
-) async {
-  tester.view.physicalSize = const Size(1200, 2400);
+  DashboardMetrics metrics, {
+  Size size = const Size(1200, 2400),
+}) async {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
@@ -108,5 +109,26 @@ void main() {
       find.text('لا توجد ملاحظات تشغيلية مهمة الآن.'),
       findsOneWidget,
     );
+  });
+
+  // Rule 1 (no design breakage): the dashboard must lay out cleanly at the
+  // narrowest mobile width with no RenderFlex overflow. Overflow is reported
+  // as a FlutterError in tests, surfaced via takeException().
+  testWidgets('no overflow at 360px mobile width (RTL)', (tester) async {
+    final metrics = DashboardMetrics.fromJson({
+      'subscribers': {'total': 200, 'active': 150, 'expired': 12},
+      'cards': {'total': 5000, 'used': 331, 'available': 4669, 'batches': 9},
+      'plans': {'total': 7, 'enabled': 6, 'top': {'name': 'باقة الذهبية', 'subs': 64}},
+      'nas': {'total': 4, 'enabled': 3},
+      'system': {'db_ok': true, 'radius_ok': false, 'cpu_pct': 23.0},
+      'recent_batches': [
+        {'id': 42, 'batch_code': 'B-0042', 'package_name': 'باقة 10 جيجا', 'count': 100, 'used': 37},
+      ],
+      'alerts': [
+        {'level': 'warn', 'message': '7 مشتركين ينتهي اشتراكهم خلال 3 أيام.'},
+      ],
+    });
+    await _pumpDashboard(tester, metrics, size: const Size(360, 1600));
+    expect(tester.takeException(), isNull);
   });
 }

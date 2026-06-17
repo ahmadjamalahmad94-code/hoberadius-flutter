@@ -147,6 +147,7 @@ Future<TenantRecord?> showAdminTenantDialog(
                 ),
                 const SizedBox(height: AppTokens.s8),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: tier,
                   decoration: const InputDecoration(labelText: 'الخطة'),
                   items: const [
@@ -160,6 +161,7 @@ Future<TenantRecord?> showAdminTenantDialog(
                   onChanged: (value) => setLocal(() => tier = value ?? tier),
                 ),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: status,
                   decoration: const InputDecoration(labelText: 'الحالة'),
                   items: const [
@@ -182,7 +184,8 @@ Future<TenantRecord?> showAdminTenantDialog(
                 TextField(
                   controller: maxNas,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'حد أجهزة الشبكة'),
+                  decoration:
+                      const InputDecoration(labelText: 'حد أجهزة الشبكة'),
                 ),
                 TextField(
                   controller: apiRpm,
@@ -197,7 +200,8 @@ Future<TenantRecord?> showAdminTenantDialog(
                 ),
                 TextField(
                   controller: timezone,
-                  decoration: const InputDecoration(labelText: 'المنطقة الزمنية'),
+                  decoration:
+                      const InputDecoration(labelText: 'المنطقة الزمنية'),
                 ),
                 TextField(
                   controller: primaryColor,

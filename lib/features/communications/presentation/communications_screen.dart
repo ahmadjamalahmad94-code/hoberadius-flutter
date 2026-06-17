@@ -285,6 +285,7 @@ class _SendPanelState extends ConsumerState<_SendPanel> {
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _channel,
             decoration: const InputDecoration(labelText: 'القناة'),
             items: _channelItems(),
@@ -554,6 +555,7 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
                   ),
                   const SizedBox(height: AppTokens.s12),
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: _templateId ?? page.items.first.id,
                     decoration: const InputDecoration(labelText: 'القالب'),
                     items: [
@@ -835,6 +837,7 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= 560;
               final modeField = DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _mode,
                 decoration: const InputDecoration(labelText: 'طريقة التشغيل'),
                 items: [
@@ -844,6 +847,7 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
                 onChanged: (value) => setState(() => _mode = value ?? _mode),
               );
               final methodField = DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _method,
                 decoration: const InputDecoration(labelText: 'نوع الطلب'),
                 items: [
@@ -1555,6 +1559,7 @@ class _AudienceFields extends StatelessWidget {
     return Column(
       children: [
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: target,
           decoration: const InputDecoration(labelText: 'الجمهور'),
           items: _targetItems(),
@@ -1894,6 +1899,7 @@ class _TemplateDialogState extends ConsumerState<_TemplateDialog> {
               ),
               const SizedBox(height: AppTokens.s12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _channel,
                 decoration: const InputDecoration(labelText: 'القناة'),
                 items: _channelItems(),

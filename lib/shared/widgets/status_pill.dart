@@ -7,16 +7,16 @@ import '../../core/theme/tokens.dart';
 /// Each tone uses a soft tinted background + matching ink color +
 /// matching border. Visual parity with the cards_checker_v2 pills.
 enum PillTone {
-  green,    // success / online
-  amber,    // warning / pending
-  red,      // danger / error
-  blue,     // info
-  brand,    // brand purple
-  navy,     // legacy alias → brand
-  cyan,     // legacy alias → brand
-  purple,   // legacy alias → brand
-  orange,   // legacy alias → amber
-  neutral,  // grey
+  green, // success / online
+  amber, // warning / pending
+  red, // danger / error
+  blue, // info
+  brand, // brand purple
+  navy, // legacy alias → brand
+  cyan, // legacy alias → brand
+  purple, // legacy alias → brand
+  orange, // legacy alias → amber
+  neutral, // grey
 }
 
 class StatusPill extends StatelessWidget {
@@ -38,22 +38,36 @@ class StatusPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg, border) = switch (tone) {
-      PillTone.green
-          => (AppTokens.greenSoft, AppTokens.greenInk, AppTokens.successMed),
-      PillTone.amber
-      || PillTone.orange
-          => (AppTokens.amberSoft, AppTokens.amberInk, AppTokens.warningMed),
-      PillTone.red
-          => (AppTokens.redSoft, AppTokens.redInk, AppTokens.dangerMed),
-      PillTone.blue
-          => (AppTokens.blueSoft, AppTokens.blueInk, AppTokens.infoMed),
-      PillTone.brand
-      || PillTone.cyan
-      || PillTone.purple
-      || PillTone.navy
-          => (AppTokens.brandSoft, AppTokens.brandInk, AppTokens.borderStrong),
-      PillTone.neutral
-          => (AppTokens.slate100, AppTokens.slate500, AppTokens.slate200),
+      PillTone.green => (
+          AppTokens.greenSoft,
+          AppTokens.greenInk,
+          AppTokens.successMed
+        ),
+      PillTone.amber || PillTone.orange => (
+          AppTokens.amberSoft,
+          AppTokens.amberInk,
+          AppTokens.warningMed
+        ),
+      PillTone.red => (
+          AppTokens.redSoft,
+          AppTokens.redInk,
+          AppTokens.dangerMed
+        ),
+      PillTone.blue => (
+          AppTokens.blueSoft,
+          AppTokens.blueInk,
+          AppTokens.infoMed
+        ),
+      PillTone.brand || PillTone.cyan || PillTone.purple || PillTone.navy => (
+          AppTokens.brandSoft,
+          AppTokens.brandInk,
+          AppTokens.borderStrong
+        ),
+      PillTone.neutral => (
+          AppTokens.slate100,
+          AppTokens.slate500,
+          AppTokens.slate200
+        ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -77,14 +91,16 @@ class StatusPill extends StatelessWidget {
             Icon(icon, size: 12, color: fg),
             const SizedBox(width: 4),
           ],
-          Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: fg,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: fg,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],

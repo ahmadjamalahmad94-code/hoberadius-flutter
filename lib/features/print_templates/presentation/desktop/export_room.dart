@@ -27,7 +27,7 @@ class ExportRoom extends StatelessWidget {
 
   /// Width below which the 3-column row collapses into a stack.
   /// 360 (settings) + 12 + ~400 (preview min) + 12 + 320 (chips) ≈ 1104.
-  static const double _threeColumnThreshold = 1100;
+  static const double _threeColumnThreshold = 1320;
 
   @override
   Widget build(BuildContext context) {

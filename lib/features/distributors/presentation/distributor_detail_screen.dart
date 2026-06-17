@@ -130,10 +130,9 @@ class _SummaryGrid extends StatelessWidget {
                   Row(
                     children: [
                       StatusPill(
-                        text:
-                            distributor.isActive
-                                ? 'مفعّل'
-                                : distributorStatusLabel(distributor.status),
+                        text: distributor.isActive
+                            ? 'مفعّل'
+                            : distributorStatusLabel(distributor.status),
                         tone: distributor.isActive
                             ? PillTone.green
                             : PillTone.orange,
@@ -290,6 +289,7 @@ class _ActionsState extends ConsumerState<_Actions> {
                 ),
                 const SizedBox(height: AppTokens.s8),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: _direction,
                   decoration: const InputDecoration(labelText: 'الاتجاه'),
                   items: const [

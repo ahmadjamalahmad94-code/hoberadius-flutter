@@ -94,6 +94,7 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
               SizedBox(
                 width: statusWidth,
                 child: DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: widget.filters.status,
                   decoration: const InputDecoration(labelText: 'الحالة'),
                   items: [

@@ -280,7 +280,7 @@ class _SummaryGrid extends StatelessWidget {
           mainAxisSpacing: AppTokens.s8,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: cols == 4 ? 2.1 : 2.5,
+          childAspectRatio: cols == 4 ? 2.1 : 1.7,
           children: [
             _MetricCard('الإجمالي', '${summary.total}', Icons.devices_outlined),
             _MetricCard('تستجيب', '${summary.up}', Icons.check_circle_outline),
@@ -541,6 +541,7 @@ class _NetworkScanDialogState extends ConsumerState<_NetworkScanDialog> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final selector = DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: _routerId,
                     decoration:
                         const InputDecoration(labelText: 'اختر الراوتر'),
@@ -943,6 +944,7 @@ class _NetworkRemoteAccessDialogState
         LayoutBuilder(
           builder: (context, constraints) {
             final protocol = DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: _protocol,
               decoration: const InputDecoration(labelText: 'نوع الوصول'),
               items: [
@@ -957,6 +959,7 @@ class _NetworkRemoteAccessDialogState
                   : (value) => setState(() => _protocol = value ?? _protocol),
             );
             final ttl = DropdownButtonFormField<int>(
+              isExpanded: true,
               initialValue: _ttlMinutes,
               decoration: const InputDecoration(labelText: 'مدة الجلسة'),
               items: [
@@ -1361,6 +1364,7 @@ class _NetworkDeviceBypassDialogState
         ],
         const SizedBox(height: AppTokens.s12),
         DropdownButtonFormField<String>(
+          isExpanded: true,
           initialValue: _dhcpServerName.isEmpty ? null : _dhcpServerName,
           decoration: const InputDecoration(labelText: 'خادم DHCP'),
           items: [
@@ -1636,6 +1640,7 @@ class _NetworkDeviceDialogState extends State<_NetworkDeviceDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<int>(
+                isExpanded: true,
                 initialValue: _routerId,
                 decoration:
                     const InputDecoration(labelText: 'الراوتر التابع له'),
@@ -1661,6 +1666,7 @@ class _NetworkDeviceDialogState extends State<_NetworkDeviceDialog> {
               ),
               const SizedBox(height: AppTokens.s12),
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _deviceType,
                 decoration: const InputDecoration(labelText: 'نوع الجهاز'),
                 items: const [

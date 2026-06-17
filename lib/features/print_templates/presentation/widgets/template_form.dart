@@ -81,6 +81,7 @@ class TemplateForm extends StatelessWidget {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: orientation,
                     decoration: const InputDecoration(labelText: 'الاتجاه'),
                     items: const [
@@ -99,6 +100,7 @@ class TemplateForm extends StatelessWidget {
                 const SizedBox(width: AppTokens.s8),
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: pageSize,
                     decoration: const InputDecoration(labelText: 'حجم الصفحة'),
                     items: const [

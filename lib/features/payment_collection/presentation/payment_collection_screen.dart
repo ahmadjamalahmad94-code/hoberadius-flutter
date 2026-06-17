@@ -295,6 +295,7 @@ class _PaymentSettingsEditorState
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _provider,
                     decoration: const InputDecoration(labelText: 'مزود الدفع'),
                     items: const [
@@ -340,6 +341,7 @@ class _PaymentSettingsEditorState
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          isExpanded: true,
                           initialValue: kSupportedCurrencies.contains(_currency)
                               ? _currency
                               : kDefaultCurrency,
@@ -349,7 +351,8 @@ class _PaymentSettingsEditorState
                               .map(
                                 (value) => DropdownMenuItem(
                                   value: value,
-                                  child: Text('${currencyLabel(value)} — $value'),
+                                  child:
+                                      Text('${currencyLabel(value)} — $value'),
                                 ),
                               )
                               .toList(),
@@ -363,6 +366,7 @@ class _PaymentSettingsEditorState
                       const SizedBox(width: AppTokens.s12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
+                          isExpanded: true,
                           initialValue: _confirmationMode,
                           decoration: const InputDecoration(
                             labelText: 'طريقة الاعتماد',
@@ -444,10 +448,8 @@ class _PaymentSettingsEditorState
             },
           ),
           const SizedBox(height: AppTokens.s16),
-          Wrap(
-            spacing: AppTokens.s12,
-            runSpacing: AppTokens.s12,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _ToggleLine(
                 label: 'السماح بشراء الكروت',
@@ -456,6 +458,7 @@ class _PaymentSettingsEditorState
                     ? null
                     : (value) => setState(() => _allowCards = value),
               ),
+              const SizedBox(height: AppTokens.s12),
               _ToggleLine(
                 label: 'السماح باشتراكات المشتركين',
                 value: _allowMonthly,
@@ -463,6 +466,7 @@ class _PaymentSettingsEditorState
                     ? null
                     : (value) => setState(() => _allowMonthly = value),
               ),
+              const SizedBox(height: AppTokens.s12),
               _ToggleLine(
                 label: 'السماح بدفعات الموزعين',
                 value: _allowDistributors,
@@ -470,6 +474,7 @@ class _PaymentSettingsEditorState
                     ? null
                     : (value) => setState(() => _allowDistributors = value),
               ),
+              const SizedBox(height: AppTokens.s12),
               _ToggleLine(
                 label: 'تطبيق الخدمة تلقائيًا بعد الاعتماد',
                 value: _autoApply,
@@ -480,19 +485,20 @@ class _PaymentSettingsEditorState
             ],
           ),
           const SizedBox(height: AppTokens.s16),
-          Row(
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               StatusPill(
                 text: _enabled ? 'التحصيل مفعل' : 'التحصيل معطل',
                 tone: _enabled ? PillTone.green : PillTone.amber,
                 dot: true,
               ),
-              const SizedBox(width: AppTokens.s8),
               StatusPill(
                 text: 'الاعتماد: ${_confirmationLabel(_confirmationMode)}',
                 tone: PillTone.blue,
               ),
-              const Spacer(),
               FilledButton.icon(
                 onPressed: _saving ? null : _save,
                 icon: _saving
@@ -783,11 +789,12 @@ class _ToggleLine extends StatelessWidget {
           vertical: AppTokens.s8,
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             const SizedBox(width: AppTokens.s8),
             HubToggleSwitch(
@@ -1095,6 +1102,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: payerType,
                   decoration: const InputDecoration(labelText: 'نوع الدافع'),
                   items: _payerTypeOptions
@@ -1128,6 +1136,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
                 ),
                 const SizedBox(height: AppTokens.s12),
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: purpose,
                   decoration: const InputDecoration(labelText: 'الغرض'),
                   items: _paymentPurposeOptions
@@ -1218,6 +1227,7 @@ Future<PaymentProofDraft?> _proofDialog(BuildContext context) async {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
+                  isExpanded: true,
                   initialValue: proofType,
                   decoration: const InputDecoration(labelText: 'نوع الإثبات'),
                   items: _proofTypeOptions

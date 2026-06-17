@@ -92,6 +92,7 @@ class BandwidthFormCard extends StatelessWidget {
             ),
             const SizedBox(height: AppTokens.s12),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: targetType,
               items: const [
                 DropdownMenuItem(value: 'plan', child: Text('عرض / باقة خدمة')),
@@ -107,8 +108,7 @@ class BandwidthFormCard extends StatelessWidget {
               onChanged: (v) => onTargetTypeChanged(v ?? 'plan'),
               decoration: const InputDecoration(
                 labelText: 'نطاق القاعدة',
-                helperText:
-                    'المشترك أو باقة الكروت يتقدمان على قاعدة العرض.',
+                helperText: 'المشترك أو باقة الكروت يتقدمان على قاعدة العرض.',
               ),
             ),
             const SizedBox(height: AppTokens.s12),
@@ -172,6 +172,7 @@ class BandwidthFormCard extends StatelessWidget {
             ),
             const SizedBox(height: AppTokens.s12),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               initialValue: restoreMode,
               items: const [
                 DropdownMenuItem(
@@ -203,8 +204,9 @@ class BandwidthFormCard extends StatelessWidget {
               value: enabled,
               onChanged: onEnabledChanged,
               title: const Text('مفعّل'),
-              subtitle:
-                  const Text('تعطيله يبقي الجدول محفوظًا بدون تطبيقه على السرعات.'),
+              subtitle: const Text(
+                'تعطيله يبقي الجدول محفوظًا بدون تطبيقه على السرعات.',
+              ),
             ),
             const SizedBox(height: AppTokens.s12),
             ElevatedButton.icon(
@@ -254,6 +256,7 @@ class _TargetPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     if (targetType == 'plan') {
       return DropdownButtonFormField<int>(
+        isExpanded: true,
         initialValue: planId,
         items: [
           for (final plan in plans)
@@ -270,6 +273,7 @@ class _TargetPicker extends StatelessWidget {
     }
     if (targetType == 'subscriber') {
       return DropdownButtonFormField<String>(
+        isExpanded: true,
         initialValue: subscriberUsername,
         items: [
           for (final sub in subscribers)
@@ -291,6 +295,7 @@ class _TargetPicker extends StatelessWidget {
       );
     }
     return DropdownButtonFormField<int>(
+      isExpanded: true,
       initialValue: cardBatchId,
       items: [
         for (final batch in batches)

@@ -65,6 +65,7 @@ class CardBatchCoreSection extends StatelessWidget {
           FormFieldRow(
             label: 'الحالة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: status,
               items: const [
                 DropdownMenuItem(value: 'active', child: Text('نشطة')),
@@ -163,6 +164,7 @@ class CardBatchGenerationSection extends StatelessWidget {
           FormFieldRow(
             label: 'موضع الإضافة',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: affixMode.isEmpty ? 'none' : affixMode,
               items: const [
                 DropdownMenuItem(value: 'none', child: Text('بدون')),
@@ -172,8 +174,14 @@ class CardBatchGenerationSection extends StatelessWidget {
               onChanged: (v) => onAffixMode(v == 'none' ? '' : v),
             ),
           ),
-          FormFieldRow(label: 'البادئة', child: TextFormField(controller: prefix)),
-          FormFieldRow(label: 'اللاحقة', child: TextFormField(controller: suffix)),
+          FormFieldRow(
+            label: 'البادئة',
+            child: TextFormField(controller: prefix),
+          ),
+          FormFieldRow(
+            label: 'اللاحقة',
+            child: TextFormField(controller: suffix),
+          ),
           FormFieldRow(
             label: 'طول اسم الدخول',
             child: TextFormField(
@@ -191,6 +199,7 @@ class CardBatchGenerationSection extends StatelessWidget {
           FormFieldRow(
             label: 'نمط كلمة المرور',
             child: DropdownButtonFormField<String>(
+              isExpanded: true,
               value: passwordType,
               items: const [
                 DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),

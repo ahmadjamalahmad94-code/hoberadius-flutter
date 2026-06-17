@@ -374,6 +374,7 @@ Future<void> _showServiceRequestDialog(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   DropdownButtonFormField<int>(
+                    isExpanded: true,
                     initialValue: subscriberId,
                     decoration: const InputDecoration(labelText: 'المشترك'),
                     items: [
@@ -390,6 +391,7 @@ Future<void> _showServiceRequestDialog(
                   ),
                   const SizedBox(height: AppTokens.s12),
                   DropdownButtonFormField<_ServiceOption>(
+                    isExpanded: true,
                     initialValue: service,
                     decoration: const InputDecoration(labelText: 'الخدمة'),
                     items: [
@@ -416,6 +418,7 @@ Future<void> _showServiceRequestDialog(
                   ],
                   const SizedBox(height: AppTokens.s12),
                   DropdownButtonFormField<_RequestTypeOption>(
+                    isExpanded: true,
                     initialValue: requestType,
                     decoration: const InputDecoration(labelText: 'نوع الطلب'),
                     items: [
@@ -567,6 +570,7 @@ Future<void> _showCreateTicketDialog(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<int>(
+                  isExpanded: true,
                   initialValue: subscriberId,
                   decoration: const InputDecoration(labelText: 'المشترك'),
                   items: [
@@ -593,6 +597,7 @@ Future<void> _showCreateTicketDialog(
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: category,
                         decoration: const InputDecoration(labelText: 'النوع'),
                         items: const [
@@ -631,6 +636,7 @@ Future<void> _showCreateTicketDialog(
                     const SizedBox(width: AppTokens.s8),
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: priority,
                         decoration:
                             const InputDecoration(labelText: 'الأولوية'),

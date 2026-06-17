@@ -51,6 +51,7 @@ class _LifecycleCreatePolicyCardState extends State<LifecycleCreatePolicyCard> {
                   SizedBox(
                     width: 190,
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _entityType,
                       decoration: const InputDecoration(labelText: 'النوع'),
                       items: const [
@@ -209,6 +210,7 @@ class _UnitField extends StatelessWidget {
     return SizedBox(
       width: 160,
       child: DropdownButtonFormField<String>(
+        isExpanded: true,
         initialValue: value,
         decoration: InputDecoration(labelText: label),
         items: const [

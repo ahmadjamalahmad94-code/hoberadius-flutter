@@ -53,6 +53,7 @@ class _SaasModulesScreenState extends ConsumerState<SaasModulesScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               DropdownButtonFormField<String>(
+                isExpanded: true,
                 initialValue: _key,
                 decoration: const InputDecoration(labelText: 'الوحدة'),
                 items: kSaasModules.entries

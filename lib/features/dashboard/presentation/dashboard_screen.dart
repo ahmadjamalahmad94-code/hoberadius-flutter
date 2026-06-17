@@ -502,36 +502,43 @@ class _AttentionChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTokens.s12,
-        vertical: AppTokens.s8,
-      ),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: fg, size: 16),
-          const SizedBox(width: AppTokens.s8),
-          Text(
-            label,
-            style: AppTypography.labelSmall.copyWith(
-              color: p.textPrimary,
-              fontWeight: FontWeight.w700,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 300),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.s12,
+          vertical: AppTokens.s8,
+        ),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: fg, size: 16),
+            const SizedBox(width: AppTokens.s8),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelSmall.copyWith(
+                  color: p.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: AppTokens.s8),
-          Text(
-            '$value',
-            style: AppTypography.labelLarge.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w900,
+            const SizedBox(width: AppTokens.s8),
+            Text(
+              '$value',
+              style: AppTypography.labelLarge.copyWith(
+                color: fg,
+                fontWeight: FontWeight.w900,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -596,7 +603,13 @@ class _MetricGrid extends StatelessWidget {
           crossAxisCount: cols,
           mainAxisSpacing: AppTokens.s12,
           crossAxisSpacing: AppTokens.s12,
-          childAspectRatio: c.maxWidth < 520 ? 1.45 : 2.2,
+          // Narrow (2-col) cells need extra height for the sub-metric line;
+          // a taller ratio prevents the compact tile Column from overflowing.
+          childAspectRatio: c.maxWidth < 520
+              ? 1.02
+              : c.maxWidth < 760
+                  ? 1.6
+                  : 2.2,
           children: tiles,
         );
       },
@@ -867,13 +880,17 @@ class _Bar extends StatelessWidget {
       children: [
         Row(
           children: [
-            Text(
-              label,
-              style: AppTypography.labelMedium.copyWith(
-                color: p.textSecondary,
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelMedium.copyWith(
+                  color: p.textSecondary,
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(width: AppTokens.s8),
             Text(
               pct == null ? '—' : '${pct!.toStringAsFixed(0)}٪',
               style: AppTypography.labelLarge.copyWith(color: color),
@@ -911,32 +928,39 @@ class _StatusChip extends StatelessWidget {
     final p = AppPalette.of(context);
     final bg = ok ? p.successBg : p.dangerBg;
     final fg = ok ? p.successStrong : p.dangerStrong;
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTokens.s12,
-        vertical: AppTokens.s8,
-      ),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            ok ? Icons.check_circle : Icons.cancel,
-            color: fg,
-            size: 16,
-          ),
-          const SizedBox(width: AppTokens.s8),
-          Text(
-            ok ? okText : failText,
-            style: AppTypography.labelSmall.copyWith(
-              color: p.textPrimary,
-              fontWeight: FontWeight.w800,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 280),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.s12,
+          vertical: AppTokens.s8,
+        ),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              ok ? Icons.check_circle : Icons.cancel,
+              color: fg,
+              size: 16,
             ),
-          ),
-        ],
+            const SizedBox(width: AppTokens.s8),
+            Flexible(
+              child: Text(
+                ok ? okText : failText,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.labelSmall.copyWith(
+                  color: p.textPrimary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

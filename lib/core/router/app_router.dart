@@ -42,11 +42,13 @@ import '../../features/device_fingerprints/presentation/device_fingerprints_scre
 import '../../features/distributors/presentation/distributor_detail_screen.dart';
 import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
+import '../../features/admin_alerts/presentation/telegram_alerts_screen.dart';
 import '../../features/events/presentation/events_center_screen.dart';
 import '../../features/hotspot_cards_portal/presentation/hotspot_cards_portal_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
+import '../../features/mikrotik/presentation/mikrotik_programming_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_screen.dart';
 import '../../features/mikrotik/presentation/router_operations_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
@@ -67,6 +69,7 @@ import '../../features/router_alerts/presentation/router_alerts_screen.dart';
 import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
 import '../../features/setup_wizard/presentation/setup_wizard_screen.dart';
+import '../../features/store_admin/presentation/store_admin_screen.dart';
 import '../../features/subscriber_portal/presentation/subscriber_portal_screen.dart';
 import '../../features/subscribers/presentation/subscriber_360_screen.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
@@ -239,6 +242,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/router-operations',
             name: 'router-operations',
             builder: (ctx, st) => const RouterOperationsScreen(),
+          ),
+          GoRoute(
+            path: '/router-programming/:id',
+            name: 'router-programming',
+            builder: (ctx, st) => MikrotikProgrammingScreen(
+              routerId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+            ),
           ),
           GoRoute(
             path: '/setup-wizard',
@@ -455,9 +465,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             builder: (ctx, st) => const EventsCenterScreen(),
           ),
           GoRoute(
+            path: '/alerts/telegram',
+            name: 'telegram-alerts',
+            builder: (ctx, st) => const TelegramAlertsScreen(),
+          ),
+          GoRoute(
             path: '/saas-modules',
             name: 'saas-modules',
             builder: (ctx, st) => const SaasModulesScreen(),
+          ),
+          GoRoute(
+            path: '/store-admin',
+            name: 'store-admin',
+            builder: (ctx, st) => const StoreAdminScreen(),
           ),
           GoRoute(
             path: '/recycle-bin',

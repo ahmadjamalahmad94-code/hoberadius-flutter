@@ -26,25 +26,37 @@ class LoadPlanResult {
 }
 
 class PlanFormActionController extends Notifier<PlanFormActionState> {
+  bool _alive = true;
+
   @override
-  PlanFormActionState build() => const PlanFormActionState();
+  PlanFormActionState build() {
+    _alive = true;
+    ref.onDispose(() => _alive = false);
+    return const PlanFormActionState();
+  }
+
+  /// Guards `state =` against the provider being disposed mid-await (navigate
+  /// away while loading/saving) — setting state on a disposed Notifier throws.
+  void _set(PlanFormActionState next) {
+    if (_alive) state = next;
+  }
 
   Future<LoadPlanResult> load(int id) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
       final plan = await ref.read(plansRepositoryProvider).get(id);
       return LoadPlanResult(plan: plan);
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return LoadPlanResult(error: message);
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 
   Future<String?> submit(Plan plan, {required int? id}) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
       final repo = ref.read(plansRepositoryProvider);
       if (id != null) {
@@ -56,25 +68,25 @@ class PlanFormActionController extends Notifier<PlanFormActionState> {
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return message;
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 
   Future<String?> delete(int id) async {
-    state = state.copyWith(loading: true, error: null);
+    _set(state.copyWith(loading: true, error: null));
     try {
       await ref.read(plansRepositoryProvider).delete(id);
       ref.invalidate(plansListProvider);
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);
-      state = state.copyWith(error: message);
+      _set(state.copyWith(error: message));
       return message;
     } finally {
-      state = state.copyWith(loading: false);
+      _set(state.copyWith(loading: false));
     }
   }
 }

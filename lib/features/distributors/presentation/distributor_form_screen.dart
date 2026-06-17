@@ -135,6 +135,7 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                       _Box(
                         wide: wide,
                         child: DropdownButtonFormField<String>(
+                          isExpanded: true,
                           initialValue: _status,
                           decoration: const InputDecoration(
                             labelText: 'الحالة',
@@ -317,23 +318,31 @@ class _ChoiceSection extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTokens.r12),
         border: Border.all(color: AppTokens.border),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppTokens.s16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontWeight: FontWeight.w900,
-                color: AppTokens.sidebarBg,
+      // Transparent Material so child ListTiles have a Material ancestor for
+      // their ink without painting over the DecoratedBox background.
+      child: Material(
+        type: MaterialType.transparency,
+        child: Padding(
+          padding: const EdgeInsets.all(AppTokens.s16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: AppTokens.sidebarBg,
+                ),
               ),
-            ),
-            const SizedBox(height: AppTokens.s4),
-            Text(subtitle, style: const TextStyle(color: AppTokens.textMuted)),
-            const SizedBox(height: AppTokens.s8),
-            ...children,
-          ],
+              const SizedBox(height: AppTokens.s4),
+              Text(
+                subtitle,
+                style: const TextStyle(color: AppTokens.textMuted),
+              ),
+              const SizedBox(height: AppTokens.s8),
+              ...children,
+            ],
+          ),
         ),
       ),
     );

@@ -922,7 +922,8 @@ class _BandwidthProfilesPanel extends ConsumerWidget {
         title: 'لا توجد ملفات سرعة بعد',
         subtitle: 'أنشئ ملف سرعة لإعادة استخدامه عبر الباقات والمشتركين.',
         action: ElevatedButton.icon(
-          onPressed: () => _showBandwidthProfileDialog(context: context, ref: ref),
+          onPressed: () =>
+              _showBandwidthProfileDialog(context: context, ref: ref),
           icon: const Icon(Icons.add),
           label: const Text('ملف سرعة جديد'),
         ),
@@ -1130,6 +1131,7 @@ class _BandwidthProfileDialogState
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _downUnit,
                       decoration: const InputDecoration(labelText: 'وحدة'),
                       items: [
@@ -1150,6 +1152,7 @@ class _BandwidthProfileDialogState
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      isExpanded: true,
                       initialValue: _upUnit,
                       decoration: const InputDecoration(labelText: 'وحدة'),
                       items: [

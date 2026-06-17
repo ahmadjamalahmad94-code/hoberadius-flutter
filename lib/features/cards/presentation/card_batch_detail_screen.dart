@@ -59,30 +59,40 @@ class CardBatchDetailScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppTokens.s4,
+          runSpacing: AppTokens.s4,
           children: [
-            IconButton(
-              onPressed: () => context.goNamed('cards'),
-              icon: const Icon(Icons.arrow_back),
-            ),
-            Expanded(
-              child: batchAsync.maybeWhen(
-                data: (b) => Text(
-                  b.batchCode,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.sidebarBg,
-                      ),
-                  overflow: TextOverflow.ellipsis,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => context.goNamed('cards'),
+                  icon: const Icon(Icons.arrow_back),
                 ),
-                orElse: () => Text(
-                  'دفعة #$batchId',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.sidebarBg,
-                      ),
+                Flexible(
+                  child: batchAsync.maybeWhen(
+                    data: (b) => Text(
+                      b.batchCode,
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppTokens.sidebarBg,
+                              ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    orElse: () => Text(
+                      'دفعة #$batchId',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppTokens.sidebarBg,
+                              ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
             IconButton(
               tooltip: 'تحديث',
@@ -93,7 +103,6 @@ class CardBatchDetailScreen extends ConsumerWidget {
                 ref.invalidate(batchesListProvider);
               },
             ),
-            const SizedBox(width: AppTokens.s4),
             IconButton(
               tooltip: 'تعديل الباقة',
               onPressed: () => context.goNamed(
@@ -103,14 +112,12 @@ class CardBatchDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.edit_outlined,
                   color: AppTokens.textSecondary),
             ),
-            const SizedBox(width: AppTokens.s4),
             IconButton(
               tooltip: 'سرعات متعددة',
               onPressed: () => context.goNamed('bandwidth-schedules'),
               icon: const Icon(Icons.speed_outlined,
                   color: AppTokens.textSecondary),
             ),
-            const SizedBox(width: AppTokens.s4),
             cardsAsync.maybeWhen(
               data: (cards) => OutlinedButton.icon(
                 onPressed: cards.isEmpty

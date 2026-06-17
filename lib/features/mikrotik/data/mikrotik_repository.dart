@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../domain/mikrotik_model.dart';
+import '../domain/mikrotik_program_model.dart';
 
 class MikrotikRepository {
   const MikrotikRepository(this._api);
@@ -255,6 +256,60 @@ class MikrotikRepository {
       options: Options(responseType: ResponseType.bytes),
     );
     return Uint8List.fromList(res.data ?? const []);
+  }
+
+  // ── Network programming (hotspot/pppoe wizard) ─────────────────────
+  Future<ProgramState> programState(
+    int nasId, {
+    String kind = 'hotspot',
+  }) async {
+    final res = await _api.get(
+      '/api/v1/mikrotik/$nasId/program',
+      query: {'kind': kind},
+    );
+    return ProgramState.fromJson(_data(res));
+  }
+
+  Future<ProgramPlanResult> programPlan(
+    int nasId,
+    Map<String, dynamic> form,
+  ) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/program/plan',
+      body: form,
+    );
+    return ProgramPlanResult.fromJson(_data(res));
+  }
+
+  /// Applies the plan. Requires `confirm: true`; the server gates on safety
+  /// (409), missing confirm (400), and unresolved risks (422) — those surface
+  /// as [ApiException]s for the UI to show.
+  Future<ProgramApplyResponse> programApply(
+    int nasId,
+    Map<String, dynamic> form, {
+    bool overrideAdmin = false,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/program/apply',
+      body: {
+        ...form,
+        'confirm': true,
+        if (overrideAdmin) 'override_admin': true,
+      },
+    );
+    return ProgramApplyResponse.fromJson(_data(res));
+  }
+
+  Future<ProgramApplyResult> programUnprogram(int nasId, String kind) async {
+    final res = await _api.post(
+      '/api/v1/mikrotik/$nasId/program/unprogram',
+      body: {'kind': kind, 'confirm': true},
+    );
+    final data = _data(res);
+    final inner = data['unprogram_result'];
+    return ProgramApplyResult.fromJson(
+      inner is Map ? inner.map((k, v) => MapEntry(k.toString(), v)) : const {},
+    );
   }
 
   // ── P7 risk signals (loops / flapping / overlap) ───────────────────

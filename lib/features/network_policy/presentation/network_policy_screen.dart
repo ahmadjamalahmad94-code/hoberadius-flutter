@@ -969,7 +969,11 @@ class _RecommendationsBox extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.lightbulb_outline, size: 18, color: AppTokens.brandInk),
+              Icon(
+                Icons.lightbulb_outline,
+                size: 18,
+                color: AppTokens.brandInk,
+              ),
               SizedBox(width: AppTokens.s8),
               Text(
                 'توصيات ذكية',
@@ -1232,6 +1236,7 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
+            isExpanded: true,
             initialValue: _kindValue,
             decoration: const InputDecoration(labelText: 'النوع'),
             items: widget.kind.isWebBlock
@@ -1286,6 +1291,7 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
                 const SizedBox(width: AppTokens.s12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    isExpanded: true,
                     initialValue: _protocol,
                     decoration: const InputDecoration(labelText: 'البروتوكول'),
                     items: const [
@@ -1473,6 +1479,7 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
               ),
               const SizedBox(height: AppTokens.s12),
               DropdownButtonFormField<int>(
+                isExpanded: true,
                 initialValue: _routerId,
                 decoration: const InputDecoration(labelText: 'الراوتر'),
                 items: [

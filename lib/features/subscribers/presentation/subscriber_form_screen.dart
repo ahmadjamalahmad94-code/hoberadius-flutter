@@ -109,7 +109,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   void initState() {
     super.initState();
     _c = {for (final k in _controllerKeys) k: TextEditingController()};
-    if (widget.isEdit) _loadExisting();
+    // Defer the load so the controller's first `state =` runs AFTER initState
+    // (modifying a provider during the build/initState phase is disallowed).
+    if (widget.isEdit) Future.microtask(_loadExisting);
   }
 
   @override
