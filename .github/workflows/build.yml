@@ -65,21 +65,23 @@ jobs:
           fi
 
       - name: Patch stale-plugin Android compileSdk
-        # desktop_drop 0.4.4 (desktop-only drag-drop) hardcodes compileSdk 33,
-        # but its transitive androidx deps require consumers compiled against
-        # 34+. The plugin has no use on Android; bump its compileSdk so the
-        # AAR-metadata check passes. CI regenerates the pub cache each run, so
-        # this never touches the committed source.
+        # Several deps (desktop_drop, file_picker, file_saver,
+        # flutter_secure_storage) hardcode an old compileSdk (33/34) whose
+        # transitive androidx deps require consumers compiled against 35. Bump
+        # every plugin's compileSdk 33/34 -> 35 so the AAR-metadata checks pass.
+        # CI regenerates the pub cache each run, so the committed source is
+        # never touched.
         run: |
           CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
-          found=0
-          for g in $(find "$CACHE" -path "*desktop_drop*/android/build.gradle" 2>/dev/null); do
-            echo "patching $g"
-            sed -i -E 's/compileSdk(Version)?[[:space:]]+33/compileSdk 35/' "$g"
-            grep -nE "compileSdk" "$g" || true
-            found=1
-          done
-          [ "$found" = "1" ] || echo "no desktop_drop gradle found (ok if removed)"
+          count=0
+          while IFS= read -r g; do
+            if grep -qiE 'compileSdk(Version)?[[:space:]]+3[34]([^0-9]|$)' "$g"; then
+              sed -i -E 's/compileSdk(Version)?[[:space:]]+3[34]([^0-9]|$)/compileSdk 35\2/' "$g"
+              echo "patched: $g -> $(grep -oiE 'compileSdk[^0-9]*[0-9]+' "$g" | head -1)"
+              count=$((count + 1))
+            fi
+          done < <(find "$CACHE" -path "*/android/build.gradle" -o -path "*/android/build.gradle.kts" 2>/dev/null)
+          echo "patched $count plugin gradle file(s)"
 
       - name: Pre-install Android CMake 3.22.1
         # A transitive plugin (jni) builds native code via CMake 3.22.1. Letting
