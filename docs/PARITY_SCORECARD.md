@@ -1,12 +1,17 @@
 # HobeRadius Flutter ⇄ Web — Parity Scorecard
 
-> Updated 2026-06-17 (theme-match pass). Scope: how completely the Flutter
-> app matches the web RADIUS panel — **both data/behaviour AND style/colors**.
-> "API-first" = blocked on a new web `/api/v1` endpoint (see
-> `API_FIRST_BACKLOG.md`); those are NOT counted against Flutter since they
-> can't be built client-side yet.
+> Updated 2026-06-17 (theme-match + no-breakage certification pass). Scope: how
+> completely the Flutter app matches the web RADIUS panel — **both
+> data/behaviour AND style/colors**. "API-first" = blocked on a new web
+> `/api/v1` endpoint (see `API_FIRST_BACKLOG.md`); those are NOT counted
+> against Flutter since they can't be built client-side yet.
 
 ## Overall: ~93%  (≈99% of the API-backed surface; remainder is API-first)
+
+> **Quality gate CERTIFIED:** style/colors at the token level (100%); every one
+> of the 68 routed screens passes the no-overflow sweep at 360/600/1280 px; the
+> stub/fake scan is clean. The path to a higher headline number is now almost
+> entirely **web-side API work** — see `API_FIRST_BACKLOG.md`.
 
 | Domain | % | Notes |
 |---|---:|---|
@@ -45,20 +50,25 @@ Standard applied to every screen built/touched:
    wired to the live `/api/v1`; if an endpoint doesn't exist it goes to the
    API-first list, never a stub.
 
-Pass status this audit:
+Pass status this audit — **CERTIFIED**:
 - Stub/fake scan (coming-soon / placeholder / TODO / mock / dead-handler):
   **clean** — only legitimate hints, a QR fallback grid, and loading
-  skeletons. The one no-op button (topbar refresh) lived in dead code and
-  was removed.
-- Overflow: dashboard had a real RenderFlex overflow at 360px (KPI tiles +
-  chips) — **fixed**, with a 360px no-overflow guard test added as the
-  template. Apply the same `takeException()`-at-narrow-width guard per dense
-  screen as the systematic continuation (subscriber form, business-ops,
-  operational reports, mikrotik live sections).
+  skeletons. The one remaining no-op handler lived in the unrouted dev gallery
+  (`lib/features/_dev/`), now **removed**. Legacy `shell/sidebar.dart` was
+  already removed.
+- Overflow: **systematic per-screen sweep done.** `test/screens/
+  screen_overflow_sweep_test.dart` pumps **all 68 routed screens** at 360 /
+  600 / 1280 px with a fake API client and asserts `takeException()` is null
+  (no RenderFlex overflow). **All 68 certified.** ~21 screens had real
+  violations — fixed: StatusPill flexible label; `isExpanded` on every
+  dropdown; over-stuffed headers → Expanded/Wrap; fragile fixed-aspect stat
+  grids → content-height Wrap / generous heights; payment-collection toggles
+  & pills → full-width / Wrap; business-ops illegal Expanded-in-Wrap → Text;
+  distributor form ListTile → Material; print-templates desktop room gates on
+  width. Plus two real robustness fixes (form controllers guard post-dispose
+  `state =`; edit screens defer the initial load off `initState`).
 
 ## Remaining non-API client follow-ups (small)
 - Print-templates drag-position canvas (designer positions are editable via
-  numeric mm fields today; drag handles are a nicety).
-- Remove dead `lib/features/shell/sidebar.dart` (legacy dark `AppSidebar`,
-  unused — the live sidebar is the light `_WebSidebar` in shell_scaffold).
-- Subscriber-360 generic `services` panel (shape ambiguous).
+  numeric mm fields today; drag handles are a nicety, not parity-blocking).
+- Subscriber-360 generic `services` panel (shape ambiguous → API-first).
