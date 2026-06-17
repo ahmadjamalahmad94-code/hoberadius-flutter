@@ -52,6 +52,32 @@ jobs:
       - name: Scaffold Android platform (android/ is gitignored)
         run: flutter create --platforms=android --org com.hoberadius .
 
+      - name: Enable cleartext HTTP + INTERNET permission (owner server is http://)
+        # The app explicitly supports plain-HTTP servers (e.g. http://187.77.70.18),
+        # but Android blocks cleartext by default (API 28+) and the Flutter
+        # release manifest omits the INTERNET permission (it lives only in the
+        # debug/profile manifests). Patch the generated MAIN manifest so release
+        # builds can reach http servers. Idempotent: skips if already present.
+        run: |
+          MF=android/app/src/main/AndroidManifest.xml
+          echo "--- before ---"; cat "$MF"
+          if ! grep -q 'android.permission.INTERNET' "$MF"; then
+            sed -i -E '0,/<manifest[^>]*>/s##&\n    <uses-permission android:name="android.permission.INTERNET"/>#' "$MF"
+            echo "added INTERNET permission"
+          else
+            echo "INTERNET permission already present"
+          fi
+          if ! grep -q 'usesCleartextTraffic' "$MF"; then
+            sed -i -E '0,/<application/s##<application android:usesCleartextTraffic="true"#' "$MF"
+            echo "added usesCleartextTraffic=true"
+          else
+            echo "usesCleartextTraffic already present"
+          fi
+          echo "--- after ---"; cat "$MF"
+          # Fail fast if the patch did not take (protects against template drift).
+          grep -q 'android.permission.INTERNET' "$MF" || { echo "::error::INTERNET permission missing after patch"; exit 1; }
+          grep -q 'usesCleartextTraffic="true"' "$MF" || { echo "::error::usesCleartextTraffic missing after patch"; exit 1; }
+
       - name: Generate debug keystore (release is debug-signed → installable)
         run: |
           mkdir -p ~/.android
