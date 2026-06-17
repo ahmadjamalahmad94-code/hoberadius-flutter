@@ -12,57 +12,78 @@ class AppTokens {
   // ─────────────────────────────────────────────────────────────
   //  HUB v2 — Purple brand (new canonical)
   // ─────────────────────────────────────────────────────────────
-  /// Primary brand purple
+  /// Primary brand purple (web --cc-brand)
   static const Color brand = Color(0xFF6B5AED);
 
-  /// Darker ink for headings / hover
-  static const Color brandInk = Color(0xFF5B4BD6);
+  /// Lighter brand ramp (web --cc-brand-2 / --cc-brand-3) — hero gradients.
+  static const Color brand2 = Color(0xFF8B7BF8);
+  static const Color brand3 = Color(0xFFA99BF9);
 
-  /// Even darker for pressed buttons
-  static const Color brandDeep = Color(0xFF4836B8);
+  /// Darker ink for headings / hover (web --hb-purple-deep #5B4BD8)
+  static const Color brandInk = Color(0xFF5B4BD8);
 
-  /// Soft purple tint for surfaces / hover backgrounds
+  /// Even darker for pressed buttons (web --cc-brand-deep #4A36C9)
+  static const Color brandDeep = Color(0xFF4A36C9);
+
+  /// Deepest brand ink (web --cc-brand-ink) — pill-purple foreground.
+  static const Color brandInkDeep = Color(0xFF2E1F8C);
+
+  /// Soft purple tint for surfaces / hover backgrounds (web --cc-brand-softer)
   static const Color brandSoft = Color(0xFFF4F1FE);
 
-  /// Mid-tone purple line for borders on tinted surfaces
+  /// Slightly stronger soft purple (web --cc-brand-soft2)
+  static const Color brandSoft2 = Color(0xFFE8E1FB);
+
+  /// Mid-tone purple line for borders on tinted surfaces (web --cc-border-cool)
   static const Color brandLine = Color(0xFFE5E0F5);
 
   // ─────────────────────────────────────────────────────────────
-  //  Surfaces
+  //  Surfaces — matched to web --hb-bg / --cc-card-bg / --cc-tint-bg
   // ─────────────────────────────────────────────────────────────
-  static const Color bg = Color(0xFFFAFBFF);
-  static const Color card = Color(0xFFFFFFFF);
-  static const Color soft = Color(0xFFF8F9FE);
-  static const Color border = Color(0xFFE8E7F0);
-  static const Color borderSoft = Color(0xFFEFEEF6);
-  static const Color borderStrong = Color(0xFFD5CCF5);
+  static const Color bg = Color(0xFFF5F3FB); // --hb-bg (purple-tinted page)
+  static const Color card = Color(0xFFFFFFFF); // --cc-card-bg
+  static const Color soft = Color(0xFFFAFAFA); // --cc-tint-bg
+  static const Color border = Color(0xFFEEEDF3); // --hb-border
+  static const Color borderSoft = Color(0xFFEEEDF3);
+  static const Color borderStrong = Color(0xFFE3E1EC); // --hb-border-strong
 
   // ─────────────────────────────────────────────────────────────
-  //  Text
+  //  Text — matched to web --cc-text / -soft / -mute / -faint
   // ─────────────────────────────────────────────────────────────
-  static const Color textPrimary = Color(0xFF1F2937);
+  static const Color textPrimary = Color(0xFF1F2A37);
   static const Color textSecondary = Color(0xFF475569);
-  static const Color textMuted = Color(0xFF94A3B8);
-  static const Color textFaint = Color(0xFFC7CBD6);
+  static const Color textMuted = Color(0xFF94A0AE);
+  static const Color textFaint = Color(0xFFB6BCC8);
 
   // ─────────────────────────────────────────────────────────────
   //  Semantic
   // ─────────────────────────────────────────────────────────────
+  // Pill tones matched to web --cc-pill-* (bg/fg) for exact chip parity.
   static const Color green = Color(0xFF22C55E);
-  static const Color greenSoft = Color(0xFFDCFCE7);
-  static const Color greenInk = Color(0xFF15803D);
+  static const Color greenSoft = Color(0xFFDEF3E5); // --cc-pill-green-bg
+  static const Color greenInk = Color(0xFF157F4E); // --cc-pill-green-fg
 
   static const Color amber = Color(0xFFF59E0B);
-  static const Color amberSoft = Color(0xFFFEF3C7);
-  static const Color amberInk = Color(0xFF92400E);
+  static const Color amberSoft = Color(0xFFFCEFC9); // --cc-pill-amber-bg
+  static const Color amberInk = Color(0xFF7A4F02); // --cc-pill-amber-fg
 
   static const Color red = Color(0xFFEF4444);
-  static const Color redSoft = Color(0xFFFEE2E2);
-  static const Color redInk = Color(0xFFB91C1C);
+  static const Color redSoft = Color(0xFFFDE5E5); // --cc-pill-red-bg
+  static const Color redInk = Color(0xFF9B1C1C); // --cc-pill-red-fg
 
-  static const Color blue = Color(0xFF3B82F6);
-  static const Color blueSoft = Color(0xFFDBEAFE);
-  static const Color blueInk = Color(0xFF1D4ED8);
+  static const Color blue = Color(0xFF3D8DD6); // --hr-blue-info
+  static const Color blueSoft = Color(0xFFE3EDF9); // --cc-pill-blue-bg
+  static const Color blueInk = Color(0xFF1E5C9F); // --cc-pill-blue-fg
+
+  // Extra web pill tones (cyan / teal / grey) for full StatusPill parity.
+  static const Color cyan = Color(0xFF1F8FB0);
+  static const Color cyanSoft = Color(0xFFDEF3F8); // --cc-pill-cyan-bg
+  static const Color cyanInk = Color(0xFF0F627A); // --cc-pill-cyan-fg
+  static const Color teal = Color(0xFF0B9078);
+  static const Color tealSoft = Color(0xFFD2F1EC); // --cc-pill-teal-bg
+  static const Color tealInk = Color(0xFF0B6E5B); // --cc-pill-teal-fg
+  static const Color greySoft = Color(0xFFEDEAE1); // --cc-pill-grey-bg
+  static const Color greyInk = Color(0xFF5B6470); // --cc-pill-grey-fg
 
   // ─────────────────────────────────────────────────────────────
   //  Sidebar / topbar (purple-tinted dark)
@@ -136,8 +157,9 @@ class AppTokens {
   static const double r10 = 10;
   static const double r12 = 12;
   static const double r14 = 14;
-  static const double r18 = 18;
+  static const double r18 = 18; // --cc-r-card
   static const double r20 = 20;
+  static const double r22 = 22; // --cc-r-hero
 
   // ─────────────────────────────────────────────────────────────
   //  Breakpoints (responsive)
@@ -173,15 +195,22 @@ class AppTokens {
   // ─────────────────────────────────────────────────────────────
   //  Box shadows (matches hub-v2 sh-card / sh-md / sh-lg)
   // ─────────────────────────────────────────────────────────────
+  // Matched to web --cc-sh-card / --cc-sh-card2 / --cc-sh-hero (neutral
+  // slate elevation; hero keeps the brand-tinted glow).
   static const List<BoxShadow> shCard = [
-    BoxShadow(color: Color(0x0A0F172A), blurRadius: 2, offset: Offset(0, 1)),
-    BoxShadow(color: Color(0x0D5B4BD6), blurRadius: 24, offset: Offset(0, 8)),
+    BoxShadow(color: Color(0x080F172A), blurRadius: 0, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x0D0F172A), blurRadius: 18, offset: Offset(0, 6)),
   ];
   static const List<BoxShadow> shMd = [
-    BoxShadow(color: Color(0x100F172A), blurRadius: 8, offset: Offset(0, 2)),
+    BoxShadow(color: Color(0x080F172A), blurRadius: 0, offset: Offset(0, 1)),
+    BoxShadow(color: Color(0x140F172A), blurRadius: 26, offset: Offset(0, 10)),
   ];
   static const List<BoxShadow> shLg = [
-    BoxShadow(color: Color(0x145B4BD6), blurRadius: 25, offset: Offset(0, 10)),
+    BoxShadow(color: Color(0x384A36C9), blurRadius: 30, offset: Offset(0, 14)),
+    BoxShadow(color: Color(0x1A4A36C9), blurRadius: 10, offset: Offset(0, 4)),
+  ];
+  static const List<BoxShadow> shPop = [
+    BoxShadow(color: Color(0x1F000000), blurRadius: 22, offset: Offset(0, 8)),
   ];
 
   // ─────────────────────────────────────────────────────────────
@@ -222,6 +251,22 @@ class AppTokens {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [brand, brandInk],
+  );
+
+  /// Web --cc-hero-grad: linear-gradient(135deg,#6B5AED,#7B6BF2 45%,#A99BF9).
+  /// Use for hero cards / primary KPI surfaces to match the web exactly.
+  static const LinearGradient heroGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    stops: [0.0, 0.45, 1.0],
+    colors: [brand, Color(0xFF7B6BF2), brand3],
+  );
+
+  /// Web --cc-chip-grad: gold chip gradient.
+  static const LinearGradient chipGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFFFFD86B), Color(0xFFE3A41A)],
   );
   static const LinearGradient successGradient = LinearGradient(
     begin: Alignment.topLeft,
