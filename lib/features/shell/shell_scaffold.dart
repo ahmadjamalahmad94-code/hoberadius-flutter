@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/router/nav_history.dart';
 import '../../core/theme/tokens.dart';
+import '../../shared/widgets/hub_toast.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import 'navigation_schema.dart';
 
@@ -13,18 +16,72 @@ import 'navigation_schema.dart';
 /// the bottom-nav layout. The decision is width-based via
 /// [shellLayoutModeForWidth] — shrinking a desktop window somewhat no longer
 /// drops the whole sidebar.
-class ShellScaffold extends ConsumerWidget {
+class ShellScaffold extends ConsumerStatefulWidget {
   const ShellScaffold({super.key, required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShellScaffold> createState() => _ShellScaffoldState();
+}
+
+class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
+  DateTime? _lastBackAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final location = GoRouterState.of(context).matchedLocation;
+    // Record each visited location so the hardware/gesture back button can
+    // walk back through the go-history instead of exiting the app.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(navHistoryProvider).record(location);
+    });
+
     final width = MediaQuery.sizeOf(context).width;
-    return switch (shellLayoutModeForWidth(width)) {
-      ShellLayoutMode.fullSidebar => _Wide(child: child),
-      ShellLayoutMode.iconRail => _Wide(compact: true, child: child),
-      ShellLayoutMode.drawer => _Mobile(child: child),
+    final shell = switch (shellLayoutModeForWidth(width)) {
+      ShellLayoutMode.fullSidebar => _Wide(child: widget.child),
+      ShellLayoutMode.iconRail => _Wide(compact: true, child: widget.child),
+      ShellLayoutMode.drawer => _Mobile(child: widget.child),
     };
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: shell,
+    );
+  }
+
+  /// Back-button policy (Android hardware/gesture back):
+  ///   1. A nested route / pushed page → pop it (e.g. detail → list).
+  ///   2. Otherwise walk our own go-history to the previous screen.
+  ///   3. No history left but not on home → go to the home tab.
+  ///   4. On home with nothing to pop → double-back to exit.
+  void _handleBack() {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    final prev = ref.read(navHistoryProvider).back();
+    if (prev != null) {
+      context.go(prev);
+      return;
+    }
+    final location = GoRouterState.of(context).matchedLocation;
+    if (location != '/') {
+      context.go('/');
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBackAt == null ||
+        now.difference(_lastBackAt!) > const Duration(seconds: 2)) {
+      _lastBackAt = now;
+      HubToaster.info(context, 'اضغط زر الرجوع مرة أخرى للخروج');
+      return;
+    }
+    SystemNavigator.pop();
   }
 }
 
