@@ -183,7 +183,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
           sessionId: session.sessionId,
           downloadKbps: draft.downloadKbps,
           uploadKbps: draft.uploadKbps,
-          durationMinutes: draft.durationMinutes,
+          duration: draft.duration,
+          durationUnit: draft.durationUnit,
         );
       },
     );
@@ -921,18 +922,23 @@ class _TemporarySpeedDraft {
   const _TemporarySpeedDraft({
     required this.downloadKbps,
     required this.uploadKbps,
-    required this.durationMinutes,
+    required this.duration,
+    required this.durationUnit,
   });
 
   final int downloadKbps;
   final int uploadKbps;
-  final int durationMinutes;
+  final int duration;
+
+  /// `minutes` | `hours` — mirrors the web temp-speed form's unit selector.
+  final String durationUnit;
 }
 
 Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
   final download = TextEditingController(text: '2048');
   final upload = TextEditingController(text: '1024');
   final duration = TextEditingController(text: '30');
+  var unit = 'minutes';
 
   return showDialog<_TemporarySpeedDraft>(
     context: context,
@@ -945,7 +951,7 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'أدخل السرعة بالكيلوبت/ثانية والمدة بالدقائق. سيتم إرسال الطلب إلى الريدياس لتطبيق CoA إن كان متاحًا.',
+                'أدخل السرعة بالكيلوبت/ثانية والمدة ووحدتها. سيتم إرسال الطلب إلى الريدياس لتطبيق CoA إن كان متاحًا.',
               ),
               const SizedBox(height: AppTokens.s12),
               TextField(
@@ -966,13 +972,40 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
                 ),
               ),
               const SizedBox(height: AppTokens.s8),
-              TextField(
-                controller: duration,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'المدة بالدقائق',
-                  prefixIcon: Icon(Icons.timer_outlined),
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: duration,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'المدة',
+                        prefixIcon: Icon(Icons.timer_outlined),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: unit,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'الوحدة'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'minutes',
+                          child: Text('دقائق'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'hours',
+                          child: Text('ساعات'),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => unit = v ?? 'minutes'),
+                    ),
+                  ),
+                ],
               ),
               if (error != null) ...[
                 const SizedBox(height: AppTokens.s8),
@@ -994,8 +1027,8 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
               onPressed: () {
                 final down = int.tryParse(download.text.trim()) ?? 0;
                 final up = int.tryParse(upload.text.trim()) ?? 0;
-                final minutes = int.tryParse(duration.text.trim()) ?? 0;
-                if (down <= 0 || up <= 0 || minutes <= 0) {
+                final value = int.tryParse(duration.text.trim()) ?? 0;
+                if (down <= 0 || up <= 0 || value <= 0) {
                   setState(() {
                     error = 'أدخل أرقامًا صحيحة أكبر من صفر.';
                   });
@@ -1006,7 +1039,8 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
                   _TemporarySpeedDraft(
                     downloadKbps: down,
                     uploadKbps: up,
-                    durationMinutes: minutes,
+                    duration: value,
+                    durationUnit: unit,
                   ),
                 );
               },

@@ -75,7 +75,8 @@ void main() {
       sessionId: 'sess-1',
       downloadKbps: 2048,
       uploadKbps: 1024,
-      durationMinutes: 30,
+      duration: 2,
+      durationUnit: 'hours',
     );
     await repo.cancelTemporarySpeed(username: 'sub', sessionId: 'sess-1');
 
@@ -101,7 +102,8 @@ void main() {
       'session_id': 'sess-1',
       'down_kbps': 2048,
       'up_kbps': 1024,
-      'duration_minutes': 30,
+      'duration': 2,
+      'duration_unit': 'hours',
     });
   });
 }

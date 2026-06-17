@@ -108,7 +108,8 @@ class SessionsRepository {
     required String sessionId,
     required int downloadKbps,
     required int uploadKbps,
-    required int durationMinutes,
+    required int duration,
+    required String durationUnit,
   }) async {
     final res = await _api.post(
       '/api/v1/sessions/temp-speed',
@@ -117,7 +118,9 @@ class SessionsRepository {
         'session_id': sessionId,
         'down_kbps': downloadKbps,
         'up_kbps': uploadKbps,
-        'duration_minutes': durationMinutes,
+        'duration': duration,
+        // Server accepts minutes|hours; mirrors the web temp-speed form.
+        'duration_unit': durationUnit,
       },
     );
     return _mapData(res);
