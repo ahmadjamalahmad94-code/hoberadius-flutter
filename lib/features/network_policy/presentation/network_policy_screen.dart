@@ -27,9 +27,9 @@ class NetworkPolicyScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PageHeader(
-          title: 'مركز سياسات الشبكة',
+          title: 'سياسات الشبكة',
           subtitle:
-              'حفظ ومعاينة سياسات الراوتر من التطبيق، والتنفيذ يبقى من مسار التشغيل المعتمد في الخادم.',
+              'حظر المواقع والمواقع المسموحة لكل راوتر — تُفتح من لوحة عمليات الراوتر. الحفظ والمعاينة من التطبيق، والتنفيذ يبقى من مسار التشغيل المعتمد في الخادم.',
           actions: [
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(networkPolicyPageProvider),
@@ -127,23 +127,17 @@ class _PolicySidePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = kind.isRemoteAccess
+    final rows = kind.isWebBlock
         ? const [
-            ('الخدمات', 'Winbox وSSH وواجهة الربط وWebFig حسب الحاجة'),
-            ('المصدر', 'قائمة عناوين موثوقة أو مدة انتهاء واضحة'),
-            ('المعاينة', 'تفحص الأثر والتحذيرات قبل أي تنفيذ'),
+            ('الأهداف', 'نطاق أو IP أو شبكة CIDR للحظر'),
+            ('النطاق', 'حاليًا كل المستخدمين حسب عقد الخادم'),
+            ('المعاينة', 'توضح عدد أوامر الحظر والتحذيرات'),
           ]
-        : kind.isWebBlock
-            ? const [
-                ('الأهداف', 'نطاق أو IP أو شبكة CIDR للحظر'),
-                ('النطاق', 'حاليًا كل المستخدمين حسب عقد الخادم'),
-                ('المعاينة', 'توضح عدد أوامر الحظر والتحذيرات'),
-              ]
-            : const [
-                ('العناصر', 'نطاق دفع أو IP مسموح قبل الدخول'),
-                ('البروفايل', 'اختياري لتحديد بروفايل الهوتسبوت'),
-                ('المعاينة', 'تراجع السماح وقابلية التراجع'),
-              ];
+        : const [
+            ('العناصر', 'نطاق دفع أو IP مسموح قبل الدخول'),
+            ('البروفايل', 'اختياري لتحديد بروفايل الهوتسبوت'),
+            ('المعاينة', 'تراجع السماح وقابلية التراجع'),
+          ];
 
     return AppCard(
       child: Column(
@@ -376,20 +370,9 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
   }
 
   List<Widget> _fieldChips(NetworkPolicyKind kind, NetworkPolicy policy) {
-    final keys = kind.isRemoteAccess
-        ? const [
-            'allow_winbox',
-            'allow_ssh',
-            'allow_api',
-            'allow_api_ssl',
-            'allow_webfig_http',
-            'allow_webfig_https',
-            'source_address_list',
-            'expires_at',
-          ]
-        : kind.isWebBlock
-            ? const ['scope', 'fail_open']
-            : const ['hotspot_profile'];
+    final keys = kind.isWebBlock
+        ? const ['scope', 'fail_open']
+        : const ['hotspot_profile'];
     return [
       for (final key in keys)
         if (networkPolicyFieldLabel(key, policy.fields[key]).isNotEmpty)
@@ -1431,19 +1414,10 @@ class _CreatePolicyDialog extends ConsumerStatefulWidget {
 
 class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
   final _name = TextEditingController();
-  final _source = TextEditingController();
-  final _expiresAt = TextEditingController();
-  final _reason = TextEditingController();
   final _hotspotProfile = TextEditingController();
   int? _routerId;
   bool _enabled = true;
   bool _saving = false;
-  bool _allowWinbox = true;
-  bool _allowSsh = false;
-  bool _allowApi = false;
-  bool _allowApiSsl = false;
-  bool _allowWebfigHttp = false;
-  bool _allowWebfigHttps = true;
   bool _failOpen = true;
 
   @override
@@ -1455,9 +1429,6 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
   @override
   void dispose() {
     _name.dispose();
-    _source.dispose();
-    _expiresAt.dispose();
-    _reason.dispose();
     _hotspotProfile.dispose();
     super.dispose();
   }
@@ -1500,61 +1471,7 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
                 title: const Text('السياسة مفعّلة'),
                 onChanged: (value) => setState(() => _enabled = value),
               ),
-              if (kind.isRemoteAccess) ...[
-                const Divider(height: AppTokens.s24),
-                _CheckLine(
-                  value: _allowWinbox,
-                  label: 'السماح بـ Winbox',
-                  onChanged: (v) => setState(() => _allowWinbox = v),
-                ),
-                _CheckLine(
-                  value: _allowSsh,
-                  label: 'السماح بـ SSH',
-                  onChanged: (v) => setState(() => _allowSsh = v),
-                ),
-                _CheckLine(
-                  value: _allowApi,
-                  label: 'السماح بواجهة الربط',
-                  onChanged: (v) => setState(() => _allowApi = v),
-                ),
-                _CheckLine(
-                  value: _allowApiSsl,
-                  label: 'السماح بواجهة الربط الآمنة',
-                  onChanged: (v) => setState(() => _allowApiSsl = v),
-                ),
-                _CheckLine(
-                  value: _allowWebfigHttp,
-                  label: 'السماح بـ WebFig HTTP',
-                  onChanged: (v) => setState(() => _allowWebfigHttp = v),
-                ),
-                _CheckLine(
-                  value: _allowWebfigHttps,
-                  label: 'السماح بـ WebFig HTTPS',
-                  onChanged: (v) => setState(() => _allowWebfigHttps = v),
-                ),
-                const SizedBox(height: AppTokens.s12),
-                TextField(
-                  controller: _source,
-                  decoration: const InputDecoration(
-                    labelText: 'قائمة عناوين المصادر الموثوقة',
-                  ),
-                ),
-                const SizedBox(height: AppTokens.s12),
-                TextField(
-                  controller: _expiresAt,
-                  decoration: const InputDecoration(
-                    labelText: 'تاريخ الانتهاء',
-                    hintText: '2026-12-31T23:59:59Z',
-                  ),
-                  textDirection: TextDirection.ltr,
-                ),
-                const SizedBox(height: AppTokens.s12),
-                TextField(
-                  controller: _reason,
-                  decoration: const InputDecoration(labelText: 'سبب الفتح'),
-                  maxLines: 2,
-                ),
-              ] else if (kind.isWebBlock) ...[
+              if (kind.isWebBlock) ...[
                 const Divider(height: AppTokens.s24),
                 SwitchListTile(
                   value: _failOpen,
@@ -1608,17 +1525,6 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
         'name': name,
         'router_id': _routerId,
         'enabled': _enabled,
-        if (kind.isRemoteAccess) ...{
-          'allow_winbox': _allowWinbox,
-          'allow_ssh': _allowSsh,
-          'allow_api': _allowApi,
-          'allow_api_ssl': _allowApiSsl,
-          'allow_webfig_http': _allowWebfigHttp,
-          'allow_webfig_https': _allowWebfigHttps,
-          'source_address_list': _source.text.trim(),
-          'expires_at': _expiresAt.text.trim(),
-          'reason': _reason.text.trim(),
-        },
         if (kind.isWebBlock) ...{
           'scope': 'all_users',
           'fail_open': _failOpen,
@@ -1640,31 +1546,7 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
   }
 }
 
-class _CheckLine extends StatelessWidget {
-  const _CheckLine({
-    required this.value,
-    required this.label,
-    required this.onChanged,
-  });
-
-  final bool value;
-  final String label;
-  final ValueChanged<bool> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return CheckboxListTile(
-      value: value,
-      contentPadding: EdgeInsets.zero,
-      title: Text(label),
-      onChanged: (value) => onChanged(value ?? false),
-      controlAffinity: ListTileControlAffinity.leading,
-    );
-  }
-}
-
 IconData _kindIcon(NetworkPolicyKind kind) {
-  if (kind.isRemoteAccess) return Icons.admin_panel_settings_outlined;
   if (kind.isWebBlock) return Icons.block_outlined;
   return Icons.verified_user_outlined;
 }

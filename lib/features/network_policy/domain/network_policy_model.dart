@@ -20,21 +20,15 @@ class NetworkPolicyKind {
   final String childSingular;
 
   bool get hasChildren => childPath.isNotEmpty;
-  bool get isRemoteAccess => slug == 'remote-access';
   bool get isWebBlock => slug == 'web-block';
   bool get isWalledGarden => slug == 'walled-garden';
 }
 
+// «الوصول البعيد» (remote-access) أُزيل من مركز سياسات الشبكة مطابقةً للويب:
+// الخادم حذف الخدمة المُكرَّرة (commit 66f551e) فبقي السجلّ على خدمتين فقط
+// (حظر المواقع + المواقع المسموحة)؛ الوصول البعيد الفعلي يعيش في «مراقبة
+// أجهزة الشبكة» (network-devices) لا هنا.
 const networkPolicyKinds = <NetworkPolicyKind>[
-  NetworkPolicyKind(
-    slug: 'remote-access',
-    serviceKey: 'remote_access',
-    label: 'الوصول البعيد',
-    shortLabel: 'وصول بعيد',
-    description: 'فتح خدمات إدارة الراوتر لمصادر موثوقة وبمدة واضحة.',
-    childPath: '',
-    childSingular: '',
-  ),
   NetworkPolicyKind(
     slug: 'web-block',
     serviceKey: 'web_block',

@@ -38,6 +38,14 @@ class _RouterOperationsScreenState
           subtitle:
               'متابعة حالة الراوتر الحية من عقد ميكروتك الموجود في الريدياس، مع إبقاء أوامر التغيير وإعادة التشغيل ضمن إجراءات محمية ومراجعة.',
           actions: [
+            // «سياسات الشبكة» تعيش الآن داخل لوحة عمليات الراوتر (مطابقةً للويب
+            // الذي دمجها هنا) بدل بند مستقل في القائمة — حظر المواقع والمواقع
+            // المسموحة لكل راوتر.
+            OutlinedButton.icon(
+              onPressed: () => context.go('/network-policy'),
+              icon: const Icon(Icons.policy_outlined, size: 18),
+              label: const Text('سياسات الشبكة'),
+            ),
             IconButton(
               tooltip: 'تحديث الراوترات',
               onPressed: () => ref.invalidate(mikrotikRoutersProvider),
@@ -116,7 +124,8 @@ class _RouterOperationsScreenState
                   OutlinedButton.icon(
                     onPressed: () => showDialog<void>(
                       context: context,
-                      builder: (_) => _DiagnosticsDialog(routerId: selected.id!),
+                      builder: (_) =>
+                          _DiagnosticsDialog(routerId: selected.id!),
                     ),
                     icon: const Icon(Icons.troubleshoot_outlined),
                     label: const Text('تشخيص'),

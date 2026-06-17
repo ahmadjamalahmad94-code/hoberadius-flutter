@@ -217,13 +217,9 @@ const appNavSections = <AppNavSection>[
         path: '/router-alerts',
         description: 'حدود الانقطاع والترافيك والاستهلاك لكل راوتر.',
       ),
-      AppNavItem(
-        icon: Icons.policy_outlined,
-        label: 'سياسات الشبكة',
-        routeName: 'network-policy',
-        path: '/network-policy',
-        description: 'الوصول البعيد، حظر المواقع، والمواقع المسموحة.',
-      ),
+      // «سياسات الشبكة» لم تعد بندًا مستقلًا في الشريط الجانبي — مطابقةً للويب
+      // الذي دمجها داخل لوحة عمليات الراوتر (commit 80e9483). تُفتح الآن من
+      // شاشة «عمليات الراوتر»، ومسار /network-policy يبقى حيًّا للوصول إليها.
       AppNavItem(
         icon: Icons.hub_outlined,
         label: 'موارد التشغيل',
@@ -349,7 +345,8 @@ const appNavSections = <AppNavSection>[
         label: 'إدارة المتجر',
         routeName: 'store-admin',
         path: '/store-admin',
-        description: 'دعم المتجر: الإيداعات، السحوبات، محافظ الاستلام، والمحادثات.',
+        description:
+            'دعم المتجر: الإيداعات، السحوبات، محافظ الاستلام، والمحادثات.',
       ),
     ],
   ),

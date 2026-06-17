@@ -1,6 +1,6 @@
 # HobeRadius Flutter ⇄ Web — Parity Scorecard
 
-> Updated 2026-06-17 (api-first endpoints pass). Scope: how completely the
+> Updated 2026-06-17 (reverse-sync pass — match current web structure). Scope: how completely the
 > Flutter app matches the web RADIUS panel — **both data/behaviour AND
 > style/colors**. "API-first" = blocked on a new web `/api/v1` endpoint (see
 > `API_FIRST_BACKLOG.md`); those are NOT counted against Flutter since they
@@ -31,13 +31,35 @@
 | MikroTik | 90% | core + control + diagnostics + /health + per-row disconnect/queue/address-list/file + **network-programming wizard** (hotspot/pppoe form+live-state → plan w/ commands·risks·preview·backup-warning → apply w/ confirm+safety+risk gate → unprogram). **Hard ceiling (web-only):** topology, login-designer deploy/preview, audit-timeline, recovery, permission-matrix, metrics-push ingest, live-traffic SSE — these need real hardware / NDJSON+binary+FTP streams, not a JSON API. |
 | License / System / Backups | 95% | license file, sync, admin-bridge, Drive connect, restore, capacity. |
 | Finance / Services | 95% | collection/wallets/ledger/loans/invoices/tickets/lifecycle/recycle + business-ops console + **store admin console** (deposits/withdrawals confirm·reject, payment-methods CRUD, support chat inbox + reply + status). Company inventory/expenses = API-first. |
-| Network Policy | 90% | CRUD/apply/changes/rollback/targets + preview intelligence. site-exit = API-first. |
+| Network Policy | 90% | CRUD/apply/changes/rollback/targets + preview intelligence. **Reverse-synced to current web:** NPC is no longer a standalone nav item — it now opens from «عمليات الراوتر» (router dashboard), mirroring web `80e9483 Move NPC into MikroTik router dashboard`; the duplicate «الوصول البعيد»/remote-access kind was removed (web `66f551e`), leaving web-block + walled-garden only. site-exit = API-first. |
 | Events | 50% | center + record + business summary. detail/risk/investigations/security = API-first. |
 | Communications + Alerts | 95% | channels/campaigns/templates/quota/whatsapp-bridge + **Telegram admin-alerts** (bot config w/ masked token + PATCH-keep, test-connection, per-alert toggle + test + rendered preview). WhatsApp auto-reply bot = API-first. |
 | Portals | 95% | subscriber portal (+payments/request-detail), customer portals, hotspot/card portal. |
 | Reports | 90% | financial + operational center hub + bespoke per-report UX. rep_login_states_detail = API-first. |
 | Print Templates | 90% | render engine byte-faithful (portrait/RTL/engine/logo/QR/credential/pattern) + editable designer + bg-picker. Drag-position canvas = minor follow-up. |
 | Admin / Audit / Settings / Tenants / Roles | 98% | avatar_url, tenant branding/currency, per-permission Arabic labels, readable audit action+target. business-operators-profile / sections-admin = web-only (API-first). |
+
+## Reverse-sync pass (2026-06-17) — match the CURRENT web structure
+The web deleted/merged some pages after the original parity build; the app was
+audited section-by-section against `radius-module@main (~5616346)` (sidebar +
+routes + git history) and corrected so it mirrors the **current** web, not the
+old one:
+- **«سياسات الشبكة» / Network-Policy center** — REMOVED as a standalone nav item
+  and **merged into the router dashboard**: it now opens from «عمليات الراوتر»
+  (matches web `80e9483`). The `/network-policy` route stays registered (deep
+  links) but is no longer in the sidebar/«المزيد». The duplicate
+  **«الوصول البعيد» / remote-access** policy kind was deleted (matches web
+  `66f551e`), leaving **web-block + walled-garden** only — same as the web
+  `_REGISTRY`. (The separate `network-devices` remote-access *session* feature is
+  unrelated and untouched.)
+- **Evaluated & kept (no web delete/merge):** `radius-resources` → maps to web
+  `pool_list` «نطاقات العناوين» (still in the sidebar); `network-devices` → web
+  route is alive but its nav entry is *temporarily hidden* "until next release"
+  (operator note in `_sidebar.html`), i.e. not deleted/merged; `device-finger‑
+  prints` → fingerprint data surfaces in the web MAC-history report, never a
+  standalone web page; `mikrotik` (bind credentials) → per-router credential
+  surface, distinct from operations. These remain to preserve wired parity;
+  flagged here for the owner if a future web change drops them.
 
 ## How to read this
 - Everything not marked **API-first** is **done** in Flutter.

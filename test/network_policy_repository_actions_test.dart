@@ -96,7 +96,7 @@ void main() {
     final adapter = _CaptureAdapter();
     client.dio.httpClientAdapter = adapter;
     final repo = NetworkPolicyRepository(client);
-    final kind = networkPolicyKindBySlug('remote-access');
+    final kind = networkPolicyKindBySlug('web-block');
 
     final script = await repo.script(kind, 5);
     final apply = await repo.apply(
@@ -116,11 +116,11 @@ void main() {
     expect(
       adapter.requests.map((request) => '${request.method} ${request.path}'),
       [
-        'GET /api/v1/network-policy/remote-access/policies/5/preview.rsc',
-        'POST /api/v1/network-policy/remote-access/policies/5/apply',
-        'GET /api/v1/network-policy/remote-access/policies/5/changes',
-        'POST /api/v1/network-policy/remote-access/policies/5/changes/7/rollback',
-        'POST /api/v1/network-policy/remote-access/policies/5/duplicate',
+        'GET /api/v1/network-policy/web-block/policies/5/preview.rsc',
+        'POST /api/v1/network-policy/web-block/policies/5/apply',
+        'GET /api/v1/network-policy/web-block/policies/5/changes',
+        'POST /api/v1/network-policy/web-block/policies/5/changes/7/rollback',
+        'POST /api/v1/network-policy/web-block/policies/5/duplicate',
       ],
     );
   });

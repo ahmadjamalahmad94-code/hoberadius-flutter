@@ -35,7 +35,6 @@ void main() {
       'customer-portals': '/customer-portals',
       'communications': '/communications',
       'events-center': '/events',
-      'network-policy': '/network-policy',
       'network-devices': '/network-devices',
       'router-alerts': '/router-alerts',
       'router-operations': '/router-operations',
@@ -62,6 +61,31 @@ void main() {
 
     expect(router, contains("name: 'payment-request-detail'"));
     expect(router, contains("path: ':id'"));
+  });
+
+  test('network-policy is merged into the router dashboard, not a nav item',
+      () {
+    // مطابقةً للويب (commit 80e9483 «Move NPC into MikroTik router dashboard»):
+    // «سياسات الشبكة» لم تعد بندًا مستقلًا في التنقل — تُفتح من «عمليات الراوتر».
+    final router = File('lib/core/router/app_router.dart').readAsStringSync();
+    final schema =
+        File('lib/features/shell/navigation_schema.dart').readAsStringSync();
+    final routerOps = File(
+      'lib/features/mikrotik/presentation/router_operations_screen.dart',
+    ).readAsStringSync();
+
+    // The route stays registered so it remains reachable for deep links.
+    expect(router, contains("name: 'network-policy'"));
+    expect(router, contains("path: '/network-policy'"));
+    // …but it is no longer a standalone navigation entry.
+    expect(
+      appNavigationItems.map((item) => item.routeName),
+      isNot(contains('network-policy')),
+    );
+    expect(schema, isNot(contains("routeName: 'network-policy'")));
+    // It is surfaced from the router operations (dashboard) screen instead.
+    expect(routerOps, contains("context.go('/network-policy')"));
+    expect(routerOps, contains('سياسات الشبكة'));
   });
 
   test('public hotspot card portal is reachable without admin session', () {
