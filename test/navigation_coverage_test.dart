@@ -35,7 +35,8 @@ void main() {
       'customer-portals': '/customer-portals',
       'communications': '/communications',
       'events-center': '/events',
-      'network-devices': '/network-devices',
+      // network-devices is intentionally NOT a sidebar item — mirrors the web,
+      // where the entry is hidden "until next release" (route stays alive).
       'router-alerts': '/router-alerts',
       'router-operations': '/router-operations',
       'setup-wizard': '/setup-wizard',
@@ -146,7 +147,7 @@ void main() {
     );
     expect(
       appNavSections.map((section) => section.label),
-      contains('التحصيل والمحاسبة'),
+      contains('المال والتحصيل'),
     );
     expect(
       appNavigationItems.map((item) => item.label),
