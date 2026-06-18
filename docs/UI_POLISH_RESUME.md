@@ -16,13 +16,13 @@ The owner's governing requirement (1:1 web-mirror nav) is complete:
   Arabic labels + page placement; `test/nav_structure_test.dart` locks it.
   (commit `e191bc4`) — `flutter analyze` clean, 362 tests pass.
 
-## UI POLISH — RESUME HERE (continue on `feat/parity-structure`)
-Remaining items below (REMAINING section) are unstarted. Order: item 3
-(cards→card view, contained) → items 2/9/11 (density: shell `_ContentArea`
-padding + max-content-width + shrink oversized headers, verify per change vs
-`test/screens/screen_overflow_sweep_test.dart`) → item 4 (designer live
-preview via `card_renderer_svg.dart`) → item 5 (split print-templates into
-«تصميم»/«طباعة»). Item 10 stays BLOCKED (API-first, see below).
+## UI POLISH — COMPLETE (on `feat/parity-structure`)
+All client-side polish items are done. Order executed: item 3 (cards→card
+view, commit `eb6e139`) → items 2/9/11 (density: shell content centering +
+`AppTokens.contentMaxWidth` + denser `PageHeader`, commit `a6318a8`) → item 4
+(designer live preview) + item 5 (split print-templates into «تصميم»/«طباعة»)
+both in commit `d826f08`. Item 10 stays BLOCKED (API-first, see below).
+`flutter analyze` clean; 362 tests pass; overflow sweep green (72 screens).
 
 ## DONE (committed)
 
@@ -73,38 +73,31 @@ preview via `card_renderer_svg.dart`) → item 5 (split print-templates into
   → `SubscribersRepository.list(attention:)`, and render a clearable filter
   chip.
 
-## REMAINING (client-side, do next — biggest visible wins)
-
-Do these as a shared-first pass, then re-run the overflow sweep across all 71
-screens.
+## DONE — client-side polish (this batch)
 
 - **Items 2 / 9 / 11 — density / wasted space / “scattered” layout (GLOBAL):**
-  the owner’s #1 theme. Approach:
-  - Spacing tokens already exist (`AppTokens.s4…s40`). Define + apply a
-    **max-content-width + centering** rule for wide screens and tighten the
-    default content padding in the shell `_ContentArea`
-    (`shell_scaffold.dart`, currently `EdgeInsets.all(s12)` on mobile) and in
-    `PageHeader` / `AppCard`.
-  - Kill large empty regions (e.g. speed-plan «معاينة التغيير») — screens that
-    put a `Column` at the top of a tall scroll view; constrain/center content
-    or use `Spacer`/`Center` so there’s no dead bottom region.
-  - Shrink oversized helper/section labels (audit `titleLarge`/oversized
-    `Text` in form section headers).
-  - VERIFY each change against `test/screens/screen_overflow_sweep_test.dart`.
+  DONE (commit `a6318a8`). Added `AppTokens.contentMaxWidth = 1180`; shell
+  `_ContentArea` now centers content (`Align.topCenter` + `ConstrainedBox`)
+  instead of left-aligning at 1280; `PageHeader` titles dropped a step
+  (`titleLarge`/compact `titleMedium`, was `headlineSmall`/`titleLarge`) for
+  denser web-like headers across every screen. Goldens regenerated; sweep green.
 
 - **Item 3 — card packages (حزم البطاقات) as CARD view, not table:**
-  `lib/features/cards/presentation/cards_list_screen.dart` renders a `_Table`.
-  Convert to a responsive card/grid (mirror the subscribers/other card grids;
-  use a `Wrap`/`GridView` of `AppCard`s). Keep sweep green.
+  DONE (commit `eb6e139`). `cards_batches_table.dart` rewritten from a wide
+  `DataTable` to a responsive `LayoutBuilder` + `Wrap` of `_BatchCard`s (1 col
+  <1100px, 2 cols ≥1100); selection via `selectedBatchIdsProvider`, all actions
+  preserved. Outer redundant `AppCard` wrapper removed from the list screen.
 
-- **Item 4 — template designer live preview:**
-  `lib/features/print_templates/` — the SVG render engine exists
-  (`data/card_renderer_svg.dart`). Wire a live preview widget into the designer
-  so edits reflect on-screen.
+- **Item 4 — template designer live preview:** DONE (commit `d826f08`).
+  NEW `widgets/template_live_preview.dart` (`TemplateLivePreview`) renders the
+  real card SVG engine (`buildCardRenderModel` → `CardSvgView`, same renderer
+  the export PDF uses) and rebuilds on every designer field change. Wired into
+  the design section beside the editor.
 
 - **Item 5 — split template page into «تصميم» (design) vs «طباعة» (print):**
-  `print_templates_screen.dart` — reorganize into two tabs/sections: design
-  (editor + live preview) and print (pick package + template → export PDF).
+  DONE (commit `d826f08`). `print_templates_screen.dart` split via a
+  `SegmentedButton`: «تصميم» = editor (form + designer) + live preview;
+  «طباعة» = saved-template list + desktop export room → preview/export PDF.
 
 ## Shared components/rules established (reuse these)
 - `HubSwitchRow` — labelled toggle row (use for ALL switches; sweep the other
