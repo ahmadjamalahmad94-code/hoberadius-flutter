@@ -8,6 +8,7 @@ import '../../core/router/nav_history.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/hub_toast.dart';
 import '../../shared/widgets/responsive_layout.dart';
+import '../provider_grants/application/nav_visibility.dart';
 import 'navigation_schema.dart';
 
 /// Adaptive shell. The full web-style sidebar persists on desktop AND
@@ -131,6 +132,7 @@ class _Wide extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final auth = ref.watch(authControllerProvider);
+    final sections = ref.watch(gatedNavSectionsProvider);
     return Scaffold(
       body: Row(
         children: [
@@ -138,6 +140,7 @@ class _Wide extends ConsumerWidget {
             location: location,
             admin: auth.admin,
             compact: compact,
+            sections: sections,
           ),
           Expanded(
             child: _ContentArea(
@@ -155,10 +158,12 @@ class _Wide extends ConsumerWidget {
 class _WebSidebar extends StatefulWidget {
   const _WebSidebar({
     required this.location,
+    required this.sections,
     this.admin,
     this.compact = false,
   });
   final String location;
+  final List<GatedNavSection> sections;
   final AuthAdmin? admin;
 
   /// When true the sidebar starts collapsed to its icon rail (the shell's
@@ -308,15 +313,16 @@ class _WebSidebarState extends State<_WebSidebar> {
                   onTap: () => context.goNamed(dashboardNavItem.routeName),
                 ),
                 const SizedBox(height: AppTokens.s8),
-                for (final section in appNavSections)
+                for (final gated in widget.sections)
                   _SidebarSectionBlock(
-                    section: section,
+                    section: gated.section,
+                    items: gated.items,
                     collapsed: _collapsed,
-                    open: _openSections.contains(section.id) ||
-                        navSectionIsActive(widget.location, section),
-                    active: navSectionIsActive(widget.location, section),
+                    open: _openSections.contains(gated.section.id) ||
+                        navSectionIsActive(widget.location, gated.section),
+                    active: navSectionIsActive(widget.location, gated.section),
                     location: widget.location,
-                    onHeaderTap: () => _toggleSection(section),
+                    onHeaderTap: () => _toggleSection(gated.section),
                   ),
               ],
             ),
@@ -405,6 +411,7 @@ class _StandaloneSidebarTile extends StatelessWidget {
 class _SidebarSectionBlock extends StatelessWidget {
   const _SidebarSectionBlock({
     required this.section,
+    required this.items,
     required this.collapsed,
     required this.open,
     required this.active,
@@ -413,6 +420,7 @@ class _SidebarSectionBlock extends StatelessWidget {
   });
 
   final AppNavSection section;
+  final List<GatedNavItem> items;
   final bool collapsed;
   final bool open;
   final bool active;
@@ -445,14 +453,17 @@ class _SidebarSectionBlock extends StatelessWidget {
               padding: const EdgeInsetsDirectional.only(start: AppTokens.s12),
               child: Column(
                 children: [
-                  for (final item in section.items)
+                  for (final gated in items)
                     _SidebarActionTile(
-                      icon: item.icon,
-                      label: item.label,
-                      active: navPathMatches(location, item.path),
+                      icon: gated.item.icon,
+                      label: gated.item.label,
+                      active: navPathMatches(location, gated.item.path),
                       collapsed: false,
                       compact: true,
-                      onTap: () => context.goNamed(item.routeName),
+                      onTap: () => context.goNamed(gated.item.routeName),
+                      trailing: gated.requiresUpgrade
+                          ? const _UpgradeBadge()
+                          : null,
                     ),
                 ],
               ),
@@ -544,6 +555,38 @@ class _SidebarActionTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// «طلب تفعيل» chip shown next to a paid-not-active (locked_upgrade) nav item.
+class _UpgradeBadge extends StatelessWidget {
+  const _UpgradeBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTokens.amber.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(AppTokens.r8),
+        border: Border.all(color: AppTokens.amber.withValues(alpha: 0.4)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.lock_outline, size: 12, color: AppTokens.amber),
+          SizedBox(width: 3),
+          Text(
+            'تفعيل',
+            style: TextStyle(
+              color: AppTokens.amber,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
       ),
     );
   }

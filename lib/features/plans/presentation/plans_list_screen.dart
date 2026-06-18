@@ -7,6 +7,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/plans_repository.dart';
 import '../domain/plan_model.dart';
 
@@ -31,14 +32,15 @@ class PlansListScreen extends ConsumerWidget {
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(plansListProvider),
             ),
-            ElevatedButton.icon(
-              onPressed: () => context.goNamed('plan-new'),
-              icon: const Icon(Icons.add),
-              label: const Text('باقة جديدة'),
+            GuardedCreateButton(
+              serviceKey: 'profiles',
+              label: 'باقة جديدة',
+              onCreate: () => context.goNamed('plan-new'),
             ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
+        const LimitUsageBanner(serviceKey: 'profiles'),
         async.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),

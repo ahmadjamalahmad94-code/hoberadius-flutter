@@ -7,6 +7,8 @@ import '../../../core/platform/platform_capabilities.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../provider_grants/application/provider_grants_provider.dart';
+import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../application/print_templates_controller.dart';
 import '../domain/print_template_model.dart';
 import 'desktop/export_room.dart';
@@ -239,6 +241,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
           ),
         ),
         const SizedBox(height: AppTokens.s12),
+        const LimitUsageBanner(serviceKey: 'print_templates'),
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 980;
@@ -371,6 +374,20 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    // Block-at-cap: provider may limit the number of active print templates.
+    if (!grantsAllowCreate(ref, 'print_templates')) {
+      final limit = ref.read(grantLimitProvider('print_templates'));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            limit == null
+                ? 'تم الوصول إلى الحدّ المسموح من المزوّد.'
+                : providerLimitMessageAr(limit),
+          ),
+        ),
+      );
+      return;
+    }
     final error = await ref.read(printTemplatesActionProvider.notifier).save(
           name: _name.text.trim(),
           orientation: _orientation,

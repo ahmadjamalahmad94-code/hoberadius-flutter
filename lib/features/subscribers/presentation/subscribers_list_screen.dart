@@ -11,6 +11,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
 import 'widgets/subscriber_dialogs.dart';
@@ -62,14 +63,15 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
               onSelectionChanged: (s) => setState(() => _density = s.first),
             ),
             const SizedBox(width: AppTokens.s8),
-            ElevatedButton.icon(
-              onPressed: () => context.goNamed('subscriber-new'),
-              icon: const Icon(Icons.add),
-              label: const Text('مشترك جديد'),
+            GuardedCreateButton(
+              serviceKey: 'subscribers',
+              label: 'مشترك جديد',
+              onCreate: () => context.goNamed('subscriber-new'),
             ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
+        const LimitUsageBanner(serviceKey: 'subscribers'),
         AppCard(
           padding: const EdgeInsets.all(AppTokens.s12),
           child: Column(

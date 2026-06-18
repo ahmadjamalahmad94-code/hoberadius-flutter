@@ -8,6 +8,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_skeleton_loader.dart';
+import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../application/cards_list_controller.dart';
 import '../application/cards_list_providers.dart';
 import 'widgets/cards_batches_table.dart';
@@ -39,6 +40,7 @@ class CardsListScreen extends ConsumerWidget {
           },
         ),
         const SizedBox(height: AppTokens.s16),
+        const LimitUsageBanner(serviceKey: 'cards'),
         CardsListToolbar(
           selectedCount: selected.length,
           filters: filters,

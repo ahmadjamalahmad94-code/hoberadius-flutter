@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/page_header.dart';
+import '../../../provider_grants/presentation/limit_usage_banner.dart';
 
 class CardsListHeader extends StatelessWidget {
   const CardsListHeader({super.key, required this.onRefresh});
@@ -29,10 +30,10 @@ class CardsListHeader extends StatelessWidget {
           icon: const Icon(Icons.file_upload_outlined),
           label: const Text('استيراد ملف'),
         ),
-        ElevatedButton.icon(
-          onPressed: () => context.goNamed('card-batch-new'),
-          icon: const Icon(Icons.add),
-          label: const Text('حزمة جديدة'),
+        GuardedCreateButton(
+          serviceKey: 'cards',
+          label: 'حزمة جديدة',
+          onCreate: () => context.goNamed('card-batch-new'),
         ),
       ],
     );

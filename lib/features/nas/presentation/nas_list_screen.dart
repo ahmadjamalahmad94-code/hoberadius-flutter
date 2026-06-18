@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/nas_repository.dart';
 import '../domain/nas_model.dart';
 
@@ -69,14 +70,15 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(nasListProvider),
             ),
-            ElevatedButton.icon(
-              onPressed: () => context.goNamed('nas-new'),
-              icon: const Icon(Icons.add),
-              label: const Text('جهاز جديد'),
+            GuardedCreateButton(
+              serviceKey: 'nas',
+              label: 'جهاز جديد',
+              onCreate: () => context.goNamed('nas-new'),
             ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
+        const LimitUsageBanner(serviceKey: 'nas'),
         async.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),
