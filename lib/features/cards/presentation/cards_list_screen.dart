@@ -88,10 +88,7 @@ class CardsListScreen extends ConsumerWidget {
               children: [
                 CardsListTotals(totals: page.totals),
                 const SizedBox(height: AppTokens.s16),
-                AppCard(
-                  padding: EdgeInsets.zero,
-                  child: CardsBatchesTable(page: page),
-                ),
+                CardsBatchesTable(page: page),
                 const SizedBox(height: AppTokens.s12),
                 CardsListPagination(page: page, filters: filters),
               ],
