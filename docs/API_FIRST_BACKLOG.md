@@ -52,10 +52,18 @@ Still to build (all have a working admin `/api/v1`; just need Flutter UI):
 > faked (no WebView, no stub data). Build these on `radius-module` afterward to
 > reach true 100% parity. Maintained across P1→P6.
 
-## ⏭️ QUEUED — NEXT UP: Provider grants gate (license + service disable/hide + limits)
-> Status: **API being built now** (owner confirmed). Do NOT start until the
-> owner pings that `GET /api/v1/provider/grants` is merged. This is the next
-> parity item after the UI-polish batch (which is DONE).
+## ✅ DONE: Provider grants gate (license + service disable/hide + limits)
+> Built once `GET /api/v1/provider/grants` (radius-module schema_version 2)
+> landed. Flutter feature `lib/features/provider_grants/`:
+> model+repo+AsyncNotifier (last-known-good fail-open) →
+> `gatedNavSectionsProvider` (hide disabled/hidden, badge locked_upgrade) →
+> router `providerGateRedirect` (expired→«الترخيص منتهي», never_activated→«فعّل
+> الترخيص», disabled→«الخدمة موقوفة», locked_upgrade→«طلب تفعيل»; license/bridge/
+> account stay reachable; in-grace fail-open) → `LimitUsageBanner` +
+> `GuardedCreateButton` («X من Y» + block-at-cap) on subscribers/cards/plans/
+> nas/admins + print-templates. Tests: `test/provider_grants_test.dart` (15).
+>
+> Original spec (kept for reference):
 
 **Endpoint:** `GET /api/v1/provider/grants` — returns:
 - `license`: `{ status: active|expired|none|grace, expiry: <iso?> }`
