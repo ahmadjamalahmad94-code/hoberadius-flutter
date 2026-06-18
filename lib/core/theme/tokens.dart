@@ -168,6 +168,11 @@ class AppTokens {
   static const double bpTablet = 960;
   static const double bpDesktop = 1280;
 
+  /// Max width for the centered content column on wide screens — keeps reading
+  /// length comfortable and stops content hugging one edge on large desktops
+  /// (shared density rule, applied once in the shell content area).
+  static const double contentMaxWidth = 1180;
+
   // Sidebar layout breakpoints (web-parity navigation shell).
   //
   // The shell keys the FULL persistent web-style sidebar on available width,

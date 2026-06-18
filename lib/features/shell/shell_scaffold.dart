@@ -571,9 +571,17 @@ class _ContentArea extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: padding,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1280),
-                child: child,
+              // Center + cap the content column so wide desktops don't stretch
+              // content edge-to-edge (shared density rule — propagates to every
+              // screen via the shell).
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppTokens.contentMaxWidth,
+                  ),
+                  child: child,
+                ),
               ),
             ),
           ),

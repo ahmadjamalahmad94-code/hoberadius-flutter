@@ -24,9 +24,11 @@ class PageHeader extends StatelessWidget {
         // pixels. Keep the title and action cluster stacked until there is
         // genuinely enough room for Arabic headings plus buttons.
         final compact = constraints.maxWidth < 820;
+        // Density: page titles use titleLarge (compact: titleMedium) instead of
+        // the larger headlineSmall — denser, web-like headers across all screens.
         final titleStyle = compact
-            ? Theme.of(context).textTheme.titleLarge
-            : Theme.of(context).textTheme.headlineSmall;
+            ? Theme.of(context).textTheme.titleMedium
+            : Theme.of(context).textTheme.titleLarge;
         final titleBlock = Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
