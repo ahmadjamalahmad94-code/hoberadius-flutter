@@ -13,6 +13,7 @@ import 'desktop/export_room.dart';
 import 'widgets/template_designer_section.dart';
 import 'widgets/template_form.dart';
 import 'widgets/template_list.dart';
+import 'widgets/template_live_preview.dart';
 import 'widgets/template_preview_card.dart';
 
 /// Screen entry for the print-templates feature. Owns the form
@@ -65,6 +66,51 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
   String _orientation = 'portrait';
   String _pageSize = 'A4';
   bool _showQr = true;
+  // Page split: 0 = «تصميم» (design + live preview), 1 = «طباعة» (pick a
+  // saved template → preview / export PDF). Mirrors the web's design/print
+  // separation so the operator isn't shown export controls while drafting.
+  int _section = 0;
+
+  /// Live-preview listenable: every designer text field. Dropdown/picker
+  /// changes already trigger setState (parent rebuild), so the preview
+  /// refreshes on those too.
+  late final Listenable _designerListenable = Listenable.merge([
+    _name,
+    _width,
+    _height,
+    _gradStart,
+    _gradEnd,
+    _accent,
+    _textColor,
+    _surface,
+    _qrColor,
+    _qrSizePct,
+    _patternColor,
+    _patternOpacity,
+  ]);
+
+  /// Builds the in-flight template map (same shape the renderer/export use)
+  /// from the current designer state, so the live preview matches the saved
+  /// output exactly.
+  Map<String, dynamic> _currentTemplate() {
+    final brand = _name.text.trim();
+    return {
+      'username_x': _toDouble(_ux.text),
+      'username_y': _toDouble(_uy.text),
+      'password_x': _toDouble(_px.text),
+      'password_y': _toDouble(_py.text),
+      'qr_x': _toDouble(_qx.text),
+      'qr_y': _toDouble(_qy.text),
+      'layout_json': {
+        'card_width_mm': _toDouble(_width.text, 85),
+        'card_height_mm': _toDouble(_height.text, 54),
+        'brand_name': brand.isEmpty ? 'HobeRadius' : brand,
+        'card_title': 'بطاقة إنترنت',
+        'show_qr': _showQr,
+        ..._designerLayout(),
+      },
+    };
+  }
 
   Map<String, dynamic> _designerLayout() {
     final qrPct = double.tryParse(_qrSizePct.text.trim());
@@ -121,7 +167,6 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final templates = ref.watch(printTemplatesProvider);
     final action = ref.watch(printTemplatesActionProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -131,7 +176,7 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
             Expanded(
               child: Text(
                 'قوالب طباعة الكروت',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppTokens.sidebarBg,
                       fontWeight: FontWeight.w800,
                     ),
@@ -145,6 +190,39 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
           ],
         ),
         const SizedBox(height: AppTokens.s12),
+        // ── Design / Print section split (web parity) ──────────────
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: SegmentedButton<int>(
+            segments: const [
+              ButtonSegment(
+                value: 0,
+                label: Text('تصميم'),
+                icon: Icon(Icons.brush_outlined),
+              ),
+              ButtonSegment(
+                value: 1,
+                label: Text('طباعة'),
+                icon: Icon(Icons.print_outlined),
+              ),
+            ],
+            selected: {_section},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => setState(() => _section = s.first),
+          ),
+        ),
+        const SizedBox(height: AppTokens.s12),
+        if (_section == 0) _buildDesignSection(action) else _buildPrintSection(action),
+      ],
+    );
+  }
+
+  /// «تصميم» — the editor (form + designer) beside a live SVG preview that
+  /// updates as fields change (same renderer the export PDF uses).
+  Widget _buildDesignSection(PrintTemplatesActionState action) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         const AppCard(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,50 +231,13 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
               SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
-                  'القوالب محفوظة وقابلة لإعادة الاستخدام، والمعاينة بصرية للمواضع والألوان، ويمكن تنزيل ملف PDF للمعاينة.',
+                  'صمّم القالب من الحقول والألوان على اليمين، وتابع النتيجة في المعاينة الحية. بعد الحفظ انتقل إلى «طباعة» لاختيار حزمة وتصدير PDF.',
                   style: TextStyle(color: AppTokens.textMuted),
                 ),
               ),
             ],
           ),
         ),
-        if (action.preview != null) ...[
-          const SizedBox(height: AppTokens.s12),
-          TemplatePreviewCard(preview: action.preview!),
-        ],
-        // ── Windows desktop: 3-column export room mirroring the web's
-        //    #export section. Mobile + narrow web keep the existing
-        //    single-column layout below — mobile-safety contract
-        //    preserved (see docs/MOBILE_BASELINE.md).
-        //
-        //    Gating rule
-        //    ───────────
-        //    On Windows (or any other true-desktop OS) we always
-        //    render the export room — the user explicitly chose a
-        //    desktop build, so even narrow windows should get the
-        //    new UI. The breakpoint check only applies to web
-        //    builds, where a single Flutter bundle can serve a
-        //    600 px phone browser. The earlier "constraint width
-        //    ≥ bpDesktop" threshold was a bug: after the shell's
-        //    260 px sidebar + 32 px padding, a 1280 px window's
-        //    content area was only ~988 px so the room never
-        //    rendered. Now we gate on `bpTablet` (960) for web AND
-        //    bypass the check entirely on isDesktop.
-        if (PlatformCapabilities.supportsDesktopLayout) ...[
-          const SizedBox(height: AppTokens.s12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // The 3-column desktop export room needs real width. Gate on
-              // available WIDTH regardless of platform so a narrow desktop
-              // window falls back to the single-column form below instead of
-              // overflowing (owner rule #2: no breakage at any width).
-              if (constraints.maxWidth < AppTokens.bpTablet) {
-                return const SizedBox.shrink();
-              }
-              return const ExportRoom();
-            },
-          ),
-        ],
         const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -250,36 +291,79 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
                 ),
               ],
             );
-            final list = templates.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => EmptyState(
-                icon: Icons.error_outline,
-                title: 'تعذر تحميل قوالب الطباعة',
-                subtitle: visibleErrorMessage(e),
-              ),
-              data: (items) => TemplateList(
-                items: items,
-                previewing: action.previewing,
-                exportingPdf: action.exportingPdf,
-                onPreview: _previewTemplate,
-                onExportPdf: _exportPdf,
-              ),
+            final preview = TemplateLivePreview(
+              buildTemplate: _currentTemplate,
+              listenable: _designerListenable,
             );
             if (!wide) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [form, const SizedBox(height: AppTokens.s12), list],
+                children: [
+                  preview,
+                  const SizedBox(height: AppTokens.s12),
+                  form,
+                ],
               );
             }
             return Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(width: 420, child: form),
+                Expanded(child: form),
                 const SizedBox(width: AppTokens.s12),
-                Expanded(child: list),
+                SizedBox(width: 400, child: preview),
               ],
             );
           },
+        ),
+      ],
+    );
+  }
+
+  /// «طباعة» — pick a saved template (and, on desktop, a package via the
+  /// export room) then preview / export the PDF sheet.
+  Widget _buildPrintSection(PrintTemplatesActionState action) {
+    final templates = ref.watch(printTemplatesProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (action.preview != null) ...[
+          TemplatePreviewCard(preview: action.preview!),
+          const SizedBox(height: AppTokens.s12),
+        ],
+        // ── Windows desktop: 3-column export room mirroring the web's
+        //    #export section. Mobile + narrow web fall back to the saved
+        //    template list below — mobile-safety contract preserved
+        //    (see docs/MOBILE_BASELINE.md).
+        if (PlatformCapabilities.supportsDesktopLayout)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // The 3-column desktop export room needs real width. Gate on
+              // available WIDTH regardless of platform so a narrow desktop
+              // window falls back to the saved template list instead of
+              // overflowing (owner rule #2: no breakage at any width).
+              if (constraints.maxWidth < AppTokens.bpTablet) {
+                return const SizedBox.shrink();
+              }
+              return const Padding(
+                padding: EdgeInsets.only(bottom: AppTokens.s12),
+                child: ExportRoom(),
+              );
+            },
+          ),
+        templates.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => EmptyState(
+            icon: Icons.error_outline,
+            title: 'تعذر تحميل قوالب الطباعة',
+            subtitle: visibleErrorMessage(e),
+          ),
+          data: (items) => TemplateList(
+            items: items,
+            previewing: action.previewing,
+            exportingPdf: action.exportingPdf,
+            onPreview: _previewTemplate,
+            onExportPdf: _exportPdf,
+          ),
         ),
       ],
     );
