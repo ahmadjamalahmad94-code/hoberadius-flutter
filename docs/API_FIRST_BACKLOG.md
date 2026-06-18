@@ -52,6 +52,45 @@ Still to build (all have a working admin `/api/v1`; just need Flutter UI):
 > faked (no WebView, no stub data). Build these on `radius-module` afterward to
 > reach true 100% parity. Maintained across P1→P6.
 
+## ⏭️ QUEUED — NEXT UP: Provider grants gate (license + service disable/hide + limits)
+> Status: **API being built now** (owner confirmed). Do NOT start until the
+> owner pings that `GET /api/v1/provider/grants` is merged. This is the next
+> parity item after the UI-polish batch (which is DONE).
+
+**Endpoint:** `GET /api/v1/provider/grants` — returns:
+- `license`: `{ status: active|expired|none|grace, expiry: <iso?> }`
+- `services`: per service-key `{ disabled: bool, hidden_portal: bool, readonly: bool }`
+- `limits`: quantity caps per key (granted maximums)
+- sync **freshness** marker (timestamp / stale flag) for fail-open logic.
+
+**What to build in Flutter (mirror the web exactly):**
+1. **Hide disabled sections from nav** — a service with `disabled:true` is
+   removed from `appNavSections` (the live nav in `navigation_schema.dart`),
+   same as the web sidebar. `readonly:true` → section visible but mutating
+   actions disabled. Drive this from a grants provider, not hardcoded.
+2. **Blocking screens** (gate at the router/shell level so deep links can't
+   bypass):
+   - open a `disabled` service → «الخدمة موقوفة من المزوّد» screen.
+   - license `expired` → «الترخيص منتهي — جدّد» screen that **blocks the app**;
+     only login / license / diagnostics routes remain reachable.
+   - license `none` → «فعّل الترخيص» screen.
+   - **Fail-open** on transient sync outage → use last-known-good grants
+     (cache the last successful payload). **Fail-closed** on a *definitive*
+     `expired`/`none` from a fresh sync. Match the web's freshness rules.
+3. **Limits** — show "X of Y used" against each granted cap and
+   block/disable the create action when the cap is reached, with the Arabic
+   over-limit message (copy the web's exact string).
+
+**Implementation notes (when building):**
+- New `lib/features/provider_grants/` (model + repo + provider). Likely a
+  `providerGrantsProvider` (AsyncNotifier, cached + last-known-good fallback).
+- Filter `appNavSections` through grants; add a router redirect/guard for the
+  blocking screens; thread caps into the relevant create flows.
+- Map each web service-key → the Flutter nav group/route it gates (extend
+  `docs/STRUCTURE_MAP.md` with the key↔group mapping).
+- Lock behaviour with tests: nav hides disabled keys; expired ⇒ only
+  login/license/diagnostics reachable; cap-reached disables create.
+
 ## Subscribers
 - Granular temporary-speed scheduling: `temporary_speed_duration_minutes`,
   `temporary_{download,upload}_speed_kbps`, `temporary_speed_from/to` — not in
