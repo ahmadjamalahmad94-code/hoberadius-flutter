@@ -63,8 +63,8 @@ import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
 import '../../features/provider_grants/application/provider_grants_provider.dart';
+import '../../features/provider_grants/domain/provider_gate_decision.dart';
 import '../../features/provider_grants/domain/provider_grants_model.dart';
-import '../../features/provider_grants/domain/provider_grants_nav_map.dart';
 import '../../features/provider_grants/presentation/provider_gate_screens.dart';
 import '../../features/radius_resources/presentation/radius_resources_screen.dart';
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
@@ -590,42 +590,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 /// Computes the provider-grant redirect for [loc], or null to allow.
 ///
-/// Fail-open: a missing decision (no grants yet / fetch failed with no
-/// last-known-good) returns null → allowed. Only a *successful* definitive
-/// lockout or an explicit service disable redirects.
+/// Delegates to the pure [providerGateRedirect]; reads (not watches) the grants
+/// here since the router subscribes via `gateRefresh`, so this avoids rebuilding
+/// the GoRouter on every grants change.
 String? _providerGateRedirect(Ref ref, String loc) {
-  // ref.read here (not watch): the router subscribes via `gateRefresh`, so
-  // reading avoids rebuilding the GoRouter on every grants change.
   final grants = ref.read(providerGrantsProvider).valueOrNull;
-  if (grants == null) return null; // fail-open: no decision yet
-
-  // (1) License lifecycle lockout — block everything except the renew/activate
-  //     surfaces + license/bridge/account (so the owner can still fix it).
-  if (grants.license.blocksPanel) {
-    final allowed = loc == '/license-file' ||
-        loc.startsWith('/license-file/') ||
-        loc == '/system-operations' ||
-        loc == '/account' ||
-        loc == '/license-expired' ||
-        loc == '/license-activate';
-    if (allowed) return null;
-    return grants.license.state == LicenseState.neverActivated
-        ? '/license-activate'
-        : '/license-expired';
-  }
-
-  // (2) Per-service gate. Never-gated routes (dashboard/account/license/bridge/
-  //     tools/…) always pass; unmapped/unknown keys default to allowed.
-  if (isNeverGated(loc)) return null;
-  final key = serviceKeyForLocation(loc);
-  if (key == null) return null;
-  final svc = grants.service(key);
-  if (svc == null) return null;
-  if (svc.disabled || svc.fullyHidden) {
-    return '/service-blocked?service=$key';
-  }
-  if (svc.requiresUpgrade) {
-    return '/service-upgrade?service=$key';
-  }
-  return null;
+  return providerGateRedirect(grants, loc);
 }

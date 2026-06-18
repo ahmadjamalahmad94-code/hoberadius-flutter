@@ -130,7 +130,10 @@ void main() {
     expect(shell, isNot(contains("location == '/nas'")));
     expect(shell, isNot(contains("location == '/license-file'")));
     expect(shell, contains('mobileNavDestinations'));
-    expect(shell, contains('appNavSections'));
+    // The sidebar now renders the shared schema filtered by provider grants
+    // (gatedNavSectionsProvider derives from appNavSections); it no longer
+    // references the const list directly.
+    expect(shell, contains('gatedNavSectionsProvider'));
     expect(shell, contains('dashboardNavItem'));
     expect(shell, contains('mobileNavIndexForLocation'));
   });
