@@ -8,6 +8,22 @@ so a fresh session can continue precisely.
 Standing rules: tested (`flutter analyze` clean + suite + overflow sweep green),
 no design breakage, RTL, web-style density, no fake/stubbed data.
 
+## STRUCTURE ALIGNMENT — DONE (branch `feat/parity-structure`, off `f7c6985`)
+The owner's governing requirement (1:1 web-mirror nav) is complete:
+- `docs/STRUCTURE_MAP.md` — web `_sidebar.html` (radius-module@5616346) vs the
+  Flutter nav, every mismatch + route map + gaps. (commit `3563c48`)
+- `navigation_schema.dart` rebuilt to the web's 11 groups in order with web
+  Arabic labels + page placement; `test/nav_structure_test.dart` locks it.
+  (commit `e191bc4`) — `flutter analyze` clean, 362 tests pass.
+
+## UI POLISH — RESUME HERE (continue on `feat/parity-structure`)
+Remaining items below (REMAINING section) are unstarted. Order: item 3
+(cards→card view, contained) → items 2/9/11 (density: shell `_ContentArea`
+padding + max-content-width + shrink oversized headers, verify per change vs
+`test/screens/screen_overflow_sweep_test.dart`) → item 4 (designer live
+preview via `card_renderer_svg.dart`) → item 5 (split print-templates into
+«تصميم»/«طباعة»). Item 10 stays BLOCKED (API-first, see below).
+
 ## DONE (committed)
 
 - **Reverse-sync** (commit `b98262a`) — network-policy merged into the router
