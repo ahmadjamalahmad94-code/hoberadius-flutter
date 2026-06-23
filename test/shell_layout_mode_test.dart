@@ -8,6 +8,9 @@ import 'package:hoberadius_app/core/api/api_endpoint_storage.dart';
 import 'package:hoberadius_app/core/auth/auth_controller.dart';
 import 'package:hoberadius_app/core/auth/security_key_storage.dart';
 import 'package:hoberadius_app/core/auth/token_storage.dart';
+import 'package:hoberadius_app/features/notifications/application/notifications_providers.dart';
+import 'package:hoberadius_app/features/notifications/push/desktop_toast_bridge.dart';
+import 'package:hoberadius_app/features/notifications/push/push_service.dart';
 import 'package:hoberadius_app/features/shell/shell_scaffold.dart';
 import 'package:hoberadius_app/shared/widgets/responsive_layout.dart';
 
@@ -74,6 +77,12 @@ Future<void> _pumpShell(WidgetTester tester, Size size) async {
         tokenStorageProvider.overrideWithValue(_PendingTokenStorage()),
         securityKeyStorageProvider.overrideWithValue(_FakeSecurityKeyStorage()),
         authControllerProvider.overrideWith((ref) => _AuthedController(ref)),
+        // Stub the notification wiring the shell activates so these chrome
+        // tests don't start the 60s poll timer (which would leave a pending
+        // timer) or hit the network.
+        unreadCountProvider.overrideWithValue(0),
+        desktopToastBridgeProvider.overrideWith((ref) {}),
+        pushBootstrapProvider.overrideWith((ref) {}),
       ],
       child: MaterialApp.router(routerConfig: router),
     ),

@@ -6,6 +6,9 @@ import '../../core/auth/auth_controller.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../notifications/presentation/notification_bell.dart';
+import '../notifications/push/desktop_notifier.dart';
+import '../notifications/push/desktop_toast_bridge.dart';
+import '../notifications/push/push_service.dart';
 import 'navigation_schema.dart';
 
 /// Adaptive shell. The full web-style sidebar persists on desktop AND
@@ -20,6 +23,13 @@ class ShellScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Activate the desktop toast bridge (no-op on mobile/web) and route toast
+    // taps to the notification center.
+    ref.watch(desktopToastBridgeProvider);
+    ref.watch(pushBootstrapProvider); // no-op until FCM is enabled
+    DesktopNotifier.instance.onOpen = () {
+      if (context.mounted) context.goNamed('notifications');
+    };
     final width = MediaQuery.sizeOf(context).width;
     return switch (shellLayoutModeForWidth(width)) {
       ShellLayoutMode.fullSidebar => _Wide(child: child),
