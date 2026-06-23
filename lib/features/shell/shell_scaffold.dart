@@ -5,6 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/responsive_layout.dart';
+import '../notifications/presentation/notification_bell.dart';
+import '../notifications/push/desktop_notifier.dart';
+import '../notifications/push/desktop_toast_bridge.dart';
+import '../notifications/push/push_service.dart';
 import 'navigation_schema.dart';
 
 /// Adaptive shell. The full web-style sidebar persists on desktop AND
@@ -19,6 +23,13 @@ class ShellScaffold extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Activate the desktop toast bridge (no-op on mobile/web) and route toast
+    // taps to the notification center.
+    ref.watch(desktopToastBridgeProvider);
+    ref.watch(pushBootstrapProvider); // no-op until FCM is enabled
+    DesktopNotifier.instance.onOpen = () {
+      if (context.mounted) context.goNamed('notifications');
+    };
     final width = MediaQuery.sizeOf(context).width;
     return switch (shellLayoutModeForWidth(width)) {
       ShellLayoutMode.fullSidebar => _Wide(child: child),
@@ -545,6 +556,10 @@ class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
         title,
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
+      actions: const [
+        NotificationBell(color: AppTokens.sidebarBg),
+        SizedBox(width: AppTokens.s4),
+      ],
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(1),
         child: Divider(height: 1, color: AppTokens.border),
@@ -568,6 +583,8 @@ class _DesktopTopBar extends ConsumerWidget {
       child: Row(
         children: [
           const Spacer(),
+          const NotificationBell(),
+          const SizedBox(width: AppTokens.s8),
           PopupMenuButton<String>(
             tooltip: 'الحساب',
             onSelected: (v) async {
