@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/responsive_layout.dart';
+import '../notifications/presentation/notification_bell.dart';
 import 'navigation_schema.dart';
 
 /// Adaptive shell. The full web-style sidebar persists on desktop AND
@@ -545,6 +546,10 @@ class _MobileAppBar extends StatelessWidget implements PreferredSizeWidget {
         title,
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
+      actions: const [
+        NotificationBell(color: AppTokens.sidebarBg),
+        SizedBox(width: AppTokens.s4),
+      ],
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(1),
         child: Divider(height: 1, color: AppTokens.border),
@@ -568,6 +573,8 @@ class _DesktopTopBar extends ConsumerWidget {
       child: Row(
         children: [
           const Spacer(),
+          const NotificationBell(),
+          const SizedBox(width: AppTokens.s8),
           PopupMenuButton<String>(
             tooltip: 'الحساب',
             onSelected: (v) async {

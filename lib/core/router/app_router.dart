@@ -38,6 +38,7 @@ import '../../features/cards/presentation/recharge_cards_screen.dart';
 import '../../features/communications/presentation/communications_screen.dart';
 import '../../features/customer_portals/presentation/customer_portals_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/notifications/presentation/notification_center_screen.dart';
 import '../../features/device_fingerprints/presentation/device_fingerprints_screen.dart';
 import '../../features/distributors/presentation/distributor_detail_screen.dart';
 import '../../features/distributors/presentation/distributor_form_screen.dart';
@@ -125,6 +126,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/',
             name: 'dashboard',
             builder: (ctx, st) => const DashboardScreen(),
+          ),
+          GoRoute(
+            path: '/notifications',
+            name: 'notifications',
+            builder: (ctx, st) => const NotificationCenterScreen(),
           ),
           GoRoute(
             path: '/subscribers',
