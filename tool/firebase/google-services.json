@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "358020404999",
+    "project_id": "hoberadius",
+    "storage_bucket": "hoberadius.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:358020404999:android:82102636924bea5a4297a2",
+        "android_client_info": {
+          "package_name": "com.hoberadius.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA73rNU5ypuxTKzoQ9PqS9EEvIeJBAVUt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

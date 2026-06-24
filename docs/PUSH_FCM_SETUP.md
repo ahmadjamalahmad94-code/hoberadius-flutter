@@ -1,71 +1,79 @@
-# Enabling Firebase Push (FCM) — drop-in guide
+# Firebase Push (FCM) — ANDROID ACTIVE
 
-Push is **fully scaffolded but inert** until you drop in the Firebase config.
-Today the app builds and runs on **mobile and Windows with no Firebase
-dependency in the tree** (the in-app notification center, bell badge, and
-Windows toasts all work via polling `GET /api/v1/notifications`). FCM is
-**mobile-only**; desktop keeps the poll-driven toasts.
+Push is **live for Android** (Firebase project `hoberadius`, package
+`com.hoberadius.app`). iOS is **deferred** (no `GoogleService-Info.plist`;
+`firebase_options` throws for iOS, so `initialize()` no-ops there). Desktop /
+Windows never touch Firebase — they keep the poll-driven `local_notifier`
+toasts. The in-app center + bell badge keep working on every platform via
+polling `GET /api/v1/notifications`.
 
-## What's already in place (no action needed)
-- `lib/features/notifications/push/push_service.dart` — the `PushService`
-  abstraction, the `NoopPushService` default, `pushServiceProvider` (the single
-  switch-point), `pushBootstrapProvider` (run by the shell), and
-  `handleIncomingPush()` — the shared sink that routes any push into the SAME
-  notification center (re-polls the backend + refreshes the badge/center).
-- `lib/features/notifications/push/fcm_push_service.dart.txt` — the complete
-  FCM implementation (token registration, foreground/background/opened
-  handlers, local notification for foreground messages). Ships as `.txt` so it
-  is not compiled until you enable it.
-- `pubspec.yaml` — `firebase_core` / `firebase_messaging` lines, **commented**.
+## What's wired (this branch)
+- `pubspec.yaml` — `firebase_core`, `firebase_messaging`, `flutter_local_notifications` enabled.
+- `lib/firebase_options.dart` — **Android-only** `FirebaseOptions` (other platforms throw).
+- `lib/main.dart` — calls `bootstrapFcm()` (init Firebase + register the background handler; Android only).
+- `lib/features/notifications/push/fcm_push_service.dart` — `FcmPushService`:
+  init, `requestPermission()` (incl. Android 13+ `POST_NOTIFICATIONS`), high-importance
+  channel, token register + `onTokenRefresh`, foreground `onMessage` (→ center + OS notif),
+  `onMessageOpenedApp`, and `onLogout` (delete token locally + on backend).
+- `push_service.dart` — `pushServiceProvider` returns `FcmPushService` (self-gates to mobile).
+- `push_token_api.dart` — the `POST`/`DELETE /api/v1/devices/push-token` calls.
+- `auth_controller.logout()` — calls `pushService.onLogout` before clearing the session.
 
-## Exact files / keys YOU must provide
-1. **Android:** `android/app/google-services.json` (from the Firebase console,
-   for the app's package id `com.hoberadius.app`). Also apply the Google
-   Services Gradle plugin:
-   - `android/build.gradle`: classpath `com.google.gms:google-services:4.4.2`
-   - `android/app/build.gradle`: `apply plugin: 'com.google.gms.google-services'`
-   > NOTE: the `android/` folder is git-ignored and regenerated in CI
-   > (`flutter create`), so add a CI step that writes `google-services.json`
-   > and patches these two Gradle lines (mirror the existing manifest-patch
-   > step in `.github/workflows/build.yml`).
-2. **iOS:** `ios/Runner/GoogleService-Info.plist` (+ enable Push Notifications
-   capability and an APNs key in the Apple Developer portal).
-3. **Server key:** add your FCM server credentials to the backend sender (the
-   service that calls `notifications_repo.create` can also send the FCM
-   message). Not required for the app to build.
+## Android config persistence (since `android/` is git-ignored + CI-generated)
+The Firebase Android config is **not** committed under `android/` (git-ignored).
+Instead the source of truth is tracked and re-applied on every generation:
+- `tool/firebase/google-services.json` — the verbatim **client** config (committed; package-restricted, safe to commit).
+- `tool/configure_android.sh` — idempotent inject step. Run it **after**
+  `flutter create --platforms=android .`. It:
+  1. copies `tool/firebase/google-services.json` → `android/app/google-services.json`
+  2. forces `applicationId = com.hoberadius.app` (must match the json's `package_name`)
+  3. applies the `com.google.gms.google-services` Gradle plugin (Kotlin-DSL settings + app; Groovy fallback handled)
+  4. adds the INTERNET permission + cleartext-traffic to the release manifest
 
-## Flip it on (no code rewrite — 4 steps)
-1. Uncomment in `pubspec.yaml`:
-   ```yaml
-   firebase_core: ^3.6.0
-   firebase_messaging: ^15.1.3
-   flutter_local_notifications: ^18.0.1   # mobile foreground local notif
-   ```
-   then `flutter pub get`.
-2. Add the native config files from above.
-3. Rename `fcm_push_service.dart.txt` → `fcm_push_service.dart`.
-4. In `push_service.dart`, change the provider body to:
-   ```dart
-   final pushServiceProvider = Provider<PushService>((ref) {
-     return FcmPushService();
-   });
-   ```
-   (add `import 'fcm_push_service.dart';`).
+### CI wiring (one line)
+In the Android build workflow (the `ci/android-apk` branch's
+`.github/workflows/build.yml`), right **after** the `flutter create
+--platforms=android …` step, add:
+```bash
+bash tool/configure_android.sh
+```
+This replaces that workflow's inline applicationId/manifest tweaks and guarantees
+a fresh `flutter create` keeps `com.hoberadius.app` + `google-services.json` + the plugin.
 
-That's it. `pushBootstrapProvider` (already watched by the shell) will call
-`FcmPushService.initialize`, register the device token, and route incoming
-pushes through `handleIncomingPush` into the existing center + badge.
+> ⚠️ The committed `google-services.json` is the **client** config (API key is
+> package-restricted). The Firebase **Admin SDK private-key JSON** (server
+> sender credentials) is server-only and must **NEVER** be committed to this app repo.
 
-## Backend counterpart to add when enabling push
-The token-registration call posts to `POST /api/v1/devices/push-token`
-`{ "token": "...", "platform": "android|ios|..." }`. Add this endpoint
-(store the token per tenant/admin) so the backend can target devices. The
-read side (`GET /api/v1/notifications`) already exists
-(`radius-module` branch `feat/api-notifications`).
+## firebase_options.dart (Android values)
+```
+apiKey:            AIzaSyA73rNU5ypuxTKzoQ9PqS9EEvIeJBAVUt0
+appId:             1:358020404999:android:82102636924bea5a4297a2
+messagingSenderId: 358020404999
+projectId:         hoberadius
+storageBucket:     hoberadius.firebasestorage.app
+```
 
-## Why deps are commented instead of present-but-unused
-`firebase_core` has a Windows implementation that `FetchContent`-downloads the
-Firebase C++ SDK at build time. Leaving it in the tree would change the Windows
-build footprint before any keys exist. Commenting the two deps keeps both the
-mobile and Windows builds byte-for-byte unchanged until you opt in — which is
-the hard requirement ("don't break the build if Firebase config is missing").
+## Token registration (backend contract)
+On token availability + refresh the app calls (auth via the existing Bearer token):
+```
+POST   /api/v1/devices/push-token        { "token": "<fcm>", "platform": "android" }
+DELETE /api/v1/devices/push-token/<token>      (on logout)
+```
+This endpoint is being built on `radius-module` in parallel — store the token per
+tenant/admin so the backend sender can target devices. The read side
+(`GET /api/v1/notifications`) already shipped (radius-module main).
+
+## Build caveats
+- **Windows:** `firebase_core` has a Windows implementation that
+  `FetchContent`-downloads the Firebase C++ SDK at build time, so the Windows
+  build now pulls that SDK (slower first build, needs network). **Runtime is
+  unaffected** — all Firebase calls are gated by `PlatformCapabilities.isMobile`,
+  so Windows never initializes Firebase and keeps the `local_notifier` toasts.
+- **iOS:** deferred. To enable later: add `ios/Runner/GoogleService-Info.plist`,
+  an iOS entry in `firebase_options.dart`, Push Notifications capability + APNs
+  key, then `platform == iOS` in `DefaultFirebaseOptions.currentPlatform`.
+
+## To enable Android push end-to-end (owner checklist)
+1. Ensure the backend `POST/DELETE /api/v1/devices/push-token` endpoint is live.
+2. Add `bash tool/configure_android.sh` to the CI Android build (after `flutter create`).
+3. Send a test message from the Firebase console / your server to a registered token.

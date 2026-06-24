@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/notifications/push/push_service.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoint_storage.dart';
 import '../api/api_exception.dart';
@@ -180,6 +181,11 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Unregister this device's push token before clearing the session so the
+    // signed-out device stops receiving pushes (no-op off mobile).
+    try {
+      await _ref.read(pushServiceProvider).onLogout(_ref);
+    } catch (_) {/* best-effort */}
     try {
       await _ref.read(apiClientProvider).post('/api/admin/logout');
     } catch (_) {/* best-effort */}
