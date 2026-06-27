@@ -40,6 +40,22 @@ patch_app_id() {
 patch_app_id "$ROOT/android/app/build.gradle.kts"
 patch_app_id "$ROOT/android/app/build.gradle"
 
+# 2b) minSdk floor 23 — Firebase Cloud Messaging requires minSdk 23+. The
+#     scaffolded app uses `flutter.minSdkVersion` (currently 21), which fails
+#     the manifest merge against firebase_messaging. Raise the floor.
+patch_min_sdk() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  if grep -qE 'minSdk\s*=' "$f"; then                       # Kotlin DSL
+    sed -i -E 's|minSdk\s*=\s*[^[:space:]]+|minSdk = maxOf(flutter.minSdkVersion, 23)|' "$f"
+  elif grep -qE 'minSdkVersion\s+' "$f"; then               # Groovy
+    sed -i -E 's|minSdkVersion\s+[^[:space:]]+|minSdkVersion 23|' "$f"
+  fi
+  echo "✓ minSdk floor set in $(basename "$f")"
+}
+patch_min_sdk "$ROOT/android/app/build.gradle.kts"
+patch_min_sdk "$ROOT/android/app/build.gradle"
+
 # 3) google-services Gradle plugin ------------------------------------------
 # Kotlin DSL (modern Flutter): declarative plugins{} in settings + app.
 SETTINGS_KTS="$ROOT/android/settings.gradle.kts"

@@ -1,17 +1,22 @@
-name: build-apk
+name: build-artifacts
 
-# Builds an installable release APK for the HobeRadius admin app.
+# Builds the two distributable artifacts for the HobeRadius admin app:
+#   - an installable release APK (Android, with FCM push wired)
+#   - a standalone Windows release zip (desktop, with local_notifier toasts)
 #
-# The repo intentionally has no committed `android/` folder (it is gitignored;
-# this is a web/desktop-first Flutter project). CI scaffolds the Android
-# platform with `flutter create --platforms=android .`, then builds a release
-# APK signed with the standard debug keystore (the Flutter android template
-# signs `release` with `signingConfigs.debug`), so the artifact installs
-# directly without a production signing setup.
+# The repo intentionally has no committed `android/` or `windows/` folder (both
+# gitignored; this is a web/desktop-first Flutter project). CI scaffolds each
+# platform with `flutter create`, applies the Firebase/build config via
+# tool/configure_android.sh, then builds. The APK is signed with the standard
+# debug keystore (the Flutter android template signs `release` with
+# `signingConfigs.debug`), so it installs directly without a production signing
+# setup. Cloud runners are used because they ship a full Visual Studio (with the
+# ATL component flutter_secure_storage_windows needs) and a working JVM loopback
+# stack — both of which the owner's local Windows host currently lacks.
 
 on:
   push:
-    branches: [ci/android-apk]
+    branches: [ci/android-apk, feat/notifications-build-deliver]
   workflow_dispatch:
 
 jobs:
@@ -51,6 +56,15 @@ jobs:
 
       - name: Scaffold Android platform (android/ is gitignored)
         run: flutter create --platforms=android --org com.hoberadius .
+
+      - name: Configure Firebase + Android build (google-services, plugin, perms)
+        # Single source of truth for the Android Firebase wiring: places
+        # android/app/google-services.json (from tool/firebase/), fixes the
+        # applicationId to com.hoberadius.app (must match the FCM config),
+        # applies the google-services Gradle plugin, raises minSdk to 23 (FCM),
+        # and adds the INTERNET permission + cleartext. Without this the FCM
+        # push path is dead at runtime. Idempotent.
+        run: bash tool/configure_android.sh
 
       - name: Enable cleartext HTTP + INTERNET permission (owner server is http://)
         # The app explicitly supports plain-HTTP servers (e.g. http://187.77.70.18),
@@ -145,5 +159,50 @@ jobs:
         with:
           name: radius-app-apk
           path: artifacts/radius-app.apk
+          if-no-files-found: error
+          retention-days: 14
+
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.44.1"
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Scaffold Windows platform (windows/ is gitignored)
+        run: flutter create --platforms=windows --org com.hoberadius .
+
+      - name: Build Windows release
+        # windows-latest ships VS 2022 with the C++ ATL workload (needed by
+        # flutter_secure_storage_windows) and the Firebase C++ SDK builds here.
+        run: flutter build windows --release
+
+      - name: Zip Windows release (standalone, runnable)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          $ver = (Select-String -Path pubspec.yaml -Pattern '^version:\s*(.+)$').Matches.Groups[1].Value.Trim()
+          $zip = "artifacts/radius-app-windows-$($ver -replace '[+]','_').zip"
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath $zip -Force
+          Get-ChildItem artifacts
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius-app-windows
+          path: artifacts/*.zip
           if-no-files-found: error
           retention-days: 14
