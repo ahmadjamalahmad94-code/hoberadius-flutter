@@ -1,0 +1,149 @@
+name: build-apk
+
+# Builds an installable release APK for the HobeRadius admin app.
+#
+# The repo intentionally has no committed `android/` folder (it is gitignored;
+# this is a web/desktop-first Flutter project). CI scaffolds the Android
+# platform with `flutter create --platforms=android .`, then builds a release
+# APK signed with the standard debug keystore (the Flutter android template
+# signs `release` with `signingConfigs.debug`), so the artifact installs
+# directly without a production signing setup.
+
+on:
+  push:
+    branches: [ci/android-apk]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          # Match the dev machine's Flutter (intl 0.20.2 needs >=3.29; older
+          # SDKs pin intl 0.19.0 via flutter_localizations and fail to resolve).
+          flutter-version: "3.44.1"
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test (excluding platform-specific golden/render tests)
+        run: flutter test --exclude-tags "golden || render"
+
+      - name: Scaffold Android platform (android/ is gitignored)
+        run: flutter create --platforms=android --org com.hoberadius .
+
+      - name: Enable cleartext HTTP + INTERNET permission (owner server is http://)
+        # The app explicitly supports plain-HTTP servers (e.g. http://187.77.70.18),
+        # but Android blocks cleartext by default (API 28+) and the Flutter
+        # release manifest omits the INTERNET permission (it lives only in the
+        # debug/profile manifests). Patch the generated MAIN manifest so release
+        # builds can reach http servers. Idempotent: skips if already present.
+        run: |
+          MF=android/app/src/main/AndroidManifest.xml
+          echo "--- before ---"; cat "$MF"
+          if ! grep -q 'android.permission.INTERNET' "$MF"; then
+            sed -i -E '0,/<manifest[^>]*>/s##&\n    <uses-permission android:name="android.permission.INTERNET"/>#' "$MF"
+            echo "added INTERNET permission"
+          else
+            echo "INTERNET permission already present"
+          fi
+          if ! grep -q 'usesCleartextTraffic' "$MF"; then
+            sed -i -E '0,/<application/s##<application android:usesCleartextTraffic="true"#' "$MF"
+            echo "added usesCleartextTraffic=true"
+          else
+            echo "usesCleartextTraffic already present"
+          fi
+          echo "--- after ---"; cat "$MF"
+          # Fail fast if the patch did not take (protects against template drift).
+          grep -q 'android.permission.INTERNET' "$MF" || { echo "::error::INTERNET permission missing after patch"; exit 1; }
+          grep -q 'usesCleartextTraffic="true"' "$MF" || { echo "::error::usesCleartextTraffic missing after patch"; exit 1; }
+
+      - name: Generate debug keystore (release is debug-signed → installable)
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Patch stale-plugin Android compileSdk
+        # Several deps (desktop_drop, file_picker, file_saver,
+        # flutter_secure_storage) hardcode an old compileSdk (33/34) whose
+        # transitive androidx deps require consumers compiled against 35. Bump
+        # every plugin's compileSdk 33/34 -> 35 so the AAR-metadata checks pass.
+        # CI regenerates the pub cache each run, so the committed source is
+        # never touched.
+        run: |
+          CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
+          count=0
+          while IFS= read -r g; do
+            if grep -qiE 'compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)' "$g"; then
+              sed -i -E 's/compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)/compileSdk 36\2/' "$g"
+              echo "patched: $g -> $(grep -oiE 'compileSdk[^0-9]*[0-9]+' "$g" | head -1)"
+              count=$((count + 1))
+            fi
+          done < <(find "$CACHE" -path "*/android/build.gradle" -o -path "*/android/build.gradle.kts" 2>/dev/null)
+          echo "patched $count plugin gradle file(s)"
+          # Force the app module's compileSdk to 36 too (androidx baseline).
+          for app in android/app/build.gradle android/app/build.gradle.kts; do
+            [ -f "$app" ] || continue
+            sed -i -E 's/compileSdk(Version)?[[:space:]]*=?[[:space:]]*(flutter\.compileSdkVersion|3[0-5])/compileSdk = 36/' "$app"
+            echo "app compileSdk: $(grep -niE 'compileSdk' "$app" | head -1)"
+          done
+
+      - name: Pre-install Android CMake 3.22.1
+        # A transitive plugin (jni) builds native code via CMake 3.22.1. Letting
+        # the Gradle build auto-download it flaked ("Error reading Zip content");
+        # install it up front via sdkmanager with retries so the build is stable.
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMGR="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          ok=0
+          for i in 1 2 3; do
+            if "$SDKMGR" "cmake;3.22.1"; then ok=1; break; fi
+            echo "cmake install attempt $i failed, retrying…"; sleep 10
+          done
+          [ "$ok" = "1" ] || { echo "::error::failed to install cmake;3.22.1"; exit 1; }
+          ls -d "$SDK/cmake/3.22.1" && echo "cmake 3.22.1 ready"
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-release.apk artifacts/radius-app.apk
+          ls -l artifacts
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius-app-apk
+          path: artifacts/radius-app.apk
+          if-no-files-found: error
+          retention-days: 14
