@@ -40,6 +40,32 @@ patch_app_id() {
 patch_app_id "$ROOT/android/app/build.gradle.kts"
 patch_app_id "$ROOT/android/app/build.gradle"
 
+# 2b) core library desugaring (required by flutter_local_notifications) -------
+DESUGAR_VER="2.1.4"
+patch_desugar() {
+  local f="$1" kotlin="$2"
+  [ -f "$f" ] || return 0
+  # enable the flag inside compileOptions
+  if ! grep -q 'isCoreLibraryDesugaringEnabled\|coreLibraryDesugaringEnabled' "$f"; then
+    if [ "$kotlin" = "1" ]; then
+      sed -i -E '/compileOptions \{/a\        isCoreLibraryDesugaringEnabled = true' "$f"
+    else
+      sed -i -E '/compileOptions \{/a\        coreLibraryDesugaringEnabled true' "$f"
+    fi
+  fi
+  # add the desugar dependency (a second dependencies{} block is valid Gradle)
+  if ! grep -q 'desugar_jdk_libs' "$f"; then
+    if [ "$kotlin" = "1" ]; then
+      printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:%s")\n}\n' "$DESUGAR_VER" >> "$f"
+    else
+      printf "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:%s'\n}\n" "$DESUGAR_VER" >> "$f"
+    fi
+  fi
+  echo "✓ core library desugaring enabled in $(basename "$f")"
+}
+patch_desugar "$ROOT/android/app/build.gradle.kts" 1
+patch_desugar "$ROOT/android/app/build.gradle" 0
+
 # 3) google-services Gradle plugin ------------------------------------------
 # Kotlin DSL (modern Flutter): declarative plugins{} in settings + app.
 SETTINGS_KTS="$ROOT/android/settings.gradle.kts"
