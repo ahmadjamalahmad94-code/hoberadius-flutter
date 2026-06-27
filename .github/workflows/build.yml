@@ -188,6 +188,11 @@ jobs:
       - name: Build Windows release
         # windows-latest ships VS 2022 with the C++ ATL workload (needed by
         # flutter_secure_storage_windows) and the Firebase C++ SDK builds here.
+        # The Firebase C++ SDK's CMakeLists declares cmake_minimum_required
+        # < 3.5, which the runner's CMake 4.x rejects; CMAKE_POLICY_VERSION_MINIMUM
+        # lets it configure anyway.
+        env:
+          CMAKE_POLICY_VERSION_MINIMUM: "3.5"
         run: flutter build windows --release
 
       - name: Zip Windows release (standalone, runnable)
