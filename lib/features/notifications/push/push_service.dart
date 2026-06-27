@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../application/notifications_providers.dart';
+import 'fcm_push_service.dart';
 
 /// A normalized push message (decoupled from any specific transport so the
-/// in-tree code never imports firebase).
+/// shared code never depends on a firebase type).
 class PushMessage {
   const PushMessage({this.title = '', this.body = '', this.link = ''});
   final String title;
@@ -12,43 +13,47 @@ class PushMessage {
 }
 
 /// Pluggable push transport. The app always depends on this abstraction; the
-/// concrete FCM implementation is a DROP-IN (see docs/PUSH_FCM_SETUP.md and
-/// fcm_push_service.dart.txt). Default is [NoopPushService] so the app builds
-/// and runs on mobile + Windows with no Firebase config present.
+/// concrete FCM implementation lives in [FcmPushService]. The default is
+/// [NoopPushService] (used in tests / when FCM is intentionally off).
 abstract class PushService {
-  /// Wire up the transport (request permission, register the device token with
-  /// the backend, attach foreground/background handlers). Must be safe to call
-  /// when no config exists — the no-op default simply returns.
+  /// Wire up the transport (init Firebase, request permission, register the
+  /// device token with the backend, attach foreground/opened handlers).
+  /// Safe to call on any platform — implementations gate to mobile.
   Future<void> initialize(Ref ref);
+
+  /// Tear down on logout — delete the device token locally + on the backend so
+  /// the signed-out device stops receiving pushes.
+  Future<void> onLogout(Ref ref);
 }
 
 class NoopPushService implements PushService {
   const NoopPushService();
 
   @override
-  Future<void> initialize(Ref ref) async {
-    // No Firebase config → push disabled. The in-app center + bell + Windows
-    // toasts continue to work via polling.
-  }
+  Future<void> initialize(Ref ref) async {}
+
+  @override
+  Future<void> onLogout(Ref ref) async {}
 }
 
-/// The single switch-point. To enable push, flip this to `FcmPushService()`
-/// (provided in fcm_push_service.dart.txt) — no other code changes.
+/// The single switch-point for the push transport. ANDROID-ACTIVE: returns the
+/// real [FcmPushService]; it self-gates to mobile, so desktop/web get a no-op
+/// at runtime while keeping the Windows `local_notifier` toast path.
 final pushServiceProvider = Provider<PushService>((ref) {
-  return const NoopPushService();
+  return FcmPushService();
 });
 
 /// Initializes the push service once. Watched by the shell so it runs after the
-/// user is authenticated. No-op with the default service.
+/// user is authenticated.
 final pushBootstrapProvider = Provider<void>((ref) {
   ref.read(pushServiceProvider).initialize(ref);
 });
 
-/// Shared entry point the concrete FCM implementation calls when a push
-/// arrives, so push and polling converge on the SAME notification center:
-/// it re-polls the backend (authoritative source) to refresh the badge and
-/// pull the new row into the center. The FCM impl additionally shows an OS
-/// notification for foreground messages.
+/// Shared entry point the FCM implementation calls when a push arrives, so push
+/// and polling converge on the SAME notification center: it re-polls the
+/// backend (authoritative source) to refresh the badge and pull the new row
+/// into the center. The FCM impl additionally shows an OS notification for
+/// foreground messages.
 Future<void> handleIncomingPush(Ref ref, PushMessage message) async {
   await ref.read(notificationsPollerProvider.notifier).poll();
   ref.invalidate(notificationCenterProvider);
