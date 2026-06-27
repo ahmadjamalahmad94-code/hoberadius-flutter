@@ -56,12 +56,12 @@ storageBucket:     hoberadius.firebasestorage.app
 ## Token registration (backend contract)
 On token availability + refresh the app calls (auth via the existing Bearer token):
 ```
-POST   /api/v1/devices/push-token        { "token": "<fcm>", "platform": "android" }
-DELETE /api/v1/devices/push-token/<token>      (on logout)
+POST   /api/v1/devices/push-token   { "token": "<fcm>", "platform": "android" }
+DELETE /api/v1/devices/push-token   { "token": "<fcm>" }      (on logout)
 ```
-This endpoint is being built on `radius-module` in parallel — store the token per
-tenant/admin so the backend sender can target devices. The read side
-(`GET /api/v1/notifications`) already shipped (radius-module main).
+This endpoint is **live on `radius-module` main** (`app/api/v1/devices.py`):
+register/upsert + unregister, tenant+admin scoped, idempotent. The read side
+(`GET /api/v1/notifications`) also shipped on radius-module main.
 
 ## Build caveats
 - **Windows:** `firebase_core` has a Windows implementation that
