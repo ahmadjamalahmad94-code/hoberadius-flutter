@@ -1,0 +1,118 @@
+name: build-apk
+
+# Builds an installable release APK for the HobeRadius admin app, WITH Firebase
+# Cloud Messaging (Android) wired in. The repo has no committed android/ folder
+# (git-ignored); CI scaffolds it with `flutter create`, then `tool/
+# configure_android.sh` injects the Firebase config (google-services.json +
+# applicationId com.hoberadius.app + google-services Gradle plugin) and the
+# INTERNET/cleartext manifest tweaks. Release is debug-signed → installs
+# directly without a production signing setup.
+
+on:
+  push:
+    branches: [ci/android-apk]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.44.1"
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+
+      - name: Test (excluding platform-specific golden/render tests)
+        run: flutter test --exclude-tags "golden || render"
+
+      - name: Scaffold Android platform (android/ is gitignored)
+        run: flutter create --platforms=android --org com.hoberadius .
+
+      - name: Inject Firebase + app config (google-services.json, applicationId, plugin, manifest)
+        run: bash tool/configure_android.sh
+
+      - name: Verify Firebase wiring
+        run: |
+          test -f android/app/google-services.json || { echo "::error::google-services.json missing"; exit 1; }
+          grep -q 'com.hoberadius.app' android/app/build.gradle.kts || { echo "::error::applicationId not set"; exit 1; }
+          grep -q 'com.google.gms.google-services' android/app/build.gradle.kts || { echo "::error::google-services plugin not applied"; exit 1; }
+          grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml || { echo "::error::INTERNET permission missing"; exit 1; }
+
+      - name: Generate debug keystore (release is debug-signed → installable)
+        run: |
+          mkdir -p ~/.android
+          if [ ! -f ~/.android/debug.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore ~/.android/debug.keystore \
+              -storepass android -keypass android \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Patch stale-plugin Android compileSdk
+        run: |
+          CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
+          count=0
+          while IFS= read -r g; do
+            if grep -qiE 'compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)' "$g"; then
+              sed -i -E 's/compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)/compileSdk 36\2/' "$g"
+              echo "patched: $g"
+              count=$((count + 1))
+            fi
+          done < <(find "$CACHE" -path "*/android/build.gradle" -o -path "*/android/build.gradle.kts" 2>/dev/null)
+          echo "patched $count plugin gradle file(s)"
+          for app in android/app/build.gradle android/app/build.gradle.kts; do
+            [ -f "$app" ] || continue
+            sed -i -E 's/compileSdk(Version)?[[:space:]]*=?[[:space:]]*(flutter\.compileSdkVersion|3[0-5])/compileSdk = 36/' "$app"
+          done
+
+      - name: Pre-install Android CMake 3.22.1
+        run: |
+          SDK="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          SDKMGR="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          ok=0
+          for i in 1 2 3; do
+            if "$SDKMGR" "cmake;3.22.1"; then ok=1; break; fi
+            echo "cmake install attempt $i failed, retrying…"; sleep 10
+          done
+          [ "$ok" = "1" ] || { echo "::error::failed to install cmake;3.22.1"; exit 1; }
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-release.apk artifacts/radius-app.apk
+          ls -l artifacts
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius-app-apk
+          path: artifacts/radius-app.apk
+          if-no-files-found: error
+          retention-days: 14
