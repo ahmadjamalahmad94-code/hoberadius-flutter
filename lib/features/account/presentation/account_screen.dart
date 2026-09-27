@@ -5,6 +5,8 @@ import '../../../core/api/api_exception.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/hub_toast.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../data/account_repository.dart';
@@ -42,11 +44,10 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
         children: [
           const PageHeader(
             title: 'حسابي',
-            subtitle:
-                'إدارة بيانات الدخول الحالية وتحديث كلمة المرور من التطبيق بنفس صلاحيات لوحة الويب.',
+            subtitle: 'بيانات الدخول وتغيير كلمة المرور',
             leading: _HeaderIcon(),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth >= AppTokens.bpTablet;
@@ -68,7 +69,7 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     info,
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     password,
                   ],
                 );
@@ -84,15 +85,17 @@ class _AccountScreenState extends ConsumerState<AccountScreen> {
             },
           ),
           if (admin?.isSuperAdmin == true) ...[
-            const SizedBox(height: AppTokens.s16),
+            const SizedBox(height: AppTokens.s12),
             const AppCard(
               title: 'صلاحية الحساب',
               icon: Icons.admin_panel_settings_outlined,
+              padding: EdgeInsets.all(AppTokens.s12),
               child: Text(
                 'هذا الحساب يملك صلاحية مدير عام. أي تغيير هنا يؤثر على دخول التطبيق والويب لنفس المستخدم فقط.',
                 style: TextStyle(
                   color: AppTokens.textMuted,
-                  height: 1.5,
+                  fontSize: 13,
+                  height: 1.4,
                 ),
               ),
             ),
@@ -135,8 +138,8 @@ class _HeaderIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 44,
-      height: 44,
+      width: 38,
+      height: 38,
       decoration: BoxDecoration(
         color: AppTokens.brandSoft,
         borderRadius: BorderRadius.circular(AppTokens.r8),
@@ -158,6 +161,10 @@ class _AccountInfoCard extends StatelessWidget {
     return AppCard(
       title: 'بيانات الحساب',
       icon: Icons.badge_outlined,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -203,12 +210,11 @@ class _InfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
+      padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 120,
+            width: 104,
             child: Text(
               label,
               style: const TextStyle(
@@ -218,14 +224,20 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           Expanded(
+            // Technical values (the server URL) stay on one LTR line with an
+            // ellipsis instead of breaking after «https://».
             child: Directionality(
               textDirection: technical ? TextDirection.ltr : TextDirection.rtl,
               child: Text(
                 value,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.ellipsis,
                 textAlign: technical ? TextAlign.left : TextAlign.right,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppTokens.textPrimary,
                   fontWeight: FontWeight.w800,
+                  fontSize: technical ? 12.5 : null,
                 ),
               ),
             ),
@@ -262,6 +274,7 @@ class _PasswordCard extends StatelessWidget {
     return AppCard(
       title: 'تغيير كلمة المرور',
       icon: Icons.password_outlined,
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Form(
         key: formKey,
         child: Column(
@@ -272,7 +285,7 @@ class _PasswordCard extends StatelessWidget {
               label: 'كلمة المرور الحالية',
               showPassword: showPasswords,
             ),
-            const SizedBox(height: AppTokens.s12),
+            const SizedBox(height: AppTokens.s8),
             _PasswordField(
               controller: next,
               label: 'كلمة المرور الجديدة',
@@ -285,7 +298,7 @@ class _PasswordCard extends StatelessWidget {
                 return null;
               },
             ),
-            const SizedBox(height: AppTokens.s12),
+            const SizedBox(height: AppTokens.s8),
             _PasswordField(
               controller: confirm,
               label: 'تأكيد كلمة المرور الجديدة',
@@ -297,26 +310,20 @@ class _PasswordCard extends StatelessWidget {
                 return null;
               },
             ),
-            const SizedBox(height: AppTokens.s12),
-            SwitchListTile.adaptive(
+            const SizedBox(height: AppTokens.s4),
+            HubSwitchRow(
+              dense: true,
+              label: 'إظهار الكلمات أثناء الكتابة',
               value: showPasswords,
               onChanged: (_) => onToggleVisibility(),
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              title: const Text('إظهار الكلمات أثناء الكتابة'),
             ),
-            const SizedBox(height: AppTokens.s16),
-            FilledButton.icon(
-              onPressed: saving ? null : onSave,
-              icon: saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: Text(
-                saving ? 'جارٍ التحديث...' : 'تحديث كلمة المرور',
+            const SizedBox(height: AppTokens.s4),
+            HubActionButton(
+              item: ActionItem(
+                icon: Icons.save_outlined,
+                label: saving ? 'جارٍ التحديث...' : 'تحديث كلمة المرور',
+                primary: true,
+                onPressed: saving ? null : onSave,
               ),
             ),
           ],

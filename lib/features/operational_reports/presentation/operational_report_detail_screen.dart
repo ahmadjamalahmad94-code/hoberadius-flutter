@@ -7,6 +7,9 @@ import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/page_header.dart';
+import '../../../shared/widgets/status_pill.dart';
 import '../data/operational_reports_repository.dart';
 import '../domain/operational_report_catalog.dart';
 import '../domain/operational_report_model.dart';
@@ -14,11 +17,9 @@ import 'report_formatting.dart';
 
 final _detailProvider = FutureProvider.autoDispose
     .family<OperationalReportSnapshot, _DetailRequest>((ref, request) {
-  return ref.watch(operationalReportsRepositoryProvider).fetch(
-        slug: request.slug,
-        query: request.query,
-        limit: 300,
-      );
+  return ref
+      .watch(operationalReportsRepositoryProvider)
+      .fetch(slug: request.slug, query: request.query, limit: 300);
 });
 
 /// Bespoke detail view for a single operational report: curated column layout
@@ -60,35 +61,20 @@ class _OperationalReportDetailScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            IconButton(
-              tooltip: 'رجوع لمركز التقارير',
-              onPressed: () => context.go('/operational-reports'),
-              icon: const Icon(Icons.arrow_forward),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    def.title,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: AppTokens.sidebarBg,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                  Text(
-                    def.subtitle,
-                    style: const TextStyle(color: AppTokens.textMuted),
-                  ),
-                ],
-              ),
-            ),
+        PageHeader(
+          title: def.title,
+          subtitle: def.subtitle,
+          inlineActions: true,
+          leading: IconButton(
+            tooltip: 'رجوع لمركز التقارير',
+            onPressed: () => context.go('/operational-reports'),
+            icon: const Icon(Icons.arrow_forward),
+          ),
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               onPressed: () => ref.invalidate(_detailProvider(request)),
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],
         ),
@@ -106,48 +92,60 @@ class _OperationalReportDetailScreenState
                       decoration: const InputDecoration(
                         labelText: 'بحث',
                         prefixIcon: Icon(Icons.search),
+                        isDense: true,
                       ),
                       onSubmitted: (_) => _search(),
                     ),
                   ),
                   const SizedBox(width: AppTokens.s8),
-                  FilledButton.icon(
-                    onPressed: _search,
-                    icon: const Icon(Icons.search),
-                    label: const Text('بحث'),
+                  SizedBox(
+                    width: 96,
+                    child: HubActionButton(
+                      item: ActionItem(
+                        icon: Icons.search,
+                        label: 'بحث',
+                        primary: true,
+                        onPressed: _search,
+                      ),
+                    ),
                   ),
                 ],
               ),
               if (hasDate) ...[
-                const SizedBox(height: AppTokens.s12),
-                Wrap(
-                  spacing: AppTokens.s8,
-                  runSpacing: AppTokens.s8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                const SizedBox(height: AppTokens.s8),
+                // Date range on one row: من | إلى (+ clear when set).
+                Row(
                   children: [
-                    const Text(
-                      'النطاق الزمني:',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    Expanded(
+                      child: HubActionButton(
+                        item: ActionItem(
+                          icon: Icons.event_outlined,
+                          label: _from == null ? 'من' : _fmtDay(_from!),
+                          onPressed: () => _pickDate(isFrom: true),
+                        ),
+                      ),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: () => _pickDate(isFrom: true),
-                      icon: const Icon(Icons.event_outlined, size: 18),
-                      label: Text(_from == null ? 'من' : _fmtDay(_from!)),
+                    const SizedBox(width: AppTokens.s8),
+                    Expanded(
+                      child: HubActionButton(
+                        item: ActionItem(
+                          icon: Icons.event_outlined,
+                          label: _to == null ? 'إلى' : _fmtDay(_to!),
+                          onPressed: () => _pickDate(isFrom: false),
+                        ),
+                      ),
                     ),
-                    OutlinedButton.icon(
-                      onPressed: () => _pickDate(isFrom: false),
-                      icon: const Icon(Icons.event_outlined, size: 18),
-                      label: Text(_to == null ? 'إلى' : _fmtDay(_to!)),
-                    ),
-                    if (_from != null || _to != null)
-                      TextButton.icon(
+                    if (_from != null || _to != null) ...[
+                      const SizedBox(width: AppTokens.s4),
+                      IconButton(
+                        tooltip: 'مسح التاريخ',
                         onPressed: () => setState(() {
                           _from = null;
                           _to = null;
                         }),
-                        icon: const Icon(Icons.clear, size: 18),
-                        label: const Text('مسح التاريخ'),
+                        icon: const Icon(Icons.clear, size: 20),
                       ),
+                    ],
                   ],
                 ),
               ],
@@ -246,23 +244,49 @@ class _ReportTable extends StatelessWidget {
       );
     }
     final columns = def.columns;
+    final countLine = Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      child: Text(
+        dateFiltered
+            ? '${rows.length} سجل ضمن النطاق (من أصل $totalFetched)'
+            : '${rows.length} سجل',
+        style: const TextStyle(
+          color: AppTokens.textMuted,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Phones: a wide table only shows its first columns and cuts the last
+        // one at the edge — render each record as a compact card instead.
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              countLine,
+              for (var i = 0; i < rows.length; i++) ...[
+                if (i > 0) const SizedBox(height: AppTokens.s8),
+                _ReportRowCard(columns: columns, row: rows[i]),
+              ],
+            ],
+          );
+        }
+        return _table(columns, countLine);
+      },
+    );
+  }
+
+  Widget _table(List<ReportColumn> columns, Widget countLine) {
     return AppCard(
       padding: EdgeInsets.zero,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(AppTokens.s12),
-            child: Text(
-              dateFiltered
-                  ? '${rows.length} سجل ضمن النطاق (من أصل $totalFetched)'
-                  : '${rows.length} سجل',
-              style: const TextStyle(
-                color: AppTokens.textMuted,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
+          countLine,
           const Divider(height: 1),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -282,8 +306,9 @@ class _ReportTable extends StatelessWidget {
                           .map(
                             (column) => DataCell(
                               ConstrainedBox(
-                                constraints:
-                                    const BoxConstraints(maxWidth: 240),
+                                constraints: const BoxConstraints(
+                                  maxWidth: 240,
+                                ),
                                 child: Text(
                                   formatReportCell(column, row[column.key]),
                                   overflow: TextOverflow.ellipsis,
@@ -299,6 +324,130 @@ class _ReportTable extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// One report record as a compact phone card: the first column as the title
+/// (with the status column as a coloured pill when the report has one) and
+/// the remaining columns as an even two-column grid of label/value cells.
+class _ReportRowCard extends StatelessWidget {
+  const _ReportRowCard({required this.columns, required this.row});
+
+  final List<ReportColumn> columns;
+  final Map<String, dynamic> row;
+
+  @override
+  Widget build(BuildContext context) {
+    final head = columns.first;
+    ReportColumn? status;
+    for (final c in columns.skip(1)) {
+      if (c.kind == ReportColumnKind.status) {
+        status = c;
+        break;
+      }
+    }
+    // Empty values («—») are skipped so a card only lists the facts it has.
+    final rest = [
+      for (final c in columns.skip(1))
+        if (c != status && formatReportCell(c, row[c.key]) != '—') c,
+    ];
+    const perRow = 3;
+    final cells = <Widget>[];
+    for (var i = 0; i < rest.length; i += perRow) {
+      cells.add(
+        Padding(
+          padding: EdgeInsets.only(top: i == 0 ? 0 : AppTokens.s4 + 2),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var j = 0; j < perRow; j++) ...[
+                if (j > 0) const SizedBox(width: AppTokens.s8),
+                Expanded(
+                  child: i + j < rest.length
+                      ? _cell(rest[i + j])
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    final statusText =
+        status == null ? null : formatReportCell(status, row[status.key]);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8 + 2,
+      ),
+      decoration: BoxDecoration(
+        color: AppTokens.card,
+        borderRadius: BorderRadius.circular(AppTokens.r14),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  formatReportCell(head, row[head.key]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTokens.sidebarBg,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              if (statusText != null && statusText != '—') ...[
+                const SizedBox(width: AppTokens.s8),
+                Flexible(
+                  child: StatusPill(
+                    text: statusText,
+                    tone: toneForStatus(statusText),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (cells.isNotEmpty) ...[
+            const Divider(height: AppTokens.s12),
+            ...cells,
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(ReportColumn column) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          column.label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppTokens.textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        Text(
+          formatReportCell(column, row[column.key]),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppTokens.textPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }
