@@ -615,7 +615,7 @@ class _UpgradeBadge extends StatelessWidget {
   }
 }
 
-class _ContentArea extends StatelessWidget {
+class _ContentArea extends StatefulWidget {
   const _ContentArea({
     required this.child,
     this.showTopBar = false,
@@ -628,15 +628,68 @@ class _ContentArea extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   @override
+  State<_ContentArea> createState() => _ContentAreaState();
+}
+
+/// Remembers the scroll offset of every page (by its URI) so going back to
+/// «المزيد» or a list lands where the operator left it, while a page opened
+/// for the first time starts at the top. The shell's single scroll view wraps
+/// the whole inner navigator, so a PageStorageKey restore gets clamped to 0
+/// before the page lays out — hence the explicit, retried restore here.
+class _ContentAreaState extends State<_ContentArea> {
+  static final Map<String, double> _offsets = {};
+  final ScrollController _controller = ScrollController();
+  String? _location;
+  int _restoreGen = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final location = GoRouterState.of(context).uri.toString();
+    if (location == _location) return;
+    final previous = _location;
+    if (previous != null && _controller.hasClients) {
+      _offsets[previous] = _controller.offset;
+    }
+    _location = location;
+    _restore(_offsets[location] ?? 0, ++_restoreGen, attempts: 12);
+  }
+
+  /// Jump to [target] once the new page is tall enough (it may still be
+  /// laying out / loading), giving up after [attempts] frames.
+  void _restore(double target, int gen, {required int attempts}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || gen != _restoreGen || !_controller.hasClients) return;
+      final max = _controller.position.maxScrollExtent;
+      if (target <= max || attempts <= 0) {
+        _controller.jumpTo(target.clamp(0.0, max));
+      } else {
+        _controller.jumpTo(max);
+        _restore(target, gen, attempts: attempts - 1);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    if (_location != null && _controller.hasClients) {
+      _offsets[_location!] = _controller.offset;
+    }
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Container(
-      color: desktopSurface ? const Color(0xFFEFEDF5) : AppTokens.bg,
+      color: widget.desktopSurface ? const Color(0xFFEFEDF5) : AppTokens.bg,
       child: Column(
         children: [
-          if (showTopBar) const _DesktopTopBar(),
+          if (widget.showTopBar) const _DesktopTopBar(),
           Expanded(
             child: SingleChildScrollView(
-              padding: padding,
+              controller: _controller,
+              padding: widget.padding,
               // Center + cap the content column so wide desktops don't stretch
               // content edge-to-edge (shared density rule — propagates to every
               // screen via the shell).
@@ -646,7 +699,7 @@ class _ContentArea extends StatelessWidget {
                   constraints: const BoxConstraints(
                     maxWidth: AppTokens.contentMaxWidth,
                   ),
-                  child: child,
+                  child: widget.child,
                 ),
               ),
             ),
