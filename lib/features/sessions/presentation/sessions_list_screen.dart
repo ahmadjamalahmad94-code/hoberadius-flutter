@@ -7,6 +7,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/sessions_repository.dart';
 import '../domain/session_model.dart';
@@ -221,7 +222,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
         PageHeader(
           title: 'المتصلون الآن',
           subtitle:
-              'جلسات المشتركين والكروت المتصلة حاليًا، مع أوامر الطرد وتثبيت MAC أو IP وتطبيق سرعة مؤقتة للمشترك.',
+              'الجلسات الحيّة: طرد، تثبيت MAC/IP، وسرعة مؤقتة.',
+          inlineActions: true,
           actions: [
             const _LivePulseChip(),
             const SizedBox(width: AppTokens.s8),
@@ -402,20 +404,19 @@ class _FiltersCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SegmentedButton<OnlineSessionKind>(
+            // Text-only: icon + label per segment wrapped «المشتركو/ن» on
+            // phones. Selected state still shows via the fill + checkmark.
             segments: const [
               ButtonSegment(
                 value: OnlineSessionKind.all,
-                icon: Icon(Icons.wifi_tethering),
                 label: Text('الكل'),
               ),
               ButtonSegment(
                 value: OnlineSessionKind.subscribers,
-                icon: Icon(Icons.person_outline),
                 label: Text('المشتركون'),
               ),
               ButtonSegment(
                 value: OnlineSessionKind.cards,
-                icon: Icon(Icons.credit_card),
                 label: Text('الكروت'),
               ),
             ],
@@ -438,10 +439,19 @@ class _FiltersCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppTokens.s8),
-              FilledButton.icon(
-                onPressed: onSearch,
-                icon: const Icon(Icons.search),
-                label: const Text('بحث'),
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: FilledButton(
+                  onPressed: onSearch,
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTokens.s12),
+                    ),
+                  ),
+                  child: const Icon(Icons.search),
+                ),
               ),
             ],
           ),
@@ -579,13 +589,13 @@ class _SessionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd HH:mm');
+    final state = _stateLabel(session);
     return AppCard(
       padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
                 backgroundColor:
@@ -610,89 +620,102 @@ class _SessionTile extends StatelessWidget {
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: AppTokens.s8,
-                      runSpacing: AppTokens.s4,
-                      children: [
-                        StatusPill(
-                          text: session.isCard ? 'كرت' : 'مشترك',
-                          tone: session.isCard ? PillTone.cyan : PillTone.green,
-                        ),
-                        StatusPill(
-                          text: _stateLabel(session),
-                          tone: _stateTone(session),
-                        ),
-                      ],
+                    Text(
+                      session.isCard ? 'كرت' : 'مشترك',
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppTokens.s8),
+              StatusPill(text: state, tone: toneForStatus(state), dot: true),
             ],
           ),
           const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              _MetaChip(
+          InfoGrid(
+            items: [
+              InfoItem(
                 icon: Icons.timer_outlined,
-                text: formatDuration(session.sessionTime),
+                label: 'المدة',
+                value: formatDuration(session.sessionTime),
               ),
-              _MetaChip(
+              InfoItem(
                 icon: Icons.download,
-                text: 'تحميل ${formatBytes(session.bytesIn)}',
+                label: 'تحميل',
+                value: formatBytes(session.bytesIn),
               ),
-              _MetaChip(
+              InfoItem(
                 icon: Icons.upload,
-                text: 'رفع ${formatBytes(session.bytesOut)}',
+                label: 'رفع',
+                value: formatBytes(session.bytesOut),
               ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s8),
+          InfoGrid(
+            columns: 2,
+            items: [
               if (session.framedIpAddress.isNotEmpty)
-                _MetaChip(icon: Icons.dns, text: session.framedIpAddress),
+                InfoItem(
+                  icon: Icons.dns,
+                  label: 'IP',
+                  value: session.framedIpAddress,
+                ),
               if (session.callingStationId.isNotEmpty)
-                _MetaChip(icon: Icons.devices, text: session.callingStationId),
+                InfoItem(
+                  icon: Icons.devices,
+                  label: 'MAC',
+                  value: session.callingStationId,
+                ),
               if (session.nasIpAddress.isNotEmpty)
-                _MetaChip(icon: Icons.router, text: session.nasIpAddress),
+                InfoItem(
+                  icon: Icons.router,
+                  label: 'الراوتر',
+                  value: session.nasIpAddress,
+                ),
               if (session.startedAt != null)
-                _MetaChip(
+                InfoItem(
                   icon: Icons.play_circle_outline,
-                  text: 'بدأت ${df.format(session.startedAt!.toLocal())}',
+                  label: 'بدأت',
+                  value: df.format(session.startedAt!.toLocal()),
                 ),
             ],
           ),
           const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              FilledButton.tonalIcon(
+          ActionBar(
+            items: [
+              ActionItem(
+                icon: Icons.power_settings_new,
+                label: 'طرد',
+                tone: PillTone.red,
                 onPressed: onDisconnect,
-                icon: const Icon(Icons.power_settings_new),
-                label: const Text('طرد'),
-                style: FilledButton.styleFrom(foregroundColor: AppTokens.red),
               ),
-              OutlinedButton.icon(
+              ActionItem(
+                icon: Icons.phonelink_lock_outlined,
+                label: 'تثبيت MAC',
                 onPressed: onLockMac,
-                icon: const Icon(Icons.phonelink_lock_outlined),
-                label: const Text('تثبيت MAC'),
               ),
               if (onLockIp != null)
-                OutlinedButton.icon(
+                ActionItem(
+                  icon: Icons.pin_outlined,
+                  label: 'تثبيت IP',
                   onPressed: onLockIp,
-                  icon: const Icon(Icons.pin_outlined),
-                  label: const Text('تثبيت IP'),
                 ),
               if (onTemporarySpeed != null)
-                OutlinedButton.icon(
+                ActionItem(
+                  icon: Icons.speed_outlined,
+                  label: 'سرعة مؤقتة',
                   onPressed: onTemporarySpeed,
-                  icon: const Icon(Icons.speed_outlined),
-                  label: const Text('سرعة مؤقتة'),
                 ),
               if (onCancelTemporarySpeed != null)
-                OutlinedButton.icon(
+                ActionItem(
+                  icon: Icons.restore_outlined,
+                  label: 'إلغاء السرعة',
                   onPressed: onCancelTemporarySpeed,
-                  icon: const Icon(Icons.restore_outlined),
-                  label: const Text('إلغاء السرعة'),
                 ),
             ],
           ),
@@ -793,127 +816,102 @@ class _HistoryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd HH:mm');
+    final state = item.isOnline ? 'متصلة' : 'منتهية';
+    final where = [
+      if (item.nasIpAddress.isNotEmpty) item.nasIpAddress,
+      if (item.framedIpAddress.isNotEmpty) item.framedIpAddress,
+    ].join(' · ');
+    final when = [
+      if (item.startedAt != null) 'من ${df.format(item.startedAt!.toLocal())}',
+      if (item.stoppedAt != null) 'إلى ${df.format(item.stoppedAt!.toLocal())}',
+    ].join('  ');
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(AppTokens.s12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(
-                item.isOnline
-                    ? Icons.radio_button_checked
-                    : Icons.stop_circle_outlined,
-                color:
-                    item.isOnline ? AppTokens.successFg : AppTokens.textMuted,
-              ),
-              const SizedBox(width: AppTokens.s8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
                       item.username.isEmpty ? 'مستخدم غير محدد' : item.username,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppTokens.sidebarBg,
                         fontWeight: FontWeight.w800,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: AppTokens.s4),
-                    Text(
-                      [
-                        if (item.nasIpAddress.isNotEmpty) item.nasIpAddress,
-                        if (item.framedIpAddress.isNotEmpty)
-                          item.framedIpAddress,
-                        if (item.startedAt != null)
-                          'بدأت ${df.format(item.startedAt!.toLocal())}',
-                        if (item.stoppedAt != null)
-                          'انتهت ${df.format(item.stoppedAt!.toLocal())}',
-                      ].join(' · '),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppTokens.textMuted,
-                        fontSize: 12,
-                      ),
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  StatusPill(
+                    text: state,
+                    tone: toneForStatus(state),
+                    dot: item.isOnline,
+                  ),
+                ],
+              ),
+              if (where.isNotEmpty || when.isNotEmpty) ...[
+                const SizedBox(height: AppTokens.s4),
+                if (where.isNotEmpty)
+                  Text(
+                    where,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTokens.textMuted,
+                      fontSize: 12,
                     ),
-                    const SizedBox(height: AppTokens.s4),
-                    Wrap(
-                      spacing: AppTokens.s8,
-                      runSpacing: AppTokens.s4,
-                      children: [
-                        _MetaChip(
-                          icon: Icons.timer_outlined,
-                          text: formatDuration(item.sessionTime),
-                        ),
-                        _MetaChip(
-                          icon: Icons.download,
-                          text: 'تحميل ${formatBytes(item.bytesIn)}',
-                        ),
-                        _MetaChip(
-                          icon: Icons.upload,
-                          text: 'رفع ${formatBytes(item.bytesOut)}',
-                        ),
-                        if (item.terminateCause.isNotEmpty)
-                          _MetaChip(
-                            icon: Icons.flag_outlined,
-                            text: _terminateCauseLabel(item.terminateCause),
-                          ),
-                      ],
+                  ),
+                if (when.isNotEmpty)
+                  Text(
+                    when,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTokens.textMuted,
+                      fontSize: 12,
                     ),
-                  ],
+                  ),
+              ],
+              const SizedBox(height: AppTokens.s8),
+              InfoGrid(
+                items: [
+                  InfoItem(
+                    icon: Icons.timer_outlined,
+                    label: 'المدة',
+                    value: formatDuration(item.sessionTime),
+                  ),
+                  InfoItem(
+                    icon: Icons.download,
+                    label: 'تحميل',
+                    value: formatBytes(item.bytesIn),
+                  ),
+                  InfoItem(
+                    icon: Icons.upload,
+                    label: 'رفع',
+                    value: formatBytes(item.bytesOut),
+                  ),
+                ],
+              ),
+              if (item.terminateCause.isNotEmpty) ...[
+                const SizedBox(height: AppTokens.s4),
+                Text(
+                  'سبب الانتهاء: ${_terminateCauseLabel(item.terminateCause)}',
+                  style: const TextStyle(
+                    color: AppTokens.textMuted,
+                    fontSize: 12,
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppTokens.s8),
-              StatusPill(
-                text: item.isOnline ? 'مفتوحة' : 'منتهية',
-                tone: item.isOnline ? PillTone.green : PillTone.neutral,
-              ),
+              ],
             ],
           ),
         ),
         const Divider(height: 1),
       ],
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppTokens.surfaceMuted,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppTokens.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: AppTokens.textMuted),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: AppTokens.textSecondary,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1078,12 +1076,3 @@ String _stateLabel(OnlineSession session) {
     _ => raw.trim().isEmpty ? 'غير محدد' : raw,
   };
 }
-
-PillTone _stateTone(OnlineSession session) => switch (session.stateColor) {
-      'green' => PillTone.green,
-      'orange' => PillTone.orange,
-      'red' => PillTone.red,
-      'blue' => PillTone.cyan,
-      'gray' => PillTone.neutral,
-      _ => PillTone.cyan,
-    };

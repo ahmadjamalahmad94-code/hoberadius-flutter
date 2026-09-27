@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/status_pill.dart';
 import '../../application/cards_list_providers.dart';
 import '../../domain/card_model.dart';
@@ -62,9 +63,8 @@ class CardsBatchesTable extends ConsumerWidget {
           builder: (context, c) {
             final cols = c.maxWidth >= 1100 ? 2 : 1;
             const gap = AppTokens.s12;
-            final cardW = cols == 1
-                ? c.maxWidth
-                : (c.maxWidth - gap * (cols - 1)) / cols;
+            final cardW =
+                cols == 1 ? c.maxWidth : (c.maxWidth - gap * (cols - 1)) / cols;
             return Wrap(
               spacing: gap,
               runSpacing: gap,
@@ -138,31 +138,28 @@ class _BatchCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTokens.s12),
           _PlanAndSpeed(batch: batch),
-          const SizedBox(height: AppTokens.s8),
+          const SizedBox(height: AppTokens.s12),
           _Counts(batch: batch),
-          const SizedBox(height: AppTokens.s8),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          const SizedBox(height: AppTokens.s12),
+          Row(
             children: [
-              _MetaChip(
-                icon: Icons.store_outlined,
-                text: distributorLabel(batch),
+              Expanded(
+                child: _MetaChip(
+                  icon: Icons.store_outlined,
+                  text: distributorLabel(batch),
+                ),
               ),
+              const SizedBox(width: AppTokens.s8),
               _MetaChip(
                 icon: Icons.payments_outlined,
                 text: formatMoney(batch.estimatedValue),
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s8),
+          const SizedBox(height: AppTokens.s4),
           _Activity(batch: batch),
-          const Divider(height: AppTokens.s24),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: _RowActions(batch: batch),
-          ),
+          const SizedBox(height: AppTokens.s12),
+          _RowActions(batch: batch),
         ],
       ),
     );
@@ -208,41 +205,25 @@ class _Counts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        _MiniCount(label: 'كلها', value: batch.generated),
-        _MiniCount(label: 'الأصلي', value: batch.originalCount),
-        _MiniCount(label: 'متاح', value: batch.availableCount),
-        _MiniCount(label: 'نشط', value: batch.activeCount),
-        _MiniCount(label: 'منتهي', value: batch.expiredCount),
-        _MiniCount(label: 'مؤرشف', value: batch.archivedCount),
-        _MiniCount(label: 'بانتظار الأرشفة', value: batch.pendingArchiveCount),
-        _MiniCount(label: 'تشغيلي', value: batch.operationalRemainingCount),
-        _MiniCount(label: 'ملغى', value: batch.revokedCount),
+    final total = batch.generated;
+    return CountGrid(
+      items: [
+        CountItem('الإجمالي', total),
+        CountItem('متاح', batch.availableCount, tone: PillTone.blue),
+        CountItem('نشط الآن', batch.activeCount, tone: PillTone.green),
+        CountItem('مستخدم', batch.used, tone: PillTone.brand),
+        CountItem('منتهي', batch.expiredCount, tone: PillTone.amber),
+        CountItem('ملغى', batch.revokedCount, tone: PillTone.red),
+        // secondary — only when they carry information
+        CountItem('مؤرشف', batch.archivedCount, hideWhenZero: true),
+        CountItem(
+          'بانتظار الأرشفة',
+          batch.pendingArchiveCount,
+          hideWhenZero: true,
+        ),
+        if (batch.originalCount != total)
+          CountItem('الأصلي', batch.originalCount),
       ],
-    );
-  }
-}
-
-class _MiniCount extends StatelessWidget {
-  const _MiniCount({required this.label, required this.value});
-  final String label;
-  final int value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTokens.slate100,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        '$label $value',
-        style: const TextStyle(fontSize: 11, color: AppTokens.textSecondary),
-      ),
     );
   }
 }
@@ -259,12 +240,16 @@ class _MetaChip extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: AppTokens.textMuted),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppTokens.textSecondary,
-            fontWeight: FontWeight.w700,
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppTokens.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],
@@ -332,28 +317,25 @@ class _RowActions extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (batch.id == null) return const SizedBox.shrink();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          tooltip: 'تفاصيل الحزمة',
-          icon: const Icon(Icons.open_in_new, size: 18),
-          onPressed: () => context.goNamed(
-            'card-batch-detail',
-            pathParameters: {'id': '${batch.id}'},
-          ),
+    final id = {'id': '${batch.id}'};
+    return ActionBar(
+      items: [
+        ActionItem(
+          icon: Icons.open_in_new,
+          label: 'التفاصيل',
+          primary: true,
+          onPressed: () =>
+              context.goNamed('card-batch-detail', pathParameters: id),
         ),
-        IconButton(
-          tooltip: 'تعديل الحزمة',
-          icon: const Icon(Icons.edit_outlined, size: 18),
-          onPressed: () => context.goNamed(
-            'card-batch-edit',
-            pathParameters: {'id': '${batch.id}'},
-          ),
+        ActionItem(
+          icon: Icons.edit_outlined,
+          label: 'تعديل',
+          onPressed: () =>
+              context.goNamed('card-batch-edit', pathParameters: id),
         ),
-        IconButton(
-          tooltip: 'قواعد السرعة',
-          icon: const Icon(Icons.speed_outlined, size: 18),
+        ActionItem(
+          icon: Icons.speed_outlined,
+          label: 'السرعات',
           onPressed: () => context.goNamed('bandwidth-schedules'),
         ),
       ],

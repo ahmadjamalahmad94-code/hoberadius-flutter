@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/hub_layout.dart';
+import '../../../../shared/widgets/status_pill.dart';
 import '../../application/cards_list_providers.dart';
 
 /// Filter + export + bulk-action toolbar above the batches table.
@@ -66,92 +68,105 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
 
   @override
   Widget build(BuildContext context) {
+    final search = TextField(
+      controller: _queryController,
+      textInputAction: TextInputAction.search,
+      decoration: const InputDecoration(
+        labelText: 'بحث',
+        hintText: 'اسم الحزمة، العرض، المدير...',
+        prefixIcon: Icon(Icons.search),
+      ),
+      onSubmitted: (_) => _applySearch(),
+    );
+    final status = DropdownButtonFormField<String>(
+      isExpanded: true,
+      initialValue: widget.filters.status,
+      decoration: const InputDecoration(labelText: 'الحالة'),
+      items: [
+        for (final item in _statuses.entries)
+          DropdownMenuItem(value: item.key, child: Text(item.value)),
+      ],
+      onChanged: (value) => widget.onFiltersChanged(
+        widget.filters.copyWith(status: value ?? '', page: 1),
+      ),
+    );
     return AppCard(
       padding: const EdgeInsets.all(AppTokens.s12),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final compact = constraints.maxWidth < 520;
-          final controlWidth = compact ? constraints.maxWidth : 280.0;
-          final statusWidth = compact ? constraints.maxWidth : 190.0;
-          return Wrap(
-            spacing: AppTokens.s12,
-            runSpacing: AppTokens.s12,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          final wide = constraints.maxWidth >= 520;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
-                width: controlWidth,
-                child: TextField(
-                  controller: _queryController,
-                  textInputAction: TextInputAction.search,
-                  decoration: const InputDecoration(
-                    labelText: 'بحث',
-                    hintText: 'اسم الحزمة، العرض، المدير...',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onSubmitted: (_) => _applySearch(),
-                ),
-              ),
-              SizedBox(
-                width: statusWidth,
-                child: DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  initialValue: widget.filters.status,
-                  decoration: const InputDecoration(labelText: 'الحالة'),
-                  items: [
-                    for (final item in _statuses.entries)
-                      DropdownMenuItem(
-                        value: item.key,
-                        child: Text(item.value),
-                      ),
+              if (wide)
+                Row(
+                  children: [
+                    Expanded(child: search),
+                    const SizedBox(width: AppTokens.s12),
+                    SizedBox(width: 220, child: status),
                   ],
-                  onChanged: (value) => widget.onFiltersChanged(
-                    widget.filters.copyWith(status: value ?? '', page: 1),
+                )
+              else ...[
+                search,
+                const SizedBox(height: AppTokens.s12),
+                status,
+              ],
+              const SizedBox(height: AppTokens.s12),
+              ActionBar(
+                maxPerRow: 4,
+                items: [
+                  ActionItem(
+                    icon: Icons.filter_alt_outlined,
+                    label: 'تطبيق',
+                    primary: true,
+                    onPressed: _applySearch,
                   ),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _applySearch,
-                icon: const Icon(Icons.filter_alt_outlined),
-                label: const Text('تطبيق'),
-              ),
-              OutlinedButton.icon(
-                onPressed: widget.onExportCsv,
-                icon: const Icon(Icons.file_download_outlined),
-                label: const Text('تصدير ملف'),
-              ),
-              OutlinedButton.icon(
-                onPressed: widget.onExportXlsx,
-                icon: const Icon(Icons.table_chart_outlined),
-                label: const Text('تصدير Excel'),
-              ),
-              OutlinedButton.icon(
-                onPressed: widget.onExportPdf,
-                icon: const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('تصدير PDF'),
+                  ActionItem(
+                    icon: Icons.file_download_outlined,
+                    label: 'CSV',
+                    onPressed: widget.onExportCsv,
+                  ),
+                  ActionItem(
+                    icon: Icons.table_chart_outlined,
+                    label: 'Excel',
+                    onPressed: widget.onExportXlsx,
+                  ),
+                  ActionItem(
+                    icon: Icons.picture_as_pdf_outlined,
+                    label: 'PDF',
+                    onPressed: widget.onExportPdf,
+                  ),
+                ],
               ),
               if (widget.selectedCount > 0) ...[
-                const SizedBox(width: AppTokens.s8),
+                const SizedBox(height: AppTokens.s12),
                 Text(
-                  'محدد: ${widget.selectedCount}',
+                  'محدد: ${widget.selectedCount} حزمة',
                   style: const TextStyle(
                     color: AppTokens.sidebarBg,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () => widget.onBulkAction('archive'),
-                  icon: const Icon(Icons.archive_outlined),
-                  label: const Text('أرشفة'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => widget.onBulkAction('restore'),
-                  icon: const Icon(Icons.restore_outlined),
-                  label: const Text('استعادة'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => widget.onBulkAction('refresh'),
-                  icon: const Icon(Icons.sync),
-                  label: const Text('تحديث'),
+                const SizedBox(height: AppTokens.s8),
+                ActionBar(
+                  items: [
+                    ActionItem(
+                      icon: Icons.archive_outlined,
+                      label: 'أرشفة',
+                      tone: PillTone.amber,
+                      onPressed: () => widget.onBulkAction('archive'),
+                    ),
+                    ActionItem(
+                      icon: Icons.restore_outlined,
+                      label: 'استعادة',
+                      onPressed: () => widget.onBulkAction('restore'),
+                    ),
+                    ActionItem(
+                      icon: Icons.sync,
+                      label: 'تحديث',
+                      onPressed: () => widget.onBulkAction('refresh'),
+                    ),
+                  ],
                 ),
               ],
             ],

@@ -19,6 +19,89 @@ enum PillTone {
   neutral, // grey
 }
 
+/// Background / foreground / border for a [PillTone] — the single colour
+/// source shared by [StatusPill] and the count/action widgets, so a status
+/// reads the same colour everywhere in the app.
+(Color, Color, Color) pillToneColors(PillTone tone) => switch (tone) {
+      PillTone.green => (
+          AppTokens.greenSoft,
+          AppTokens.greenInk,
+          AppTokens.successMed,
+        ),
+      PillTone.amber || PillTone.orange => (
+          AppTokens.amberSoft,
+          AppTokens.amberInk,
+          AppTokens.warningMed,
+        ),
+      PillTone.red => (
+          AppTokens.redSoft,
+          AppTokens.redInk,
+          AppTokens.dangerMed,
+        ),
+      PillTone.blue => (
+          AppTokens.blueSoft,
+          AppTokens.blueInk,
+          AppTokens.infoMed,
+        ),
+      PillTone.brand || PillTone.cyan || PillTone.purple || PillTone.navy => (
+          AppTokens.brandSoft,
+          AppTokens.brandInk,
+          AppTokens.borderStrong,
+        ),
+      PillTone.neutral => (
+          AppTokens.slate100,
+          AppTokens.slate500,
+          AppTokens.slate200,
+        ),
+    };
+
+/// One meaning per colour, app-wide (owner review: متاح / منتهي / متصل /
+/// مستخدم must be told apart at a glance):
+///   green  = online / active / live (متصل، نشط)
+///   blue   = available, ready to use (متاح)
+///   brand  = used / consumed (مستخدم)
+///   amber  = expired / suspended / exhausted (منتهي، موقوف، مستهلك)
+///   red    = revoked / disabled / banned (ملغى، معطّل، محظور)
+///   neutral= archived / totals / pending (مؤرشف، الإجمالي)
+PillTone toneForStatus(String status) => switch (status.trim().toLowerCase()) {
+      'online' ||
+      'active' ||
+      'connected' ||
+      'enabled' ||
+      'live' ||
+      'متصل' ||
+      'متصلة' ||
+      'نشط' ||
+      'نشطة' ||
+      'مفعّل' ||
+      'مفعل' =>
+        PillTone.green,
+      'available' || 'unused' || 'متاح' || 'متاحة' => PillTone.blue,
+      'used' || 'consumed' || 'مستخدم' || 'مستخدمة' => PillTone.brand,
+      'expired' ||
+      'exhausted' ||
+      'suspended' ||
+      'ended' ||
+      'stopped' ||
+      'منتهي' ||
+      'منتهية' ||
+      'مستهلكة' ||
+      'موقوف' =>
+        PillTone.amber,
+      'revoked' ||
+      'disabled' ||
+      'banned' ||
+      'cancelled' ||
+      'canceled' ||
+      'blocked' ||
+      'ملغى' ||
+      'معطّل' ||
+      'معطل' ||
+      'محظور' =>
+        PillTone.red,
+      _ => PillTone.neutral,
+    };
+
 class StatusPill extends StatelessWidget {
   const StatusPill({
     super.key,
@@ -37,38 +120,7 @@ class StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, fg, border) = switch (tone) {
-      PillTone.green => (
-          AppTokens.greenSoft,
-          AppTokens.greenInk,
-          AppTokens.successMed
-        ),
-      PillTone.amber || PillTone.orange => (
-          AppTokens.amberSoft,
-          AppTokens.amberInk,
-          AppTokens.warningMed
-        ),
-      PillTone.red => (
-          AppTokens.redSoft,
-          AppTokens.redInk,
-          AppTokens.dangerMed
-        ),
-      PillTone.blue => (
-          AppTokens.blueSoft,
-          AppTokens.blueInk,
-          AppTokens.infoMed
-        ),
-      PillTone.brand || PillTone.cyan || PillTone.purple || PillTone.navy => (
-          AppTokens.brandSoft,
-          AppTokens.brandInk,
-          AppTokens.borderStrong
-        ),
-      PillTone.neutral => (
-          AppTokens.slate100,
-          AppTokens.slate500,
-          AppTokens.slate200
-        ),
-    };
+    final (bg, fg, border) = pillToneColors(tone);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(

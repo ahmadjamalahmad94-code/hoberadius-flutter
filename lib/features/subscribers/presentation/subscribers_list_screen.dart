@@ -9,8 +9,10 @@ import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../provider_grants/application/provider_grants_provider.dart';
 import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
@@ -90,6 +92,7 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
       children: [
         PageHeader(
           title: 'المشتركون',
+          inlineActions: true,
           actions: [
             SegmentedButton<_Density>(
               segments: const [
@@ -108,15 +111,25 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
               showSelectedIcon: false,
               onSelectionChanged: (s) => setState(() => _density = s.first),
             ),
-            const SizedBox(width: AppTokens.s8),
-            GuardedCreateButton(
-              serviceKey: 'subscribers',
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.person_add_alt_1_outlined,
               label: 'مشترك جديد',
-              onCreate: () => context.goNamed('subscriber-new'),
+              primary: true,
+              // blocked at the provider's subscriber cap (was the guarded
+              // create button; the limit banner below explains it)
+              onPressed:
+                  (ref.watch(grantLimitProvider('subscribers'))?.atCap ?? false)
+                      ? null
+                      : () => context.goNamed('subscriber-new'),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         const LimitUsageBanner(serviceKey: 'subscribers'),
         AppCard(
           padding: const EdgeInsets.all(AppTokens.s12),
@@ -191,19 +204,57 @@ class _StatusChips extends StatelessWidget {
       ('suspended', 'موقوف'),
       ('banned', 'محظور'),
     ];
-    return Wrap(
-      spacing: AppTokens.s8,
-      runSpacing: AppTokens.s8,
-      children: [
-        for (final (code, label) in options)
-          ChoiceChip(
-            label: Text(label),
-            selected: value == code,
-            onSelected: (_) => onChanged(code),
-          ),
-      ],
+    // One horizontal row (scrolls) instead of ragged wrapped rows; a dot in
+    // each status's own colour ties the filter to the badges in the list.
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final (code, label) in options) ...[
+            ChoiceChip(
+              avatar: code == null
+                  ? null
+                  : _ToneDot(
+                      tone: code == kExpiringSoonFilter
+                          ? PillTone.amber
+                          : toneForStatus(code),
+                    ),
+              label: Text(label),
+              selected: value == code,
+              onSelected: (_) => onChanged(code),
+            ),
+            const SizedBox(width: AppTokens.s8),
+          ],
+        ],
+      ),
     );
   }
+}
+
+class _ToneDot extends StatelessWidget {
+  const _ToneDot({required this.tone});
+  final PillTone tone;
+
+  @override
+  Widget build(BuildContext context) {
+    final (_, fg, _) = pillToneColors(tone);
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+    );
+  }
+}
+
+/// Status as the operator sees it: an «enabled» account whose expiry already
+/// passed is «منتهي» (expiry is derived from expire_at, not stored).
+String effectiveSubscriberStatus(Subscriber s, DateTime now) {
+  if (s.status == 'enabled' &&
+      s.expireAt != null &&
+      !s.expireAt!.isAfter(now)) {
+    return 'expired';
+  }
+  return s.status;
 }
 
 class _Table extends ConsumerWidget {
@@ -258,10 +309,73 @@ class _Table extends ConsumerWidget {
     }
   }
 
+  Future<void> _showActions(
+    BuildContext context,
+    WidgetRef ref,
+    Subscriber s,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheet) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppTokens.s8),
+              child: Text(
+                s.fullName.isEmpty ? s.username : s.fullName,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            for (final (value, icon, label, danger) in [
+              ('edit', Icons.edit_outlined, 'تعديل', false),
+              (
+                'toggle',
+                s.status == 'disabled'
+                    ? Icons.play_circle_outline
+                    : Icons.pause_circle_outline,
+                s.status == 'disabled' ? 'تفعيل' : 'تعطيل',
+                false,
+              ),
+              ('extend', Icons.more_time_outlined, 'تمديد الوقت', false),
+              (
+                'reset',
+                Icons.password_outlined,
+                'إعادة تعيين كلمة المرور',
+                false
+              ),
+              ('delete', Icons.delete_outline, 'حذف', true),
+            ])
+              ListTile(
+                leading: Icon(icon, color: danger ? AppTokens.red : null),
+                title: Text(
+                  label,
+                  style: TextStyle(
+                    color: danger ? AppTokens.red : null,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                onTap: () => Navigator.pop(sheet, value),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (action != null && context.mounted) {
+      await _runAction(context, ref, s, action);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final df = DateFormat('yyyy-MM-dd');
     final p = AppPalette.of(context);
+    final now = DateTime.now();
+    final compact = density == _Density.compact;
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -269,19 +383,32 @@ class _Table extends ConsumerWidget {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (ctx, i) {
         final s = items[i];
-        final tone = s.status == 'enabled'
-            ? PillTone.green
-            : s.status == 'disabled'
-                ? PillTone.red
-                : PillTone.orange;
+        final status = effectiveSubscriberStatus(s, now);
+        final label = _statusLabel(status);
+        final exp = s.expireAt;
+        final daysLeft = exp == null ? null : exp.difference(now).inHours / 24;
+        final (_, expFg, _) = pillToneColors(
+          daysLeft == null
+              ? PillTone.neutral
+              : daysLeft <= 0
+                  ? PillTone.red
+                  : daysLeft <= 3
+                      ? PillTone.amber
+                      : PillTone.neutral,
+        );
+        void open360() => ctx.goNamed(
+              'subscriber-360',
+              pathParameters: {'username': s.username},
+            );
+        void openFinance() => ctx.goNamed(
+              'subscriber-finance',
+              pathParameters: {'username': s.username},
+            );
         return Dismissible(
           key: ValueKey('sub:${s.username}'),
           direction: DismissDirection.endToStart,
           confirmDismiss: (_) async {
-            ctx.goNamed(
-              'subscriber-finance',
-              pathParameters: {'username': s.username},
-            );
+            openFinance();
             return false;
           },
           background: Container(
@@ -293,102 +420,109 @@ class _Table extends ConsumerWidget {
               color: p.brandInk,
             ),
           ),
-          child: ListTile(
-            dense: density == _Density.compact,
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: AppTokens.s16,
-              vertical: density == _Density.compact ? 0 : AppTokens.s8,
-            ),
-            leading: CircleAvatar(
-              backgroundColor: p.brandSoft,
-              child: Icon(Icons.person, color: p.brand),
-            ),
-            title: Text(
-              s.fullName.isEmpty ? s.username : s.fullName,
-              style: AppTypography.labelLarge.copyWith(color: p.textPrimary),
-            ),
-            subtitle: Text(
-              [
-                s.username,
-                if (s.mobile.isNotEmpty) s.mobile,
-                if (s.expireAt != null) 'ينتهي: ${df.format(s.expireAt!)}',
-              ].join(' • '),
-              style: AppTypography.caption.copyWith(color: p.textMuted),
-            ),
-            trailing: Wrap(
-              spacing: AppTokens.s8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                StatusPill(text: _statusLabel(s.status), tone: tone),
-                IconButton(
-                  tooltip: 'ملف 360',
-                  onPressed: () => ctx.goNamed(
-                    'subscriber-360',
-                    pathParameters: {'username': s.username},
-                  ),
-                  icon: const Icon(Icons.dashboard_customize_outlined),
-                ),
-                IconButton(
-                  tooltip: 'الدفعات والسلف',
-                  onPressed: () => ctx.goNamed(
-                    'subscriber-finance',
-                    pathParameters: {'username': s.username},
-                  ),
-                  icon: const Icon(Icons.account_balance_wallet_outlined),
-                ),
-                PopupMenuButton<String>(
-                  tooltip: 'إجراءات',
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (action) => _runAction(ctx, ref, s, action),
-                  itemBuilder: (_) => [
-                    const PopupMenuItem(
-                      value: 'edit',
-                      child: ListTile(
-                        leading: Icon(Icons.edit_outlined),
-                        title: Text('تعديل'),
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'toggle',
-                      child: ListTile(
-                        leading: Icon(
-                          s.status == 'disabled'
-                              ? Icons.play_circle_outline
-                              : Icons.pause_circle_outline,
-                        ),
-                        title: Text(
-                          s.status == 'disabled' ? 'تفعيل' : 'تعطيل',
+          child: InkWell(
+            onTap: open360,
+            onLongPress: () => _showActions(ctx, ref, s),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppTokens.s12,
+                vertical: compact ? AppTokens.s8 : AppTokens.s12,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: compact ? 16 : 20,
+                        backgroundColor: p.brandSoft,
+                        child: Icon(
+                          Icons.person,
+                          color: p.brand,
+                          size: compact ? 18 : 22,
                         ),
                       ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'extend',
-                      child: ListTile(
-                        leading: Icon(Icons.more_time_outlined),
-                        title: Text('تمديد الوقت'),
+                      const SizedBox(width: AppTokens.s12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.fullName.isEmpty ? s.username : s.fullName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.labelLarge.copyWith(
+                                color: p.textPrimary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              [
+                                s.username,
+                                if (s.mobile.isNotEmpty) s.mobile,
+                              ].join(' · '),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.caption
+                                  .copyWith(color: p.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppTokens.s8),
+                      StatusPill(
+                        text: label,
+                        tone: toneForStatus(status),
+                        dot: true,
+                      ),
+                      if (compact)
+                        IconButton(
+                          tooltip: 'إجراءات',
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.more_vert),
+                          onPressed: () => _showActions(ctx, ref, s),
+                        ),
+                    ],
+                  ),
+                  if (exp != null)
+                    Padding(
+                      padding: EdgeInsetsDirectional.only(
+                        start: compact ? 44 : 52,
+                        top: 2,
+                      ),
+                      child: Text(
+                        '${daysLeft! <= 0 ? 'انتهى' : 'ينتهي'}: ${df.format(exp)}',
+                        style: AppTypography.caption.copyWith(
+                          color: expFg,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
-                    const PopupMenuItem(
-                      value: 'reset',
-                      child: ListTile(
-                        leading: Icon(Icons.password_outlined),
-                        title: Text('إعادة تعيين كلمة المرور'),
-                      ),
-                    ),
-                    const PopupMenuItem(
-                      value: 'delete',
-                      child: ListTile(
-                        leading: Icon(Icons.delete_outline),
-                        title: Text('حذف'),
-                      ),
+                  if (!compact) ...[
+                    const SizedBox(height: AppTokens.s12),
+                    ActionBar(
+                      items: [
+                        ActionItem(
+                          icon: Icons.dashboard_customize_outlined,
+                          label: 'الملف',
+                          primary: true,
+                          onPressed: open360,
+                        ),
+                        ActionItem(
+                          icon: Icons.account_balance_wallet_outlined,
+                          label: 'المالية',
+                          onPressed: openFinance,
+                        ),
+                        ActionItem(
+                          icon: Icons.tune,
+                          label: 'إجراءات',
+                          onPressed: () => _showActions(ctx, ref, s),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-            ),
-            onTap: () => ctx.goNamed(
-              'subscriber-360',
-              pathParameters: {'username': s.username},
+                ],
+              ),
             ),
           ),
         );
@@ -400,6 +534,8 @@ class _Table extends ConsumerWidget {
         'enabled' => 'مفعّل',
         'disabled' => 'معطّل',
         'expired' => 'منتهي',
+        'suspended' => 'موقوف',
+        'banned' => 'محظور',
         _ => s,
       };
 }

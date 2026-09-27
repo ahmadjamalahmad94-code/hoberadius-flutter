@@ -32,8 +32,7 @@ class CardBatchOpsFilters {
       );
 }
 
-final batchOpsFiltersProvider =
-    StateProvider.autoDispose<CardBatchOpsFilters>(
+final batchOpsFiltersProvider = StateProvider.autoDispose<CardBatchOpsFilters>(
   (_) => const CardBatchOpsFilters(),
 );
 
@@ -77,16 +76,12 @@ String batchStatusLabel(String status) => switch (status) {
       _ => status.trim().isEmpty ? 'غير محددة' : 'حالة غير معروفة',
     };
 
+/// Batch status colour, following the app-wide meaning in [toneForStatus]
+/// (active=green, available=blue, used=brand, expired=amber, revoked=red,
+/// archived=neutral).
 PillTone batchStatusTone(String status) => switch (status) {
-      'active' || 'available' => PillTone.green,
-      'used' || 'expired' || 'exhausted' => PillTone.orange,
-      'deleted' ||
-      'archived' ||
-      'revoked' ||
-      'cancelled' ||
-      'canceled' =>
-        PillTone.red,
-      _ => PillTone.neutral,
+      'deleted' || 'archived' => PillTone.neutral,
+      _ => toneForStatus(status),
     };
 
 String formatMoney(num value) {

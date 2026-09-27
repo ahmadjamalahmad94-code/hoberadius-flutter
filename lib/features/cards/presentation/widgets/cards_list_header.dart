@@ -1,39 +1,57 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/tokens.dart';
+import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/page_header.dart';
-import '../../../provider_grants/presentation/limit_usage_banner.dart';
+import '../../../provider_grants/application/provider_grants_provider.dart';
 
-class CardsListHeader extends StatelessWidget {
+class CardsListHeader extends ConsumerWidget {
   const CardsListHeader({super.key, required this.onRefresh});
   final VoidCallback onRefresh;
 
   @override
-  Widget build(BuildContext context) {
-    return PageHeader(
-      title: 'مركز عمليات حزم البطاقات',
-      subtitle: 'فلاتر، إحصائيات، أرشفة آمنة، وتصدير ملف من الخادم الحقيقي.',
-      actions: [
-        IconButton(
-          tooltip: 'تحديث',
-          icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
-          onPressed: onRefresh,
+  Widget build(BuildContext context, WidgetRef ref) {
+    // «حزمة جديدة» stays blocked at the provider's card cap (same rule as the
+    // old GuardedCreateButton; the cap banner explains it on the page).
+    final atCap = ref.watch(grantLimitProvider('cards'))?.atCap ?? false;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PageHeader(
+          title: 'مركز عمليات حزم البطاقات',
+          subtitle:
+              'فلاتر، إحصائيات، أرشفة آمنة، وتصدير ملف من الخادم الحقيقي.',
+          inlineActions: true,
+          actions: [
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+              onPressed: onRefresh,
+            ),
+          ],
         ),
-        OutlinedButton.icon(
-          onPressed: () => context.goNamed('card-checker'),
-          icon: const Icon(Icons.manage_search_outlined),
-          label: const Text('فحص بطاقة'),
-        ),
-        OutlinedButton.icon(
-          onPressed: () => context.goNamed('card-batch-import'),
-          icon: const Icon(Icons.file_upload_outlined),
-          label: const Text('استيراد ملف'),
-        ),
-        GuardedCreateButton(
-          serviceKey: 'cards',
-          label: 'حزمة جديدة',
-          onCreate: () => context.goNamed('card-batch-new'),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.add,
+              label: 'حزمة جديدة',
+              primary: true,
+              onPressed: atCap ? null : () => context.goNamed('card-batch-new'),
+            ),
+            ActionItem(
+              icon: Icons.manage_search_outlined,
+              label: 'فحص بطاقة',
+              onPressed: () => context.goNamed('card-checker'),
+            ),
+            ActionItem(
+              icon: Icons.file_upload_outlined,
+              label: 'استيراد',
+              onPressed: () => context.goNamed('card-batch-import'),
+            ),
+          ],
         ),
       ],
     );
