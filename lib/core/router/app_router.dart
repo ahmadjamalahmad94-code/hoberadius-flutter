@@ -155,7 +155,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/subscribers',
             name: 'subscribers',
-            builder: (ctx, st) => const SubscribersListScreen(),
+            builder: (ctx, st) => SubscribersListScreen(
+              initialStatus: subscribersFilterFromQuery(st.uri.queryParameters),
+            ),
             routes: [
               GoRoute(
                 path: 'new',

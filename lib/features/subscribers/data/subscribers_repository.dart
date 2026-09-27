@@ -10,6 +10,7 @@ class SubscribersRepository {
 
   Future<List<Subscriber>> list({
     String? status,
+    int? expiringWithinDays,
     int limit = 100,
     int offset = 0,
   }) async {
@@ -17,6 +18,8 @@ class SubscribersRepository {
       '/api/v1/accounts',
       query: {
         if (status != null) 'status': status,
+        if (expiringWithinDays != null)
+          'expiring_within_days': expiringWithinDays,
         'limit': limit,
         'offset': offset,
       },

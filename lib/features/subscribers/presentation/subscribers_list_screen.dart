@@ -16,15 +16,51 @@ import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
 import 'widgets/subscriber_dialogs.dart';
 
-final subscribersListProvider =
-    FutureProvider.autoDispose.family<List<Subscriber>, String?>((ref, status) {
-  return ref.watch(subscribersRepositoryProvider).list(status: status);
+/// Pseudo-status for «ينتهي خلال ٣ أيام» (active subscribers whose expiry
+/// falls in the next 3 days) — matches the web's `attention=expiring_3d` and
+/// the dashboard «expiring_soon» counter.
+const kExpiringSoonFilter = 'expiring_3d';
+
+final subscribersListProvider = FutureProvider.autoDispose
+    .family<List<Subscriber>, String?>((ref, status) async {
+  final repo = ref.watch(subscribersRepositoryProvider);
+  if (status != kExpiringSoonFilter) return repo.list(status: status);
+  // Ask the server to filter (newer backends honour expiring_within_days)
+  // and guard client-side with the same rule, so older servers that ignore
+  // the param still show only the right rows.
+  final items = await repo.list(status: 'enabled', expiringWithinDays: 3);
+  return filterExpiringSoon(items, DateTime.now());
 });
+
+/// Subscribers whose expiry is after [now] and within the next 3 days — the
+/// same window as the dashboard «ينتهي خلال ٣ أيام» counter.
+List<Subscriber> filterExpiringSoon(List<Subscriber> items, DateTime now) {
+  final until = now.add(const Duration(days: 3));
+  return items.where((s) {
+    final exp = s.expireAt;
+    return exp != null && exp.isAfter(now) && !exp.isAfter(until);
+  }).toList();
+}
+
+/// Maps a `/subscribers?status=…` or the web-style `?attention=…` deep link
+/// (dashboard tiles, alerts) to the list's filter value.
+String? subscribersFilterFromQuery(Map<String, String> q) {
+  final status = q['status'];
+  if (status != null && status.isNotEmpty) return status;
+  return switch (q['attention']) {
+    'expiring_3d' || 'expiring' => kExpiringSoonFilter,
+    'expired' => 'expired',
+    _ => null,
+  };
+}
 
 enum _Density { comfortable, compact }
 
 class SubscribersListScreen extends ConsumerStatefulWidget {
-  const SubscribersListScreen({super.key});
+  const SubscribersListScreen({super.key, this.initialStatus});
+
+  /// Filter to open with (from a deep link such as a dashboard tile).
+  final String? initialStatus;
 
   @override
   ConsumerState<SubscribersListScreen> createState() =>
@@ -32,9 +68,19 @@ class SubscribersListScreen extends ConsumerStatefulWidget {
 }
 
 class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
-  String? _status;
+  late String? _status = widget.initialStatus;
   String _query = '';
   _Density _density = _Density.comfortable;
+
+  @override
+  void didUpdateWidget(covariant SubscribersListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-navigating to /subscribers with a different filter reuses this
+    // State; follow the new link instead of keeping the old chip.
+    if (widget.initialStatus != oldWidget.initialStatus) {
+      _status = widget.initialStatus;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,8 +185,11 @@ class _StatusChips extends StatelessWidget {
     const options = <(String?, String)>[
       (null, 'كل الحالات'),
       ('enabled', 'مفعّل'),
-      ('disabled', 'معطّل'),
+      (kExpiringSoonFilter, 'ينتهي خلال ٣ أيام'),
       ('expired', 'منتهي'),
+      ('disabled', 'معطّل'),
+      ('suspended', 'موقوف'),
+      ('banned', 'محظور'),
     ];
     return Wrap(
       spacing: AppTokens.s8,
@@ -170,8 +219,7 @@ class _Table extends ConsumerWidget {
   ) async {
     final repo = ref.read(subscribersRepositoryProvider);
     final messenger = ScaffoldMessenger.of(context);
-    void snack(String m) =>
-        messenger.showSnackBar(SnackBar(content: Text(m)));
+    void snack(String m) => messenger.showSnackBar(SnackBar(content: Text(m)));
     try {
       switch (action) {
         case 'edit':

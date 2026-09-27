@@ -185,71 +185,80 @@ class _BatchCard extends StatelessWidget {
         : '#${batch.id}';
     final total = batch.total;
     final ratio = total > 0 ? (batch.used / total).clamp(0.0, 1.0) : 0.0;
-    return Container(
-      padding: const EdgeInsets.all(AppTokens.s12),
+    return _TapCard(
+      onTap: batch.id > 0
+          ? () => context.goNamed(
+                'card-batch-detail',
+                pathParameters: {'id': '${batch.id}'},
+              )
+          : null,
+      radius: AppTokens.s12,
       decoration: BoxDecoration(
         color: p.surfaceTinted,
         borderRadius: BorderRadius.circular(AppTokens.s12),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.style_outlined, color: p.brand, size: 18),
-              const SizedBox(width: AppTokens.s8),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: p.textPrimary,
+      child: Padding(
+        padding: const EdgeInsets.all(AppTokens.s12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.style_outlined, color: p.brand, size: 18),
+                const SizedBox(width: AppTokens.s8),
+                Expanded(
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelLarge.copyWith(
+                      color: p.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 2),
+            Text(
+              code,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textDirection: TextDirection.ltr,
+              style: AppTypography.caption.copyWith(color: p.textMuted),
+            ),
+            const SizedBox(height: AppTokens.s8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: ratio,
+                minHeight: 6,
+                backgroundColor: p.card,
+                valueColor: AlwaysStoppedAnimation(p.brand),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  'مستخدم',
+                  style: AppTypography.caption.copyWith(color: p.textMuted),
+                ),
+                const Spacer(),
+                // LTR so «used / total» never flips to «total / used» in RTL.
+                Text(
+                  '${batch.used} / $total',
+                  textDirection: TextDirection.ltr,
+                  style: AppTypography.labelMedium.copyWith(
+                    color: p.brand,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            code,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textDirection: TextDirection.ltr,
-            style: AppTypography.caption.copyWith(color: p.textMuted),
-          ),
-          const SizedBox(height: AppTokens.s8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: ratio,
-              minHeight: 6,
-              backgroundColor: p.card,
-              valueColor: AlwaysStoppedAnimation(p.brand),
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Text(
-                'مستخدم',
-                style: AppTypography.caption.copyWith(color: p.textMuted),
-              ),
-              const Spacer(),
-              // LTR so «used / total» never flips to «total / used» in RTL.
-              Text(
-                '${batch.used} / $total',
-                textDirection: TextDirection.ltr,
-                style: AppTypography.labelMedium.copyWith(
-                  color: p.brand,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -497,6 +506,10 @@ class _SubscriberAttention extends StatelessWidget {
           value: '${metrics.expiredSubscribers}',
           bg: p.infoBg,
           fg: p.infoStrong,
+          onTap: () => context.goNamed(
+            'subscribers',
+            queryParameters: const {'status': 'expired'},
+          ),
         ),
       if (metrics.expiringSoon > 0)
         _StatItem(
@@ -505,6 +518,10 @@ class _SubscriberAttention extends StatelessWidget {
           value: '${metrics.expiringSoon}',
           bg: p.warningBg,
           fg: p.warningStrong,
+          onTap: () => context.goNamed(
+            'subscribers',
+            queryParameters: const {'status': 'expiring_3d'},
+          ),
         ),
       if (metrics.suspendedSubscribers > 0)
         _StatItem(
@@ -513,6 +530,10 @@ class _SubscriberAttention extends StatelessWidget {
           value: '${metrics.suspendedSubscribers}',
           bg: p.warningBg,
           fg: p.warningStrong,
+          onTap: () => context.goNamed(
+            'subscribers',
+            queryParameters: const {'status': 'suspended'},
+          ),
         ),
       if (metrics.disabledSubscribers > 0)
         _StatItem(
@@ -521,6 +542,10 @@ class _SubscriberAttention extends StatelessWidget {
           value: '${metrics.disabledSubscribers}',
           bg: p.surfaceTinted,
           fg: p.textSecondary,
+          onTap: () => context.goNamed(
+            'subscribers',
+            queryParameters: const {'status': 'disabled'},
+          ),
         ),
       if (metrics.bannedSubscribers > 0)
         _StatItem(
@@ -529,6 +554,10 @@ class _SubscriberAttention extends StatelessWidget {
           value: '${metrics.bannedSubscribers}',
           bg: p.dangerBg,
           fg: p.dangerStrong,
+          onTap: () => context.goNamed(
+            'subscribers',
+            queryParameters: const {'status': 'banned'},
+          ),
         ),
       if (metrics.hasTopPlan)
         _StatItem(
@@ -538,6 +567,7 @@ class _SubscriberAttention extends StatelessWidget {
           bg: p.brandSoft,
           fg: p.brandInk,
           full: true,
+          onTap: () => context.goNamed('plans'),
         ),
     ];
     return AppCard(
@@ -557,12 +587,16 @@ class _StatItem {
     required this.bg,
     required this.fg,
     this.full = false,
+    this.onTap,
   });
   final IconData icon;
   final String label;
   final String value;
   final Color bg;
   final Color fg;
+
+  /// Where tapping the cell leads (its underlying screen/filter).
+  final VoidCallback? onTap;
 
   /// Spans the whole row (long values such as a plan name or a hostname).
   final bool full;
@@ -618,46 +652,50 @@ class _StatCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTokens.s12,
-        vertical: AppTokens.s8,
-      ),
+    return _TapCard(
+      onTap: item.onTap,
+      radius: AppTokens.s12,
       decoration: BoxDecoration(
         color: item.bg,
         borderRadius: BorderRadius.circular(AppTokens.s12),
       ),
-      child: Row(
-        children: [
-          Icon(item.icon, color: item.fg, size: 18),
-          const SizedBox(width: AppTokens.s8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption.copyWith(
-                    color: p.textSecondary,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.s12,
+          vertical: AppTokens.s8,
+        ),
+        child: Row(
+          children: [
+            Icon(item.icon, color: item.fg, size: 18),
+            const SizedBox(width: AppTokens.s8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption.copyWith(
+                      color: p.textSecondary,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  item.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.labelLarge.copyWith(
-                    color: item.fg,
-                    fontWeight: FontWeight.w900,
+                  const SizedBox(height: 2),
+                  Text(
+                    item.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.labelLarge.copyWith(
+                      color: item.fg,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -678,12 +716,14 @@ class _MetricGrid extends StatelessWidget {
         value: '${metrics.subscribers}',
         tone: _MetricTone.brand,
         primary: true,
+        onTap: () => context.goNamed('subscribers'),
       ),
       _MetricTile(
         icon: Icons.online_prediction,
         label: 'متّصلون الآن',
         value: '${metrics.onlineNow}',
         tone: _MetricTone.success,
+        onTap: () => context.goNamed('sessions'),
       ),
       _MetricTile(
         icon: Icons.workspace_premium_outlined,
@@ -693,6 +733,7 @@ class _MetricGrid extends StatelessWidget {
             ? '${metrics.enabledPlans} مفعّلة · ${metrics.disabledPlans} معطّلة'
             : null,
         tone: _MetricTone.brand,
+        onTap: () => context.goNamed('plans'),
       ),
       _MetricTile(
         icon: Icons.credit_card_outlined,
@@ -700,6 +741,7 @@ class _MetricGrid extends StatelessWidget {
         value: '${metrics.totalCards}',
         sub: '${metrics.usedCards} مُستخدَمة · ${metrics.availableCards} متاح',
         tone: _MetricTone.warning,
+        onTap: () => context.goNamed('cards'),
       ),
       _MetricTile(
         icon: Icons.router_outlined,
@@ -707,6 +749,7 @@ class _MetricGrid extends StatelessWidget {
         value: '${metrics.nasDevices}',
         sub: metrics.nasDevices > 0 ? '${metrics.nasEnabled} مفعّلة' : null,
         tone: _MetricTone.info,
+        onTap: () => context.goNamed('nas'),
       ),
     ];
     return LayoutBuilder(
@@ -737,6 +780,40 @@ class _MetricGrid extends StatelessWidget {
   }
 }
 
+/// A decorated card that is tappable with a visible ripple: the decoration is
+/// painted as [Ink] on a transparent [Material] so the InkWell splash shows on
+/// top of the card's own background (a plain Container would hide it).
+class _TapCard extends StatelessWidget {
+  const _TapCard({
+    required this.decoration,
+    required this.radius,
+    required this.child,
+    this.onTap,
+  });
+  final BoxDecoration decoration;
+  final double radius;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (onTap == null) {
+      return DecoratedBox(decoration: decoration, child: child);
+    }
+    return Material(
+      type: MaterialType.transparency,
+      child: Ink(
+        decoration: decoration,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(radius),
+          onTap: onTap,
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
 class _MetricTile extends StatelessWidget {
   const _MetricTile({
     required this.icon,
@@ -745,6 +822,7 @@ class _MetricTile extends StatelessWidget {
     required this.tone,
     this.sub,
     this.primary = false,
+    this.onTap,
   });
   final IconData icon;
   final String label;
@@ -752,6 +830,7 @@ class _MetricTile extends StatelessWidget {
   final _MetricTone tone;
   final String? sub;
   final bool primary;
+  final VoidCallback? onTap;
 
   ({Color bg, Color fg, Color valueFg, Gradient? gradient}) _palette(
     AppPalette p,
@@ -782,7 +861,9 @@ class _MetricTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
     final pal = _palette(p);
-    return Container(
+    return _TapCard(
+      onTap: onTap,
+      radius: AppTokens.r14,
       decoration: BoxDecoration(
         color: primary ? null : p.card,
         gradient: pal.gradient,
@@ -903,13 +984,15 @@ class _SystemHealth extends StatelessWidget {
   const _SystemHealth({required this.metrics});
   final DashboardMetrics metrics;
 
-  List<_StatItem> _healthItems(AppPalette p) {
+  List<_StatItem> _healthItems(BuildContext context, AppPalette p) {
+    void open() => context.goNamed('system-operations');
     _StatItem status(String label, bool ok, String yes, String no) => _StatItem(
           icon: ok ? Icons.check_circle : Icons.cancel,
           label: label,
           value: ok ? yes : no,
           bg: ok ? p.successBg : p.dangerBg,
           fg: ok ? p.successStrong : p.dangerStrong,
+          onTap: open,
         );
     _StatItem info(IconData icon, String label, String value) => _StatItem(
           icon: icon,
@@ -917,6 +1000,7 @@ class _SystemHealth extends StatelessWidget {
           value: value,
           bg: p.surfaceTinted,
           fg: p.brand,
+          onTap: open,
         );
     return [
       if (metrics.dbOk != null)
@@ -958,7 +1042,7 @@ class _SystemHealth extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppTokens.s12),
-          _StatGrid(items: _healthItems(AppPalette.of(context))),
+          _StatGrid(items: _healthItems(context, AppPalette.of(context))),
         ],
       ),
     );
