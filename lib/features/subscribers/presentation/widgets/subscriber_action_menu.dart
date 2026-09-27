@@ -57,7 +57,7 @@ class SubscriberActionMenu extends StatelessWidget {
           value: 'extend',
           child: Row(
             children: [
-              Icon(Icons.timer_outlined, size: 18, color: AppTokens.brand),
+              Icon(Icons.more_time_outlined, size: 18, color: AppTokens.green),
               SizedBox(width: 8),
               Text('تمديد الوقت'),
             ],
@@ -67,7 +67,7 @@ class SubscriberActionMenu extends StatelessWidget {
           value: 'reset',
           child: Row(
             children: [
-              Icon(Icons.password, size: 18, color: AppTokens.sidebarBgElev2),
+              Icon(Icons.password_outlined, size: 18, color: AppTokens.blue),
               SizedBox(width: 8),
               Text('إعادة كلمة المرور'),
             ],

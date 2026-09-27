@@ -5,6 +5,7 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../subscribers/data/subscribers_repository.dart';
 import '../application/subscriber_finance_data.dart';
 import '../data/accounting_repository.dart';
@@ -152,6 +153,7 @@ class _SubscriberFinanceScreenState
   Future<void> _voidPayment(PaymentTransaction payment) async {
     final approved = await showDialog<bool>(
       context: context,
+      useRootNavigator: true,
       builder: (context) => AlertDialog(
         title: const Text('عكس الدفعة؟'),
         content: const Text(
@@ -202,28 +204,24 @@ class _SubscriberFinanceScreenState
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => context.goNamed(
-                    'subscriber-edit',
-                    pathParameters: {'username': widget.username},
-                  ),
-                  icon: const Icon(Icons.arrow_back),
+            PageHeader(
+              title: 'دفعات وسلف ${data.subscriber.username}',
+              leading: IconButton(
+                onPressed: () => context.goNamed(
+                  'subscriber-edit',
+                  pathParameters: {'username': widget.username},
                 ),
-                Expanded(
-                  child: Text(
-                    'دفعات وسلف ${data.subscriber.username}',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: AppTokens.sidebarBg,
-                          fontWeight: FontWeight.w800,
-                        ),
-                  ),
-                ),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              inlineActions: true,
+              actions: [
                 IconButton(
                   tooltip: 'تحديث',
                   onPressed: _busy ? null : _refresh,
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(
+                    Icons.refresh,
+                    color: AppTokens.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -235,9 +233,9 @@ class _SubscriberFinanceScreenState
                   ? data.payments.first.currency
                   : (data.loans.isNotEmpty ? data.loans.first.currency : ''),
             ),
-            const SizedBox(height: AppTokens.s12),
+            const SizedBox(height: AppTokens.s8),
             const FinanceNotice(),
-            const SizedBox(height: AppTokens.s16),
+            const SizedBox(height: AppTokens.s12),
             LayoutBuilder(
               builder: (context, constraints) {
                 final wide = constraints.maxWidth > 900;
@@ -281,17 +279,17 @@ class _SubscriberFinanceScreenState
                 );
               },
             ),
-            const SizedBox(height: AppTokens.s16),
+            const SizedBox(height: AppTokens.s12),
             LoansTable(
               items: data.loans,
               onSettle: _busy ? null : _settleLoan,
             ),
-            const SizedBox(height: AppTokens.s16),
+            const SizedBox(height: AppTokens.s12),
             PaymentsTable(
               items: data.payments,
               onVoid: _busy ? null : _voidPayment,
             ),
-            const SizedBox(height: AppTokens.s16),
+            const SizedBox(height: AppTokens.s12),
             LedgerTable(items: data.ledger),
           ],
         );

@@ -322,50 +322,68 @@ class _Table extends ConsumerWidget {
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: AppTokens.s8),
-              child: Text(
-                s.fullName.isEmpty ? s.username : s.fullName,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AppTokens.s12,
+            0,
+            AppTokens.s12,
+            AppTokens.s8,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppTokens.s8),
+                child: Text(
+                  s.fullName.isEmpty ? s.username : s.fullName,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(sheet).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: AppTokens.sidebarBg,
+                      ),
                 ),
               ),
-            ),
-            for (final (value, icon, label, danger) in [
-              ('edit', Icons.edit_outlined, 'تعديل', false),
-              (
-                'toggle',
-                s.status == 'disabled'
-                    ? Icons.play_circle_outline
-                    : Icons.pause_circle_outline,
-                s.status == 'disabled' ? 'تفعيل' : 'تعطيل',
-                false,
-              ),
-              ('extend', Icons.more_time_outlined, 'تمديد الوقت', false),
-              (
-                'reset',
-                Icons.password_outlined,
-                'إعادة تعيين كلمة المرور',
-                false
-              ),
-              ('delete', Icons.delete_outline, 'حذف', true),
-            ])
-              ListTile(
-                leading: Icon(icon, color: danger ? AppTokens.red : null),
-                title: Text(
-                  label,
-                  style: TextStyle(
-                    color: danger ? AppTokens.red : null,
-                    fontWeight: FontWeight.w700,
+              for (final (value, icon, label, tone) in [
+                ('edit', Icons.edit_outlined, 'تعديل', PillTone.brand),
+                if (s.status == 'disabled')
+                  (
+                    'toggle',
+                    Icons.play_circle_outline,
+                    'تفعيل',
+                    PillTone.green,
+                  )
+                else
+                  (
+                    'toggle',
+                    Icons.pause_circle_outline,
+                    'تعطيل',
+                    PillTone.amber,
                   ),
+                (
+                  'extend',
+                  Icons.more_time_outlined,
+                  'تمديد الوقت',
+                  PillTone.green,
                 ),
-                onTap: () => Navigator.pop(sheet, value),
-              ),
-          ],
+                (
+                  'reset',
+                  Icons.password_outlined,
+                  'إعادة تعيين كلمة المرور',
+                  PillTone.blue,
+                ),
+                ('delete', Icons.delete_outline, 'حذف', PillTone.red),
+              ])
+                _SheetAction(
+                  icon: icon,
+                  label: label,
+                  tone: tone,
+                  onTap: () => Navigator.pop(sheet, value),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -542,4 +560,60 @@ class _Table extends ConsumerWidget {
         'banned' => 'محظور',
         _ => s,
       };
+}
+
+/// One row of the subscriber actions sheet: a tinted icon chip in the
+/// action's colour + its label — compact, and each action reads at a glance.
+class _SheetAction extends StatelessWidget {
+  const _SheetAction({
+    required this.icon,
+    required this.label,
+    required this.tone,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final PillTone tone;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg, border) = pillToneColors(tone);
+    final danger = tone == PillTone.red;
+    return InkWell(
+      borderRadius: BorderRadius.circular(AppTokens.r10),
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.s4,
+          vertical: 6,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(AppTokens.r10),
+                border: Border.all(color: border.withValues(alpha: 0.6)),
+              ),
+              child: Icon(icon, size: 19, color: fg),
+            ),
+            const SizedBox(width: AppTokens.s12),
+            Expanded(
+              child: Text(
+                label,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: danger ? AppTokens.red : AppTokens.textPrimary,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
