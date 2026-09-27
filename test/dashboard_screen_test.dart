@@ -95,9 +95,11 @@ void main() {
     expect(find.text('متابعة المشتركين'), findsOneWidget);
     expect(find.textContaining('الأكثر استخدامًا'), findsOneWidget);
 
-    // Service-health chips.
-    expect(find.text('قاعدة البيانات متصلة'), findsOneWidget);
-    expect(find.text('RADIUS غير جاهز'), findsOneWidget);
+    // Service-health grid cells: label and status value are separate lines.
+    expect(find.text('قاعدة البيانات'), findsOneWidget);
+    expect(find.text('متصلة'), findsOneWidget);
+    expect(find.text('RADIUS'), findsOneWidget);
+    expect(find.text('غير جاهز'), findsOneWidget);
   });
 
   testWidgets('shows empty states when batches + alerts are empty',

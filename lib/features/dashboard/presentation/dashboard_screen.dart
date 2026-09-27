@@ -424,122 +424,175 @@ class _SubscriberAttention extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    final chips = <Widget>[
+    final items = <_StatItem>[
       if (metrics.expiredSubscribers > 0)
-        _AttentionChip(
+        _StatItem(
           icon: Icons.event_busy_outlined,
           label: 'منتهٍ اشتراكهم',
-          value: metrics.expiredSubscribers,
+          value: '${metrics.expiredSubscribers}',
           bg: p.infoBg,
           fg: p.infoStrong,
         ),
       if (metrics.expiringSoon > 0)
-        _AttentionChip(
+        _StatItem(
           icon: Icons.hourglass_bottom,
           label: 'ينتهي خلال ٣ أيام',
-          value: metrics.expiringSoon,
+          value: '${metrics.expiringSoon}',
           bg: p.warningBg,
           fg: p.warningStrong,
         ),
       if (metrics.suspendedSubscribers > 0)
-        _AttentionChip(
+        _StatItem(
           icon: Icons.pause_circle_outline,
           label: 'موقوفون',
-          value: metrics.suspendedSubscribers,
+          value: '${metrics.suspendedSubscribers}',
           bg: p.warningBg,
           fg: p.warningStrong,
         ),
       if (metrics.disabledSubscribers > 0)
-        _AttentionChip(
+        _StatItem(
           icon: Icons.block,
           label: 'معطّلون',
-          value: metrics.disabledSubscribers,
+          value: '${metrics.disabledSubscribers}',
           bg: p.surfaceTinted,
           fg: p.textSecondary,
         ),
       if (metrics.bannedSubscribers > 0)
-        _AttentionChip(
+        _StatItem(
           icon: Icons.gpp_bad_outlined,
           label: 'محظورون',
-          value: metrics.bannedSubscribers,
+          value: '${metrics.bannedSubscribers}',
           bg: p.dangerBg,
           fg: p.dangerStrong,
         ),
       if (metrics.hasTopPlan)
-        _AttentionChip(
+        _StatItem(
           icon: Icons.star_outline,
-          label: 'الأكثر استخدامًا: ${metrics.topPlanName}',
-          value: metrics.topPlanSubs,
+          label: 'الأكثر استخدامًا',
+          value: '${metrics.topPlanName} · ${metrics.topPlanSubs} مشترك',
           bg: p.brandSoft,
           fg: p.brandInk,
+          full: true,
         ),
     ];
     return AppCard(
       title: 'متابعة المشتركين',
       icon: Icons.people_alt_outlined,
-      child: Wrap(
-        spacing: AppTokens.s8,
-        runSpacing: AppTokens.s8,
-        children: chips,
-      ),
+      child: _StatGrid(items: items),
     );
   }
 }
 
-class _AttentionChip extends StatelessWidget {
-  const _AttentionChip({
+/// One cell of a [_StatGrid]: an icon, a small muted label and a bold value.
+class _StatItem {
+  const _StatItem({
     required this.icon,
     required this.label,
     required this.value,
     required this.bg,
     required this.fg,
+    this.full = false,
   });
   final IconData icon;
   final String label;
-  final int value;
+  final String value;
   final Color bg;
   final Color fg;
+
+  /// Spans the whole row (long values such as a plan name or a hostname).
+  final bool full;
+}
+
+/// Tight, uniform grid: two equal columns, every cell the same height, no
+/// ragged pill widths. A leftover odd cell and any [_StatItem.full] cell take
+/// the whole row, so the grid never leaves a white hole on one side.
+class _StatGrid extends StatelessWidget {
+  const _StatGrid({required this.items});
+  final List<_StatItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final halves = items.where((i) => !i.full).toList();
+    final fulls = items.where((i) => i.full).toList();
+    final rows = <Widget>[];
+    for (var i = 0; i < halves.length; i += 2) {
+      final a = halves[i];
+      final b = i + 1 < halves.length ? halves[i + 1] : null;
+      rows.add(
+        b == null
+            ? _StatCell(item: a)
+            : Row(
+                children: [
+                  Expanded(child: _StatCell(item: a)),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(child: _StatCell(item: b)),
+                ],
+              ),
+      );
+    }
+    for (final f in fulls) {
+      rows.add(_StatCell(item: f));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppTokens.s8),
+          rows[i],
+        ],
+      ],
+    );
+  }
+}
+
+class _StatCell extends StatelessWidget {
+  const _StatCell({required this.item});
+  final _StatItem item;
 
   @override
   Widget build(BuildContext context) {
     final p = AppPalette.of(context);
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 300),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.s12,
-          vertical: AppTokens.s8,
-        ),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: fg, size: 16),
-            const SizedBox(width: AppTokens.s8),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelSmall.copyWith(
-                  color: p.textPrimary,
-                  fontWeight: FontWeight.w700,
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      decoration: BoxDecoration(
+        color: item.bg,
+        borderRadius: BorderRadius.circular(AppTokens.s12),
+      ),
+      child: Row(
+        children: [
+          Icon(item.icon, color: item.fg, size: 18),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.caption.copyWith(
+                    color: p.textSecondary,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  item.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTypography.labelLarge.copyWith(
+                    color: item.fg,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: AppTokens.s8),
-            Text(
-              '$value',
-              style: AppTypography.labelLarge.copyWith(
-                color: fg,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -701,9 +754,8 @@ class _MetricTile extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: AppTypography.labelSmall.copyWith(
-              color: primary
-                  ? Colors.white.withValues(alpha: 0.86)
-                  : p.textMuted,
+              color:
+                  primary ? Colors.white.withValues(alpha: 0.86) : p.textMuted,
             ),
           );
           final valueWidget = Text(
@@ -786,6 +838,48 @@ class _SystemHealth extends StatelessWidget {
   const _SystemHealth({required this.metrics});
   final DashboardMetrics metrics;
 
+  List<_StatItem> _healthItems(AppPalette p) {
+    _StatItem status(String label, bool ok, String yes, String no) => _StatItem(
+          icon: ok ? Icons.check_circle : Icons.cancel,
+          label: label,
+          value: ok ? yes : no,
+          bg: ok ? p.successBg : p.dangerBg,
+          fg: ok ? p.successStrong : p.dangerStrong,
+        );
+    _StatItem info(IconData icon, String label, String value,
+            {bool full = false,}) =>
+        _StatItem(
+          icon: icon,
+          label: label,
+          value: value,
+          bg: p.surfaceTinted,
+          fg: p.brand,
+          full: full,
+        );
+    return [
+      if (metrics.dbOk != null)
+        status('قاعدة البيانات', metrics.dbOk!, 'متصلة', 'غير متصلة'),
+      if (metrics.radiusOk != null)
+        status('RADIUS', metrics.radiusOk!, 'جاهز', 'غير جاهز'),
+      if (metrics.pingOk != null)
+        status(
+          'الإنترنت',
+          metrics.pingOk!,
+          metrics.pingMs == null
+              ? 'متاح'
+              : '${metrics.pingMs!.toStringAsFixed(1)} مللي ثانية',
+          'غير متاح',
+        ),
+      if (metrics.dnsOk != null) status('DNS', metrics.dnsOk!, 'سليم', 'فشل'),
+      if (metrics.systemUptime.isNotEmpty)
+        info(Icons.power_settings_new, 'تشغيل النظام', metrics.systemUptime),
+      if (metrics.processUptime.isNotEmpty)
+        info(Icons.timer_outlined, 'تشغيل التطبيق', metrics.processUptime),
+      if (metrics.hostname.isNotEmpty)
+        info(Icons.dns_outlined, 'الخادم', metrics.hostname, full: true),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppCard(
@@ -804,87 +898,7 @@ class _SystemHealth extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              if (metrics.dbOk != null)
-                _StatusChip(
-                  ok: metrics.dbOk!,
-                  okText: 'قاعدة البيانات متصلة',
-                  failText: 'قاعدة البيانات غير متصلة',
-                ),
-              if (metrics.radiusOk != null)
-                _StatusChip(
-                  ok: metrics.radiusOk!,
-                  okText: 'RADIUS جاهز',
-                  failText: 'RADIUS غير جاهز',
-                ),
-              if (metrics.hostname.isNotEmpty)
-                _HealthChip(icon: Icons.dns_outlined, text: metrics.hostname),
-              if (metrics.systemUptime.isNotEmpty)
-                _HealthChip(
-                  icon: Icons.power_settings_new,
-                  text: 'النظام ${metrics.systemUptime}',
-                ),
-              if (metrics.processUptime.isNotEmpty)
-                _HealthChip(
-                  icon: Icons.timer_outlined,
-                  text: 'التطبيق ${metrics.processUptime}',
-                ),
-              if (metrics.pingOk != null)
-                _HealthChip(
-                  icon: metrics.pingOk! ? Icons.public : Icons.public_off,
-                  text: metrics.pingMs == null
-                      ? 'فحص الإنترنت ${metrics.pingOk! ? 'متاح' : 'غير متاح'}'
-                      : 'فحص الإنترنت ${metrics.pingMs!.toStringAsFixed(1)} مللي ثانية',
-                ),
-              if (metrics.dnsOk != null)
-                _HealthChip(
-                  icon: metrics.dnsOk!
-                      ? Icons.travel_explore
-                      : Icons.error_outline,
-                  text: 'DNS ${metrics.dnsOk! ? 'سليم' : 'فشل'}',
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HealthChip extends StatelessWidget {
-  const _HealthChip({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppTokens.s12,
-        vertical: AppTokens.s8,
-      ),
-      decoration: BoxDecoration(
-        color: p.brandSoft,
-        border: Border.all(color: p.brandLine),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: p.brand, size: 16),
-          const SizedBox(width: AppTokens.s8),
-          Text(
-            text,
-            style: AppTypography.labelSmall.copyWith(
-              color: p.textPrimary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          _StatGrid(items: _healthItems(AppPalette.of(context))),
         ],
       ),
     );
@@ -938,60 +952,6 @@ class _Bar extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// Service-health pill for db_ok / radius_ok (web shows these as status chips).
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.ok,
-    required this.okText,
-    required this.failText,
-  });
-  final bool ok;
-  final String okText;
-  final String failText;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
-    final bg = ok ? p.successBg : p.dangerBg;
-    final fg = ok ? p.successStrong : p.dangerStrong;
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 280),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.s12,
-          vertical: AppTokens.s8,
-        ),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              ok ? Icons.check_circle : Icons.cancel,
-              color: fg,
-              size: 16,
-            ),
-            const SizedBox(width: AppTokens.s8),
-            Flexible(
-              child: Text(
-                ok ? okText : failText,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelSmall.copyWith(
-                  color: p.textPrimary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
