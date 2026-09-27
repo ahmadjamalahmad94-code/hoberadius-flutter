@@ -100,3 +100,4 @@ flutter:
 
   assets:
     - assets/fonts/OFL.txt
+    - shorebird.yaml
