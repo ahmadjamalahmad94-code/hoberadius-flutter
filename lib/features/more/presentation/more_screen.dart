@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_controller.dart';
 import '../../../core/theme/tokens.dart';
 import '../../shell/navigation_schema.dart';
+import '../../shell/visible_nav_sections.dart';
 
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
@@ -23,12 +24,14 @@ class MoreScreen extends ConsumerWidget {
           icon: dashboardNavItem.icon,
           items: const [dashboardNavItem],
         ),
-        for (final section in appNavSections) ...[
+        // Licence-gated + usage-gated (was the raw, ungated schema, so a
+        // section the provider disabled still showed on phones).
+        for (final gated in ref.watch(visibleNavSectionsProvider)) ...[
           const SizedBox(height: AppTokens.s12),
           _SectionCard(
-            title: section.label,
-            icon: section.icon,
-            items: section.items,
+            title: gated.section.label,
+            icon: gated.section.icon,
+            items: [for (final g in gated.items) g.item],
           ),
         ],
         const SizedBox(height: AppTokens.s16),

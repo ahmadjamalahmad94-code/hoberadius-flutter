@@ -16,6 +16,7 @@ import '../notifications/push/desktop_toast_bridge.dart';
 import '../notifications/push/push_service.dart';
 import '../provider_grants/application/nav_visibility.dart';
 import 'navigation_schema.dart';
+import 'visible_nav_sections.dart';
 
 /// Adaptive shell. The full web-style sidebar persists on desktop AND
 /// tablet-landscape; it collapses to an icon rail on narrow desktop / large
@@ -154,7 +155,7 @@ class _Wide extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final auth = ref.watch(authControllerProvider);
-    final sections = ref.watch(gatedNavSectionsProvider);
+    final sections = ref.watch(visibleNavSectionsProvider);
     return Scaffold(
       body: Row(
         children: [

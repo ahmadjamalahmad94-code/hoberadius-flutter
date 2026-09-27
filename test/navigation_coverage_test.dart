@@ -130,10 +130,19 @@ void main() {
     expect(shell, isNot(contains("location == '/nas'")));
     expect(shell, isNot(contains("location == '/license-file'")));
     expect(shell, contains('mobileNavDestinations'));
-    // The sidebar now renders the shared schema filtered by provider grants
-    // (gatedNavSectionsProvider derives from appNavSections); it no longer
-    // references the const list directly.
-    expect(shell, contains('gatedNavSectionsProvider'));
+    // The sidebar renders the shared schema filtered by provider grants and
+    // by usage (visibleNavSectionsProvider builds on gatedNavSectionsProvider,
+    // which derives from appNavSections); no direct const-list reference.
+    expect(shell, contains('visibleNavSectionsProvider'));
+    final visible = File('lib/features/shell/visible_nav_sections.dart')
+        .readAsStringSync();
+    expect(visible, contains('gatedNavSectionsProvider'));
+    // The phone «المزيد» screen must use the same gated source, not the raw
+    // schema (it used to list every section, ignoring the licence).
+    final more =
+        File('lib/features/more/presentation/more_screen.dart').readAsStringSync();
+    expect(more, contains('visibleNavSectionsProvider'));
+    expect(more, isNot(contains('in appNavSections')));
     expect(shell, contains('dashboardNavItem'));
     expect(shell, contains('mobileNavIndexForLocation'));
   });
