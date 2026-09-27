@@ -11,7 +11,9 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
-import '../../../shared/widgets/hub_toggle_switch.dart';
+import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../application/payment_collection_providers.dart';
@@ -32,38 +34,44 @@ class PaymentCollectionScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'مراجعة المدفوعات',
-          subtitle:
-              'قبول إثبات الدفع، رفضه، أو تطبيق الخدمة بعد اعتماد المبلغ.',
+          subtitle: 'قبول إثبات الدفع أو رفضه وتطبيق الخدمة.',
+          inlineActions: true,
           actions: [
-            OutlinedButton.icon(
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () {
                 ref.invalidate(paymentCollectionSettingsProvider);
                 ref.invalidate(paymentReconciliationProvider);
                 ref.invalidate(paymentRequestsProvider);
               },
-              icon: const Icon(Icons.refresh),
-              label: const Text('تحديث'),
-            ),
-            FilledButton.icon(
-              onPressed: () => _showCreatePaymentRequestDialog(context, ref),
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('طلب دفع جديد'),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.add_circle_outline,
+              label: 'طلب دفع جديد',
+              primary: true,
+              onPressed: () => _showCreatePaymentRequestDialog(context, ref),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
         const _PaymentSettingsPanel(),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         const _PaymentReconciliationPanel(),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         AppCard(
-          child: Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          padding: const EdgeInsets.all(AppTokens.s12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SegmentedButton<String>(
                 showSelectedIcon: false,
+                expandedInsets: EdgeInsets.zero,
                 segments: const [
                   ButtonSegment(
                     value: 'review',
@@ -82,9 +90,12 @@ class PaymentCollectionScreen extends ConsumerWidget {
                       selection.first;
                 },
               ),
-              if (mode == 'all')
-                DropdownButton<String>(
-                  value: status,
+              if (mode == 'all') ...[
+                const SizedBox(height: AppTokens.s12),
+                DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: status,
+                  decoration: const InputDecoration(labelText: 'الحالة'),
                   items: const [
                     DropdownMenuItem(value: '', child: Text('كل الحالات')),
                     DropdownMenuItem(
@@ -107,10 +118,11 @@ class PaymentCollectionScreen extends ConsumerWidget {
                         value ?? '';
                   },
                 ),
+              ],
             ],
           ),
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         requests.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),
@@ -202,6 +214,10 @@ class _PaymentSettingsEditorState
   late final TextEditingController _ttlController;
   bool _saving = false;
 
+  /// The settings are configured once and rarely touched — the page is for
+  /// reviewing payments — so the form starts folded to a one-line summary.
+  bool _expanded = false;
+
   @override
   void initState() {
     super.initState();
@@ -239,279 +255,260 @@ class _PaymentSettingsEditorState
 
   @override
   Widget build(BuildContext context) {
+    ValueChanged<bool>? toggle(void Function(bool) apply) =>
+        _saving ? null : (value) => setState(() => apply(value));
     return AppCard(
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                backgroundColor:
-                    _enabled ? AppTokens.greenSoft : AppTokens.amberSoft,
-                child: Icon(
-                  _enabled
-                      ? Icons.account_balance_wallet_outlined
-                      : Icons.wallet_outlined,
-                  color: _enabled ? AppTokens.greenInk : AppTokens.amberInk,
+          InkWell(
+            borderRadius: BorderRadius.circular(AppTokens.r10),
+            onTap: () => setState(() => _expanded = !_expanded),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor:
+                      _enabled ? AppTokens.greenSoft : AppTokens.amberSoft,
+                  child: Icon(
+                    _enabled
+                        ? Icons.account_balance_wallet_outlined
+                        : Icons.wallet_outlined,
+                    size: 20,
+                    color: _enabled ? AppTokens.greenInk : AppTokens.amberInk,
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppTokens.s12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'إعدادات التحصيل والمحفظة',
-                      style: TextStyle(
-                        color: AppTokens.sidebarBg,
-                        fontWeight: FontWeight.w900,
+                const SizedBox(width: AppTokens.s8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'إعدادات التحصيل والمحفظة',
+                        style: TextStyle(
+                          color: AppTokens.sidebarBg,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: AppTokens.s4,
+                        runSpacing: AppTokens.s4,
+                        children: [
+                          StatusPill(
+                            text: _enabled ? 'التحصيل مفعل' : 'التحصيل معطل',
+                            tone: _enabled ? PillTone.green : PillTone.amber,
+                            dot: true,
+                          ),
+                          StatusPill(
+                            text: _confirmationLabel(_confirmationMode),
+                            tone: PillTone.blue,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  _expanded ? Icons.expand_less : Icons.expand_more,
+                  color: AppTokens.textSecondary,
+                ),
+              ],
+            ),
+          ),
+          if (_expanded) ...[
+            const SizedBox(height: AppTokens.s8),
+            HubSwitchRow(
+              dense: true,
+              label: 'تفعيل تحصيل المدفوعات',
+              subtitle: _enabled
+                  ? 'تأكد أن رقم المحفظة والتعليمات واضحة قبل استقبال إثباتات جديدة.'
+                  : 'لن يتم إنشاء طلبات دفع جديدة حتى يتم تفعيل التحصيل.',
+              value: _enabled,
+              onChanged: toggle((v) => _enabled = v),
+            ),
+            const Divider(height: AppTokens.s16),
+            FormFieldPair(
+              first: FormFieldRow(
+                label: 'مزود الدفع',
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: _provider,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'manual_wallet',
+                      child: Text('محفظة يدوية'),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _enabled
-                          ? 'طلبات الدفع مفعلة. تأكد أن رقم المحفظة والتعليمات واضحة قبل استقبال إثباتات جديدة.'
-                          : 'طلبات الدفع معطلة. لن يتم إنشاء طلبات دفع جديدة حتى يتم تفعيل التحصيل.',
-                      style: const TextStyle(color: AppTokens.textMuted),
+                    DropdownMenuItem(
+                      value: 'jawwal_pay',
+                      child: Text('Jawwal Pay'),
                     ),
                   ],
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(
+                            () => _provider = value ?? 'manual_wallet',
+                          ),
                 ),
               ),
-              HubToggleSwitch(
-                value: _enabled,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _enabled = value),
-                semanticLabel: 'تفعيل تحصيل المدفوعات',
+              second: FormFieldRow(
+                label: 'صلاحية الطلب (دقيقة)',
+                child: TextField(
+                  controller: _ttlController,
+                  enabled: !_saving,
+                  keyboardType: TextInputType.number,
+                ),
               ),
-            ],
-          ),
-          const SizedBox(height: AppTokens.s16),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth > 820;
-              final first = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _provider,
-                    decoration: const InputDecoration(labelText: 'مزود الدفع'),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'manual_wallet',
-                        child: Text('محفظة يدوية'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'jawwal_pay',
-                        child: Text('Jawwal Pay'),
-                      ),
-                    ],
-                    onChanged: _saving
-                        ? null
-                        : (value) => setState(
-                              () => _provider = value ?? 'manual_wallet',
-                            ),
+            ),
+            FormFieldPair(
+              first: FormFieldRow(
+                label: 'رقم المحفظة المستقبلة',
+                child: TextField(
+                  controller: _walletController,
+                  enabled: !_saving,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.account_balance_wallet_outlined),
                   ),
-                  const SizedBox(height: AppTokens.s12),
-                  TextField(
-                    controller: _walletController,
-                    enabled: !_saving,
-                    decoration: const InputDecoration(
-                      labelText: 'رقم المحفظة المستقبلة',
-                      prefixIcon: Icon(Icons.account_balance_wallet_outlined),
-                    ),
+                ),
+              ),
+              second: FormFieldRow(
+                label: 'اسم صاحب المحفظة',
+                child: TextField(
+                  controller: _ownerController,
+                  enabled: !_saving,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.badge_outlined),
                   ),
-                  const SizedBox(height: AppTokens.s12),
-                  TextField(
-                    controller: _ownerController,
-                    enabled: !_saving,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم صاحب المحفظة',
-                      prefixIcon: Icon(Icons.badge_outlined),
-                    ),
-                  ),
-                ],
-              );
-              final second = Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          initialValue: kSupportedCurrencies.contains(_currency)
-                              ? _currency
-                              : kDefaultCurrency,
-                          decoration:
-                              const InputDecoration(labelText: 'العملة'),
-                          items: kSupportedCurrencies
-                              .map(
-                                (value) => DropdownMenuItem(
-                                  value: value,
-                                  child:
-                                      Text('${currencyLabel(value)} — $value'),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: _saving
-                              ? null
-                              : (value) => setState(
-                                    () => _currency = normalizeCurrency(value),
-                                  ),
-                        ),
-                      ),
-                      const SizedBox(width: AppTokens.s12),
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          initialValue: _confirmationMode,
-                          decoration: const InputDecoration(
-                            labelText: 'طريقة الاعتماد',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'manual',
-                              child: Text('مراجعة يدوية'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'api',
-                              child: Text('اعتماد عبر واجهة الربط'),
-                            ),
-                          ],
-                          onChanged: _saving
-                              ? null
-                              : (value) => setState(
-                                    () => _confirmationMode = value ?? 'manual',
-                                  ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppTokens.s12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _minController,
-                          enabled: !_saving,
-                          keyboardType: TextInputType.number,
-                          decoration:
-                              const InputDecoration(labelText: 'أقل مبلغ'),
-                        ),
-                      ),
-                      const SizedBox(width: AppTokens.s12),
-                      Expanded(
-                        child: TextField(
-                          controller: _maxController,
-                          enabled: !_saving,
-                          keyboardType: TextInputType.number,
-                          decoration:
-                              const InputDecoration(labelText: 'أعلى مبلغ'),
-                        ),
-                      ),
-                      const SizedBox(width: AppTokens.s12),
-                      Expanded(
-                        child: TextField(
-                          controller: _ttlController,
-                          enabled: !_saving,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'صلاحية الطلب بالدقائق',
+                ),
+              ),
+            ),
+            FormFieldPair(
+              first: FormFieldRow(
+                label: 'العملة',
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: kSupportedCurrencies.contains(_currency)
+                      ? _currency
+                      : kDefaultCurrency,
+                  // Half-width field: show the name only once picked (the
+                  // «— JOD» suffix stays in the open menu).
+                  selectedItemBuilder: (context) => kSupportedCurrencies
+                      .map(
+                        (value) => Align(
+                          alignment: AlignmentDirectional.centerStart,
+                          child: Text(
+                            currencyLabel(value),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-              if (!wide) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    first,
-                    const SizedBox(height: AppTokens.s12),
-                    second,
-                  ],
-                );
-              }
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: first),
-                  const SizedBox(width: AppTokens.s16),
-                  Expanded(child: second),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: AppTokens.s16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _ToggleLine(
-                label: 'السماح بشراء الكروت',
-                value: _allowCards,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _allowCards = value),
-              ),
-              const SizedBox(height: AppTokens.s12),
-              _ToggleLine(
-                label: 'السماح باشتراكات المشتركين',
-                value: _allowMonthly,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _allowMonthly = value),
-              ),
-              const SizedBox(height: AppTokens.s12),
-              _ToggleLine(
-                label: 'السماح بدفعات الموزعين',
-                value: _allowDistributors,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _allowDistributors = value),
-              ),
-              const SizedBox(height: AppTokens.s12),
-              _ToggleLine(
-                label: 'تطبيق الخدمة تلقائيًا بعد الاعتماد',
-                value: _autoApply,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _autoApply = value),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTokens.s16),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              StatusPill(
-                text: _enabled ? 'التحصيل مفعل' : 'التحصيل معطل',
-                tone: _enabled ? PillTone.green : PillTone.amber,
-                dot: true,
-              ),
-              StatusPill(
-                text: 'الاعتماد: ${_confirmationLabel(_confirmationMode)}',
-                tone: PillTone.blue,
-              ),
-              FilledButton.icon(
-                onPressed: _saving ? null : _save,
-                icon: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.save_outlined),
-                label: const Text('حفظ الإعدادات'),
+                      .toList(),
+                  items: kSupportedCurrencies
+                      .map(
+                        (value) => DropdownMenuItem(
+                          value: value,
+                          child: Text(
+                            '${currencyLabel(value)} — $value',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(
+                            () => _currency = normalizeCurrency(value),
+                          ),
+                ),
               ),
-            ],
-          ),
+              second: FormFieldRow(
+                label: 'طريقة الاعتماد',
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: _confirmationMode,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'manual',
+                      child: Text(
+                        'مراجعة يدوية',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    DropdownMenuItem(
+                      value: 'api',
+                      child: Text(
+                        'اعتماد عبر واجهة الربط',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(
+                            () => _confirmationMode = value ?? 'manual',
+                          ),
+                ),
+              ),
+            ),
+            FormFieldPair(
+              first: FormFieldRow(
+                label: 'أقل مبلغ',
+                child: TextField(
+                  controller: _minController,
+                  enabled: !_saving,
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+              second: FormFieldRow(
+                label: 'أعلى مبلغ',
+                child: TextField(
+                  controller: _maxController,
+                  enabled: !_saving,
+                  keyboardType: TextInputType.number,
+                ),
+              ),
+            ),
+            HubSwitchRow(
+              dense: true,
+              label: 'السماح بشراء الكروت',
+              value: _allowCards,
+              onChanged: toggle((v) => _allowCards = v),
+            ),
+            HubSwitchRow(
+              dense: true,
+              label: 'السماح باشتراكات المشتركين',
+              value: _allowMonthly,
+              onChanged: toggle((v) => _allowMonthly = v),
+            ),
+            HubSwitchRow(
+              dense: true,
+              label: 'السماح بدفعات الموزعين',
+              value: _allowDistributors,
+              onChanged: toggle((v) => _allowDistributors = v),
+            ),
+            HubSwitchRow(
+              dense: true,
+              label: 'تطبيق الخدمة تلقائيًا بعد الاعتماد',
+              value: _autoApply,
+              onChanged: toggle((v) => _autoApply = v),
+            ),
+            const SizedBox(height: AppTokens.s8),
+            ActionBar(
+              items: [
+                ActionItem(
+                  icon: _saving ? Icons.hourglass_top : Icons.save_outlined,
+                  label: 'حفظ الإعدادات',
+                  primary: true,
+                  onPressed: _saving ? null : _save,
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -579,24 +576,26 @@ class _PaymentReconciliationPanel extends ConsumerWidget {
         onRetry: () => ref.invalidate(paymentReconciliationProvider),
       ),
       data: (summary) => AppCard(
+        padding: const EdgeInsets.all(AppTokens.s12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
+                  radius: 18,
                   backgroundColor:
                       summary.isClean ? AppTokens.greenSoft : AppTokens.redSoft,
                   child: Icon(
                     summary.isClean
                         ? Icons.verified_user_outlined
                         : Icons.report_problem_outlined,
+                    size: 20,
                     color:
                         summary.isClean ? AppTokens.greenInk : AppTokens.redInk,
                   ),
                 ),
-                const SizedBox(width: AppTokens.s12),
+                const SizedBox(width: AppTokens.s8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -608,16 +607,19 @@ class _PaymentReconciliationPanel extends ConsumerWidget {
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      const SizedBox(height: 4),
                       Text(
                         summary.isClean
-                            ? 'كل طلبات الدفع متطابقة مع السجل المالي وتطبيق الخدمات.'
-                            : 'راجع البنود التالية قبل إغلاق التحصيل اليومي أو تطبيق الخدمات.',
-                        style: const TextStyle(color: AppTokens.textMuted),
+                            ? 'الطلبات متطابقة مع السجل المالي.'
+                            : 'راجع البنود قبل إغلاق التحصيل اليومي.',
+                        style: const TextStyle(
+                          color: AppTokens.textMuted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: AppTokens.s8),
                 StatusPill(
                   text: summary.isClean
                       ? 'لا توجد ملاحظات'
@@ -627,52 +629,43 @@ class _PaymentReconciliationPanel extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: AppTokens.s16),
-            Wrap(
-              spacing: AppTokens.s8,
-              runSpacing: AppTokens.s8,
-              children: [
-                _ReconciliationChip(
-                  label: 'مدفوع بلا قيد مالي',
-                  count: summary.count('paid_without_ledger'),
-                ),
-                _ReconciliationChip(
-                  label: 'مدفوع ولم تطبق الخدمة',
-                  count: summary.count('paid_not_applied'),
-                ),
-                _ReconciliationChip(
-                  label: 'طلبات منتهية تنتظر إجراء',
-                  count: summary.count('expired_pending'),
-                ),
-                _ReconciliationChip(
-                  label: 'معاملات مزود مكررة',
-                  count: summary.count('duplicate_provider_transactions'),
-                ),
-              ],
-            ),
             if (!summary.isClean) ...[
+              const SizedBox(height: AppTokens.s12),
+              CountGrid(
+                columns: 2,
+                items: [
+                  CountItem(
+                    'مدفوع بلا قيد مالي',
+                    summary.count('paid_without_ledger'),
+                    tone: PillTone.red,
+                    hideWhenZero: true,
+                  ),
+                  CountItem(
+                    'مدفوع ولم تطبق الخدمة',
+                    summary.count('paid_not_applied'),
+                    tone: PillTone.amber,
+                    hideWhenZero: true,
+                  ),
+                  CountItem(
+                    'طلبات منتهية تنتظر إجراء',
+                    summary.count('expired_pending'),
+                    tone: PillTone.amber,
+                    hideWhenZero: true,
+                  ),
+                  CountItem(
+                    'معاملات مزود مكررة',
+                    summary.count('duplicate_provider_transactions'),
+                    tone: PillTone.red,
+                    hideWhenZero: true,
+                  ),
+                ],
+              ),
               const SizedBox(height: AppTokens.s12),
               _ReconciliationList(summary: summary),
             ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class _ReconciliationChip extends StatelessWidget {
-  const _ReconciliationChip({required this.label, required this.count});
-
-  final String label;
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    return StatusPill(
-      text: '$label: $count',
-      tone: count == 0 ? PillTone.neutral : PillTone.amber,
-      dot: count > 0,
     );
   }
 }
@@ -765,53 +758,6 @@ class _ReconciliationList extends StatelessWidget {
   }
 }
 
-class _ToggleLine extends StatelessWidget {
-  const _ToggleLine({
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  final String label;
-  final bool value;
-  final ValueChanged<bool>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        border: Border.all(color: AppTokens.border),
-        borderRadius: BorderRadius.circular(AppTokens.r12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.s12,
-          vertical: AppTokens.s8,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-            const SizedBox(width: AppTokens.s8),
-            HubToggleSwitch(
-              value: value,
-              onChanged: onChanged,
-              size: HubToggleSize.sm,
-              bare: true,
-              showLabel: false,
-              semanticLabel: label,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _PaymentRequestTile extends ConsumerStatefulWidget {
   const _PaymentRequestTile({required this.request});
 
@@ -834,38 +780,46 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
+                radius: 18,
                 backgroundColor:
                     r.isPaid ? AppTokens.greenSoft : AppTokens.brandSoft,
                 child: Icon(
                   r.isPaid
                       ? Icons.check_circle_outline
                       : Icons.payments_outlined,
+                  size: 20,
                   color: r.isPaid ? AppTokens.greenInk : AppTokens.brandInk,
                 ),
               ),
-              const SizedBox(width: AppTokens.s12),
+              const SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '${r.purposeLabel} - ${r.amountLabel}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         color: AppTokens.sidebarBg,
                       ),
                     ),
-                    const SizedBox(height: 4),
                     Text(
                       '${r.payerLabel} - مرجع ${r.referenceCodeOrId}',
-                      style: const TextStyle(color: AppTokens.textMuted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppTokens.s8),
               StatusPill(
                 text: r.statusLabel,
                 tone: _statusTone(r.status),
@@ -873,68 +827,72 @@ class _PaymentRequestTileState extends ConsumerState<_PaymentRequestTile> {
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              StatusPill(text: r.serviceApplyLabel, tone: PillTone.blue),
-              if (r.receiverWallet.isNotEmpty)
-                StatusPill(
-                  text: 'المحفظة ${r.receiverWallet}',
-                  tone: PillTone.neutral,
-                ),
-              if (r.updatedAt != null)
-                StatusPill(
-                  text: 'آخر تحديث ${_dateLabel(r.updatedAt)}',
-                  tone: PillTone.neutral,
-                ),
+          const SizedBox(height: AppTokens.s8),
+          InfoGrid(
+            items: [
+              InfoItem(
+                icon: Icons.playlist_add_check_circle_outlined,
+                label: 'الخدمة',
+                value: r.serviceApplyLabel,
+              ),
+              InfoItem(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'المحفظة',
+                value: r.receiverWallet.isEmpty ? '—' : r.receiverWallet,
+              ),
+              InfoItem(
+                icon: Icons.update,
+                label: 'آخر تحديث',
+                value: _shortDateLabel(r.updatedAt),
+              ),
             ],
           ),
-          const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              OutlinedButton.icon(
+          const SizedBox(height: AppTokens.s8),
+          ActionBar(
+            maxPerRow: 2,
+            items: [
+              if (r.isReviewable)
+                ActionItem(
+                  icon: Icons.verified_outlined,
+                  label: 'استلمت المبلغ',
+                  primary: true,
+                  onPressed: _busy ? null : () => _review(approve: true),
+                ),
+              if (r.isReviewable)
+                ActionItem(
+                  icon: Icons.cancel_outlined,
+                  label: 'رفض الإثبات',
+                  tone: PillTone.red,
+                  onPressed: _busy ? null : () => _review(approve: false),
+                ),
+              if (r.canSubmitProof)
+                ActionItem(
+                  icon: Icons.upload_file_outlined,
+                  label: 'رفع إثبات',
+                  onPressed: _busy ? null : _submitProof,
+                ),
+              if (r.canApplyService)
+                ActionItem(
+                  icon: Icons.playlist_add_check_circle_outlined,
+                  label: 'تطبيق الخدمة',
+                  tone: PillTone.green,
+                  onPressed: _busy ? null : _applyService,
+                ),
+              ActionItem(
+                icon: Icons.open_in_new_outlined,
+                label: 'تفاصيل الطلب',
                 onPressed: _busy
                     ? null
                     : () => context.goNamed(
                           'payment-request-detail',
                           pathParameters: {'id': '${r.id}'},
                         ),
-                icon: const Icon(Icons.open_in_new_outlined),
-                label: const Text('تفاصيل الطلب'),
               ),
-              OutlinedButton.icon(
+              ActionItem(
+                icon: Icons.receipt_outlined,
+                label: 'تعليمات الدفع',
                 onPressed: _busy ? null : _showInstructions,
-                icon: const Icon(Icons.receipt_outlined),
-                label: const Text('تعليمات الدفع'),
               ),
-              if (r.canSubmitProof)
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _submitProof,
-                  icon: const Icon(Icons.upload_file_outlined),
-                  label: const Text('رفع إثبات'),
-                ),
-              if (r.isReviewable)
-                FilledButton.icon(
-                  onPressed: _busy ? null : () => _review(approve: true),
-                  icon: const Icon(Icons.verified_outlined),
-                  label: const Text('استلمت المبلغ'),
-                ),
-              if (r.isReviewable)
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _review(approve: false),
-                  icon: const Icon(Icons.cancel_outlined),
-                  label: const Text('رفض الإثبات'),
-                ),
-              if (r.canApplyService)
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _applyService,
-                  icon: const Icon(Icons.playlist_add_check_circle_outlined),
-                  label: const Text('تطبيق الخدمة'),
-                ),
             ],
           ),
         ],
@@ -1091,6 +1049,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
   final currency = tenantCurrency;
   final result = await showDialog<PaymentRequestDraft>(
     context: context,
+    useRootNavigator: true,
     builder: (_) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
         title: const Text('طلب دفع جديد'),
@@ -1170,8 +1129,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
                       ),
                     ),
                     const SizedBox(width: AppTokens.s12),
-                    SizedBox(
-                      width: 150,
+                    Expanded(
                       child: CurrencyField(currency: currency),
                     ),
                   ],
@@ -1216,6 +1174,7 @@ Future<PaymentProofDraft?> _proofDialog(BuildContext context) async {
   var proofType = 'manual_reference';
   final result = await showDialog<PaymentProofDraft>(
     context: context,
+    useRootNavigator: true,
     builder: (_) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
         title: const Text('رفع إثبات دفع'),
@@ -1305,6 +1264,7 @@ Future<String?> _noteDialog(
   final controller = TextEditingController();
   final result = await showDialog<String>(
     context: context,
+    useRootNavigator: true,
     builder: (_) => AlertDialog(
       title: Text(title),
       content: TextField(
@@ -1335,6 +1295,7 @@ Future<void> _instructionsDialog(
 }) {
   return showDialog<void>(
     context: context,
+    useRootNavigator: true,
     builder: (_) => AlertDialog(
       title: const Text('تعليمات الدفع'),
       content: SingleChildScrollView(
@@ -1475,6 +1436,16 @@ String _confirmationLabel(String mode) {
         unknownLabel: 'طريقة اعتماد غير معروفة',
       ),
   };
+}
+
+/// Date for a narrow grid cell: the year only when it is not this year.
+String _shortDateLabel(DateTime? date) {
+  if (date == null) return '—';
+  String two(int value) => value.toString().padLeft(2, '0');
+  if (date.year != DateTime.now().year) {
+    return '${date.year}-${two(date.month)}-${two(date.day)}';
+  }
+  return '${two(date.month)}-${two(date.day)} ${two(date.hour)}:${two(date.minute)}';
 }
 
 String _dateLabel(DateTime? date) {
