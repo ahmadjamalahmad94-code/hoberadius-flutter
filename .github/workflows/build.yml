@@ -16,7 +16,7 @@ name: build-artifacts
 
 on:
   push:
-    branches: [ci/android-apk, feat/notifications-build-deliver]
+    branches: [ci/android-apk, feat/notifications-build-deliver, feat/backend-sync-2026-09]
   workflow_dispatch:
 
 jobs:
