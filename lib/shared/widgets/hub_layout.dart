@@ -10,9 +10,26 @@ class CountItem {
     this.value, {
     this.tone = PillTone.neutral,
     this.hideWhenZero = false,
-  });
+    this.onTap,
+  }) : display = null;
+
+  /// A counter whose value is already formatted text (money «ILS 12.50»,
+  /// durations «3 ي 4 س», sizes «1.2 GB»). Long values shrink to fit.
+  const CountItem.text(
+    this.label,
+    String text, {
+    this.tone = PillTone.neutral,
+    this.onTap,
+  })  : value = 0,
+        display = text,
+        hideWhenZero = false;
+
   final String label;
   final int value;
+  final String? display;
+
+  /// Optional: open the page behind this counter.
+  final VoidCallback? onTap;
 
   /// Colour meaning — see [toneForStatus].
   final PillTone tone;
@@ -77,7 +94,7 @@ class _CountCell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (bg, fg, border) = pillToneColors(item.tone);
-    return Container(
+    final cell = Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTokens.s8,
         vertical: AppTokens.s8,
@@ -90,14 +107,17 @@ class _CountCell extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '${item.value}',
-            maxLines: 1,
-            style: TextStyle(
-              color: fg,
-              fontSize: 17,
-              fontWeight: FontWeight.w900,
-              height: 1.1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              item.display ?? '${item.value}',
+              maxLines: 1,
+              style: TextStyle(
+                color: fg,
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                height: 1.1,
+              ),
             ),
           ),
           const SizedBox(height: 2),
@@ -112,6 +132,15 @@ class _CountCell extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+    if (item.onTap == null) return cell;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTokens.s8 + 2),
+        onTap: item.onTap,
+        child: cell,
       ),
     );
   }
@@ -235,7 +264,11 @@ class HubActionButton extends StatelessWidget {
 
 /// One value in an [InfoGrid] (a measurement or detail, not a status count).
 class InfoItem {
-  const InfoItem({required this.icon, required this.label, required this.value});
+  const InfoItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
   final IconData icon;
   final String label;
   final String value;

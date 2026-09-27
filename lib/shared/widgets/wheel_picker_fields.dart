@@ -137,6 +137,10 @@ class WheelDaysPickerField extends StatelessWidget {
 Future<String?> showWheelTimePicker(BuildContext context, String initialValue) {
   final parsed = _parseTime(initialValue);
   return showModalBottomSheet<String>(
+      // Above the whole app: the shell's pages live inside one scroll view,
+      // so a sheet on the inner navigator was drawn below the long content,
+      // off-screen — only the dim barrier showed.
+      useRootNavigator: true,
     context: context,
     showDragHandle: true,
     builder: (context) {
@@ -240,6 +244,7 @@ Future<Set<String>?> showWheelDaysPicker(
   var selected = Set<String>.from(initialKeys);
   var focusedIndex = 0;
   return showModalBottomSheet<Set<String>>(
+      useRootNavigator: true, // see the sheet above: shell scroll view
     context: context,
     showDragHandle: true,
     builder: (context) {

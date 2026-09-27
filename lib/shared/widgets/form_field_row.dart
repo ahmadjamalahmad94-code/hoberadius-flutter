@@ -20,7 +20,7 @@ class FormFieldRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppTokens.s16),
+      padding: const EdgeInsets.only(bottom: AppTokens.s12),
       child: LayoutBuilder(
         builder: (ctx, c) {
           final wide = c.maxWidth > 520;
@@ -33,8 +33,13 @@ class FormFieldRow extends StatelessWidget {
                   ),
                 )
               : Padding(
-                  padding: const EdgeInsets.only(bottom: AppTokens.s8),
-                  child: _Label(label: label, required: required, hint: hint),
+                  padding: const EdgeInsets.only(bottom: AppTokens.s4),
+                  child: _Label(
+                    label: label,
+                    required: required,
+                    hint: hint,
+                    inline: true,
+                  ),
                 );
           if (wide) {
             return Row(
@@ -57,41 +62,93 @@ class FormFieldRow extends StatelessWidget {
 }
 
 class _Label extends StatelessWidget {
-  const _Label({required this.label, required this.required, this.hint});
+  const _Label({
+    required this.label,
+    required this.required,
+    this.hint,
+    this.inline = false,
+  });
   final String label;
   final bool required;
   final String? hint;
 
+  /// Phone layout: the hint rides on the label's line (muted, after a dot)
+  /// instead of taking a line of its own — forms were twice as tall as they
+  /// needed to be.
+  final bool inline;
+
   @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final labelStyle = text.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      color: AppTokens.textPrimary,
+    );
+    final hintStyle = text.bodySmall?.copyWith(color: AppTokens.textMuted);
+    if (inline) {
+      return Text.rich(
+        TextSpan(
+          style: labelStyle,
+          children: [
+            TextSpan(text: label),
+            if (required)
+              const TextSpan(
+                text: ' *',
+                style: TextStyle(
+                  color: AppTokens.red,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            if (hint != null && hint!.isNotEmpty)
+              TextSpan(text: '  ·  ${hint!}', style: hintStyle),
+          ],
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RichText(
-          text: TextSpan(
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppTokens.textPrimary,
-                ),
+        Text.rich(
+          TextSpan(
+            style: labelStyle,
             children: [
               TextSpan(text: label),
               if (required)
                 const TextSpan(
                   text: ' *',
-                  style: TextStyle(color: AppTokens.red, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: AppTokens.red,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
             ],
           ),
         ),
         if (hint != null) ...[
           const SizedBox(height: 2),
-          Text(
-            hint!,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTokens.textMuted,
-                ),
-          ),
+          Text(hint!, style: hintStyle),
         ],
+      ],
+    );
+  }
+}
+
+/// Two short fields side by side (numbers, prices, ports, durations) — halves
+/// the height of phone forms. Each child is normally a [FormFieldRow].
+class FormFieldPair extends StatelessWidget {
+  const FormFieldPair({super.key, required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(child: first),
+        const SizedBox(width: AppTokens.s12),
+        Expanded(child: second),
       ],
     );
   }

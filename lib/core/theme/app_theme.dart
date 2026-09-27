@@ -61,8 +61,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
+        // Slightly shorter fields (≈48px) — phone forms were too tall.
+        isDense: true,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.s16,
+          horizontal: 14,
           vertical: AppTokens.s12,
         ),
         border: OutlineInputBorder(

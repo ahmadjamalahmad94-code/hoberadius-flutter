@@ -315,6 +315,10 @@ class _Table extends ConsumerWidget {
     Subscriber s,
   ) async {
     final action = await showModalBottomSheet<String>(
+      // Above the whole app: the shell's pages live inside one scroll view,
+      // so a sheet on the inner navigator was drawn below the long content,
+      // off-screen — only the dim barrier showed.
+      useRootNavigator: true,
       context: context,
       showDragHandle: true,
       builder: (sheet) => SafeArea(
