@@ -25,7 +25,6 @@ import 'package:hoberadius_app/features/cards/presentation/card_checker_screen.d
 import 'package:hoberadius_app/features/cards/presentation/cards_list_screen.dart';
 import 'package:hoberadius_app/features/cards/presentation/recharge_cards_screen.dart';
 import 'package:hoberadius_app/features/communications/presentation/communications_screen.dart';
-import 'package:hoberadius_app/features/customer_portals/presentation/customer_portals_screen.dart';
 import 'package:hoberadius_app/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:hoberadius_app/features/device_fingerprints/presentation/device_fingerprints_screen.dart';
 import 'package:hoberadius_app/features/distributors/presentation/distributor_detail_screen.dart';
@@ -56,7 +55,6 @@ import 'package:hoberadius_app/features/saas_modules/presentation/saas_modules_s
 import 'package:hoberadius_app/features/sessions/presentation/sessions_list_screen.dart';
 import 'package:hoberadius_app/features/admin_alerts/presentation/telegram_alerts_screen.dart';
 import 'package:hoberadius_app/features/mikrotik/presentation/mikrotik_programming_screen.dart';
-import 'package:hoberadius_app/features/setup_wizard/presentation/setup_wizard_screen.dart';
 import 'package:hoberadius_app/features/store_admin/presentation/store_admin_screen.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/subscriber_360_screen.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/subscriber_form_screen.dart';
@@ -95,7 +93,6 @@ final screens = <String, ScreenBuilder>{
   'nas-edit': () => const NasFormScreen(nasId: 1),
   'mikrotik': MikrotikScreen.new,
   'router-operations': RouterOperationsScreen.new,
-  'setup-wizard': SetupWizardScreen.new,
   'device-fingerprints': DeviceFingerprintsScreen.new,
   'network-devices': NetworkDevicesScreen.new,
   'router-alerts': RouterAlertsScreen.new,
@@ -104,7 +101,6 @@ final screens = <String, ScreenBuilder>{
   'tickets': TicketsListScreen.new,
   'ticket-detail': () => const TicketDetailScreen(ticketId: 1),
   'communications': CommunicationsScreen.new,
-  'customer-portals': CustomerPortalsScreen.new,
   'plans-list': PlansListScreen.new,
   'plan-new': PlanFormScreen.new,
   'plan-edit': () => const PlanFormScreen(planId: 1),

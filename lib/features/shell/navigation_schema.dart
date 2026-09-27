@@ -214,13 +214,6 @@ const appNavSections = <AppNavSection>[
         description: 'تجمعات العناوين ومجموعات المشاركة المرتبطة بالباقات.',
       ),
       AppNavItem(
-        icon: Icons.playlist_add_check_outlined,
-        label: 'إعداد راوتر متقدم',
-        routeName: 'setup-wizard',
-        path: '/setup-wizard',
-        description: 'تشغيل مراحل الإعداد ومزامنة حالة الخدمات على الراوتر.',
-      ),
-      AppNavItem(
         icon: Icons.notifications_active_outlined,
         label: 'التنبيهات الذكيّة',
         routeName: 'router-alerts',
@@ -374,13 +367,6 @@ const appNavSections = <AppNavSection>[
         routeName: 'saas-modules',
         path: '/saas-modules',
         description: 'الخدمات، القسائم، الفواتير، ومجموعات المشاركة.',
-      ),
-      AppNavItem(
-        icon: Icons.door_front_door_outlined,
-        label: 'بوابات العملاء',
-        routeName: 'customer-portals',
-        path: '/customer-portals',
-        description: 'روابط بوابة المشترك وبوابة البطاقة وقيود الأمان.',
       ),
     ],
   ),

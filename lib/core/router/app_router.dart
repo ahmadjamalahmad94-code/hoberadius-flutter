@@ -34,7 +34,6 @@ import '../../features/cards/presentation/card_checker_screen.dart';
 import '../../features/cards/presentation/cards_list_screen.dart';
 import '../../features/cards/presentation/recharge_cards_screen.dart';
 import '../../features/communications/presentation/communications_screen.dart';
-import '../../features/customer_portals/presentation/customer_portals_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/notifications/presentation/notification_center_screen.dart';
 import '../../features/device_fingerprints/presentation/device_fingerprints_screen.dart';
@@ -71,7 +70,6 @@ import '../../features/revenue/presentation/revenue_screen.dart';
 import '../../features/router_alerts/presentation/router_alerts_screen.dart';
 import '../../features/saas_modules/presentation/saas_modules_screen.dart';
 import '../../features/shell/shell_scaffold.dart';
-import '../../features/setup_wizard/presentation/setup_wizard_screen.dart';
 import '../../features/store_admin/presentation/store_admin_screen.dart';
 import '../../features/subscriber_portal/presentation/subscriber_portal_screen.dart';
 import '../../features/subscribers/presentation/subscriber_360_screen.dart';
@@ -277,11 +275,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
           GoRoute(
-            path: '/setup-wizard',
-            name: 'setup-wizard',
-            builder: (ctx, st) => const SetupWizardScreen(),
-          ),
-          GoRoute(
             path: '/device-fingerprints',
             name: 'device-fingerprints',
             builder: (ctx, st) => const DeviceFingerprintsScreen(),
@@ -324,11 +317,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/communications',
             name: 'communications',
             builder: (ctx, st) => const CommunicationsScreen(),
-          ),
-          GoRoute(
-            path: '/customer-portals',
-            name: 'customer-portals',
-            builder: (ctx, st) => const CustomerPortalsScreen(),
           ),
           GoRoute(
             path: '/plans',

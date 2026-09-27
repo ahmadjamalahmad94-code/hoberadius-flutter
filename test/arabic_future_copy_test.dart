@@ -8,7 +8,6 @@ void main() {
       'lib/features/communications/presentation/communications_screen.dart',
       'lib/features/mikrotik/presentation/mikrotik_screen.dart',
       'lib/features/print_templates/presentation/widgets/template_list.dart',
-      'lib/features/setup_wizard/presentation/setup_wizard_screen.dart',
     ];
 
     for (final path in files) {

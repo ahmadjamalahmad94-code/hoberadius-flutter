@@ -45,7 +45,6 @@ const List<(String, String)> _pathServiceKeys = [
   ('/router-operations', 'network'),
   ('/router-programming', 'network'),
   ('/mikrotik', 'network'),
-  ('/setup-wizard', 'network'),
   ('/router-alerts', 'network'),
   ('/network-devices', 'network'),
   ('/network-policy', 'network'),
@@ -70,7 +69,6 @@ const List<(String, String)> _pathServiceKeys = [
   // support
   ('/tickets', 'tickets'),
   ('/saas-modules', 'service_requests'),
-  ('/customer-portals', 'customer_portal'),
   // administration
   ('/admins', 'admins'),
   ('/roles', 'admins'),

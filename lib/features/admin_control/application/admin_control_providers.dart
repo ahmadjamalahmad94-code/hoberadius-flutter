@@ -19,7 +19,3 @@ final tenantCurrencyProvider = Provider.autoDispose<String>((ref) {
     orElse: () => kDefaultCurrency,
   );
 });
-
-final tenantsProvider = FutureProvider.autoDispose<List<TenantRecord>>((ref) {
-  return ref.watch(adminControlRepositoryProvider).tenants();
-});
