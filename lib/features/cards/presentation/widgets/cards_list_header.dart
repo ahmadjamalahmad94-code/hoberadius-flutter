@@ -46,11 +46,6 @@ class CardsListHeader extends ConsumerWidget {
               label: 'فحص بطاقة',
               onPressed: () => context.goNamed('card-checker'),
             ),
-            ActionItem(
-              icon: Icons.file_upload_outlined,
-              label: 'استيراد',
-              onPressed: () => context.goNamed('card-batch-import'),
-            ),
           ],
         ),
       ],

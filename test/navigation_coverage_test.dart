@@ -26,20 +26,14 @@ void main() {
       'audit': '/audit',
       'payment-collection': '/payment-collection',
       'invoices': '/invoices',
-      'vouchers': '/vouchers',
-      'wallets': '/wallets',
       'loans-center': '/loans',
       'revenue': '/revenue',
       'tickets': '/tickets',
-      'communications': '/communications',
       'events-center': '/events',
       // network-devices is intentionally NOT a sidebar item — mirrors the web,
       // where the entry is hidden "until next release" (route stays alive).
-      'router-alerts': '/router-alerts',
       'router-operations': '/router-operations',
-      'radius-resources': '/radius-resources',
       'card-users': '/card-users',
-      'cards-recharge': '/cards/recharge',
     };
 
     for (final entry in criticalRoutes.entries) {
@@ -54,6 +48,23 @@ void main() {
         navigation,
         contains("routeName: '${entry.key}'"),
         reason: 'المسار ${entry.key} موجود في الراوتر وغير ظاهر في التنقل',
+      );
+    }
+
+    // Web-only pages: hidden from the menu but the routes stay alive
+    // (deep links from notifications keep working).
+    for (final path in kWebOnlyPaths) {
+      expect(
+        router,
+        anyOf(
+          contains("path: '$path'"),
+          contains("path: '${path.split('/').last}'"),
+        ),
+      );
+      expect(
+        appNavigationItems.map((i) => i.path),
+        isNot(contains(path)),
+        reason: '$path is web-only and must not be in the app menu',
       );
     }
 
@@ -86,31 +97,20 @@ void main() {
     expect(routerOps, contains('سياسات الشبكة'));
   });
 
-  test('public hotspot card portal is reachable without admin session', () {
+  test('customer portals are not offered on the operator login screen', () {
+    // Owner decision 2026-09-27: the card-store and subscriber portals are for
+    // customers (they have their own web pages); the admin app's login screen
+    // no longer links to them. The routes themselves stay registered.
     final router = File('lib/core/router/app_router.dart').readAsStringSync();
     final login = File('lib/features/auth/presentation/login_screen.dart')
         .readAsStringSync();
 
     expect(router, contains("path: '/hotspot-cards'"));
-    expect(router, contains("name: 'hotspot-cards-portal'"));
-    expect(router, contains('HotspotCardsPortalScreen'));
-    expect(router, contains('atHotspotCardsPortal'));
-    expect(login, contains("context.goNamed("));
-    expect(login, contains("'hotspot-cards-portal'"));
-    expect(login, contains('بوابة شراء الكروت'));
-  });
-
-  test('public subscriber portal is reachable without admin session', () {
-    final router = File('lib/core/router/app_router.dart').readAsStringSync();
-    final login = File('lib/features/auth/presentation/login_screen.dart')
-        .readAsStringSync();
-
     expect(router, contains("path: '/subscriber-portal'"));
-    expect(router, contains("name: 'subscriber-portal'"));
-    expect(router, contains('SubscriberPortalScreen'));
-    expect(router, contains('atSubscriberPortal'));
-    expect(login, contains("'subscriber-portal'"));
-    expect(login, contains('بوابة المشترك'));
+    expect(login, isNot(contains("'hotspot-cards-portal'")));
+    expect(login, isNot(contains("'subscriber-portal'")));
+    expect(login, isNot(contains('بوابة شراء الكروت')));
+    expect(login, isNot(contains('بوابة المشترك')));
   });
 
   test('shell scaffold uses the shared navigation schema', () {

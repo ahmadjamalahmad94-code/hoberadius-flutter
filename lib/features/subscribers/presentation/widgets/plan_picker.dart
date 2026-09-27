@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../plans/data/plans_repository.dart';
@@ -61,20 +60,9 @@ class PlanPicker extends ConsumerWidget {
       ),
       data: (plans) {
         if (plans.isEmpty) {
-          return Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'لا توجد باقات بعد. أنشئ باقة من قسم الباقات.',
-                  style: TextStyle(color: AppTokens.textMuted),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () => GoRouter.of(context).goNamed('plan-new'),
-                icon: const Icon(Icons.add),
-                label: const Text('إضافة'),
-              ),
-            ],
+          return const Text(
+            'لا توجد باقات بعد. أضف باقة من لوحة الويب.',
+            style: TextStyle(color: AppTokens.textMuted),
           );
         }
         final current = int.tryParse(controller.text.trim());

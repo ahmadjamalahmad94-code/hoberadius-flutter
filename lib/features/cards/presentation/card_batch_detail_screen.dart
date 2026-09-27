@@ -112,12 +112,6 @@ class CardBatchDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.edit_outlined,
                   color: AppTokens.textSecondary),
             ),
-            IconButton(
-              tooltip: 'سرعات متعددة',
-              onPressed: () => context.goNamed('bandwidth-schedules'),
-              icon: const Icon(Icons.speed_outlined,
-                  color: AppTokens.textSecondary),
-            ),
             cardsAsync.maybeWhen(
               data: (cards) => OutlinedButton.icon(
                 onPressed: cards.isEmpty

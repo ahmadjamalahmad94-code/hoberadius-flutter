@@ -17,6 +17,7 @@ void main() {
     expect(backupScreen, isNot(contains('جوجل درايف لاحقًا')));
     expect(moreScreen, isNot(contains('جوجل درايف لاحقًا')));
     expect(backupScreen, contains('حالة جوجل درايف'));
-    expect(navigationSchema, contains('النسخ الخارجي عند تفعيله'));
+    // «البيانات والحفظ» is web-only now (hidden from the app menu).
+    expect(navigationSchema, contains("'/backups'"));
   });
 }

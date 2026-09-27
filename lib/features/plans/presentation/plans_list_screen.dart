@@ -32,11 +32,6 @@ class PlansListScreen extends ConsumerWidget {
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(plansListProvider),
             ),
-            GuardedCreateButton(
-              serviceKey: 'profiles',
-              label: 'باقة جديدة',
-              onCreate: () => context.goNamed('plan-new'),
-            ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
@@ -58,15 +53,10 @@ class PlansListScreen extends ConsumerWidget {
           ),
           data: (items) {
             if (items.isEmpty) {
-              return EmptyState(
+              return const EmptyState(
                 icon: Icons.workspace_premium_outlined,
                 title: 'لا توجد باقات بعد',
-                subtitle: 'ابدأ بإضافة أول باقة لتظهر هنا.',
-                action: ElevatedButton.icon(
-                  onPressed: () => context.goNamed('plan-new'),
-                  icon: const Icon(Icons.add),
-                  label: const Text('باقة جديدة'),
-                ),
+                subtitle: 'أضف الباقات من لوحة الويب لتظهر هنا.',
               );
             }
             return GridView.builder(

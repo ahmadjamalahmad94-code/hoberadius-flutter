@@ -158,11 +158,6 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   ),
                 ],
               ),
-              OutlinedButton.icon(
-                onPressed: () => context.goNamed('bandwidth-schedules'),
-                icon: const Icon(Icons.speed_outlined),
-                label: const Text('سرعات متعددة'),
-              ),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: _loading

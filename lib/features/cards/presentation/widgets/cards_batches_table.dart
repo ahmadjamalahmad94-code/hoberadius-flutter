@@ -333,11 +333,6 @@ class _RowActions extends ConsumerWidget {
           onPressed: () =>
               context.goNamed('card-batch-edit', pathParameters: id),
         ),
-        ActionItem(
-          icon: Icons.speed_outlined,
-          label: 'السرعات',
-          onPressed: () => context.goNamed('bandwidth-schedules'),
-        ),
       ],
     );
   }

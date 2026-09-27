@@ -53,6 +53,32 @@ const moreNavItem = AppNavItem(
 // app are listed (web pages with no Flutter screen are gaps in the map, not
 // dead links). Web hub/tab pages are consolidated onto the matching screen.
 // ════════════════════════════════════════════════════════════════════════
+/// Pages that exist in the app (routes kept, reachable by deep link such as
+/// a notification) but are hidden from the menu: setup / accounting /
+/// administration work that belongs on the web panel (owner decision
+/// 2026-09-27, «كله اخفاء»). To bring one back, re-add its AppNavItem.
+const kWebOnlyPaths = <String>{
+  '/print-templates',
+  '/cards/recharge',
+  '/plans/new',
+  '/bandwidth-schedules',
+  '/radius-resources',
+  '/router-alerts',
+  '/wallets',
+  '/ledger',
+  '/vouchers',
+  '/communications',
+  '/alerts/telegram',
+  '/saas-modules',
+  '/admins',
+  '/roles',
+  '/business-ops',
+  '/backups',
+  '/recycle-bin',
+  '/lifecycle',
+  '/admin-control',
+};
+
 const appNavSections = <AppNavSection>[
   // ───────── 1) المشتركون ─────────
   AppNavSection(
@@ -114,13 +140,6 @@ const appNavSections = <AppNavSection>[
         description:
             'توليد حزمة بطاقات جديدة حسب الباقة والكمية وطريقة الطباعة.',
       ),
-      AppNavItem(
-        icon: Icons.print_outlined,
-        label: 'قوالب الطباعة',
-        routeName: 'print-templates',
-        path: '/print-templates',
-        description: 'قوالب الطباعة، المعاينة، التصدير، وتجهيز ملفات البطاقات.',
-      ),
     ],
   ),
   // ───────── 3) البطاقات الإلكترونية ─────────
@@ -135,13 +154,6 @@ const appNavSections = <AppNavSection>[
         routeName: 'card-users',
         path: '/card-users',
         description: 'محافظ مستخدمي البطاقات، المشتريات، الشحن، وكلمة المرور.',
-      ),
-      AppNavItem(
-        icon: Icons.add_card_outlined,
-        label: 'بطاقات الشحن المسبق',
-        routeName: 'cards-recharge',
-        path: '/cards/recharge',
-        description: 'حزم رصيد للمحافظ مع متابعة القيم والحالة.',
       ),
       AppNavItem(
         icon: Icons.storefront_outlined,
@@ -165,20 +177,6 @@ const appNavSections = <AppNavSection>[
         routeName: 'plans',
         path: '/plans',
         description: 'الباقات، الأسعار، السرعات، وحدود الاستخدام.',
-      ),
-      AppNavItem(
-        icon: Icons.add_business_outlined,
-        label: 'إضافة عرض',
-        routeName: 'plan-new',
-        path: '/plans/new',
-        description: 'إنشاء عرض جديد بنفس قواعد لوحة الويب.',
-      ),
-      AppNavItem(
-        icon: Icons.speed_outlined,
-        label: 'جدولة السرعات',
-        routeName: 'bandwidth-schedules',
-        path: '/bandwidth-schedules',
-        description: 'سرعات حسب الوقت مع معاينة قبل التطبيق.',
       ),
     ],
   ),
@@ -205,20 +203,6 @@ const appNavSections = <AppNavSection>[
         routeName: 'nas',
         path: '/nas',
         description: 'راوترات ونقاط وصول RADIUS واختبار الاتصال.',
-      ),
-      AppNavItem(
-        icon: Icons.lan_outlined,
-        label: 'نطاقات العناوين',
-        routeName: 'radius-resources',
-        path: '/radius-resources',
-        description: 'تجمعات العناوين ومجموعات المشاركة المرتبطة بالباقات.',
-      ),
-      AppNavItem(
-        icon: Icons.notifications_active_outlined,
-        label: 'التنبيهات الذكيّة',
-        routeName: 'router-alerts',
-        path: '/router-alerts',
-        description: 'حدود الانقطاع والترافيك والاستهلاك لكل راوتر.',
       ),
       AppNavItem(
         icon: Icons.history,
@@ -252,13 +236,6 @@ const appNavSections = <AppNavSection>[
         description: 'السعر والتحصيل والتكلفة والربح حسب العمليات.',
       ),
       AppNavItem(
-        icon: Icons.account_balance_wallet_outlined,
-        label: 'الخزائن والمحافظ',
-        routeName: 'wallets',
-        path: '/wallets',
-        description: 'إنشاء المحافظ والشحن أو الخصم مع حركة قابلة للتتبع.',
-      ),
-      AppNavItem(
         icon: Icons.handshake_outlined,
         label: 'السلف والديون',
         routeName: 'loans-center',
@@ -266,25 +243,11 @@ const appNavSections = <AppNavSection>[
         description: 'متابعة السلف المفتوحة وتسجيل دين أو تسويته.',
       ),
       AppNavItem(
-        icon: Icons.receipt_long_outlined,
-        label: 'السجل والتقارير المحاسبية',
-        routeName: 'ledger',
-        path: '/ledger',
-        description: 'قيود الدفع والسلف والتسويات المالية.',
-      ),
-      AppNavItem(
         icon: Icons.receipt_outlined,
         label: 'الفواتير',
         routeName: 'invoices',
         path: '/invoices',
         description: 'إصدار الفواتير وتحديث حالتها ومتابعة التحصيل.',
-      ),
-      AppNavItem(
-        icon: Icons.confirmation_number_outlined,
-        label: 'الكوبونات',
-        routeName: 'vouchers',
-        path: '/vouchers',
-        description: 'توليد كوبونات الشحن ومراجعة حالتها وإلغاؤها.',
       ),
       AppNavItem(
         icon: Icons.fact_check_outlined,
@@ -302,25 +265,11 @@ const appNavSections = <AppNavSection>[
     label: 'التشغيل والمخاطر',
     items: [
       AppNavItem(
-        icon: Icons.campaign_outlined,
-        label: 'التواصل والحملات',
-        routeName: 'communications',
-        path: '/communications',
-        description: 'قوالب الرسائل والجمهور والحملات وطابور الإرسال.',
-      ),
-      AppNavItem(
         icon: Icons.event_note_outlined,
         label: 'الأحداث والمخاطر',
         routeName: 'events-center',
         path: '/events',
         description: 'الأحداث التشغيلية والأمنية والمالية.',
-      ),
-      AppNavItem(
-        icon: Icons.notifications_active_outlined,
-        label: 'تنبيهات تيليجرام',
-        routeName: 'telegram-alerts',
-        path: '/alerts/telegram',
-        description: 'إعداد بوت تيليجرام وتفعيل تنبيهات النظام واختبارها.',
       ),
     ],
   ),
@@ -361,13 +310,6 @@ const appNavSections = <AppNavSection>[
         path: '/tickets',
         description: 'طلبات الخدمة والمحادثات والمتابعة مع الإدارة.',
       ),
-      AppNavItem(
-        icon: Icons.handyman_outlined,
-        label: 'الخدمات / المعدّات',
-        routeName: 'saas-modules',
-        path: '/saas-modules',
-        description: 'الخدمات، القسائم، الفواتير، ومجموعات المشاركة.',
-      ),
     ],
   ),
   // ───────── 10) الإدارة ─────────
@@ -377,61 +319,11 @@ const appNavSections = <AppNavSection>[
     label: 'الإدارة',
     items: [
       AppNavItem(
-        icon: Icons.manage_accounts_outlined,
-        label: 'المدراء والموزعون',
-        routeName: 'admins',
-        path: '/admins',
-        description: 'حسابات الإدارة وصلاحيات الوصول.',
-      ),
-      AppNavItem(
         icon: Icons.storefront_outlined,
         label: 'الموزعون',
         routeName: 'distributors',
         path: '/distributors',
         description: 'إدارة الموزعين والحزم والتسويات.',
-      ),
-      AppNavItem(
-        icon: Icons.security_outlined,
-        label: 'الأدوار والصلاحيات',
-        routeName: 'roles',
-        path: '/roles',
-        description: 'مجموعات الصلاحيات وقواعد الوصول.',
-      ),
-      AppNavItem(
-        icon: Icons.business_center_outlined,
-        label: 'مشغّلو الأعمال',
-        routeName: 'business-ops',
-        path: '/business-ops',
-        description:
-            'السجل المالي للأعمال، قيود التصحيح، ولقطات التسعير الثابتة.',
-      ),
-      AppNavItem(
-        icon: Icons.backup_outlined,
-        label: 'البيانات والحفظ والأرشفة',
-        routeName: 'backups',
-        path: '/backups',
-        description: 'حالة النسخ المحلي والنسخ الخارجي عند تفعيله.',
-      ),
-      AppNavItem(
-        icon: Icons.restore_from_trash_outlined,
-        label: 'سلة المحذوفات',
-        routeName: 'recycle-bin',
-        path: '/recycle-bin',
-        description: 'استعادة العناصر المؤرشفة بأمان.',
-      ),
-      AppNavItem(
-        icon: Icons.event_repeat_outlined,
-        label: 'الأرشفة التلقائية',
-        routeName: 'lifecycle',
-        path: '/lifecycle',
-        description: 'سياسات الاحتفاظ ومعاينة الأرشفة قبل التنفيذ.',
-      ),
-      AppNavItem(
-        icon: Icons.settings_outlined,
-        label: 'إعدادات النظام',
-        routeName: 'admin-control',
-        path: '/admin-control',
-        description: 'إعدادات النظام والمستأجرون.',
       ),
       AppNavItem(
         icon: Icons.account_circle_outlined,

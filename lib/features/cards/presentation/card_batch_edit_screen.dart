@@ -231,11 +231,6 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                       ),
                     ],
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => context.goNamed('bandwidth-schedules'),
-                    icon: const Icon(Icons.speed_outlined),
-                    label: const Text('سرعات متعددة'),
-                  ),
                   ElevatedButton.icon(
                     onPressed: _saving ? null : () => _save(batch),
                     icon: _saving
