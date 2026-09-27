@@ -7,13 +7,14 @@ import '../../../core/theme/tokens.dart';
 import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/currency_field.dart';
-import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../application/tickets_providers.dart';
 import '../data/tickets_repository.dart';
 import '../domain/ticket_model.dart';
+import 'ticket_tones.dart';
 
 class TicketDetailScreen extends ConsumerWidget {
   const TicketDetailScreen({super.key, required this.ticketId});
@@ -36,24 +37,35 @@ class TicketDetailScreen extends ConsumerWidget {
           PageHeader(
             title: data.ticket.subject,
             subtitle: 'مشترك #${data.ticket.subscriberId}',
+            inlineActions: true,
             leading: IconButton(
+              tooltip: 'كل التذاكر',
               onPressed: () => context.goNamed('tickets'),
               icon: const Icon(Icons.arrow_back),
             ),
             actions: [
-              OutlinedButton.icon(
+              IconButton(
+                tooltip: 'تحديث',
                 onPressed: () => ref.invalidate(ticketDetailProvider(ticketId)),
-                icon: const Icon(Icons.refresh),
-                label: const Text('تحديث'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _showReplyDialog(context, ref, ticketId),
-                icon: const Icon(Icons.reply_outlined),
-                label: const Text('إضافة رد'),
+                icon: const Icon(
+                  Icons.refresh,
+                  color: AppTokens.textSecondary,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
+          ActionBar(
+            items: [
+              ActionItem(
+                icon: Icons.reply_outlined,
+                label: 'إضافة رد',
+                primary: true,
+                onPressed: () => _showReplyDialog(context, ref, ticketId),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s12),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 900;
@@ -71,13 +83,13 @@ class TicketDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     info,
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     status,
                     if (servicePanel != null) ...[
-                      const SizedBox(height: AppTokens.s16),
+                      const SizedBox(height: AppTokens.s12),
                       servicePanel,
                     ],
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     thread,
                   ],
                 );
@@ -121,38 +133,55 @@ class _InfoPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'تفاصيل التذكرة',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
               _StatusPill(ticket: ticket),
               _PriorityPill(ticket: ticket),
-              StatusPill(text: ticket.categoryLabel, tone: PillTone.cyan),
+              StatusPill(
+                text: ticket.categoryLabel,
+                tone: PillTone.brand,
+                icon: Icons.label_outline,
+              ),
             ],
           ),
-          const Divider(height: AppTokens.s24),
-          _Line(label: 'رقم التذكرة', value: '#${ticket.id}'),
-          _Line(
-            label: 'تاريخ الفتح',
-            value: _dateLabel(ticket.createdAt),
+          const SizedBox(height: AppTokens.s12),
+          InfoGrid(
+            columns: 3,
+            items: [
+              InfoItem(
+                icon: Icons.tag,
+                label: 'رقم التذكرة',
+                value: '#${ticket.id}',
+              ),
+              InfoItem(
+                icon: Icons.event_outlined,
+                label: 'تاريخ الفتح',
+                value: _dateLabel(ticket.createdAt),
+              ),
+              InfoItem(
+                icon: Icons.update,
+                label: 'آخر تحديث',
+                value: _dateLabel(ticket.updatedAt),
+              ),
+              if (ticket.closedAt != null)
+                InfoItem(
+                  icon: Icons.event_available_outlined,
+                  label: 'تاريخ الإغلاق',
+                  value: _dateLabel(ticket.closedAt),
+                ),
+            ],
           ),
-          _Line(
-            label: 'آخر تحديث',
-            value: _dateLabel(ticket.updatedAt),
-          ),
-          if (ticket.closedAt != null)
-            _Line(
-              label: 'تاريخ الإغلاق',
-              value: _dateLabel(ticket.closedAt),
-            ),
           if (ticket.body.isNotEmpty) ...[
             const SizedBox(height: AppTokens.s12),
             Text(
               ticket.body,
-              style: const TextStyle(height: 1.55),
+              style: const TextStyle(height: 1.5),
             ),
           ],
         ],
@@ -184,32 +213,44 @@ class _StatusPanelState extends ConsumerState<_StatusPanel> {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'إدارة الحالة',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.all(AppTokens.s12),
+      child: Row(
         children: [
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: _status,
-            decoration: const InputDecoration(labelText: 'الحالة'),
-            items: const [
-              DropdownMenuItem(value: 'open', child: Text('مفتوحة')),
-              DropdownMenuItem(value: 'pending', child: Text('بانتظار متابعة')),
-              DropdownMenuItem(
-                value: 'in_progress',
-                child: Text('قيد التنفيذ'),
-              ),
-              DropdownMenuItem(value: 'resolved', child: Text('تم الحل')),
-              DropdownMenuItem(value: 'closed', child: Text('مغلقة')),
-            ],
-            onChanged: _busy
-                ? null
-                : (value) => setState(() => _status = value ?? 'open'),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: _status,
+              decoration: const InputDecoration(labelText: 'الحالة'),
+              items: const [
+                DropdownMenuItem(value: 'open', child: Text('مفتوحة')),
+                DropdownMenuItem(
+                  value: 'pending',
+                  child: Text('بانتظار متابعة'),
+                ),
+                DropdownMenuItem(
+                  value: 'in_progress',
+                  child: Text('قيد التنفيذ'),
+                ),
+                DropdownMenuItem(value: 'resolved', child: Text('تم الحل')),
+                DropdownMenuItem(value: 'closed', child: Text('مغلقة')),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (value) => setState(() => _status = value ?? 'open'),
+            ),
           ),
-          const SizedBox(height: AppTokens.s12),
-          ElevatedButton.icon(
-            onPressed: _busy || _status == widget.ticket.status ? null : _save,
-            icon: const Icon(Icons.save_outlined),
-            label: const Text('حفظ الحالة'),
+          const SizedBox(width: AppTokens.s8),
+          SizedBox(
+            width: 124,
+            child: HubActionButton(
+              item: ActionItem(
+                icon: Icons.save_outlined,
+                label: 'حفظ الحالة',
+                primary: true,
+                onPressed:
+                    _busy || _status == widget.ticket.status ? null : _save,
+              ),
+            ),
           ),
         ],
       ),
@@ -257,29 +298,36 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'إدارة طلب الخدمة',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'هذه القرارات تسجل موقف الإدارة، وتفتح طلب دفع عند الحاجة، أو تفتح تجربة مؤقتة داخل عقد التشغيل فقط بدون أوامر مباشرة على الراوتر.',
-            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+            'قرارات الإدارة تفتح طلب دفع أو تجربة مؤقتة عند الحاجة، بدون أوامر مباشرة على الراوتر.',
+            style: TextStyle(
+              color: AppTokens.textMuted,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
           ),
-          const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              ElevatedButton.icon(
+          const SizedBox(height: AppTokens.s8),
+          ActionBar(
+            maxPerRow: 2,
+            items: [
+              ActionItem(
+                icon: Icons.check_circle_outline,
+                label: 'موافقة مبدئية',
+                primary: true,
                 onPressed: _busy
                     ? null
                     : () => _showDecisionDialog(
                           decision: 'approve',
                           title: 'موافقة مبدئية',
                         ),
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('موافقة مبدئية'),
               ),
-              OutlinedButton.icon(
+              ActionItem(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'طلب دفع',
                 onPressed: _busy
                     ? null
                     : () => _showDecisionDialog(
@@ -287,28 +335,28 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                           title: 'طلب دفع',
                           withPayment: true,
                         ),
-                icon: const Icon(Icons.account_balance_wallet_outlined),
-                label: const Text('طلب دفع'),
               ),
-              OutlinedButton.icon(
+              ActionItem(
+                icon: Icons.timer_outlined,
+                label: 'فتح تجريبي',
+                tone: PillTone.blue,
                 onPressed: _busy
                     ? null
                     : () => _showDecisionDialog(
                           decision: 'trial',
                           title: 'فتح تجريبي',
                         ),
-                icon: const Icon(Icons.timer_outlined),
-                label: const Text('فتح تجريبي'),
               ),
-              OutlinedButton.icon(
+              ActionItem(
+                icon: Icons.cancel_outlined,
+                label: 'رفض',
+                tone: PillTone.red,
                 onPressed: _busy
                     ? null
                     : () => _showDecisionDialog(
                           decision: 'reject',
                           title: 'رفض الطلب',
                         ),
-                icon: const Icon(Icons.cancel_outlined),
-                label: const Text('رفض'),
               ),
             ],
           ),
@@ -330,6 +378,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
     var dialogBusy = false;
     await showDialog<void>(
       context: context,
+      useRootNavigator: true,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           Future<void> submit() async {
@@ -485,17 +534,31 @@ class _RepliesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'المحادثة',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: replies.isEmpty
-          ? const EmptyState(
-              icon: Icons.forum_outlined,
-              title: 'لا توجد ردود بعد',
+          ? const Row(
+              children: [
+                Icon(
+                  Icons.forum_outlined,
+                  size: 18,
+                  color: AppTokens.textMuted,
+                ),
+                SizedBox(width: AppTokens.s8),
+                Text(
+                  'لا توجد ردود بعد',
+                  style: TextStyle(
+                    color: AppTokens.textMuted,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final reply in replies) ...[
-                  _ReplyBubble(reply: reply),
-                  const SizedBox(height: AppTokens.s12),
+                for (var i = 0; i < replies.length; i++) ...[
+                  if (i > 0) const SizedBox(height: AppTokens.s8),
+                  _ReplyBubble(reply: replies[i]),
                 ],
               ],
             ),
@@ -536,39 +599,8 @@ class _ReplyBubble extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s8),
-          Text(reply.body, style: const TextStyle(height: 1.5)),
-        ],
-      ),
-    );
-  }
-}
-
-class _Line extends StatelessWidget {
-  const _Line({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: const TextStyle(color: AppTokens.textMuted),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
+          const SizedBox(height: AppTokens.s4),
+          Text(reply.body, style: const TextStyle(height: 1.45)),
         ],
       ),
     );
@@ -584,11 +616,8 @@ class _StatusPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusPill(
       text: ticket.statusLabel,
-      tone: ticket.status == 'closed'
-          ? PillTone.neutral
-          : ticket.status == 'pending'
-              ? PillTone.orange
-              : PillTone.green,
+      tone: ticketStatusTone(ticket.status),
+      dot: true,
     );
   }
 }
@@ -602,9 +631,8 @@ class _PriorityPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusPill(
       text: ticket.priorityLabel,
-      tone: ticket.priority == 'urgent' || ticket.priority == 'high'
-          ? PillTone.red
-          : PillTone.cyan,
+      tone: ticketPriorityTone(ticket.priority),
+      icon: Icons.flag_outlined,
     );
   }
 }
@@ -618,6 +646,7 @@ Future<void> _showReplyDialog(
   var busy = false;
   await showDialog<void>(
     context: context,
+    useRootNavigator: true,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {

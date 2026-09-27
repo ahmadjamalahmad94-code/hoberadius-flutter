@@ -5,6 +5,8 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
@@ -23,36 +25,29 @@ class DistributorsListScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'الموزعون والصلاحيات',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: AppTokens.sidebarBg,
-                    ),
-              ),
-            ),
+        PageHeader(
+          title: 'الموزعون والصلاحيات',
+          inlineActions: true,
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(distributorsListProvider),
             ),
-            const SizedBox(width: AppTokens.s4),
-            ElevatedButton.icon(
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.add,
+              label: 'موزع جديد',
+              primary: true,
               onPressed: () => context.goNamed('distributor-new'),
-              icon: const Icon(Icons.add),
-              label: const Text('موزع جديد'),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s8),
-        const Text(
-          'إدارة الموزعين هنا مرتبطة بعقود الباكند الفعلية. الصلاحيات محفوظة كأساس قابل للتوسع، والعزل يطبق في الواجهات التي تدعمه.',
-          style: TextStyle(color: AppTokens.textMuted, fontSize: 13),
-        ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         async.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),
@@ -88,9 +83,9 @@ class DistributorsListScreen extends ConsumerWidget {
                 if (!wide) {
                   return Column(
                     children: [
-                      for (final item in items) ...[
-                        _DistributorCard(distributor: item),
-                        const SizedBox(height: AppTokens.s12),
+                      for (var i = 0; i < items.length; i++) ...[
+                        if (i > 0) const SizedBox(height: AppTokens.s8),
+                        _DistributorCard(distributor: items[i]),
                       ],
                     ],
                   );
@@ -169,30 +164,45 @@ class _DistributorCard extends StatelessWidget {
                   pathParameters: {'id': '${distributor.id}'},
                 ),
         child: Padding(
-          padding: const EdgeInsets.all(AppTokens.s16),
+          padding: const EdgeInsets.all(AppTokens.s12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  const Icon(
-                    Icons.people_alt_outlined,
-                    color: AppTokens.brand,
+                  const CircleAvatar(
+                    radius: 16,
+                    backgroundColor: AppTokens.brandSoft,
+                    child: Icon(
+                      Icons.people_alt_outlined,
+                      size: 17,
+                      color: AppTokens.brandInk,
+                    ),
                   ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(child: _NameCell(distributor: distributor)),
                   _Status(distributor: distributor),
                 ],
               ),
-              const SizedBox(height: AppTokens.s12),
+              const SizedBox(height: AppTokens.s8),
+              // Permissions + debt/limit as one row of pills (the debt used
+              // to be a full-width box of its own).
               Wrap(
                 spacing: 6,
                 runSpacing: 6,
                 children: [
+                  StatusPill(
+                    text: 'دين ${distributor.debtBalance.toStringAsFixed(2)}'
+                        ' · حد ${distributor.creditLimit.toStringAsFixed(2)}',
+                    tone: distributor.debtBalance > 0
+                        ? PillTone.amber
+                        : PillTone.neutral,
+                    icon: Icons.account_balance_wallet_outlined,
+                  ),
                   for (final permission in distributor.permissions.take(3))
                     StatusPill(
                       text: distributorPermissionLabel(permission),
-                      tone: PillTone.cyan,
+                      tone: PillTone.blue,
                     ),
                   if (distributor.permissions.isEmpty)
                     const StatusPill(
@@ -200,42 +210,6 @@ class _DistributorCard extends StatelessWidget {
                       tone: PillTone.neutral,
                     ),
                 ],
-              ),
-              const SizedBox(height: AppTokens.s12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppTokens.s12,
-                  vertical: AppTokens.s8,
-                ),
-                decoration: BoxDecoration(
-                  color: distributor.debtBalance > 0
-                      ? AppTokens.warningBg
-                      : AppTokens.surfaceMuted,
-                  borderRadius: BorderRadius.circular(AppTokens.r10),
-                  border: Border.all(color: AppTokens.border),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.account_balance_wallet_outlined,
-                      size: 16,
-                      color: distributor.debtBalance > 0
-                          ? AppTokens.warningFg
-                          : AppTokens.textSecondary,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'دين: ${distributor.debtBalance.toStringAsFixed(2)} · حد: ${distributor.creditLimit.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          color: AppTokens.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -282,9 +256,19 @@ class _Status extends StatelessWidget {
       text: distributor.isActive
           ? 'مفعّل'
           : distributorStatusLabel(distributor.status),
-      tone: distributor.isActive ? PillTone.green : PillTone.orange,
+      tone: distributorStatusTone(distributor),
+      dot: true,
     );
   }
+}
+
+/// Active = green, disabled = red, anything else (suspended, pending) = amber.
+PillTone distributorStatusTone(Distributor distributor) {
+  if (distributor.isActive) return PillTone.green;
+  return switch (distributor.status.trim().toLowerCase()) {
+    'disabled' || 'inactive' => PillTone.red,
+    _ => PillTone.amber,
+  };
 }
 
 String distributorStatusLabel(String value) {

@@ -6,6 +6,9 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
@@ -46,27 +49,32 @@ class DistributorDetailScreen extends ConsumerWidget {
       data: (item) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  item.distributor.title,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: AppTokens.sidebarBg,
-                        fontWeight: FontWeight.w800,
-                      ),
+          PageHeader(
+            title: item.distributor.title,
+            subtitle: '@${item.distributor.name}',
+            inlineActions: true,
+            leading: IconButton(
+              tooltip: 'كل الموزعين',
+              onPressed: () => context.goNamed('distributors'),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            actions: [
+              IconButton(
+                tooltip: 'تحديث',
+                onPressed: () {
+                  ref.invalidate(distributorSummaryProvider(distributorId));
+                  ref.invalidate(distributorBatchesProvider(distributorId));
+                },
+                icon: const Icon(
+                  Icons.refresh,
+                  color: AppTokens.textSecondary,
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => context.goNamed('distributors'),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('كل الموزعين'),
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           _SummaryGrid(summary: item),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 900;
@@ -84,7 +92,7 @@ class DistributorDetailScreen extends ConsumerWidget {
                   ),
                   SizedBox(
                     width: wide ? AppTokens.s16 : 0,
-                    height: wide ? 0 : AppTokens.s16,
+                    height: wide ? 0 : AppTokens.s12,
                   ),
                   if (wide)
                     Expanded(child: batchesWidget)
@@ -108,99 +116,60 @@ class _SummaryGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final distributor = summary.distributor;
-    return Wrap(
-      spacing: AppTokens.s12,
-      runSpacing: AppTokens.s12,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _Metric(label: 'حزم مربوطة', value: '${summary.assignedBatches}'),
-        _Metric(label: 'الرصيد', value: summary.balance.toStringAsFixed(2)),
-        _Metric(label: 'الدين', value: summary.debtBalance.toStringAsFixed(2)),
-        _Metric(
-          label: 'حد الائتمان',
-          value: summary.creditLimit.toStringAsFixed(2),
-        ),
-        Card(
-          child: SizedBox(
-            width: 280,
-            child: Padding(
-              padding: const EdgeInsets.all(AppTokens.s16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      StatusPill(
-                        text: distributor.isActive
-                            ? 'مفعّل'
-                            : distributorStatusLabel(distributor.status),
-                        tone: distributor.isActive
-                            ? PillTone.green
-                            : PillTone.orange,
-                      ),
-                      const Spacer(),
-                      Text(
-                        '@${distributor.name}',
-                        style: const TextStyle(color: AppTokens.textMuted),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: AppTokens.s12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final p in distributor.permissions.take(4))
-                        StatusPill(
-                          text: distributorPermissionLabel(p),
-                          tone: PillTone.cyan,
-                        ),
-                      if (distributor.permissions.isEmpty)
-                        const StatusPill(
-                          text: 'صلاحيات غير محددة',
-                          tone: PillTone.neutral,
-                        ),
-                    ],
-                  ),
-                ],
-              ),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            StatusPill(
+              text: distributor.isActive
+                  ? 'مفعّل'
+                  : distributorStatusLabel(distributor.status),
+              tone: distributorStatusTone(distributor),
+              dot: true,
             ),
-          ),
+            for (final p in distributor.permissions.take(4))
+              StatusPill(
+                text: distributorPermissionLabel(p),
+                tone: PillTone.blue,
+              ),
+            if (distributor.permissions.isEmpty)
+              const StatusPill(
+                text: 'صلاحيات غير محددة',
+                tone: PillTone.neutral,
+              ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
+        // Four tight counters instead of four half-empty KPI cards.
+        CountGrid(
+          columns: 4,
+          items: [
+            CountItem(
+              'حزم مربوطة',
+              summary.assignedBatches,
+              tone: PillTone.brand,
+            ),
+            CountItem.text(
+              'الرصيد',
+              summary.balance.toStringAsFixed(2),
+              tone: PillTone.green,
+            ),
+            CountItem.text(
+              'الدين',
+              summary.debtBalance.toStringAsFixed(2),
+              tone: summary.debtBalance > 0 ? PillTone.amber : PillTone.neutral,
+            ),
+            CountItem.text(
+              'حد الائتمان',
+              summary.creditLimit.toStringAsFixed(2),
+              tone: PillTone.blue,
+            ),
+          ],
         ),
       ],
-    );
-  }
-}
-
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: SizedBox(
-        width: 180,
-        child: Padding(
-          padding: const EdgeInsets.all(AppTokens.s16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppTokens.sidebarBg,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(label, style: const TextStyle(color: AppTokens.textMuted)),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
@@ -233,38 +202,45 @@ class _ActionsState extends ConsumerState<_Actions> {
 
   @override
   Widget build(BuildContext context) {
+    const titleStyle = TextStyle(
+      fontWeight: FontWeight.w800,
+      color: AppTokens.sidebarBg,
+    );
     return Column(
       children: [
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(AppTokens.s16),
+            padding: const EdgeInsets.all(AppTokens.s12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'ربط حزمة كروت',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: AppTokens.s12),
-                TextField(
-                  controller: _batchId,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'رقم الحزمة',
-                    helperText: 'استخدم رقم الحزمة الظاهر في شاشة الكروت.',
+                const Text('ربط حزمة كروت', style: titleStyle),
+                const SizedBox(height: AppTokens.s8),
+                FormFieldPair(
+                  first: TextField(
+                    controller: _batchId,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: const InputDecoration(labelText: 'رقم الحزمة'),
+                  ),
+                  second: TextField(
+                    controller: _assignNotes,
+                    decoration: const InputDecoration(labelText: 'ملاحظة'),
                   ),
                 ),
-                const SizedBox(height: AppTokens.s8),
-                TextField(
-                  controller: _assignNotes,
-                  decoration: const InputDecoration(labelText: 'ملاحظة'),
+                const SizedBox(height: AppTokens.s4),
+                const Text(
+                  'استخدم رقم الحزمة الظاهر في شاشة الكروت.',
+                  style: TextStyle(color: AppTokens.textMuted, fontSize: 12),
                 ),
-                const SizedBox(height: AppTokens.s12),
-                ElevatedButton.icon(
-                  onPressed: _busy ? null : _assign,
-                  icon: const Icon(Icons.link),
-                  label: const Text('ربط الحزمة'),
+                const SizedBox(height: AppTokens.s8),
+                HubActionButton(
+                  item: ActionItem(
+                    icon: Icons.link,
+                    label: 'ربط الحزمة',
+                    primary: true,
+                    onPressed: _busy ? null : _assign,
+                  ),
                 ),
               ],
             ),
@@ -273,20 +249,11 @@ class _ActionsState extends ConsumerState<_Actions> {
         const SizedBox(height: AppTokens.s12),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(AppTokens.s16),
+            padding: const EdgeInsets.all(AppTokens.s12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'تسوية يدوية',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: AppTokens.s12),
-                TextField(
-                  controller: _amount,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'المبلغ'),
-                ),
+                const Text('تسوية يدوية', style: titleStyle),
                 const SizedBox(height: AppTokens.s8),
                 DropdownButtonFormField<String>(
                   isExpanded: true,
@@ -302,15 +269,25 @@ class _ActionsState extends ConsumerState<_Actions> {
                   onChanged: (v) => setState(() => _direction = v ?? 'credit'),
                 ),
                 const SizedBox(height: AppTokens.s8),
-                TextField(
-                  controller: _settleNotes,
-                  decoration: const InputDecoration(labelText: 'ملاحظات'),
+                FormFieldPair(
+                  first: TextField(
+                    controller: _amount,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'المبلغ'),
+                  ),
+                  second: TextField(
+                    controller: _settleNotes,
+                    decoration: const InputDecoration(labelText: 'ملاحظات'),
+                  ),
                 ),
-                const SizedBox(height: AppTokens.s12),
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _settle,
-                  icon: const Icon(Icons.receipt_long),
-                  label: const Text('تسجيل الحركة'),
+                const SizedBox(height: AppTokens.s8),
+                HubActionButton(
+                  item: ActionItem(
+                    icon: Icons.receipt_long,
+                    label: 'تسجيل الحركة',
+                    primary: true,
+                    onPressed: _busy ? null : _settle,
+                  ),
                 ),
               ],
             ),
@@ -426,7 +403,7 @@ class _Batches extends StatelessWidget {
                       DataCell(
                         StatusPill(
                           text: distributorStatusLabel(item.status),
-                          tone: PillTone.cyan,
+                          tone: toneForStatus(item.status),
                         ),
                       ),
                       DataCell(

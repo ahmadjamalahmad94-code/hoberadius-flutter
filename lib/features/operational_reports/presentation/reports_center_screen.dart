@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
-import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/hub_kpi.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/page_header.dart';
+import '../../../shared/widgets/status_pill.dart';
 import '../domain/operational_report_catalog.dart';
 
 /// Reports-center hub — a KPI strip over the catalogue plus the 15 operational
@@ -18,39 +19,16 @@ class ReportsCenterScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'مركز التقارير',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: AppTokens.sidebarBg,
-                fontWeight: FontWeight.w800,
-              ),
+        // The read-only/privacy note used to be a card of its own; it is the
+        // subtitle now.
+        const PageHeader(
+          title: 'مركز التقارير',
+          subtitle: 'تقارير قراءة فقط — لا تعرض كلمات مرور أو أسرار',
         ),
-        const SizedBox(height: AppTokens.s4),
-        const Text(
-          'تقارير التشغيل قراءة فقط — جلسات، دخول، أحداث، شبكة، ومالية. '
-          'اختر تقريرًا لعرض أعمدته المخصصة والفلترة الزمنية.',
-          style: TextStyle(color: AppTokens.textMuted),
-        ),
-        const SizedBox(height: AppTokens.s16),
-        _CatalogHero(categories: categories),
         const SizedBox(height: AppTokens.s12),
-        const AppCard(
-          child: Row(
-            children: [
-              Icon(Icons.privacy_tip_outlined, color: AppTokens.brand),
-              SizedBox(width: AppTokens.s8),
-              Expanded(
-                child: Text(
-                  'هذه التقارير قراءة فقط من الخادم. لا تعرض كلمات مرور أو أسرار.',
-                  style: TextStyle(color: AppTokens.textMuted),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppTokens.s8),
+        _CatalogHero(categories: categories),
         for (final category in categories) ...[
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           _CategorySection(category: category),
         ],
       ],
@@ -71,50 +49,19 @@ class _CatalogHero extends StatelessWidget {
     final auditCount = operationalReportCatalog
         .where((def) => def.category == 'الأحداث والتدقيق')
         .length;
-    final kpis = <Widget>[
-      HubKpi(
-        label: 'التقارير المتاحة',
-        value: '${operationalReportCatalog.length}',
-        icon: Icons.query_stats_outlined,
-        variant: KpiVariant.brand,
-      ),
-      HubKpi(
-        label: 'التصنيفات',
-        value: '${categories.length}',
-        icon: Icons.category_outlined,
-        variant: KpiVariant.blue,
-      ),
-      HubKpi(
-        label: 'تقارير الأحداث',
-        value: '$auditCount',
-        icon: Icons.history_edu_outlined,
-        variant: KpiVariant.amber,
-      ),
-      HubKpi(
-        label: 'تقارير مالية',
-        value: '$financeCount',
-        icon: Icons.payments_outlined,
-        variant: KpiVariant.green,
-      ),
-    ];
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 880
-            ? 4
-            : constraints.maxWidth >= 560
-                ? 2
-                : 1;
-        const gap = AppTokens.s12;
-        final itemWidth =
-            (constraints.maxWidth - gap * (columns - 1)) / columns;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final kpi in kpis) SizedBox(width: itemWidth, child: kpi),
-          ],
-        );
-      },
+    // Four tight counters in one row instead of four full-width KPI cards.
+    return CountGrid(
+      columns: 4,
+      items: [
+        CountItem(
+          'التقارير',
+          operationalReportCatalog.length,
+          tone: PillTone.brand,
+        ),
+        CountItem('التصنيفات', categories.length, tone: PillTone.blue),
+        CountItem('الأحداث', auditCount, tone: PillTone.amber),
+        CountItem('المالية', financeCount, tone: PillTone.green),
+      ],
     );
   }
 }
@@ -135,7 +82,7 @@ class _CategorySection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(
             right: AppTokens.s4,
-            bottom: AppTokens.s8,
+            bottom: AppTokens.s4 + 2,
           ),
           child: Text(
             category,
@@ -153,7 +100,7 @@ class _CategorySection extends StatelessWidget {
                 : constraints.maxWidth >= 560
                     ? 2
                     : 1;
-            const gap = AppTokens.s12;
+            const gap = AppTokens.s8;
             final itemWidth =
                 (constraints.maxWidth - gap * (columns - 1)) / columns;
             return Wrap(
@@ -187,7 +134,10 @@ class _ReportCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTokens.r14),
         onTap: () => context.go('/operational-reports/${def.slug}'),
         child: Container(
-          padding: const EdgeInsets.all(AppTokens.s16),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTokens.s12,
+            vertical: AppTokens.s8 + 2,
+          ),
           decoration: BoxDecoration(
             color: AppTokens.card,
             borderRadius: BorderRadius.circular(AppTokens.r14),
@@ -197,15 +147,15 @@ class _ReportCard extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppTokens.brandSoft,
                   borderRadius: BorderRadius.circular(AppTokens.r10),
                 ),
-                child: Icon(def.icon, size: 20, color: AppTokens.brandInk),
+                child: Icon(def.icon, size: 18, color: AppTokens.brandInk),
               ),
-              const SizedBox(width: AppTokens.s12),
+              const SizedBox(width: AppTokens.s8 + 2),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,16 +177,13 @@ class _ReportCard extends StatelessWidget {
                         color: AppTokens.textMuted,
                         fontSize: 12,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const Icon(
-                Icons.chevron_left,
-                color: AppTokens.textMuted,
-              ),
+              const Icon(Icons.chevron_left, color: AppTokens.textMuted),
             ],
           ),
         ),

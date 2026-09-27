@@ -6,6 +6,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../application/events_providers.dart';
@@ -27,25 +28,32 @@ class EventsCenterScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'مركز الأحداث',
-          subtitle:
-              'متابعة أحداث التشغيل والمالية والأمان من نفس سجل الخادم، مع تسجيل حدث إداري واضح عند الحاجة.',
+          // Was a whole explanation card; one muted line says the same.
+          subtitle: 'سجل مراقبة فقط — لا يطبّق أوامر على الراوتر',
+          inlineActions: true,
           actions: [
-            OutlinedButton.icon(
+            IconButton(
+              tooltip: 'تحديث',
               onPressed: () {
                 ref.invalidate(businessEventsProvider);
                 ref.invalidate(businessSummaryProvider);
               },
-              icon: const Icon(Icons.refresh),
-              label: const Text('تحديث'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => _showRecordEventDialog(context, ref),
-              icon: const Icon(Icons.add_alert_outlined),
-              label: const Text('تسجيل حدث'),
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.add_alert_outlined,
+              label: 'تسجيل حدث',
+              primary: true,
+              onPressed: () => _showRecordEventDialog(context, ref),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 1040;
@@ -96,117 +104,89 @@ class _EventsSidePanel extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppCard(
-          title: 'الفلترة',
-          icon: Icons.filter_alt_outlined,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: category,
-                decoration: const InputDecoration(labelText: 'الفئة'),
-                items: [
-                  for (final option in businessEventCategoryOptions)
-                    DropdownMenuItem(
-                      value: option.value,
-                      child: Text(option.label),
-                    ),
-                ],
-                onChanged: (value) {
-                  ref.read(selectedEventCategoryProvider.notifier).state =
-                      value ?? '';
-                },
+        summary.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(AppTokens.s16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, _) => Text(
+            visibleErrorMessage(error),
+            style: const TextStyle(color: AppTokens.redInk),
+          ),
+          data: (data) => CountGrid(
+            columns: 2,
+            items: [
+              CountItem('الأحداث المسجلة', data.events, tone: PillTone.brand),
+              CountItem('المحافظ', data.wallets, tone: PillTone.green),
+              CountItem(
+                'القيود المالية',
+                data.ledgerEntries,
+                tone: PillTone.blue,
               ),
-              const SizedBox(height: AppTokens.s12),
-              DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: severity,
-                decoration: const InputDecoration(labelText: 'الخطورة'),
-                items: [
-                  for (final option in businessEventSeverityOptions)
-                    DropdownMenuItem(
-                      value: option.value,
-                      child: Text(option.label),
-                    ),
-                ],
-                onChanged: (value) {
-                  ref.read(selectedEventSeverityProvider.notifier).state =
-                      value ?? '';
-                },
-              ),
-              const SizedBox(height: AppTokens.s12),
-              OutlinedButton.icon(
-                onPressed: () {
-                  ref.read(selectedEventCategoryProvider.notifier).state = '';
-                  ref.read(selectedEventSeverityProvider.notifier).state = '';
-                },
-                icon: const Icon(Icons.clear_all),
-                label: const Text('عرض كل الأحداث'),
+              CountItem(
+                'أسعار محفوظة',
+                data.priceSnapshots,
+                tone: PillTone.amber,
               ),
             ],
           ),
         ),
         const SizedBox(height: AppTokens.s12),
         AppCard(
-          title: 'ملخص السجل',
-          icon: Icons.insights_outlined,
-          child: summary.when(
-            loading: () => const Padding(
-              padding: EdgeInsets.all(AppTokens.s16),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-            error: (error, _) => Text(
-              visibleErrorMessage(error),
-              style: const TextStyle(color: AppTokens.redInk),
-            ),
-            data: (data) => Column(
-              children: [
-                _SummaryRow(
-                  icon: Icons.event_note_outlined,
-                  label: 'الأحداث المسجلة',
-                  value: data.events.toString(),
-                  tone: PillTone.brand,
-                ),
-                const Divider(height: AppTokens.s20),
-                _SummaryRow(
-                  icon: Icons.account_balance_wallet_outlined,
-                  label: 'المحافظ',
-                  value: data.wallets.toString(),
-                  tone: PillTone.green,
-                ),
-                const Divider(height: AppTokens.s20),
-                _SummaryRow(
-                  icon: Icons.receipt_long_outlined,
-                  label: 'القيود المالية',
-                  value: data.ledgerEntries.toString(),
-                  tone: PillTone.blue,
-                ),
-                const Divider(height: AppTokens.s20),
-                _SummaryRow(
-                  icon: Icons.price_change_outlined,
-                  label: 'أسعار محفوظة',
-                  value: data.priceSnapshots.toString(),
-                  tone: PillTone.amber,
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: AppTokens.s12),
-        const AppCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(AppTokens.s12),
+          child: Row(
             children: [
-              StatusPill(
-                text: 'سجل مراقبة فقط',
-                tone: PillTone.blue,
-                icon: Icons.visibility_outlined,
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: category,
+                  decoration: _filterDecoration('الفئة'),
+                  items: [
+                    for (final option in businessEventCategoryOptions)
+                      DropdownMenuItem(
+                        value: option.value,
+                        child: Text(
+                          option.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    ref.read(selectedEventCategoryProvider.notifier).state =
+                        value ?? '';
+                  },
+                ),
               ),
-              SizedBox(height: AppTokens.s12),
-              Text(
-                'هذه الصفحة تعرض ما سجله الخادم من أحداث تشغيلية ومالية وأمنية. تسجيل حدث يدوي يفيد في توثيق مراجعة أو إجراء إداري، ولا يطبق أوامر على الراوتر.',
-                style: TextStyle(color: AppTokens.textMuted, height: 1.45),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: severity,
+                  decoration: _filterDecoration('الخطورة'),
+                  items: [
+                    for (final option in businessEventSeverityOptions)
+                      DropdownMenuItem(
+                        value: option.value,
+                        child: Text(
+                          option.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) {
+                    ref.read(selectedEventSeverityProvider.notifier).state =
+                        value ?? '';
+                  },
+                ),
+              ),
+              const SizedBox(width: AppTokens.s8),
+              IconButton.outlined(
+                tooltip: 'عرض كل الأحداث',
+                onPressed: () {
+                  ref.read(selectedEventCategoryProvider.notifier).state = '';
+                  ref.read(selectedEventSeverityProvider.notifier).state = '';
+                },
+                icon: const Icon(Icons.clear_all),
               ),
             ],
           ),
@@ -275,7 +255,10 @@ class _EventTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tone = _severityTone(event.severity);
     return Padding(
-      padding: const EdgeInsets.all(AppTokens.s12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8 + 2,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -283,11 +266,15 @@ class _EventTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               CircleAvatar(
+                radius: 17,
                 backgroundColor: _severityBg(event.severity),
-                child:
-                    Icon(_categoryIcon(event.category), color: _toneFg(tone)),
+                child: Icon(
+                  _categoryIcon(event.category),
+                  size: 18,
+                  color: _toneFg(tone),
+                ),
               ),
-              const SizedBox(width: AppTokens.s12),
+              const SizedBox(width: AppTokens.s8 + 2),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,10 +300,10 @@ class _EventTile extends StatelessWidget {
               StatusPill(text: event.severityLabel, tone: tone, dot: true),
             ],
           ),
-          const SizedBox(height: AppTokens.s12),
+          const SizedBox(height: AppTokens.s8),
           Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
               StatusPill(
                 text: event.categoryLabel,
@@ -349,50 +336,6 @@ class _EventTile extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  const _SummaryRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final PillTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 16,
-          backgroundColor: _toneBg(tone),
-          child: Icon(icon, size: 16, color: _toneFg(tone)),
-        ),
-        const SizedBox(width: AppTokens.s8),
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: AppTokens.textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppTokens.sidebarBg,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
     );
   }
 }
@@ -499,8 +442,9 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                     child: DropdownButtonFormField<String>(
                       isExpanded: true,
                       initialValue: _actorType,
-                      decoration:
-                          const InputDecoration(labelText: 'من نفذ الإجراء'),
+                      decoration: const InputDecoration(
+                        labelText: 'من نفذ الإجراء',
+                      ),
                       items: [
                         for (final option in _entityOptions)
                           DropdownMenuItem(
@@ -517,8 +461,9 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                   Expanded(
                     child: TextField(
                       controller: _actorId,
-                      decoration:
-                          const InputDecoration(labelText: 'رقم المنفذ'),
+                      decoration: const InputDecoration(
+                        labelText: 'رقم المنفذ',
+                      ),
                       keyboardType: TextInputType.number,
                     ),
                   ),
@@ -531,8 +476,9 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                     child: DropdownButtonFormField<String>(
                       isExpanded: true,
                       initialValue: _targetType,
-                      decoration:
-                          const InputDecoration(labelText: 'العنصر المتأثر'),
+                      decoration: const InputDecoration(
+                        labelText: 'العنصر المتأثر',
+                      ),
                       items: [
                         for (final option in _entityOptions)
                           DropdownMenuItem(
@@ -549,8 +495,9 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                   Expanded(
                     child: TextField(
                       controller: _targetId,
-                      decoration:
-                          const InputDecoration(labelText: 'رقم العنصر'),
+                      decoration: const InputDecoration(
+                        labelText: 'رقم العنصر',
+                      ),
                       keyboardType: TextInputType.number,
                     ),
                   ),
@@ -651,9 +598,16 @@ const _entityOptions = <_Choice>[
 Future<void> _showRecordEventDialog(BuildContext context, WidgetRef ref) async {
   await showDialog<void>(
     context: context,
+    useRootNavigator: true,
     builder: (_) => const _RecordEventDialog(),
   );
 }
+
+InputDecoration _filterDecoration(String label) => InputDecoration(
+      labelText: label,
+      isDense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+    );
 
 PillTone _severityTone(String value) {
   return switch (value) {
@@ -670,17 +624,6 @@ Color _severityBg(String value) {
     'warning' => AppTokens.amberSoft,
     'debug' => AppTokens.slate100,
     _ => AppTokens.blueSoft,
-  };
-}
-
-Color _toneBg(PillTone tone) {
-  return switch (tone) {
-    PillTone.green => AppTokens.greenSoft,
-    PillTone.amber || PillTone.orange => AppTokens.amberSoft,
-    PillTone.red => AppTokens.redSoft,
-    PillTone.blue => AppTokens.blueSoft,
-    PillTone.neutral => AppTokens.slate100,
-    _ => AppTokens.brandSoft,
   };
 }
 

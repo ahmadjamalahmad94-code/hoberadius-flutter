@@ -15,7 +15,8 @@ void main() {
       'resolved',
       'closed',
     ]) {
-      expect(screen, contains("value: '$status'"));
+      // Status filter is now a chip row of (value, label) records.
+      expect(screen, contains("('$status', "));
     }
 
     expect(screen, contains('مفتوحة'));

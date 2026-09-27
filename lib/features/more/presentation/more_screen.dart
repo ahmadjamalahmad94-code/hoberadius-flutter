@@ -18,7 +18,7 @@ class MoreScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (admin != null) _AdminSummaryCard(admin: admin),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _SectionCard(
           title: 'لوحة التحكم',
           icon: dashboardNavItem.icon,
@@ -27,14 +27,14 @@ class MoreScreen extends ConsumerWidget {
         // Licence-gated + usage-gated (was the raw, ungated schema, so a
         // section the provider disabled still showed on phones).
         for (final gated in ref.watch(visibleNavSectionsProvider)) ...[
-          const SizedBox(height: AppTokens.s12),
+          const SizedBox(height: AppTokens.s8 + 2),
           _SectionCard(
             title: gated.section.label,
             icon: gated.section.icon,
             items: [for (final g in gated.items) g.item],
           ),
         ],
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         Card(
           color: AppTokens.dangerBg,
           child: ListTile(
@@ -61,11 +61,11 @@ class _AdminSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(AppTokens.s16),
+        padding: const EdgeInsets.all(AppTokens.s12),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 24,
+              radius: 22,
               backgroundColor: AppTokens.brand,
               child: Text(
                 admin.username.isEmpty ? '?' : admin.username[0].toUpperCase(),
@@ -143,14 +143,14 @@ class _SectionCard extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppTokens.s16,
               AppTokens.s12,
-              AppTokens.s16,
-              AppTokens.s8,
+              AppTokens.s8 + 2,
+              AppTokens.s12,
+              AppTokens.s4,
             ),
             child: Row(
               children: [
-                Icon(icon, color: AppTokens.brand, size: 20),
+                Icon(icon, color: AppTokens.brand, size: 18),
                 const SizedBox(width: AppTokens.s8),
                 Expanded(
                   child: Text(
@@ -182,29 +182,66 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(
-        width: 42,
-        height: 42,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [AppTokens.brandSoft, Color(0xFFFFFFFF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTokens.brandLine),
-        ),
-        alignment: Alignment.center,
-        child: Icon(item.icon, color: AppTokens.brand, size: 20),
-      ),
-      title: Text(
-        item.label,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-      subtitle: item.description == null ? null : Text(item.description!),
-      trailing: const Icon(Icons.chevron_left, color: AppTokens.textMuted),
+    // Compact row: one-line description with an ellipsis (descriptions used
+    // to wrap to 2–3 lines and made the page very long).
+    return InkWell(
       onTap: () => context.goNamed(item.routeName),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.s12,
+          vertical: AppTokens.s8,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: AppTokens.brandSoft,
+                borderRadius: BorderRadius.circular(AppTokens.r10),
+                border: Border.all(color: AppTokens.brandLine),
+              ),
+              alignment: Alignment.center,
+              child: Icon(item.icon, color: AppTokens.brand, size: 18),
+            ),
+            const SizedBox(width: AppTokens.s8 + 2),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppTokens.textPrimary,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (item.description != null)
+                    Text(
+                      item.description!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppTokens.s4),
+            const Icon(
+              Icons.chevron_left,
+              size: 20,
+              color: AppTokens.textMuted,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

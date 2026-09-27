@@ -4,6 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/hub_switch_row.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
 import 'distributors_list_screen.dart';
@@ -55,200 +59,209 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final nameField = TextFormField(
+      controller: _name,
+      decoration: const InputDecoration(
+        labelText: 'اسم الدخول',
+        helperText: 'اسم قصير تستخدمه الإدارة لتتبع الموزع داخليًا.',
+      ),
+      validator: (value) =>
+          (value ?? '').trim().isEmpty ? 'اكتب اسم الدخول' : null,
+    );
+    final displayNameField = TextFormField(
+      controller: _displayName,
+      decoration: const InputDecoration(labelText: 'الاسم الظاهر'),
+    );
+    final phoneField = TextFormField(
+      controller: _phone,
+      decoration: const InputDecoration(labelText: 'رقم الهاتف'),
+    );
+    final emailField = TextFormField(
+      controller: _email,
+      keyboardType: TextInputType.emailAddress,
+      decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+    );
+    final statusField = DropdownButtonFormField<String>(
+      isExpanded: true,
+      initialValue: _status,
+      decoration: const InputDecoration(labelText: 'الحالة'),
+      items: const [
+        DropdownMenuItem(value: 'active', child: Text('مفعّل')),
+        DropdownMenuItem(value: 'inactive', child: Text('غير مفعّل')),
+        DropdownMenuItem(value: 'blocked', child: Text('محظور')),
+      ],
+      onChanged: (value) => setState(() => _status = value ?? 'active'),
+    );
+    final creditField = TextFormField(
+      controller: _creditLimit,
+      keyboardType: TextInputType.number,
+      decoration: const InputDecoration(labelText: 'حد الائتمان'),
+    );
+    const creditHint = Text(
+      'حد الائتمان قيمة مرجعية للتحكم المالي، وليست فاتورة كاملة.',
+      style: TextStyle(color: AppTokens.textMuted, fontSize: 12),
+    );
+    final permissions = _ChoiceSection(
+      title: 'صلاحيات الموزع',
+      subtitle: 'اختر ما يستطيع الموزع عمله بدل كتابة رموز تقنية.',
+      children: [
+        for (final option in _permissionOptions)
+          HubSwitchRow(
+            dense: true,
+            label: option.label,
+            subtitle: option.description,
+            value: _permissions.contains(option.key),
+            onChanged: (checked) {
+              setState(() {
+                if (checked) {
+                  _permissions.add(option.key);
+                } else {
+                  _permissions.remove(option.key);
+                }
+              });
+            },
+          ),
+      ],
+    );
+    const scope = _ChoiceSection(
+      title: 'نطاق البيانات',
+      subtitle: 'النظام يعرض للموزع الحزم التي تربطها به الإدارة فقط.',
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.verified_user_outlined,
+              size: 20,
+              color: AppTokens.brandInk,
+            ),
+            SizedBox(width: AppTokens.s8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'الحزم المعيّنة فقط',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    'لتوسيع وصول الموزع، اربط حزمًا إضافية من صفحة تفاصيل الموزع.',
+                    style: TextStyle(
+                      color: AppTokens.textMuted,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    final notesField = TextFormField(
+      controller: _notes,
+      minLines: 2,
+      maxLines: 4,
+      decoration: const InputDecoration(labelText: 'ملاحظات'),
+    );
+    final saveItem = ActionItem(
+      icon: Icons.save,
+      label: _saving ? 'جار الحفظ' : 'حفظ الموزع',
+      primary: true,
+      onPressed: _saving ? null : _save,
+    );
+
     return Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'إضافة موزع',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.sidebarBg,
-                      ),
+          PageHeader(
+            title: 'إضافة موزع',
+            inlineActions: true,
+            leading: IconButton(
+              tooltip: 'رجوع',
+              onPressed: _saving ? null : () => context.goNamed('distributors'),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            actions: [
+              SizedBox(
+                width: 96,
+                child: HubActionButton(
+                  item: ActionItem(
+                    icon: Icons.save,
+                    label: 'حفظ',
+                    primary: true,
+                    onPressed: _saving ? null : _save,
+                  ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed:
-                    _saving ? null : () => context.goNamed('distributors'),
-                icon: const Icon(Icons.arrow_back),
-                label: const Text('رجوع'),
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(AppTokens.s16),
+              padding: const EdgeInsets.all(AppTokens.s12),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final wide = constraints.maxWidth > 760;
+                  if (!wide) {
+                    // Phones: short fields in pairs to halve the height.
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        nameField,
+                        const SizedBox(height: AppTokens.s12),
+                        FormFieldPair(
+                          first: displayNameField,
+                          second: phoneField,
+                        ),
+                        const SizedBox(height: AppTokens.s12),
+                        emailField,
+                        const SizedBox(height: AppTokens.s12),
+                        FormFieldPair(first: statusField, second: creditField),
+                        const SizedBox(height: AppTokens.s4),
+                        creditHint,
+                        const SizedBox(height: AppTokens.s12),
+                        permissions,
+                        const SizedBox(height: AppTokens.s12),
+                        scope,
+                        const SizedBox(height: AppTokens.s12),
+                        notesField,
+                      ],
+                    );
+                  }
                   return Wrap(
                     spacing: AppTokens.s16,
                     runSpacing: AppTokens.s16,
                     children: [
+                      _Box(wide: wide, child: nameField),
+                      _Box(wide: wide, child: displayNameField),
+                      _Box(wide: wide, child: phoneField),
+                      _Box(wide: wide, child: emailField),
+                      _Box(wide: wide, child: statusField),
                       _Box(
                         wide: wide,
-                        child: TextFormField(
-                          controller: _name,
-                          decoration: const InputDecoration(
-                            labelText: 'اسم الدخول',
-                            helperText:
-                                'اسم قصير تستخدمه الإدارة لتتبع الموزع داخليًا.',
-                          ),
-                          validator: (value) => (value ?? '').trim().isEmpty
-                              ? 'اكتب اسم الدخول'
-                              : null,
-                        ),
-                      ),
-                      _Box(
-                        wide: wide,
-                        child: TextFormField(
-                          controller: _displayName,
-                          decoration: const InputDecoration(
-                            labelText: 'الاسم الظاهر',
-                          ),
-                        ),
-                      ),
-                      _Box(
-                        wide: wide,
-                        child: TextFormField(
-                          controller: _phone,
-                          decoration: const InputDecoration(
-                            labelText: 'رقم الهاتف',
-                          ),
-                        ),
-                      ),
-                      _Box(
-                        wide: wide,
-                        child: TextFormField(
-                          controller: _email,
-                          keyboardType: TextInputType.emailAddress,
-                          decoration: const InputDecoration(
-                            labelText: 'البريد الإلكتروني',
-                          ),
-                        ),
-                      ),
-                      _Box(
-                        wide: wide,
-                        child: DropdownButtonFormField<String>(
-                          isExpanded: true,
-                          initialValue: _status,
-                          decoration: const InputDecoration(
-                            labelText: 'الحالة',
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'active',
-                              child: Text('مفعّل'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'inactive',
-                              child: Text('غير مفعّل'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'blocked',
-                              child: Text('محظور'),
-                            ),
-                          ],
-                          onChanged: (value) =>
-                              setState(() => _status = value ?? 'active'),
-                        ),
-                      ),
-                      _Box(
-                        wide: wide,
-                        child: TextFormField(
-                          controller: _creditLimit,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'حد الائتمان',
-                            helperText:
-                                'قيمة مرجعية للتحكم المالي، وليست فاتورة كاملة.',
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        width: double.infinity,
-                        child: _ChoiceSection(
-                          title: 'صلاحيات الموزع',
-                          subtitle:
-                              'اختر ما يستطيع الموزع عمله بدل كتابة رموز تقنية.',
-                          children: _permissionOptions
-                              .map(
-                                (option) => CheckboxListTile(
-                                  value: _permissions.contains(option.key),
-                                  onChanged: (checked) {
-                                    setState(() {
-                                      if (checked == true) {
-                                        _permissions.add(option.key);
-                                      } else {
-                                        _permissions.remove(option.key);
-                                      }
-                                    });
-                                  },
-                                  title: Text(option.label),
-                                  subtitle: Text(option.description),
-                                  contentPadding: EdgeInsets.zero,
-                                  controlAffinity:
-                                      ListTileControlAffinity.leading,
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                      const SizedBox(
-                        width: double.infinity,
-                        child: _ChoiceSection(
-                          title: 'نطاق البيانات',
-                          subtitle:
-                              'النظام يعرض للموزع الحزم التي تربطها به الإدارة فقط.',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: Icon(Icons.verified_user_outlined),
-                              title: Text('الحزم المعيّنة فقط'),
-                              subtitle: Text(
-                                'لتوسيع وصول الموزع، اربط حزمًا إضافية من صفحة تفاصيل الموزع.',
-                              ),
-                            ),
+                            creditField,
+                            const SizedBox(height: AppTokens.s4),
+                            creditHint,
                           ],
                         ),
                       ),
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextFormField(
-                          controller: _notes,
-                          minLines: 2,
-                          maxLines: 4,
-                          decoration: const InputDecoration(
-                            labelText: 'ملاحظات',
-                          ),
-                        ),
-                      ),
+                      SizedBox(width: double.infinity, child: permissions),
+                      const SizedBox(width: double.infinity, child: scope),
+                      SizedBox(width: double.infinity, child: notesField),
                     ],
                   );
                 },
               ),
             ),
           ),
-          const SizedBox(height: AppTokens.s16),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ElevatedButton.icon(
-              onPressed: _saving ? null : _save,
-              icon: _saving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save),
-              label: Text(_saving ? 'جار الحفظ' : 'حفظ الموزع'),
-            ),
-          ),
+          const SizedBox(height: AppTokens.s12),
+          ActionBar(items: [saveItem]),
         ],
       ),
     );
@@ -323,7 +336,7 @@ class _ChoiceSection extends StatelessWidget {
       child: Material(
         type: MaterialType.transparency,
         child: Padding(
-          padding: const EdgeInsets.all(AppTokens.s16),
+          padding: const EdgeInsets.all(AppTokens.s12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -334,12 +347,15 @@ class _ChoiceSection extends StatelessWidget {
                   color: AppTokens.sidebarBg,
                 ),
               ),
-              const SizedBox(height: AppTokens.s4),
+              const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(color: AppTokens.textMuted),
+                style: const TextStyle(
+                  color: AppTokens.textMuted,
+                  fontSize: 12.5,
+                ),
               ),
-              const SizedBox(height: AppTokens.s8),
+              const SizedBox(height: AppTokens.s4),
               ...children,
             ],
           ),

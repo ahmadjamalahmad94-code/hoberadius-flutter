@@ -9,6 +9,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../subscribers/data/subscribers_repository.dart';
@@ -16,6 +17,7 @@ import '../../subscribers/domain/subscriber_model.dart';
 import '../application/tickets_providers.dart';
 import '../data/tickets_repository.dart';
 import '../domain/ticket_model.dart';
+import 'ticket_tones.dart';
 
 final _ticketSubscribersProvider =
     FutureProvider.autoDispose<List<Subscriber>>((ref) {
@@ -35,49 +37,38 @@ class TicketsListScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'تذاكر الدعم وطلبات الخدمة',
+          inlineActions: true,
           actions: [
-            DropdownButton<String>(
-              value: status,
-              items: const [
-                DropdownMenuItem(value: '', child: Text('كل الحالات')),
-                DropdownMenuItem(value: 'open', child: Text('مفتوحة')),
-                DropdownMenuItem(
-                  value: 'pending',
-                  child: Text('معلّقة'),
-                ),
-                DropdownMenuItem(
-                  value: 'in_progress',
-                  child: Text('قيد المعالجة'),
-                ),
-                DropdownMenuItem(
-                  value: 'resolved',
-                  child: Text('محلولة'),
-                ),
-                DropdownMenuItem(value: 'closed', child: Text('مغلقة')),
-              ],
-              onChanged: (value) {
-                ref.read(ticketStatusFilterProvider.notifier).state =
-                    value ?? '';
-              },
-            ),
-            OutlinedButton.icon(
+            IconButton(
+              tooltip: 'تحديث',
               onPressed: () => ref.invalidate(ticketsPageProvider),
-              icon: const Icon(Icons.refresh),
-              label: const Text('تحديث'),
-            ),
-            FilledButton.icon(
-              onPressed: () => _showServiceRequestDialog(context, ref),
-              icon: const Icon(Icons.playlist_add_check_circle_outlined),
-              label: const Text('طلب خدمة'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => _showCreateTicketDialog(context, ref),
-              icon: const Icon(Icons.add_comment_outlined),
-              label: const Text('تذكرة جديدة'),
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.add_comment_outlined,
+              label: 'تذكرة جديدة',
+              primary: true,
+              onPressed: () => _showCreateTicketDialog(context, ref),
+            ),
+            ActionItem(
+              icon: Icons.playlist_add_check_circle_outlined,
+              label: 'طلب خدمة',
+              onPressed: () => _showServiceRequestDialog(context, ref),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
+        _StatusFilterChips(
+          selected: status,
+          onSelected: (value) =>
+              ref.read(ticketStatusFilterProvider.notifier).state = value,
+        ),
+        const SizedBox(height: AppTokens.s12),
         tickets.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => HubErrorState(
@@ -105,8 +96,10 @@ class TicketsListScreen extends ConsumerWidget {
                   if (!wide) {
                     return Column(
                       children: [
-                        for (final ticket in page.items)
-                          _TicketTile(ticket: ticket),
+                        for (var i = 0; i < page.items.length; i++) ...[
+                          if (i > 0) const Divider(height: 1),
+                          _TicketTile(ticket: page.items[i]),
+                        ],
                       ],
                     );
                   }
@@ -155,6 +148,80 @@ class TicketsListScreen extends ConsumerWidget {
   }
 }
 
+/// Status filter as a row of colour-coded chips (was a bare dropdown lost
+/// among the header buttons).
+class _StatusFilterChips extends StatelessWidget {
+  const _StatusFilterChips({required this.selected, required this.onSelected});
+
+  final String selected;
+  final ValueChanged<String> onSelected;
+
+  static const _options = [
+    ('', 'كل الحالات'),
+    ('open', 'مفتوحة'),
+    ('pending', 'معلّقة'),
+    ('in_progress', 'قيد المعالجة'),
+    ('resolved', 'محلولة'),
+    ('closed', 'مغلقة'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          for (final (value, label) in _options) ...[
+            if (value.isNotEmpty) const SizedBox(width: 6),
+            _chip(value, label),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _chip(String value, String label) {
+    final isSelected = selected == value;
+    final tone = value.isEmpty ? PillTone.brand : ticketStatusTone(value);
+    final (bg, fg, border) = pillToneColors(tone);
+    return Material(
+      color: isSelected ? bg : AppTokens.card,
+      shape: StadiumBorder(
+        side: BorderSide(
+          color: isSelected ? fg : AppTokens.border,
+          width: isSelected ? 1.5 : 1,
+        ),
+      ),
+      child: InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: () => onSelected(value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected ? fg : AppTokens.textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TicketTile extends StatelessWidget {
   const _TicketTile({required this.ticket});
 
@@ -162,16 +229,49 @@ class _TicketTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
+    return InkWell(
       onTap: () => context.goNamed(
         'ticket-detail',
         pathParameters: {'id': '${ticket.id}'},
       ),
-      title: _TicketTitle(ticket: ticket),
-      subtitle: Text(
-        'مشترك #${ticket.subscriberId} · ${_dateLabel(ticket.updatedAt)}',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppTokens.s12,
+          vertical: AppTokens.s8 + 2,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _TicketTitle(ticket: ticket),
+                  const SizedBox(height: 2),
+                  Text(
+                    'مشترك #${ticket.subscriberId} · '
+                    '${_dateLabel(ticket.updatedAt)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppTokens.textMuted,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppTokens.s8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _Status(ticket: ticket),
+                const SizedBox(height: 4),
+                _Priority(ticket: ticket),
+              ],
+            ),
+          ],
+        ),
       ),
-      trailing: _Status(ticket: ticket),
     );
   }
 }
@@ -200,19 +300,10 @@ class _Status extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusPill(
       text: ticket.statusLabel,
-      tone: _ticketStatusTone(ticket.status),
+      tone: ticketStatusTone(ticket.status),
     );
   }
 }
-
-PillTone _ticketStatusTone(String status) => switch (status) {
-      'open' => PillTone.orange,
-      'pending' => PillTone.orange,
-      'in_progress' => PillTone.blue,
-      'resolved' => PillTone.green,
-      'closed' => PillTone.neutral,
-      _ => PillTone.neutral,
-    };
 
 class _Priority extends StatelessWidget {
   const _Priority({required this.ticket});
@@ -223,9 +314,8 @@ class _Priority extends StatelessWidget {
   Widget build(BuildContext context) {
     return StatusPill(
       text: ticket.priorityLabel,
-      tone: ticket.priority == 'urgent' || ticket.priority == 'high'
-          ? PillTone.red
-          : PillTone.cyan,
+      tone: ticketPriorityTone(ticket.priority),
+      icon: Icons.flag_outlined,
     );
   }
 }
@@ -297,6 +387,7 @@ Future<void> _showServiceRequestDialog(
 
   await showDialog<void>(
     context: context,
+    useRootNavigator: true,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
@@ -532,6 +623,7 @@ Future<void> _showCreateTicketDialog(
 
   await showDialog<void>(
     context: context,
+    useRootNavigator: true,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
