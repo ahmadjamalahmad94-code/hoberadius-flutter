@@ -194,6 +194,12 @@ class HubActionButton extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
+    // Build from the theme's text style so the app font (Cairo) is kept — a
+    // raw TextStyle here replaced the theme's and fell back to the device font.
+    final textStyle = Theme.of(context)
+        .textTheme
+        .labelLarge
+        ?.copyWith(fontWeight: FontWeight.w800);
     if (item.primary) {
       return FilledButton.icon(
         onPressed: item.onPressed,
@@ -205,7 +211,7 @@ class HubActionButton extends StatelessWidget {
           minimumSize: size,
           padding: pad,
           shape: shape,
-          textStyle: const TextStyle(fontWeight: FontWeight.w800),
+          textStyle: textStyle,
         ),
       );
     }
@@ -221,7 +227,7 @@ class HubActionButton extends StatelessWidget {
         minimumSize: size,
         padding: pad,
         shape: shape,
-        textStyle: const TextStyle(fontWeight: FontWeight.w800),
+        textStyle: textStyle,
       ),
     );
   }
