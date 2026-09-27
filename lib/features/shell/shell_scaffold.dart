@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/router/nav_history.dart';
 import '../../core/theme/tokens.dart';
+import '../../shared/widgets/hub_toast.dart';
 import '../../shared/widgets/responsive_layout.dart';
 import '../notifications/presentation/notification_bell.dart';
 import '../notifications/push/desktop_notifier.dart';
 import '../notifications/push/desktop_toast_bridge.dart';
 import '../notifications/push/push_service.dart';
+import '../provider_grants/application/nav_visibility.dart';
 import 'navigation_schema.dart';
 
 /// Adaptive shell. The full web-style sidebar persists on desktop AND
@@ -17,12 +21,19 @@ import 'navigation_schema.dart';
 /// the bottom-nav layout. The decision is width-based via
 /// [shellLayoutModeForWidth] — shrinking a desktop window somewhat no longer
 /// drops the whole sidebar.
-class ShellScaffold extends ConsumerWidget {
+class ShellScaffold extends ConsumerStatefulWidget {
   const ShellScaffold({super.key, required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ShellScaffold> createState() => _ShellScaffoldState();
+}
+
+class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
+  DateTime? _lastBackAt;
+
+  @override
+  Widget build(BuildContext context) {
     // Activate the desktop toast bridge (no-op on mobile/web) and route toast
     // taps to the notification center.
     ref.watch(desktopToastBridgeProvider);
@@ -30,12 +41,60 @@ class ShellScaffold extends ConsumerWidget {
     DesktopNotifier.instance.onOpen = () {
       if (context.mounted) context.goNamed('notifications');
     };
+
+    final location = GoRouterState.of(context).matchedLocation;
+    // Record each visited location so the hardware/gesture back button can
+    // walk back through the go-history instead of exiting the app.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(navHistoryProvider).record(location);
+    });
+
     final width = MediaQuery.sizeOf(context).width;
-    return switch (shellLayoutModeForWidth(width)) {
-      ShellLayoutMode.fullSidebar => _Wide(child: child),
-      ShellLayoutMode.iconRail => _Wide(compact: true, child: child),
-      ShellLayoutMode.drawer => _Mobile(child: child),
+    final shell = switch (shellLayoutModeForWidth(width)) {
+      ShellLayoutMode.fullSidebar => _Wide(child: widget.child),
+      ShellLayoutMode.iconRail => _Wide(compact: true, child: widget.child),
+      ShellLayoutMode.drawer => _Mobile(child: widget.child),
     };
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _handleBack();
+      },
+      child: shell,
+    );
+  }
+
+  /// Back-button policy (Android hardware/gesture back):
+  ///   1. A nested route / pushed page → pop it (e.g. detail → list).
+  ///   2. Otherwise walk our own go-history to the previous screen.
+  ///   3. No history left but not on home → go to the home tab.
+  ///   4. On home with nothing to pop → double-back to exit.
+  void _handleBack() {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    final prev = ref.read(navHistoryProvider).back();
+    if (prev != null) {
+      context.go(prev);
+      return;
+    }
+    final location = GoRouterState.of(context).matchedLocation;
+    if (location != '/') {
+      context.go('/');
+      return;
+    }
+    final now = DateTime.now();
+    if (_lastBackAt == null ||
+        now.difference(_lastBackAt!) > const Duration(seconds: 2)) {
+      _lastBackAt = now;
+      HubToaster.info(context, 'اضغط زر الرجوع مرة أخرى للخروج');
+      return;
+    }
+    SystemNavigator.pop();
   }
 }
 
@@ -85,6 +144,7 @@ class _Wide extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
     final auth = ref.watch(authControllerProvider);
+    final sections = ref.watch(gatedNavSectionsProvider);
     return Scaffold(
       body: Row(
         children: [
@@ -92,6 +152,7 @@ class _Wide extends ConsumerWidget {
             location: location,
             admin: auth.admin,
             compact: compact,
+            sections: sections,
           ),
           Expanded(
             child: _ContentArea(
@@ -109,10 +170,12 @@ class _Wide extends ConsumerWidget {
 class _WebSidebar extends StatefulWidget {
   const _WebSidebar({
     required this.location,
+    required this.sections,
     this.admin,
     this.compact = false,
   });
   final String location;
+  final List<GatedNavSection> sections;
   final AuthAdmin? admin;
 
   /// When true the sidebar starts collapsed to its icon rail (the shell's
@@ -262,15 +325,16 @@ class _WebSidebarState extends State<_WebSidebar> {
                   onTap: () => context.goNamed(dashboardNavItem.routeName),
                 ),
                 const SizedBox(height: AppTokens.s8),
-                for (final section in appNavSections)
+                for (final gated in widget.sections)
                   _SidebarSectionBlock(
-                    section: section,
+                    section: gated.section,
+                    items: gated.items,
                     collapsed: _collapsed,
-                    open: _openSections.contains(section.id) ||
-                        navSectionIsActive(widget.location, section),
-                    active: navSectionIsActive(widget.location, section),
+                    open: _openSections.contains(gated.section.id) ||
+                        navSectionIsActive(widget.location, gated.section),
+                    active: navSectionIsActive(widget.location, gated.section),
                     location: widget.location,
-                    onHeaderTap: () => _toggleSection(section),
+                    onHeaderTap: () => _toggleSection(gated.section),
                   ),
               ],
             ),
@@ -359,6 +423,7 @@ class _StandaloneSidebarTile extends StatelessWidget {
 class _SidebarSectionBlock extends StatelessWidget {
   const _SidebarSectionBlock({
     required this.section,
+    required this.items,
     required this.collapsed,
     required this.open,
     required this.active,
@@ -367,6 +432,7 @@ class _SidebarSectionBlock extends StatelessWidget {
   });
 
   final AppNavSection section;
+  final List<GatedNavItem> items;
   final bool collapsed;
   final bool open;
   final bool active;
@@ -399,14 +465,17 @@ class _SidebarSectionBlock extends StatelessWidget {
               padding: const EdgeInsetsDirectional.only(start: AppTokens.s12),
               child: Column(
                 children: [
-                  for (final item in section.items)
+                  for (final gated in items)
                     _SidebarActionTile(
-                      icon: item.icon,
-                      label: item.label,
-                      active: navPathMatches(location, item.path),
+                      icon: gated.item.icon,
+                      label: gated.item.label,
+                      active: navPathMatches(location, gated.item.path),
                       collapsed: false,
                       compact: true,
-                      onTap: () => context.goNamed(item.routeName),
+                      onTap: () => context.goNamed(gated.item.routeName),
+                      trailing: gated.requiresUpgrade
+                          ? const _UpgradeBadge()
+                          : null,
                     ),
                 ],
               ),
@@ -503,6 +572,38 @@ class _SidebarActionTile extends StatelessWidget {
   }
 }
 
+/// «طلب تفعيل» chip shown next to a paid-not-active (locked_upgrade) nav item.
+class _UpgradeBadge extends StatelessWidget {
+  const _UpgradeBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTokens.amber.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(AppTokens.r8),
+        border: Border.all(color: AppTokens.amber.withValues(alpha: 0.4)),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.lock_outline, size: 12, color: AppTokens.amber),
+          SizedBox(width: 3),
+          Text(
+            'تفعيل',
+            style: TextStyle(
+              color: AppTokens.amber,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ContentArea extends StatelessWidget {
   const _ContentArea({
     required this.child,
@@ -525,9 +626,17 @@ class _ContentArea extends StatelessWidget {
           Expanded(
             child: SingleChildScrollView(
               padding: padding,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1280),
-                child: child,
+              // Center + cap the content column so wide desktops don't stretch
+              // content edge-to-edge (shared density rule — propagates to every
+              // screen via the shell).
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(
+                    maxWidth: AppTokens.contentMaxWidth,
+                  ),
+                  child: child,
+                ),
               ),
             ),
           ),

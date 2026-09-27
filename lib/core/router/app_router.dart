@@ -63,6 +63,10 @@ import '../../features/payment_collection/presentation/payment_request_detail_sc
 import '../../features/plans/presentation/plan_form_screen.dart';
 import '../../features/plans/presentation/plans_list_screen.dart';
 import '../../features/print_templates/presentation/print_templates_screen.dart';
+import '../../features/provider_grants/application/provider_grants_provider.dart';
+import '../../features/provider_grants/domain/provider_gate_decision.dart';
+import '../../features/provider_grants/domain/provider_grants_model.dart';
+import '../../features/provider_grants/presentation/provider_gate_screens.dart';
 import '../../features/radius_resources/presentation/radius_resources_screen.dart';
 import '../../features/recycle_bin/presentation/recycle_bin_screen.dart';
 import '../../features/revenue/presentation/revenue_screen.dart';
@@ -81,16 +85,25 @@ import '../auth/auth_controller.dart';
 /// route listed here is expected to use a real JSON contract.
 final appRouterProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authControllerProvider);
+  // Re-evaluate redirects whenever provider grants change (license lifecycle /
+  // service disable) without rebuilding the whole router (which would reset the
+  // navigation stack). go_router listens to this and re-runs `redirect`.
+  final gateRefresh = ValueNotifier<int>(0);
+  ref.onDispose(gateRefresh.dispose);
+  ref.listen<AsyncValue<ProviderGrants?>>(
+    providerGrantsProvider,
+    (_, __) => gateRefresh.value++,
+  );
   return GoRouter(
     initialLocation: '/',
     debugLogDiagnostics: false,
+    refreshListenable: gateRefresh,
     redirect: (context, state) {
       final loggedIn = auth.isAuthenticated;
-      final atLogin = state.matchedLocation == '/login';
-      final atHotspotCardsPortal =
-          state.matchedLocation.startsWith('/hotspot-cards');
-      final atSubscriberPortal =
-          state.matchedLocation.startsWith('/subscriber-portal');
+      final loc = state.matchedLocation;
+      final atLogin = loc == '/login';
+      final atHotspotCardsPortal = loc.startsWith('/hotspot-cards');
+      final atSubscriberPortal = loc.startsWith('/subscriber-portal');
       if (!loggedIn &&
           !atLogin &&
           !atHotspotCardsPortal &&
@@ -98,6 +111,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
       if (loggedIn && atLogin) return '/';
+
+      // ── Provider-grant gate (mirror of the web admin guard) ──────────
+      // Only for authenticated in-app routes; portals/login are exempt.
+      if (loggedIn && !atHotspotCardsPortal && !atSubscriberPortal) {
+        final gate = _providerGateRedirect(ref, loc);
+        if (gate != null) return gate;
+      }
       return null;
     },
     routes: [
@@ -540,6 +560,31 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             name: 'account',
             builder: (ctx, st) => const AccountScreen(),
           ),
+          // ── Provider-grant gate screens ──
+          GoRoute(
+            path: '/license-expired',
+            name: 'license-expired',
+            builder: (ctx, st) => const LicenseExpiredScreen(),
+          ),
+          GoRoute(
+            path: '/license-activate',
+            name: 'license-activate',
+            builder: (ctx, st) => const LicenseActivateScreen(),
+          ),
+          GoRoute(
+            path: '/service-blocked',
+            name: 'service-blocked',
+            builder: (ctx, st) => ServiceBlockedScreen(
+              serviceKey: st.uri.queryParameters['service'] ?? '',
+            ),
+          ),
+          GoRoute(
+            path: '/service-upgrade',
+            name: 'service-upgrade',
+            builder: (ctx, st) => ServiceUpgradeScreen(
+              serviceKey: st.uri.queryParameters['service'] ?? '',
+            ),
+          ),
         ],
       ),
     ],
@@ -548,3 +593,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+/// Computes the provider-grant redirect for [loc], or null to allow.
+///
+/// Delegates to the pure [providerGateRedirect]; reads (not watches) the grants
+/// here since the router subscribes via `gateRefresh`, so this avoids rebuilding
+/// the GoRouter on every grants change.
+String? _providerGateRedirect(Ref ref, String loc) {
+  final grants = ref.read(providerGrantsProvider).valueOrNull;
+  return providerGateRedirect(grants, loc);
+}

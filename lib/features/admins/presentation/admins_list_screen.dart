@@ -8,6 +8,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/admins_repository.dart';
 import '../domain/admin_model.dart';
 
@@ -39,14 +40,15 @@ class AdminsListScreen extends ConsumerWidget {
               onPressed: () => ref.invalidate(adminsListProvider),
             ),
             const SizedBox(width: AppTokens.s4),
-            ElevatedButton.icon(
-              onPressed: () => context.goNamed('admin-new'),
-              icon: const Icon(Icons.add),
-              label: const Text('مدير جديد'),
+            GuardedCreateButton(
+              serviceKey: 'admins',
+              label: 'مدير جديد',
+              onCreate: () => context.goNamed('admin-new'),
             ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
+        const LimitUsageBanner(serviceKey: 'admins'),
         asyncAdmins.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),

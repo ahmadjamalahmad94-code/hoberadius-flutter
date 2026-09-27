@@ -11,6 +11,8 @@ import 'package:hoberadius_app/core/auth/token_storage.dart';
 import 'package:hoberadius_app/features/notifications/application/notifications_providers.dart';
 import 'package:hoberadius_app/features/notifications/push/desktop_toast_bridge.dart';
 import 'package:hoberadius_app/features/notifications/push/push_service.dart';
+import 'package:hoberadius_app/features/provider_grants/application/provider_grants_provider.dart';
+import 'package:hoberadius_app/features/provider_grants/domain/provider_grants_model.dart';
 import 'package:hoberadius_app/features/shell/shell_scaffold.dart';
 import 'package:hoberadius_app/shared/widgets/responsive_layout.dart';
 
@@ -83,6 +85,10 @@ Future<void> _pumpShell(WidgetTester tester, Size size) async {
         unreadCountProvider.overrideWithValue(0),
         desktopToastBridgeProvider.overrideWith((ref) {}),
         pushBootstrapProvider.overrideWith((ref) {}),
+        // Avoid the live grants fetch (would leave a pending network timer);
+        // permissive = every section visible, which is what these chrome tests
+        // assert against.
+        effectiveGrantsProvider.overrideWithValue(ProviderGrants.permissive),
       ],
       child: MaterialApp.router(routerConfig: router),
     ),

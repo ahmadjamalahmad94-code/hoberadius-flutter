@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/dark_tokens.dart';
-import 'core/theme/theme_controller.dart';
 import 'core/theme/tokens.dart';
 
 class HobeRadiusApp extends ConsumerWidget {
@@ -15,13 +13,17 @@ class HobeRadiusApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final themeMode = ref.watch(themeModeProvider);
+    // Light-only by spec (RTL admin). The dark ThemeData is still
+    // half-migrated — many widgets hardcode light AppTokens colors — so a
+    // phone set to OS dark mode rendered dark-on-dark artefacts (black time
+    // picker, invisible switch labels). Force light app-wide until dark mode
+    // is fully built; there is no user-facing theme toggle yet, so this has
+    // no UX downside.
     return MaterialApp.router(
       title: 'Hobe Hub',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: themeMode,
+      themeMode: ThemeMode.light,
       routerConfig: router,
       locale: const Locale('ar'),
       supportedLocales: const [Locale('ar'), Locale('en')],
@@ -31,20 +33,15 @@ class HobeRadiusApp extends ConsumerWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       builder: (context, child) {
-        // J6.1/J6.2: route the status bar / system nav bar tint
-        // through the current theme on both iOS and Android so the
-        // OS chrome matches our brand surfaces edge-to-edge.
-        final brightness = Theme.of(context).brightness;
-        final isDark = brightness == Brightness.dark;
+        // Light-only chrome: keep the OS status/nav bars tinted to our light
+        // brand surfaces with dark icons (the app forces ThemeMode.light).
         return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
+          value: const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
-            statusBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
-            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-            systemNavigationBarColor: isDark ? DarkTokens.card : AppTokens.bg,
-            systemNavigationBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemNavigationBarColor: AppTokens.bg,
+            systemNavigationBarIconBrightness: Brightness.dark,
             systemNavigationBarDividerColor: Colors.transparent,
           ),
           child: Directionality(
