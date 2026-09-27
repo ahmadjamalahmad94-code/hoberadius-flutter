@@ -28,6 +28,7 @@ class DashboardScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'لوحة التحكم',
+          inlineActions: true,
           actions: [
             IconButton(
               tooltip: 'تحديث',
@@ -36,7 +37,7 @@ class DashboardScreen extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         async.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),
@@ -603,13 +604,14 @@ class _MetricGrid extends StatelessWidget {
           crossAxisCount: cols,
           mainAxisSpacing: AppTokens.s12,
           crossAxisSpacing: AppTokens.s12,
-          // Narrow (2-col) cells need extra height for the sub-metric line;
-          // a taller ratio prevents the compact tile Column from overflowing.
+          // Denser tiles: the compact layout (icon+label row, then value/sub)
+          // needs far less height than the old stacked one, so widen the ratio
+          // to cut the empty white space the square cells used to leave.
           childAspectRatio: c.maxWidth < 520
-              ? 1.02
+              ? 1.5
               : c.maxWidth < 760
-                  ? 1.6
-                  : 2.2,
+                  ? 1.9
+                  : 2.4,
           children: tiles,
         );
       },
@@ -694,32 +696,27 @@ class _MetricTile extends StatelessWidget {
               size: compact ? 20 : 22,
             ),
           );
-          final textBlock = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                label,
-                maxLines: compact ? 2 : 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.labelSmall.copyWith(
-                  color: primary
-                      ? Colors.white.withValues(alpha: 0.86)
-                      : p.textMuted,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.kpi.copyWith(
-                  color: pal.valueFg,
-                  fontSize: 22,
-                ),
-              ),
-              if (sub != null)
-                Text(
+          final labelWidget = Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.labelSmall.copyWith(
+              color: primary
+                  ? Colors.white.withValues(alpha: 0.86)
+                  : p.textMuted,
+            ),
+          );
+          final valueWidget = Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.kpi.copyWith(
+              color: pal.valueFg,
+              fontSize: 22,
+            ),
+          );
+          final subWidget = sub != null
+              ? Text(
                   sub!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -728,23 +725,56 @@ class _MetricTile extends StatelessWidget {
                         ? Colors.white.withValues(alpha: 0.78)
                         : p.textMuted,
                   ),
-                ),
+                )
+              : null;
+
+          // Compact (phone): icon + label share the top row, the number and
+          // details sit just below with tight spacing — no filler gap.
+          if (compact) {
+            return Padding(
+              padding: const EdgeInsets.all(AppTokens.s12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      iconBox,
+                      const SizedBox(width: AppTokens.s8),
+                      Expanded(child: labelWidget),
+                    ],
+                  ),
+                  const SizedBox(height: AppTokens.s8),
+                  valueWidget,
+                  if (subWidget != null) ...[
+                    const SizedBox(height: 2),
+                    subWidget,
+                  ],
+                ],
+              ),
+            );
+          }
+
+          final textBlock = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              labelWidget,
+              const SizedBox(height: 2),
+              valueWidget,
+              if (subWidget != null) subWidget,
             ],
           );
           return Padding(
             padding: const EdgeInsets.all(AppTokens.s12),
-            child: compact
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [iconBox, const Spacer(), textBlock],
-                  )
-                : Row(
-                    children: [
-                      iconBox,
-                      const SizedBox(width: AppTokens.s12),
-                      Expanded(child: textBlock),
-                    ],
-                  ),
+            child: Row(
+              children: [
+                iconBox,
+                const SizedBox(width: AppTokens.s12),
+                Expanded(child: textBlock),
+              ],
+            ),
           );
         },
       ),

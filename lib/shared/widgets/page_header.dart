@@ -9,12 +9,19 @@ class PageHeader extends StatelessWidget {
     this.subtitle,
     this.leading,
     this.actions = const [],
+    this.inlineActions = false,
   });
 
   final String title;
   final String? subtitle;
   final Widget? leading;
   final List<Widget> actions;
+
+  /// When true, keep the actions on the SAME row as the title even on a
+  /// compact (phone) width, placed at the opposite edge. Use only for a
+  /// small icon-button action (e.g. a refresh button) that fits beside the
+  /// title; wide/text actions still need the default stacked layout.
+  final bool inlineActions;
 
   @override
   Widget build(BuildContext context) {
@@ -77,7 +84,7 @@ class PageHeader extends StatelessWidget {
           children: actions,
         );
 
-        if (compact) {
+        if (compact && !inlineActions) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
