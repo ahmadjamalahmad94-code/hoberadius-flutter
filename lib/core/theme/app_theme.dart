@@ -153,8 +153,17 @@ class AppTheme {
       // ── Chips ───────────────────────────────────────────────
       chipTheme: ChipThemeData(
         backgroundColor: AppTokens.brandSoft,
+        // Selected chips fill with the brand colour, so their label must turn
+        // white — a fixed brandInk label vanished on the purple fill, leaving
+        // «big purple pills with no text» (owner phone review, item 3).
+        selectedColor: AppTokens.brand,
+        checkmarkColor: Colors.white,
         labelStyle: textTheme.bodySmall?.copyWith(
-          color: AppTokens.brandInk,
+          color: WidgetStateColor.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? Colors.white
+                : AppTokens.brandInk,
+          ),
           fontWeight: FontWeight.w700,
         ),
         side: const BorderSide(color: AppTokens.brandLine),
