@@ -608,10 +608,10 @@ class _MetricGrid extends StatelessWidget {
           // needs far less height than the old stacked one, so widen the ratio
           // to cut the empty white space the square cells used to leave.
           childAspectRatio: c.maxWidth < 520
-              ? 1.5
+              ? 1.3
               : c.maxWidth < 760
-                  ? 1.9
-                  : 2.4,
+                  ? 1.6
+                  : 2.2,
           children: tiles,
         );
       },
