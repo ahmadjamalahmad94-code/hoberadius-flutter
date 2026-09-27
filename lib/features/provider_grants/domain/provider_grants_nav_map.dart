@@ -17,8 +17,6 @@ const Set<String> kNeverGatedPaths = {
   '/',
   '/account',
   '/more',
-  '/license-file',
-  '/system-operations',
   '/tools',
   '/alerts/telegram',
   // the gate screens themselves

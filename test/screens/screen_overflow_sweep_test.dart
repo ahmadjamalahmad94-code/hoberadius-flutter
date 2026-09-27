@@ -61,8 +61,6 @@ import 'package:hoberadius_app/features/store_admin/presentation/store_admin_scr
 import 'package:hoberadius_app/features/subscribers/presentation/subscriber_360_screen.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/subscriber_form_screen.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/subscribers_list_screen.dart';
-import 'package:hoberadius_app/features/system_operations/presentation/license_file_screen.dart';
-import 'package:hoberadius_app/features/system_operations/presentation/system_operations_screen.dart';
 import 'package:hoberadius_app/features/tickets/presentation/ticket_detail_screen.dart';
 import 'package:hoberadius_app/features/tickets/presentation/tickets_list_screen.dart';
 import 'package:hoberadius_app/features/tools/presentation/tools_screen.dart';
@@ -145,8 +143,6 @@ final screens = <String, ScreenBuilder>{
   'backups': BackupsScreen.new,
   'bandwidth-schedules': BandwidthSchedulesScreen.new,
   'print-templates': PrintTemplatesScreen.new,
-  'system-operations': SystemOperationsScreen.new,
-  'license-file': LicenseFileScreen.new,
   'admin-control': AdminControlScreen.new,
   'tools': ToolsScreen.new,
   'more': MoreScreen.new,

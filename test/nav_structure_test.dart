@@ -4,6 +4,11 @@ import 'package:hoberadius_app/features/shell/navigation_schema.dart';
 /// Locks the Flutter nav to the web sidebar structure (docs/STRUCTURE_MAP.md,
 /// web source radius-module@main app/templates/admin/_sidebar.html). If the web
 /// changes, update both the map and this test in the same commit.
+///
+/// Deliberate divergence (owner decision 2026-09-27): the web's «التكامل
+/// والجسر» group (bridge, licence, activation) is NOT in the operator app —
+/// that lives on the web panel only. Its two operational items moved:
+/// «تنبيهات تيليجرام» -> «التشغيل والمخاطر», «الأدوات» -> «الشبكة».
 void main() {
   test('sidebar groups match the web order + labels exactly', () {
     expect(
@@ -19,7 +24,6 @@ void main() {
         'التقارير',
         'الدعم',
         'الإدارة',
-        'التكامل والجسر',
       ],
     );
   });
@@ -51,6 +55,7 @@ void main() {
         'إعداد راوتر متقدم',
         'التنبيهات الذكيّة',
         'سجل العمليات',
+        'الأدوات',
       ],
       'المال والتحصيل': [
         'المركز المالي',
@@ -61,7 +66,11 @@ void main() {
         'الكوبونات',
         'التحصيل والمدفوعات',
       ],
-      'التشغيل والمخاطر': ['التواصل والحملات', 'الأحداث والمخاطر'],
+      'التشغيل والمخاطر': [
+        'التواصل والحملات',
+        'الأحداث والمخاطر',
+        'تنبيهات تيليجرام',
+      ],
       'التقارير': ['التقرير المالي', 'تقارير التشغيل'],
       'الدعم': ['التذاكر', 'الخدمات / المعدّات', 'بوابات العملاء'],
       'الإدارة': [
@@ -74,12 +83,6 @@ void main() {
         'الأرشفة التلقائية',
         'إعدادات النظام',
         'حسابي',
-      ],
-      'التكامل والجسر': [
-        'جسر الإدارة',
-        'ترخيص النظام',
-        'تنبيهات تيليجرام',
-        'الأدوات',
       ],
     };
     for (final section in appNavSections) {

@@ -41,45 +41,6 @@ class SettingsSnapshot {
   }
 }
 
-class ApiTokenRecord {
-  const ApiTokenRecord({
-    required this.id,
-    required this.name,
-    required this.scopes,
-    required this.revoked,
-    required this.lastUsedAt,
-    required this.expiresAt,
-    required this.createdAt,
-    this.token,
-    this.tokenShownOnce = false,
-  });
-
-  final int id;
-  final String name;
-  final List<String> scopes;
-  final bool revoked;
-  final String lastUsedAt;
-  final String expiresAt;
-  final String createdAt;
-  final String? token;
-  final bool tokenShownOnce;
-
-  factory ApiTokenRecord.fromJson(Map<String, dynamic> json) {
-    final scopes = json['scopes'];
-    return ApiTokenRecord(
-      id: _int(json['id']),
-      name: _string(json['name']),
-      scopes: scopes is List ? scopes.map((e) => _string(e)).toList() : const [],
-      revoked: _bool(json['revoked']),
-      lastUsedAt: _string(json['last_used_at']),
-      expiresAt: _string(json['expires_at']),
-      createdAt: _string(json['created_at']),
-      token: json.containsKey('token') ? _string(json['token']) : null,
-      tokenShownOnce: _bool(json['token_shown_once']),
-    );
-  }
-}
-
 class TenantRecord {
   const TenantRecord({
     required this.id,
@@ -159,66 +120,6 @@ class TenantRecord {
   }
 }
 
-class WebhookConfig {
-  const WebhookConfig({
-    required this.targetUrl,
-    required this.enabledEvents,
-    required this.secretSet,
-  });
-
-  final String targetUrl;
-  final List<String> enabledEvents;
-  final bool secretSet;
-
-  factory WebhookConfig.fromJson(Map<String, dynamic> json) {
-    final events = json['enabled_events'];
-    return WebhookConfig(
-      targetUrl: _string(json['target_url']),
-      enabledEvents:
-          events is List ? events.map((item) => _string(item)).toList() : const [],
-      secretSet: _bool(json['secret_set']),
-    );
-  }
-}
-
-class WebhookDelivery {
-  const WebhookDelivery({
-    required this.id,
-    required this.event,
-    required this.eventId,
-    required this.status,
-    required this.attempts,
-    required this.lastStatusCode,
-    required this.lastResponseExcerpt,
-    required this.nextAttemptAt,
-    required this.createdAt,
-  });
-
-  final int id;
-  final String event;
-  final String eventId;
-  final String status;
-  final int attempts;
-  final int lastStatusCode;
-  final String lastResponseExcerpt;
-  final String nextAttemptAt;
-  final String createdAt;
-
-  factory WebhookDelivery.fromJson(Map<String, dynamic> json) {
-    return WebhookDelivery(
-      id: _int(json['id']),
-      event: _string(json['event']),
-      eventId: _string(json['event_id']),
-      status: _string(json['status']),
-      attempts: _int(json['attempts']),
-      lastStatusCode: _int(json['last_status_code']),
-      lastResponseExcerpt: _string(json['last_response_excerpt']),
-      nextAttemptAt: _string(json['next_attempt_at']),
-      createdAt: _string(json['created_at']),
-    );
-  }
-}
-
 Map<String, dynamic> _map(Object? value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) return value.map((key, val) => MapEntry('$key', val));
@@ -234,11 +135,6 @@ int _int(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(_string(value)) ?? 0;
-}
-
-bool _bool(Object? value) {
-  if (value is bool) return value;
-  return {'1', 'true', 'yes', 'on'}.contains(_string(value).trim().toLowerCase());
 }
 
 String _string(Object? value) => (value ?? '').toString();

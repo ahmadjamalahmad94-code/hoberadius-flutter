@@ -10,13 +10,11 @@ import 'provider_grants_nav_map.dart';
 String? providerGateRedirect(ProviderGrants? grants, String location) {
   if (grants == null) return null; // fail-open
 
-  // (1) License lifecycle lockout — block everything except the renew/activate
-  //     surfaces + license/bridge/account (so the owner can still fix it).
+  // (1) License lifecycle lockout — block everything except the lock
+  //     screens and the account page. Activation/renewal is done from the web
+  //     panel; the app no longer carries the licence/bridge screens.
   if (grants.license.blocksPanel) {
-    final allowed = location == '/license-file' ||
-        location.startsWith('/license-file/') ||
-        location == '/system-operations' ||
-        location == '/account' ||
+    final allowed = location == '/account' ||
         location == '/license-expired' ||
         location == '/license-activate';
     if (allowed) return null;

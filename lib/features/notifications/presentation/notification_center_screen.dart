@@ -119,8 +119,8 @@ bool _isKnownAppPath(String link) {
     '/subscribers', '/cards', '/card-users', '/sessions', '/plans',
     '/nas', '/revenue', '/wallets', '/invoices', '/vouchers', '/ledger',
     '/payment-collection', '/communications', '/tickets', '/events',
-    '/reports', '/operational-reports', '/backups', '/license-file',
-    '/system-operations', '/distributors', '/admins', '/audit',
+    '/reports', '/operational-reports', '/backups', '/distributors',
+    '/admins', '/audit',
   };
   for (final p in known) {
     if (link == p || link.startsWith('$p/')) return true;

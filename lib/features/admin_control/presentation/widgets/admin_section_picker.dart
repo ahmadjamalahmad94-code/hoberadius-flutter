@@ -18,9 +18,7 @@ class AdminSectionPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       (section: AdminSection.settings, icon: Icons.tune, label: 'الإعدادات'),
-      (section: AdminSection.tokens, icon: Icons.key, label: 'مفاتيح الربط'),
       (section: AdminSection.tenants, icon: Icons.business, label: 'المستأجرون'),
-      (section: AdminSection.webhooks, icon: Icons.bolt, label: 'إشعارات الويب'),
     ];
     return Wrap(
       spacing: AppTokens.s8,

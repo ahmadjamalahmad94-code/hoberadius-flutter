@@ -21,14 +21,11 @@ class LicenseExpiredScreen extends ConsumerWidget {
       icon: Icons.lock_clock_outlined,
       title: 'الترخيص منتهي',
       message: expiry == null
-          ? 'انتهت صلاحية ترخيص النسخة. جدّد الاشتراك مع المزوّد لاستعادة الوصول الكامل للوحة.'
-          : 'انتهت صلاحية ترخيص النسخة بتاريخ $expiry. جدّد الاشتراك مع المزوّد لاستعادة الوصول الكامل للوحة.',
-      primaryLabel: 'تجديد الترخيص',
-      primaryIcon: Icons.autorenew,
-      onPrimary: () => context.goNamed('license-file'),
-      secondaryLabel: 'إعادة المحاولة',
-      onSecondary: () =>
-          ref.read(providerGrantsProvider.notifier).refresh(),
+          ? 'انتهت صلاحية ترخيص النسخة. جدّد الاشتراك من لوحة الويب أو مع المزوّد، ثم أعد المحاولة.'
+          : 'انتهت صلاحية ترخيص النسخة بتاريخ $expiry. جدّد الاشتراك من لوحة الويب أو مع المزوّد، ثم أعد المحاولة.',
+      primaryLabel: 'إعادة المحاولة',
+      primaryIcon: Icons.refresh,
+      onPrimary: () => ref.read(providerGrantsProvider.notifier).refresh(),
     );
   }
 }
@@ -44,13 +41,10 @@ class LicenseActivateScreen extends ConsumerWidget {
       icon: Icons.verified_user_outlined,
       title: 'فعّل الترخيص',
       message:
-          'لم يتم تفعيل هذه النسخة بعد. اربط النظام بلوحة المزوّد وفعّل الترخيص للبدء في استخدام اللوحة.',
-      primaryLabel: 'تفعيل النسخة',
-      primaryIcon: Icons.link,
-      onPrimary: () => context.goNamed('license-file'),
-      secondaryLabel: 'إعادة المحاولة',
-      onSecondary: () =>
-          ref.read(providerGrantsProvider.notifier).refresh(),
+          'لم يتم تفعيل هذه النسخة بعد. فعّل الترخيص من لوحة الويب، ثم أعد المحاولة.',
+      primaryLabel: 'إعادة المحاولة',
+      primaryIcon: Icons.refresh,
+      onPrimary: () => ref.read(providerGrantsProvider.notifier).refresh(),
     );
   }
 }

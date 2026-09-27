@@ -5,7 +5,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/status_pill.dart';
 
 /// Section enum shared between the picker and the screen-level switch.
-enum AdminSection { settings, tokens, tenants, webhooks }
+enum AdminSection { settings, tenants }
 
 /// Compact ListView.separated used by every panel as the scrollable
 /// body of an [AppCard] — wraps the same shrink-wrap + dividers

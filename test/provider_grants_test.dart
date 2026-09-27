@@ -91,8 +91,6 @@ void main() {
 
     test('never-gated + unmapped return null', () {
       expect(serviceKeyForLocation('/'), isNull);
-      expect(serviceKeyForLocation('/license-file'), isNull);
-      expect(serviceKeyForLocation('/system-operations'), isNull);
       expect(serviceKeyForLocation('/account'), isNull);
       expect(serviceKeyForLocation('/tools'), isNull);
     });
@@ -124,14 +122,15 @@ void main() {
       );
     });
 
-    test('expired license blocks all but license/bridge/account', () {
+    test('expired license blocks all but the lock screens and account', () {
       final g = ProviderGrants.fromJson(
         samplePayload(licenseState: 'expired', blocksPanel: true),
       );
       expect(providerGateRedirect(g, '/'), '/license-expired');
       expect(providerGateRedirect(g, '/subscribers'), '/license-expired');
-      expect(providerGateRedirect(g, '/license-file'), isNull);
-      expect(providerGateRedirect(g, '/system-operations'), isNull);
+      // licence/bridge screens are gone from the app — never an escape hatch
+      expect(providerGateRedirect(g, '/license-file'), '/license-expired');
+      expect(providerGateRedirect(g, '/system-operations'), '/license-expired');
       expect(providerGateRedirect(g, '/account'), isNull);
       expect(providerGateRedirect(g, '/license-expired'), isNull);
     });

@@ -984,15 +984,13 @@ class _SystemHealth extends StatelessWidget {
   const _SystemHealth({required this.metrics});
   final DashboardMetrics metrics;
 
-  List<_StatItem> _healthItems(BuildContext context, AppPalette p) {
-    void open() => context.goNamed('system-operations');
+  List<_StatItem> _healthItems(AppPalette p) {
     _StatItem status(String label, bool ok, String yes, String no) => _StatItem(
           icon: ok ? Icons.check_circle : Icons.cancel,
           label: label,
           value: ok ? yes : no,
           bg: ok ? p.successBg : p.dangerBg,
           fg: ok ? p.successStrong : p.dangerStrong,
-          onTap: open,
         );
     _StatItem info(IconData icon, String label, String value) => _StatItem(
           icon: icon,
@@ -1000,7 +998,6 @@ class _SystemHealth extends StatelessWidget {
           value: value,
           bg: p.surfaceTinted,
           fg: p.brand,
-          onTap: open,
         );
     return [
       if (metrics.dbOk != null)
@@ -1042,7 +1039,7 @@ class _SystemHealth extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppTokens.s12),
-          _StatGrid(items: _healthItems(context, AppPalette.of(context))),
+          _StatGrid(items: _healthItems(AppPalette.of(context))),
         ],
       ),
     );

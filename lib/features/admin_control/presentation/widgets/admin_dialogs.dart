@@ -63,28 +63,6 @@ Future<bool> showAdminConfirm(
       false;
 }
 
-/// "Show this once" dialog used after a fresh API token is generated —
-/// the secret value is never returned by list endpoints, so the
-/// operator must copy it here or lose it.
-Future<void> showAdminTokenDialog(
-  BuildContext context,
-  String? tokenValue,
-) {
-  return showDialog<void>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('انسخ المفتاح الآن'),
-      content: SelectableText(tokenValue ?? ''),
-      actions: [
-        ElevatedButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('تم'),
-        ),
-      ],
-    ),
-  );
-}
-
 /// Create / edit-tenant dialog. Resolves with the built [TenantRecord]
 /// on save, `null` on cancel. When [existing] is provided, the slug
 /// field is read-only and identity-preserving fields (currency,

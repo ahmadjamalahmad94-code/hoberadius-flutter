@@ -27,21 +27,16 @@ void main() {
     expect(source, isNot(contains('atGallery')));
   });
 
-  test('license file route opens its dedicated operational screen', () {
+  test('licence/bridge/integration screens are not part of the app', () {
+    // Owner decision: activation, licence and bridge live on the web panel
+    // only; the operator app never routes to them.
     final source = File('lib/core/router/app_router.dart').readAsStringSync();
 
-    expect(source, contains('LicenseFileScreen'));
-    expect(source, contains("path: '/license-file'"));
-    expect(
-      source,
-      isNot(
-        contains(
-          "path: '/license-file',\n"
-          "            name: 'license-file',\n"
-          "            builder: (ctx, st) => const SystemOperationsScreen(),",
-        ),
-      ),
-    );
+    expect(source, isNot(contains("path: '/license-file'")));
+    expect(source, isNot(contains("path: '/system-operations'")));
+    expect(source, isNot(contains('LicenseFileScreen')));
+    expect(source, isNot(contains('SystemOperationsScreen')));
+    expect(Directory('lib/features/system_operations').existsSync(), isFalse);
   });
 
   test('operator-facing copy avoids old English fallback labels', () {

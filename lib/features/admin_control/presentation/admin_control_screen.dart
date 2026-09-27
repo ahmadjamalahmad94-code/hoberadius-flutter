@@ -10,10 +10,8 @@ import 'widgets/admin_section_common.dart';
 import 'widgets/admin_section_picker.dart';
 import 'widgets/settings_panel.dart';
 import 'widgets/tenants_panel.dart';
-import 'widgets/tokens_panel.dart';
-import 'widgets/webhooks_panel.dart';
 
-/// Admin Control entry — wires the section picker to four panels and
+/// Admin Control entry — wires the section picker to its panels and
 /// delegates every async action to [adminControlControllerProvider].
 class AdminControlScreen extends ConsumerStatefulWidget {
   const AdminControlScreen({super.key});
@@ -24,7 +22,6 @@ class AdminControlScreen extends ConsumerStatefulWidget {
 
 class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
   AdminSection _section = AdminSection.settings;
-  String _deliveryStatus = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +33,13 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
         PageHeader(
           title: 'التحكم الإداري',
           subtitle:
-              'إعدادات النظام، مفاتيح الربط، المستأجرون، وسجل إشعارات الويب عبر ربط فعلي.',
+              'إعدادات النظام والمستأجرون.',
           actions: [
             IconButton(
               tooltip: 'تحديث',
               onPressed: () => ref
                   .read(adminControlControllerProvider.notifier)
-                  .refreshAll(_deliveryStatus),
+                  .refreshAll(),
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],
@@ -55,22 +52,9 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
         const SizedBox(height: AppTokens.s12),
         switch (_section) {
           AdminSection.settings => SettingsPanel(onEdit: _editSetting),
-          AdminSection.tokens => TokensPanel(
-              onCreate: _createToken,
-              onRevoke: _revokeToken,
-              busy: busy,
-            ),
           AdminSection.tenants => TenantsPanel(
               onCreate: _createTenant,
               onEdit: _editTenant,
-              busy: busy,
-            ),
-          AdminSection.webhooks => WebhooksPanel(
-              selectedStatus: _deliveryStatus,
-              onStatusChanged: (value) =>
-                  setState(() => _deliveryStatus = value),
-              onSaveConfig: _saveWebhookConfig,
-              onTest: _testWebhook,
               busy: busy,
             ),
         },
@@ -116,38 +100,6 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
     _afterAction(result.error, 'تم حفظ الإعداد');
   }
 
-  Future<void> _createToken() async {
-    final name = await showAdminTextDialog(
-      context,
-      title: 'مفتاح ربط جديد',
-      label: 'اسم المفتاح',
-      initial: 'ربط-التطبيق',
-    );
-    if (!mounted || name == null || name.trim().isEmpty) return;
-    final result = await ref
-        .read(adminControlControllerProvider.notifier)
-        .createToken(name.trim());
-    if (!mounted) return;
-    if (result.token != null) {
-      await showAdminTokenDialog(context, result.token!.token);
-    } else if (result.error != null) {
-      _snack(result.error!);
-    }
-  }
-
-  Future<void> _revokeToken(ApiTokenRecord token) async {
-    final ok = await showAdminConfirm(
-      context,
-      title: 'إلغاء المفتاح',
-      body: 'سيتم إلغاء مفتاح ${token.name}. لن يستطيع استخدام واجهة الربط بعد ذلك.',
-    );
-    if (!mounted || !ok) return;
-    final result = await ref
-        .read(adminControlControllerProvider.notifier)
-        .revokeToken(token.id);
-    _afterAction(result.error, 'تم إلغاء المفتاح');
-  }
-
   Future<void> _createTenant() async {
     final tenant = await showAdminTenantDialog(context);
     if (!mounted || tenant == null) return;
@@ -164,28 +116,6 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
         .read(adminControlControllerProvider.notifier)
         .updateTenant(updated);
     _afterAction(result.error, 'تم تحديث المستأجر');
-  }
-
-  Future<void> _saveWebhookConfig({
-    required String targetUrl,
-    required String secret,
-    required List<String> events,
-  }) async {
-    final result = await ref
-        .read(adminControlControllerProvider.notifier)
-        .saveWebhookConfig(
-          targetUrl: targetUrl,
-          secret: secret,
-          events: events,
-        );
-    _afterAction(result.error, 'تم حفظ إعدادات إشعارات الويب');
-  }
-
-  Future<void> _testWebhook() async {
-    final result = await ref
-        .read(adminControlControllerProvider.notifier)
-        .testWebhook(_deliveryStatus);
-    _afterAction(result.error, 'تم إرسال حدث اختبار');
   }
 
   void _afterAction(String? error, String successMessage) {

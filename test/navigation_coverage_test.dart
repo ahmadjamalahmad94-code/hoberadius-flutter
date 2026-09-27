@@ -23,7 +23,6 @@ void main() {
 
     final criticalRoutes = {
       'account': '/account',
-      'license-file': '/license-file',
       'audit': '/audit',
       'payment-collection': '/payment-collection',
       'invoices': '/invoices',
@@ -153,9 +152,14 @@ void main() {
       mobileNavDestinations.map((item) => item.label),
       contains('البطاقات'),
     );
+    // The integration/bridge section was removed from the operator app.
     expect(
       appNavSections.map((section) => section.label),
-      contains('التكامل والجسر'),
+      isNot(contains('التكامل والجسر')),
+    );
+    expect(
+      appNavigationItems.map((item) => item.path),
+      isNot(anyOf(contains('/license-file'), contains('/system-operations'))),
     );
     expect(
       appNavSections.map((section) => section.label),
