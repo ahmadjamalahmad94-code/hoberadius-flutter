@@ -88,13 +88,23 @@ jobs:
           grep -q 'usesCleartextTraffic' "$MANIFEST" || \
             sed -i 's|<application|<application android:usesCleartextTraffic="true"|' "$MANIFEST"
 
-      - name: Generate debug keystore (release is debug-signed → installable)
+      - name: Restore the fixed app signing key (same key every build)
+        # A new random key per build made every release refuse to install over
+        # the previous one (different signature) -> uninstall -> saved server
+        # address + login wiped. The key lives in ANDROID_DEBUG_KEYSTORE_B64;
+        # backup on the host at /root/hoberadius-app-signing/.
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
         run: |
+          set -euo pipefail
           mkdir -p ~/.android
-          [ -f ~/.android/debug.keystore ] || keytool -genkeypair -v \
-            -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
-            -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Android Debug,O=Android,C=US"
+          if [ -n "${KEYSTORE_B64:-}" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "fixed signing key restored"
+          else
+            echo "::warning::ANDROID_DEBUG_KEYSTORE_B64 missing - generating a throwaway key (installs will need an uninstall)"
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android               -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048               -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
 
       - name: Patch stale-plugin + app compileSdk to 36 (mirrors build.yml)
         run: |
