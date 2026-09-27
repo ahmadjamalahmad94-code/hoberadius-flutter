@@ -98,6 +98,19 @@ class PageHeader extends StatelessWidget {
           );
         }
 
+        // Compact + inlineActions: keep the actions on the title's row, pinned
+        // to the opposite edge and vertically centered on the title line.
+        if (compact && inlineActions) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(child: titleBlock),
+              const SizedBox(width: AppTokens.s8),
+              ...actions,
+            ],
+          );
+        }
+
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
