@@ -49,24 +49,32 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Shorebird (bundles its own Flutter)
+      - name: Set up Shorebird (bundles its own Flutter for release/patch)
         uses: shorebirdtech/setup-shorebird@v1
         with:
           cache: true
 
-      - name: Shorebird version
-        run: shorebird --version
+      - name: Set up Flutter (standalone, for pub/analyze/test/scaffold)
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.44.1"
+
+      - name: Versions
+        run: |
+          shorebird --version
+          flutter --version
 
       - name: Install dependencies
-        run: shorebird flutter pub get
+        run: flutter pub get
 
       - name: Analyze + test (same gate as build.yml)
         run: |
-          shorebird flutter analyze --no-fatal-infos
-          shorebird flutter test --exclude-tags "golden || render"
+          flutter analyze --no-fatal-infos
+          flutter test --exclude-tags "golden || render"
 
       - name: Scaffold Android platform (android/ is gitignored)
-        run: shorebird flutter create --platforms=android --org com.hoberadius .
+        run: flutter create --platforms=android --org com.hoberadius .
 
       - name: Configure Firebase + Android build (google-services, plugin, perms)
         run: bash tool/configure_android.sh
