@@ -217,13 +217,13 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 FormFieldRow(
                   label: 'العدد',
                   required: true,
-                  hint: 'بين 1 و 2000',
+                  hint: 'العدد المطلوب (1 فأكثر)',
                   child: TextFormField(
                     controller: _count,
                     keyboardType: TextInputType.number,
                     validator: (v) {
                       final n = int.tryParse(v?.trim() ?? '');
-                      if (n == null || n < 1 || n > 2000) return 'بين 1 و 2000';
+                      if (n == null || n < 1) return 'أدخل عددًا صحيحًا (1 فأكثر)';
                       return null;
                     },
                   ),

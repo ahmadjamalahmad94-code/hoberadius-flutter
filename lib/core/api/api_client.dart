@@ -204,27 +204,17 @@ class ApiClient {
     final data = res.data;
     final status = res.statusCode ?? 200;
     if (data is Map<String, dynamic>) {
-      if (status >= 400) {
-        final code =
-            (data['error']?['code'] ?? _statusCodeToError(status)).toString();
-        final rawMessage =
-            (data['error']?['message'] ?? 'تعذّر تنفيذ الطلب').toString();
+      if (status >= 400 || data['ok'] == false) {
+        final err = _errorFields(data['error']);
+        final code = (err['code'] ??
+                (status >= 400 ? _statusCodeToError(status) : 'error'))
+            .toString();
+        final rawMessage = (err['message'] ?? 'تعذّر تنفيذ الطلب').toString();
         throw ApiException(
           code: code,
           message: _apiErrorMessage(code, rawMessage),
           status: status,
-          details: data['error']?['details'],
-        );
-      }
-      if (data['ok'] == false) {
-        final code = (data['error']?['code'] ?? 'error').toString();
-        final rawMessage =
-            (data['error']?['message'] ?? 'تعذّر تنفيذ الطلب').toString();
-        throw ApiException(
-          code: code,
-          message: _apiErrorMessage(code, rawMessage),
-          status: status,
-          details: data['error']?['details'],
+          details: err['details'],
         );
       }
       return data;
@@ -238,6 +228,20 @@ class ApiClient {
       );
     }
     return {'ok': true, 'data': data};
+  }
+
+  /// The API envelope puts `{code, message, details}` under `error`, but a
+  /// few framework-level failures (413 body-too-large, some proxies) send a
+  /// flat `{"ok":false,"status":"too_large","error":"<text>"}` instead.
+  /// Normalise both to one map so the caller never crashes on a String.
+  static Map<String, dynamic> _errorFields(dynamic error) {
+    if (error is Map) {
+      return error.map((k, v) => MapEntry(k.toString(), v));
+    }
+    if (error is String && error.isNotEmpty) {
+      return {'message': error};
+    }
+    return const {};
   }
 
   bool _isIdempotent(String method) {

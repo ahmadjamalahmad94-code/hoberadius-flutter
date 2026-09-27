@@ -51,7 +51,6 @@ class _CaptureAdapter implements HttpClientAdapter {
           'count': 1,
           'modes': [
             {'key': 'self_api', 'label': 'ربط مباشر من العميل'},
-            {'key': 'admin_quota', 'label': 'رصيد مخصص من الإدارة'},
           ],
           'methods': ['GET', 'POST'],
         },
@@ -59,18 +58,8 @@ class _CaptureAdapter implements HttpClientAdapter {
           'channel': _channelPayload(
             enabled: true,
             active: true,
-            mode: 'admin_quota',
           ),
           'saved_config': {'ok': true},
-        },
-      'GET /api/v1/communications/quota' => {
-          'items': [_quotaPayload()],
-          'count': 1,
-        },
-      'POST /api/v1/communications/quota/sms/credit' => {
-          'quota': _quotaPayload(balance: 250),
-          'balance_after': 250,
-          'message': 'تمت إضافة 100 رسالة إلى رصيد الرسائل القصيرة.',
         },
       'GET /api/v1/whatsapp' => {
           'status': {
@@ -136,39 +125,19 @@ class _CaptureAdapter implements HttpClientAdapter {
       'enabled': enabled,
       'active': active,
       'mode': mode,
-      'mode_label': mode == 'admin_quota'
-          ? 'رصيد مخصص من الإدارة'
-          : 'ربط مباشر من العميل',
+      'mode_label': 'ربط مباشر من العميل',
       'config': {
         'send_url_template':
             'https://provider.example/send?to={phone}&text={msg}',
         'http_method': 'POST',
         'balance_url': 'https://provider.example/balance',
       },
-      'quota': {
-        'balance': 150,
-        'used': 12,
-        'is_quota_mode': mode == 'admin_quota',
-      },
-    };
-  }
-
-  Map<String, dynamic> _quotaPayload({int balance = 150}) {
-    return {
-      'channel': 'sms',
-      'label': 'الرسائل القصيرة',
-      'mode': 'admin_quota',
-      'mode_label': 'رصيد مخصص من الإدارة',
-      'balance': balance,
-      'used': 12,
-      'is_quota_mode': true,
-      'ledger': [],
     };
   }
 }
 
 void main() {
-  test('CommunicationsRepository uses channel and quota API contracts',
+  test('CommunicationsRepository uses channel and whatsapp API contracts',
       () async {
     final client = ApiClient(_MemoryTokenStorage(), _MemoryEndpointStorage());
     final adapter = _CaptureAdapter();
@@ -180,17 +149,11 @@ void main() {
       const CommunicationChannelDraft(
         channel: 'sms',
         enabled: true,
-        mode: 'admin_quota',
+        mode: 'self_api',
         sendUrlTemplate: 'https://provider.example/send?to={phone}&text={msg}',
         httpMethod: 'POST',
         balanceUrl: 'https://provider.example/balance',
       ),
-    );
-    final quota = await repo.quota();
-    final credit = await repo.creditQuota(
-      channel: 'sms',
-      amount: 100,
-      note: 'دفعة شهرية',
     );
     final whatsapp = await repo.whatsappBridge();
     final whatsappSaved = await repo.saveWhatsappToggles({'otp': true});
@@ -203,8 +166,6 @@ void main() {
 
     expect(channels.items.single.label, 'الرسائل القصيرة');
     expect(saved.active, isTrue);
-    expect(quota.items.single.balance, 150);
-    expect(credit.balanceAfter, 250);
     expect(whatsapp.status.connected, isTrue);
     expect(whatsappSaved.events.single.enabled, isTrue);
     expect(whatsappTest, contains('لوحة التراخيص'));
@@ -214,8 +175,6 @@ void main() {
       [
         'GET /api/v1/communications/channels',
         'POST /api/v1/communications/channels/sms',
-        'GET /api/v1/communications/quota',
-        'POST /api/v1/communications/quota/sms/credit',
         'GET /api/v1/whatsapp',
         'PATCH /api/v1/whatsapp/settings',
         'POST /api/v1/whatsapp/test',
@@ -224,23 +183,19 @@ void main() {
     );
     expect(adapter.requests[1].data, {
       'enabled': true,
-      'mode': 'admin_quota',
+      'mode': 'self_api',
       'send_url_template':
           'https://provider.example/send?to={phone}&text={msg}',
       'http_method': 'POST',
       'balance_url': 'https://provider.example/balance',
     });
     expect(adapter.requests[3].data, {
-      'amount': 100,
-      'note': 'دفعة شهرية',
-    });
-    expect(adapter.requests[5].data, {
       'toggles': {'otp': true},
     });
-    expect(adapter.requests[6].data, {
+    expect(adapter.requests[4].data, {
       'recipient_phone': '+970599000000',
     });
-    expect(adapter.requests[7].data, {
+    expect(adapter.requests[5].data, {
       'recipient_phone': '+970599000000',
       'template_name': 'hello_world',
       'language': 'ar',

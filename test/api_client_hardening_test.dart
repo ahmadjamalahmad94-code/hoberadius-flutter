@@ -283,4 +283,28 @@ void main() {
     );
     expect(adapter.calls, 1);
   });
+
+  test('flat 413 envelope (error is a String) becomes an ApiException, not a crash',
+      () async {
+    final adapter = _ScriptedAdapter([
+      const _Step(
+        status: 413,
+        body: {
+          'ok': false,
+          'status': 'too_large',
+          'error': 'حجم الطلب يتجاوز الحدّ المسموح',
+        },
+      ),
+    ]);
+    final client = _client(adapter);
+
+    await expectLater(
+      client.post('/api/v1/print-templates/1/export.pdf', body: {}),
+      throwsA(
+        isA<ApiException>()
+            .having((e) => e.status, 'status', 413)
+            .having((e) => e.message, 'message', contains('حجم')),
+      ),
+    );
+  });
 }

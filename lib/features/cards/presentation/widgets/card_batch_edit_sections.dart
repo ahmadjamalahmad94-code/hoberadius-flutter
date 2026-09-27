@@ -55,8 +55,8 @@ class CardBatchCoreSection extends StatelessWidget {
               keyboardType: TextInputType.number,
               validator: (v) {
                 final n = int.tryParse(v?.trim() ?? '');
-                if (n == null || n < minCount || n > 2000) {
-                  return 'بين $minCount و 2000';
+                if (n == null || n < minCount) {
+                  return 'لا يقلّ عن $minCount';
                 }
                 return null;
               },

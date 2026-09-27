@@ -80,7 +80,7 @@ class SystemOperationsRepository {
   }
 
   Future<Map<String, dynamic>> usageReport() async {
-    final res = await _api.get('/api/v1/system/admin-bridge/usage-report');
+    final res = await _api.post('/api/v1/system/admin-bridge/usage-report');
     return _data(res);
   }
 

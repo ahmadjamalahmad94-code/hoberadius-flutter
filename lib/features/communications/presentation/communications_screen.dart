@@ -49,7 +49,6 @@ class CommunicationsScreen extends ConsumerWidget {
           'deliveries' => const _DeliveriesPanel(),
           'channels' => const _ChannelsPanel(),
           'whatsapp' => const _WhatsappBridgePanel(),
-          'quota' => const _QuotaPanel(),
           _ => const _OverviewPanel(),
         },
       ],
@@ -73,7 +72,6 @@ class _TabBar extends ConsumerWidget {
       ('deliveries', 'سجل الإرسال', Icons.local_shipping_outlined),
       ('channels', 'قنوات الإرسال', Icons.settings_input_antenna),
       ('whatsapp', 'واتساب الرسمي', Icons.mark_chat_read_outlined),
-      ('quota', 'الرصيد والحزم', Icons.account_balance_wallet_outlined),
     ];
     return AppCard(
       child: Wrap(
@@ -777,10 +775,6 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
               key: 'self_api',
               label: 'ربط مباشر من العميل',
             ),
-            CommunicationModeOption(
-              key: 'admin_quota',
-              label: 'رصيد مخصص من الإدارة',
-            ),
           ]
         : widget.modes;
     if (!modeOptions.any((item) => item.key == _mode)) {
@@ -809,16 +803,8 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
               ),
               StatusPill(
                 text: widget.item.modeLabel,
-                tone: widget.item.quota.isQuotaMode
-                    ? PillTone.amber
-                    : PillTone.blue,
-                icon: widget.item.quota.isQuotaMode
-                    ? Icons.account_balance_wallet_outlined
-                    : Icons.link_outlined,
-              ),
-              StatusPill(
-                text: 'الرصيد ${widget.item.quota.balance}',
-                tone: PillTone.neutral,
+                tone: PillTone.blue,
+                icon: Icons.link_outlined,
               ),
             ],
           ),
@@ -922,7 +908,6 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
           );
       _refresh(ref);
       ref.invalidate(communicationChannelsProvider);
-      ref.invalidate(communicationQuotaProvider);
       if (mounted) _snack(context, 'تم حفظ إعدادات ${widget.item.label}');
     } catch (error) {
       if (mounted) _snack(context, visibleErrorMessage(error));
@@ -1310,235 +1295,6 @@ class _WhatsappTestCardState extends ConsumerState<_WhatsappTestCard> {
       if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {
       if (mounted) setState(() => _sending = false);
-    }
-  }
-}
-
-class _QuotaPanel extends ConsumerWidget {
-  const _QuotaPanel();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final page = ref.watch(communicationQuotaProvider);
-    return page.when(
-      loading: () => const _Loading(),
-      error: (error, _) => HubErrorState(
-        title: 'تعذر تحميل رصيد الرسائل',
-        subtitle: visibleErrorMessage(error),
-        onRetry: () => ref.invalidate(communicationQuotaProvider),
-      ),
-      data: (data) {
-        if (data.items.isEmpty) {
-          return const EmptyState(
-            icon: Icons.account_balance_wallet_outlined,
-            title: 'لا يوجد رصيد رسائل',
-            subtitle:
-                'القنوات التي تعمل بنظام رصيد الإدارة ستظهر هنا لمتابعة الاستهلاك وإضافة رصيد.',
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (final item in data.items) ...[
-              _QuotaCard(item: item),
-              const SizedBox(height: AppTokens.s12),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _QuotaCard extends ConsumerStatefulWidget {
-  const _QuotaCard({required this.item});
-
-  final CommunicationQuotaStatus item;
-
-  @override
-  ConsumerState<_QuotaCard> createState() => _QuotaCardState();
-}
-
-class _QuotaCardState extends ConsumerState<_QuotaCard> {
-  final _amount = TextEditingController();
-  final _note = TextEditingController();
-  bool _saving = false;
-
-  @override
-  void dispose() {
-    _amount.dispose();
-    _note.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      title: widget.item.label,
-      icon: Icons.account_balance_wallet_outlined,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              StatusPill(
-                text: widget.item.modeLabel,
-                tone: widget.item.isQuotaMode ? PillTone.amber : PillTone.blue,
-                icon: widget.item.isQuotaMode
-                    ? Icons.account_balance_wallet_outlined
-                    : Icons.link_outlined,
-              ),
-              StatusPill(
-                text: 'المتوفر ${widget.item.balance}',
-                tone: PillTone.green,
-                dot: true,
-              ),
-              StatusPill(
-                text: 'المستخدم ${widget.item.used}',
-                tone: PillTone.neutral,
-              ),
-            ],
-          ),
-          const SizedBox(height: AppTokens.s12),
-          if (widget.item.isQuotaMode) ...[
-            const Text(
-              'هذه القناة تستخدم رصيدًا مخصصًا من الإدارة. أضف عدد الرسائل المتفق عليه بعد الدفع أو الموافقة.',
-              style: TextStyle(color: AppTokens.textMuted, height: 1.35),
-            ),
-            const SizedBox(height: AppTokens.s12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= 760;
-                final amountField = TextField(
-                  controller: _amount,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'عدد الرسائل',
-                    hintText: '100',
-                  ),
-                );
-                final noteField = TextField(
-                  controller: _note,
-                  decoration: const InputDecoration(
-                    labelText: 'ملاحظة داخلية',
-                    hintText: 'مثال: دفعة شهرية أو تجربة مجانية',
-                  ),
-                );
-                final button = FilledButton.icon(
-                  onPressed: _saving ? null : _credit,
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: Text(_saving ? 'جار الإضافة' : 'إضافة رصيد'),
-                );
-                if (!wide) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      amountField,
-                      const SizedBox(height: AppTokens.s12),
-                      noteField,
-                      const SizedBox(height: AppTokens.s12),
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: button,
-                      ),
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    SizedBox(width: 170, child: amountField),
-                    const SizedBox(width: AppTokens.s12),
-                    Expanded(child: noteField),
-                    const SizedBox(width: AppTokens.s12),
-                    button,
-                  ],
-                );
-              },
-            ),
-          ] else
-            const Text(
-              'هذه القناة تعمل بربط مباشر من العميل ولا تستهلك رصيدًا محليًا من الإدارة.',
-              style: TextStyle(color: AppTokens.textMuted, height: 1.35),
-            ),
-          const Divider(height: AppTokens.s24),
-          Text(
-            'آخر الحركات',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
-          ),
-          const SizedBox(height: AppTokens.s8),
-          if (widget.item.ledger.isEmpty)
-            const Text(
-              'لا توجد حركات رصيد بعد.',
-              style: TextStyle(color: AppTokens.textMuted),
-            )
-          else
-            for (final entry in widget.item.ledger.take(6))
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  backgroundColor: entry.delta >= 0
-                      ? AppTokens.greenSoft
-                      : AppTokens.redSoft,
-                  child: Icon(
-                    entry.delta >= 0
-                        ? Icons.add_outlined
-                        : Icons.remove_outlined,
-                    color: entry.delta >= 0
-                        ? AppTokens.greenInk
-                        : AppTokens.redInk,
-                  ),
-                ),
-                title: Text(
-                  '${entry.delta >= 0 ? '+' : ''}${entry.delta} رسالة',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  [
-                    if (entry.note.isNotEmpty) entry.note,
-                    'الرصيد بعد الحركة ${entry.balanceAfter}',
-                    entry.tsLabel,
-                  ].join(' · '),
-                ),
-              ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _credit() async {
-    final amount = int.tryParse(_amount.text.trim()) ?? 0;
-    if (amount <= 0) {
-      _snack(context, 'أدخل عدد رسائل صحيحًا أكبر من صفر');
-      return;
-    }
-    setState(() => _saving = true);
-    try {
-      final result =
-          await ref.read(communicationsRepositoryProvider).creditQuota(
-                channel: widget.item.channel,
-                amount: amount,
-                note: _note.text.trim(),
-              );
-      ref.invalidate(communicationQuotaProvider);
-      ref.invalidate(communicationChannelsProvider);
-      ref.invalidate(communicationsHomeProvider);
-      _amount.clear();
-      _note.clear();
-      if (mounted) {
-        _snack(
-          context,
-          result.message.isEmpty ? 'تمت إضافة الرصيد' : result.message,
-        );
-      }
-    } catch (error) {
-      if (mounted) _snack(context, visibleErrorMessage(error));
-    } finally {
-      if (mounted) setState(() => _saving = false);
     }
   }
 }
@@ -2004,7 +1760,6 @@ void _refresh(WidgetRef ref) {
   ref.invalidate(audienceSegmentsProvider);
   ref.invalidate(messageDeliveriesProvider);
   ref.invalidate(communicationChannelsProvider);
-  ref.invalidate(communicationQuotaProvider);
   ref.invalidate(whatsappBridgeProvider);
   ref.invalidate(campaignsProvider);
 }

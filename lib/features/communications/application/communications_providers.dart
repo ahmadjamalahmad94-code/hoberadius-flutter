@@ -30,11 +30,6 @@ final communicationChannelsProvider =
   return ref.watch(communicationsRepositoryProvider).channels();
 });
 
-final communicationQuotaProvider =
-    FutureProvider.autoDispose<CommunicationQuotaPage>((ref) {
-  return ref.watch(communicationsRepositoryProvider).quota();
-});
-
 final whatsappBridgeProvider =
     FutureProvider.autoDispose<WhatsappBridgeState>((ref) {
   return ref.watch(communicationsRepositoryProvider).whatsappBridge();

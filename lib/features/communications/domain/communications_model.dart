@@ -355,7 +355,6 @@ class CommunicationChannel {
     required this.mode,
     required this.modeLabel,
     required this.config,
-    required this.quota,
   });
 
   final String channel;
@@ -365,7 +364,6 @@ class CommunicationChannel {
   final String mode;
   final String modeLabel;
   final CommunicationChannelConfig config;
-  final CommunicationChannelQuotaSummary quota;
 
   factory CommunicationChannel.fromJson(Map<String, dynamic> json) {
     final channel = _string(json['channel']);
@@ -383,7 +381,6 @@ class CommunicationChannel {
         fallback: communicationModeLabel(_string(json['mode'])),
       ),
       config: CommunicationChannelConfig.fromJson(_map(json['config'])),
-      quota: CommunicationChannelQuotaSummary.fromJson(_map(json['quota'])),
     );
   }
 
@@ -410,26 +407,6 @@ class CommunicationChannelConfig {
       sendUrlTemplate: _string(json['send_url_template']),
       httpMethod: _string(json['http_method'], fallback: 'GET').toUpperCase(),
       balanceUrl: _string(json['balance_url']),
-    );
-  }
-}
-
-class CommunicationChannelQuotaSummary {
-  const CommunicationChannelQuotaSummary({
-    required this.balance,
-    required this.used,
-    required this.isQuotaMode,
-  });
-
-  final int balance;
-  final int used;
-  final bool isQuotaMode;
-
-  factory CommunicationChannelQuotaSummary.fromJson(Map<String, dynamic> json) {
-    return CommunicationChannelQuotaSummary(
-      balance: _int(json['balance']),
-      used: _int(json['used']),
-      isQuotaMode: _bool(json['is_quota_mode']),
     );
   }
 }
@@ -473,111 +450,6 @@ class CommunicationChannelDraft {
         'http_method': httpMethod.toUpperCase(),
         'balance_url': balanceUrl,
       };
-}
-
-class CommunicationQuotaPage {
-  const CommunicationQuotaPage({required this.items, required this.count});
-
-  final List<CommunicationQuotaStatus> items;
-  final int count;
-
-  factory CommunicationQuotaPage.fromJson(Map<String, dynamic> json) {
-    final data = _data(json);
-    final items = _list(data['items'])
-        .map((item) => CommunicationQuotaStatus.fromJson(_map(item)))
-        .toList();
-    return CommunicationQuotaPage(items: items, count: _int(data['count']));
-  }
-}
-
-class CommunicationQuotaStatus {
-  const CommunicationQuotaStatus({
-    required this.channel,
-    required this.label,
-    required this.mode,
-    required this.modeLabel,
-    required this.balance,
-    required this.used,
-    required this.isQuotaMode,
-    required this.ledger,
-  });
-
-  final String channel;
-  final String label;
-  final String mode;
-  final String modeLabel;
-  final int balance;
-  final int used;
-  final bool isQuotaMode;
-  final List<CommunicationQuotaLedgerEntry> ledger;
-
-  factory CommunicationQuotaStatus.fromJson(Map<String, dynamic> json) {
-    final channel = _string(json['channel']);
-    final mode = _string(json['mode'], fallback: 'self_api');
-    return CommunicationQuotaStatus(
-      channel: channel,
-      label:
-          _string(json['label'], fallback: communicationChannelLabel(channel)),
-      mode: mode,
-      modeLabel:
-          _string(json['mode_label'], fallback: communicationModeLabel(mode)),
-      balance: _int(json['balance']),
-      used: _int(json['used']),
-      isQuotaMode: _bool(json['is_quota_mode']),
-      ledger: _list(json['ledger'])
-          .map((item) => CommunicationQuotaLedgerEntry.fromJson(_map(item)))
-          .toList(),
-    );
-  }
-}
-
-class CommunicationQuotaLedgerEntry {
-  const CommunicationQuotaLedgerEntry({
-    required this.ts,
-    required this.delta,
-    required this.by,
-    required this.note,
-    required this.balanceAfter,
-  });
-
-  final DateTime? ts;
-  final int delta;
-  final String by;
-  final String note;
-  final int balanceAfter;
-
-  factory CommunicationQuotaLedgerEntry.fromJson(Map<String, dynamic> json) {
-    return CommunicationQuotaLedgerEntry(
-      ts: _date(json['ts']),
-      delta: _int(json['delta']),
-      by: _string(json['by']),
-      note: _string(json['note']),
-      balanceAfter: _int(json['balance_after']),
-    );
-  }
-
-  String get tsLabel => dateTimeLabel(ts);
-}
-
-class CommunicationQuotaCreditResult {
-  const CommunicationQuotaCreditResult({
-    required this.quota,
-    required this.balanceAfter,
-    required this.message,
-  });
-
-  final CommunicationQuotaStatus quota;
-  final int balanceAfter;
-  final String message;
-
-  factory CommunicationQuotaCreditResult.fromJson(Map<String, dynamic> json) {
-    final data = _data(json);
-    return CommunicationQuotaCreditResult(
-      quota: CommunicationQuotaStatus.fromJson(_map(data['quota'])),
-      balanceAfter: _int(data['balance_after']),
-      message: _string(data['message']),
-    );
-  }
 }
 
 class WhatsappBridgeState {
@@ -729,7 +601,6 @@ String communicationChannelLabel(String value) {
 String communicationModeLabel(String value) {
   return switch (value) {
     'self_api' => 'ربط مباشر من العميل',
-    'admin_quota' => 'رصيد مخصص من الإدارة',
     _ => 'غير محدد',
   };
 }
