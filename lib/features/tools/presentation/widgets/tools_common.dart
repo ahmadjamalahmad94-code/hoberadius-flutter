@@ -20,14 +20,14 @@ class ToolsPanelTitle extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 40,
-          height: 40,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: AppTokens.brandSoft,
             borderRadius: BorderRadius.circular(12),
           ),
           alignment: Alignment.center,
-          child: Icon(icon, color: AppTokens.brand, size: 22),
+          child: Icon(icon, color: AppTokens.brand, size: 20),
         ),
         const SizedBox(width: AppTokens.s12),
         Expanded(
@@ -42,10 +42,14 @@ class ToolsPanelTitle extends StatelessWidget {
                   fontSize: 16,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(color: AppTokens.textMuted),
+                style: const TextStyle(
+                  color: AppTokens.textMuted,
+                  fontSize: 12.5,
+                  height: 1.4,
+                ),
               ),
             ],
           ),
@@ -60,16 +64,20 @@ class ToolsTwoFields extends StatelessWidget {
     super.key,
     required this.first,
     required this.second,
+    this.alwaysRow = false,
   });
 
   final Widget first;
   final Widget second;
 
+  /// Keep short fields (speeds, credentials) side by side even on phones.
+  final bool alwaysRow;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 640) {
+        if (!alwaysRow && constraints.maxWidth < 640) {
           return Column(
             children: [
               first,
@@ -100,8 +108,9 @@ class ToolsTintBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       color: color,
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(AppTokens.s16),
+        padding: const EdgeInsets.all(AppTokens.s12),
         child: child,
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/hub_switch_row.dart';
 import 'tools_common.dart';
 
 class ToolsAdjustmentsPanel extends StatefulWidget {
@@ -37,14 +38,14 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const ToolsPanelTitle(
             icon: Icons.rule_folder_outlined,
             title: 'تعديلات عامة على حسابات',
-            subtitle:
-                'إجراءات جماعية تمر عبر الخادم. المعاينة بدون تنفيذ تعرض المستهدفين قبل أي تعديل.',
+            subtitle: 'إجراءات جماعية؛ المعاينة تعرض المستهدفين أولًا.',
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
@@ -84,11 +85,13 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
               label: 'كلمة المرور الجديدة',
             ),
           ],
-          SwitchListTile(
+          HubSwitchRow(
+            dense: true,
             value: _dryRun,
             onChanged: (value) => setState(() => _dryRun = value),
-            title: const Text('معاينة بدون تنفيذ'),
+            label: 'معاينة بدون تنفيذ',
           ),
+          const SizedBox(height: AppTokens.s4),
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,
             icon: const Icon(Icons.play_arrow),

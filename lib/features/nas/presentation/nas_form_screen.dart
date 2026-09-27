@@ -6,7 +6,10 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/page_header.dart';
+import '../../../shared/widgets/status_pill.dart';
 import '../data/nas_repository.dart';
 import '../domain/nas_model.dart';
 import 'nas_list_screen.dart';
@@ -202,6 +205,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
 
   Future<void> _delete() async {
     final ok = await showDialog<bool>(
+      useRootNavigator: true,
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('حذف الجهاز'),
@@ -235,6 +239,14 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     }
   }
 
+  Widget _portField(String label, String key) => FormFieldRow(
+        label: label,
+        child: TextFormField(
+          controller: _c[key],
+          keyboardType: TextInputType.number,
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -244,6 +256,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
         children: [
           PageHeader(
             title: widget.isEdit ? 'تعديل جهاز' : 'جهاز جديد',
+            inlineActions: true,
             leading: IconButton(
               onPressed: () => context.goNamed('nas'),
               icon: const Icon(Icons.arrow_back),
@@ -255,24 +268,6 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit)
-                OutlinedButton.icon(
-                  onPressed: (_loading || _testing) ? null : _test,
-                  icon: _testing
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.network_check),
-                  label: const Text('اختبار'),
-                ),
-              if (widget.isEdit)
-                IconButton(
-                  tooltip: 'أرشفة الجهاز',
-                  onPressed: _loading ? null : _delete,
-                  icon: const Icon(Icons.delete_outline, color: AppTokens.red),
-                ),
               ElevatedButton.icon(
                 onPressed: _loading ? null : _submit,
                 icon: const Icon(Icons.save_outlined),
@@ -280,6 +275,24 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
               ),
             ],
           ),
+          if (widget.isEdit) ...[
+            const SizedBox(height: AppTokens.s8),
+            ActionBar(
+              items: [
+                ActionItem(
+                  icon: _testing ? Icons.hourglass_top : Icons.network_check,
+                  label: _testing ? 'جارٍ الاختبار…' : 'اختبار الاتصال',
+                  onPressed: (_loading || _testing) ? null : _test,
+                ),
+                ActionItem(
+                  icon: Icons.delete_outline,
+                  label: 'حذف الجهاز',
+                  tone: PillTone.red,
+                  onPressed: _loading ? null : _delete,
+                ),
+              ],
+            ),
+          ],
           if (_error != null) ...[
             const SizedBox(height: AppTokens.s12),
             Container(
@@ -292,7 +305,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   Text(_error!, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'nas.core',
             icon: Icons.router_outlined,
@@ -318,91 +331,100 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                         (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
                   ),
                 ),
-                FormFieldRow(
-                  label: 'الشركة أو النوع',
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _vendor,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'mikrotik',
-                        child: Text('ميكروتك'),
-                      ),
-                      DropdownMenuItem(value: 'cisco', child: Text('Cisco')),
-                      DropdownMenuItem(value: 'huawei', child: Text('Huawei')),
-                      DropdownMenuItem(
-                        value: 'ubiquiti',
-                        child: Text('Ubiquiti'),
-                      ),
-                      DropdownMenuItem(value: 'other', child: Text('أخرى')),
-                    ],
-                    onChanged: (v) => setState(() => _vendor = v ?? 'mikrotik'),
+                FormFieldPair(
+                  first: FormFieldRow(
+                    label: 'الشركة',
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: _vendor,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'mikrotik',
+                          child: Text('ميكروتك'),
+                        ),
+                        DropdownMenuItem(value: 'cisco', child: Text('Cisco')),
+                        DropdownMenuItem(
+                          value: 'huawei',
+                          child: Text('Huawei'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'ubiquiti',
+                          child: Text('Ubiquiti'),
+                        ),
+                        DropdownMenuItem(value: 'other', child: Text('أخرى')),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => _vendor = v ?? 'mikrotik'),
+                    ),
+                  ),
+                  second: FormFieldRow(
+                    label: 'النوع',
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      initialValue: _nasType,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'hotspot',
+                          child: Text('هوتسبوت'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'pppoe',
+                          child: Text('اتصال PPPoE'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'wireless',
+                          child: Text('لاسلكي'),
+                        ),
+                        DropdownMenuItem(value: 'other', child: Text('أخرى')),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => _nasType = v ?? 'hotspot'),
+                    ),
                   ),
                 ),
-                FormFieldRow(
-                  label: 'النوع',
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    initialValue: _nasType,
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'hotspot',
-                        child: Text('هوتسبوت'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'pppoe',
-                        child: Text('اتصال PPPoE'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'wireless',
-                        child: Text('لاسلكي'),
-                      ),
-                      DropdownMenuItem(value: 'other', child: Text('أخرى')),
-                    ],
-                    onChanged: (v) => setState(() => _nasType = v ?? 'hotspot'),
+                FormFieldPair(
+                  first: FormFieldRow(
+                    label: 'الاسم المختصر',
+                    child: TextFormField(controller: _c['shortname']),
+                  ),
+                  second: FormFieldRow(
+                    label: 'الموقع',
+                    child: TextFormField(controller: _c['location']),
                   ),
                 ),
-                FormFieldRow(
-                  label: 'الاسم المختصر',
-                  child: TextFormField(controller: _c['shortname']),
-                ),
-                FormFieldRow(
-                  label: 'الموقع',
-                  child: TextFormField(controller: _c['location']),
-                ),
-                FormFieldRow(
-                  label: 'الإحداثيات',
-                  hint: 'lat,lng',
-                  child: TextFormField(controller: _c['coordinates']),
-                ),
-                FormFieldRow(
-                  label: 'وسوم',
-                  hint: 'قيم مفصولة بفواصل',
-                  child: TextFormField(controller: _c['tags']),
+                FormFieldPair(
+                  first: FormFieldRow(
+                    label: 'الإحداثيات',
+                    hint: 'lat,lng',
+                    child: TextFormField(controller: _c['coordinates']),
+                  ),
+                  second: FormFieldRow(
+                    label: 'وسوم',
+                    hint: 'بفواصل',
+                    child: TextFormField(controller: _c['tags']),
+                  ),
                 ),
                 FormFieldRow(
                   label: 'الوصف',
                   child:
                       TextFormField(controller: _c['description'], maxLines: 2),
                 ),
-                FormFieldRow(
+                HubSwitchRow(
                   label: 'مفعّل',
-                  child: Switch(
-                    value: _enabled,
-                    onChanged: (v) => setState(() => _enabled = v),
-                  ),
+                  dense: true,
+                  value: _enabled,
+                  onChanged: (v) => setState(() => _enabled = v),
                 ),
-                FormFieldRow(
+                HubSwitchRow(
                   label: 'المراقبة',
-                  child: Switch(
-                    value: _monitoring,
-                    onChanged: (v) => setState(() => _monitoring = v),
-                  ),
+                  dense: true,
+                  value: _monitoring,
+                  onChanged: (v) => setState(() => _monitoring = v),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'nas.secret',
             icon: Icons.lock_outline,
@@ -424,38 +446,23 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                     },
                   ),
                 ),
-                FormFieldRow(
-                  label: 'منفذ المصادقة',
-                  child: TextFormField(
-                    controller: _c['auth_port'],
-                    keyboardType: TextInputType.number,
-                  ),
+                _PortsRow(
+                  children: [
+                    _portField('منفذ المصادقة', 'auth_port'),
+                    _portField('منفذ المحاسبة', 'acct_port'),
+                    _portField('منفذ CoA', 'coa_port'),
+                  ],
                 ),
-                FormFieldRow(
-                  label: 'منفذ المحاسبة',
-                  child: TextFormField(
-                    controller: _c['acct_port'],
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                FormFieldRow(
-                  label: 'منفذ CoA',
-                  child: TextFormField(
-                    controller: _c['coa_port'],
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                FormFieldRow(
+                HubSwitchRow(
                   label: 'يتطلّب Message-Authenticator',
-                  child: Switch(
-                    value: _requireMessageAuth,
-                    onChanged: (v) => setState(() => _requireMessageAuth = v),
-                  ),
+                  dense: true,
+                  value: _requireMessageAuth,
+                  onChanged: (v) => setState(() => _requireMessageAuth = v),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'nas.api',
             icon: Icons.api,
@@ -463,17 +470,19 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
             initiallyExpanded: false,
             child: Column(
               children: [
-                FormFieldRow(
-                  label: 'منفذ واجهة الراوتر',
-                  hint: 'ميكروتك افتراضي: 8728',
-                  child: TextFormField(
-                    controller: _c['api_port'],
-                    keyboardType: TextInputType.number,
+                FormFieldPair(
+                  first: FormFieldRow(
+                    label: 'منفذ الواجهة',
+                    hint: 'افتراضي 8728',
+                    child: TextFormField(
+                      controller: _c['api_port'],
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
-                ),
-                FormFieldRow(
-                  label: 'مستخدم واجهة الراوتر',
-                  child: TextFormField(controller: _c['api_user']),
+                  second: FormFieldRow(
+                    label: 'مستخدم الواجهة',
+                    child: TextFormField(controller: _c['api_user']),
+                  ),
                 ),
                 FormFieldRow(
                   label: widget.isEdit
@@ -484,17 +493,16 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                     obscureText: true,
                   ),
                 ),
-                FormFieldRow(
+                HubSwitchRow(
                   label: 'اتصال مشفّر',
-                  child: Switch(
-                    value: _apiUseTls,
-                    onChanged: (v) => setState(() => _apiUseTls = v),
-                  ),
+                  dense: true,
+                  value: _apiUseTls,
+                  onChanged: (v) => setState(() => _apiUseTls = v),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'nas.snmp',
             icon: Icons.settings_remote,
@@ -506,19 +514,9 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   label: 'مجتمع SNMP',
                   child: TextFormField(controller: _c['snmp_community']),
                 ),
-                FormFieldRow(
-                  label: 'منفذ SSH',
-                  child: TextFormField(
-                    controller: _c['ssh_port'],
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                FormFieldRow(
-                  label: 'عدد المنافذ',
-                  child: TextFormField(
-                    controller: _c['ports'],
-                    keyboardType: TextInputType.number,
-                  ),
+                FormFieldPair(
+                  first: _portField('منفذ SSH', 'ssh_port'),
+                  second: _portField('عدد المنافذ', 'ports'),
                 ),
               ],
             ),
@@ -526,6 +524,25 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
           const SizedBox(height: AppTokens.s40),
         ],
       ),
+    );
+  }
+}
+
+/// Three short port fields on one row (aligned on their inputs).
+class _PortsRow extends StatelessWidget {
+  const _PortsRow({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0) const SizedBox(width: AppTokens.s8),
+          Expanded(child: children[i]),
+        ],
+      ],
     );
   }
 }

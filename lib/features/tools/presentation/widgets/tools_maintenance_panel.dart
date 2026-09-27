@@ -39,6 +39,7 @@ class _ToolsMaintenancePanelState extends ConsumerState<ToolsMaintenancePanel> {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -163,6 +164,7 @@ class _ToolsMaintenancePanelState extends ConsumerState<ToolsMaintenancePanel> {
     final controller = TextEditingController();
     final expected = preview.confirmPhrase.trim();
     final ok = await showDialog<bool>(
+      useRootNavigator: true,
       context: context,
       builder: (ctx) {
         var typed = '';

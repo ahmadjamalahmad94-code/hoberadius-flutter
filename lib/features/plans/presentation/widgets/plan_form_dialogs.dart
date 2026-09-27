@@ -4,6 +4,7 @@ import '../../../../core/theme/tokens.dart';
 
 Future<bool> confirmDeletePlan(BuildContext context, String name) async {
   final ok = await showDialog<bool>(
+    useRootNavigator: true,
     context: context,
     builder: (ctx) => AlertDialog(
       title: const Text('حذف الباقة'),

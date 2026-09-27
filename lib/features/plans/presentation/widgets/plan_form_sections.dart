@@ -2,7 +2,29 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
+import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../../../shared/widgets/wheel_picker_fields.dart';
+
+/// Short numeric field (durations, quotas, speeds) — usually half of a
+/// [FormFieldPair].
+Widget _numField(
+  Map<String, TextEditingController> controllers,
+  String key,
+  String label, {
+  String? hint,
+}) =>
+    FormFieldRow(
+      label: label,
+      hint: hint,
+      child: TextFormField(
+        controller: controllers[key],
+        keyboardType: TextInputType.number,
+      ),
+    );
+
+/// Label at the start, switch at the end — the one on/off row style.
+Widget _switchRow(String label, bool value, ValueChanged<bool> onChanged) =>
+    HubSwitchRow(label: label, value: value, onChanged: onChanged, dense: true);
 
 class PlanCoreSection extends StatelessWidget {
   const PlanCoreSection({
@@ -41,59 +63,55 @@ class PlanCoreSection extends StatelessWidget {
                   (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
             ),
           ),
-          FormFieldRow(
-            label: 'الكود',
-            hint: 'معرّف داخلي اختياري',
-            child: TextFormField(controller: controllers['code']),
-          ),
-          FormFieldRow(
-            label: 'نوع الباقة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: planType,
-              items: const [
-                DropdownMenuItem(value: 'time', child: Text('وقت')),
-                DropdownMenuItem(value: 'quota', child: Text('حصة')),
-                DropdownMenuItem(value: 'hybrid', child: Text('وقت وحصة')),
-                DropdownMenuItem(
-                  value: 'unlimited',
-                  child: Text('غير محدود'),
-                ),
-                DropdownMenuItem(value: 'recurring', child: Text('متجدّد')),
-              ],
-              onChanged: (v) => onPlanTypeChanged(v ?? 'time'),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'نوع الباقة',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: planType,
+                items: const [
+                  DropdownMenuItem(value: 'time', child: Text('وقت')),
+                  DropdownMenuItem(value: 'quota', child: Text('حصة')),
+                  DropdownMenuItem(value: 'hybrid', child: Text('وقت وحصة')),
+                  DropdownMenuItem(
+                    value: 'unlimited',
+                    child: Text('غير محدود'),
+                  ),
+                  DropdownMenuItem(value: 'recurring', child: Text('متجدّد')),
+                ],
+                onChanged: (v) => onPlanTypeChanged(v ?? 'time'),
+              ),
+            ),
+            second: FormFieldRow(
+              label: 'نوع الخدمة',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: serviceType,
+                items: const [
+                  DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
+                  DropdownMenuItem(value: 'PPPoE', child: Text('اتصال PPPoE')),
+                  DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
+                  DropdownMenuItem(value: 'Voucher', child: Text('قسيمة')),
+                  DropdownMenuItem(value: 'Others', child: Text('أخرى')),
+                ],
+                onChanged: (v) => onServiceTypeChanged(v ?? 'Hotspot'),
+              ),
             ),
           ),
-          FormFieldRow(
-            label: 'نوع الخدمة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: serviceType,
-              items: const [
-                DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
-                DropdownMenuItem(
-                  value: 'PPPoE',
-                  child: Text('اتصال PPPoE'),
-                ),
-                DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
-                DropdownMenuItem(value: 'Voucher', child: Text('قسيمة')),
-                DropdownMenuItem(value: 'Others', child: Text('أخرى')),
-              ],
-              onChanged: (v) => onServiceTypeChanged(v ?? 'Hotspot'),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'الكود',
+              hint: 'اختياري',
+              child: TextFormField(controller: controllers['code']),
+            ),
+            second: _numField(
+              controllers,
+              'priority',
+              'الأولوية',
+              hint: 'الأقل = أعلى أولوية',
             ),
           ),
-          FormFieldRow(
-            label: 'الأولوية',
-            hint: 'الأقل = الأعلى أولوية',
-            child: TextFormField(
-              controller: controllers['priority'],
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          FormFieldRow(
-            label: 'مفعّلة',
-            child: Switch(value: enabled, onChanged: onEnabledChanged),
-          ),
+          _switchRow('مفعّلة', enabled, onEnabledChanged),
         ],
       ),
     );
@@ -112,33 +130,25 @@ class PlanTimeSection extends StatelessWidget {
       title: 'الوقت والصلاحية',
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'الصلاحية (أيام)',
-            child: TextFormField(
-              controller: controllers['validity_days'],
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: _numField(controllers, 'validity_days', 'الصلاحية (أيام)'),
+            second: _numField(
+              controllers,
+              'duration_minutes',
+              'مدّة الاتصال (د)',
+              hint: '0 = لا حدّ',
             ),
           ),
-          FormFieldRow(
-            label: 'مدّة الاتصال (دقائق)',
-            hint: '0 = لا حدّ',
-            child: TextFormField(
-              controller: controllers['duration_minutes'],
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: _numField(
+              controllers,
+              'session_timeout_sec',
+              'مهلة الجلسة (ث)',
             ),
-          ),
-          FormFieldRow(
-            label: 'مهلة الجلسة (ث)',
-            child: TextFormField(
-              controller: controllers['session_timeout_sec'],
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          FormFieldRow(
-            label: 'مهلة الخمول (ث)',
-            child: TextFormField(
-              controller: controllers['idle_timeout_sec'],
-              keyboardType: TextInputType.number,
+            second: _numField(
+              controllers,
+              'idle_timeout_sec',
+              'مهلة الخمول (ث)',
             ),
           ),
         ],
@@ -160,43 +170,48 @@ class PlanQuotaSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'الإجمالي (MB)',
-            child: TextFormField(
-              controller: controllers['quota_total_mb'],
-              keyboardType: TextInputType.number,
+          _numField(controllers, 'quota_total_mb', 'الإجمالي (MB)'),
+          FormFieldPair(
+            first: _numField(controllers, 'quota_daily_mb', 'يومي (MB)'),
+            second: _numField(controllers, 'quota_monthly_mb', 'شهري (MB)'),
+          ),
+          const Divider(height: 16),
+          FormFieldPair(
+            first: _numField(
+              controllers,
+              'daily_download_quota_mb',
+              'كوتا تنزيل يومية (MB)',
+            ),
+            second: _numField(
+              controllers,
+              'daily_upload_quota_mb',
+              'كوتا رفع يومية (MB)',
             ),
           ),
-          FormFieldRow(
-            label: 'يومي (MB)',
-            child: TextFormField(
-              controller: controllers['quota_daily_mb'],
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: _numField(
+              controllers,
+              'monthly_download_quota_mb',
+              'كوتا تنزيل شهرية (MB)',
+            ),
+            second: _numField(
+              controllers,
+              'monthly_upload_quota_mb',
+              'كوتا رفع شهرية (MB)',
             ),
           ),
-          FormFieldRow(
-            label: 'شهري (MB)',
-            child: TextFormField(
-              controller: controllers['quota_monthly_mb'],
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: _numField(
+              controllers,
+              'daily_combined_quota_mb',
+              'كوتا مدمجة يومية (MB)',
+            ),
+            second: _numField(
+              controllers,
+              'monthly_combined_quota_mb',
+              'كوتا مدمجة شهرية (MB)',
             ),
           ),
-          const Divider(height: 24),
-          for (final f in const [
-            ('daily_download_quota_mb', 'كوتا تنزيل يومية (MB)'),
-            ('daily_upload_quota_mb', 'كوتا رفع يومية (MB)'),
-            ('daily_combined_quota_mb', 'كوتا مدمجة يومية (MB)'),
-            ('monthly_download_quota_mb', 'كوتا تنزيل شهرية (MB)'),
-            ('monthly_upload_quota_mb', 'كوتا رفع شهرية (MB)'),
-            ('monthly_combined_quota_mb', 'كوتا مدمجة شهرية (MB)'),
-          ])
-            FormFieldRow(
-              label: f.$2,
-              child: TextFormField(
-                controller: controllers[f.$1],
-                keyboardType: TextInputType.number,
-              ),
-            ),
         ],
       ),
     );
@@ -225,48 +240,43 @@ class PlanSpeedSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget num(String key, String label, [String? hint]) => FormFieldRow(
-          label: label,
-          hint: hint,
-          child: TextFormField(
-            controller: controllers[key],
-            keyboardType: TextInputType.number,
-          ),
-        );
+    Widget num(String key, String label) => _numField(controllers, key, label);
     return CollapsibleSection(
       storageKey: 'plan.speed',
       icon: Icons.speed,
       title: 'السرعة والتحكم المتقدم',
       child: Column(
         children: [
-          num('speed_down_kbps', 'تنزيل (kbps)'),
-          num('speed_up_kbps', 'رفع (kbps)'),
-          FormFieldRow(
-            label: 'تفعيل التحكم بالسرعة',
-            child: Switch(
-              value: speedControl,
-              onChanged: onSpeedControlChanged,
-            ),
+          FormFieldPair(
+            first: num('speed_down_kbps', 'تنزيل (kbps)'),
+            second: num('speed_up_kbps', 'رفع (kbps)'),
           ),
-          num('cir_down_kbps', 'الحد الأدنى للتنزيل'),
-          num('cir_up_kbps', 'الحد الأدنى للرفع'),
-          FormFieldRow(
-            label: 'تفعيل دفعة السرعة المؤقتة',
-            child: Switch(
-              value: burstEnabled,
-              onChanged: onBurstEnabledChanged,
-            ),
+          _switchRow(
+            'تفعيل التحكم بالسرعة',
+            speedControl,
+            onSpeedControlChanged,
           ),
-          num('burst_down_kbps', 'دفعة تنزيل مؤقتة'),
-          num('burst_up_kbps', 'دفعة رفع مؤقتة'),
-          num('burst_threshold_kbps', 'حد دفعة السرعة'),
-          num('burst_time_sec', 'مدة دفعة السرعة (ثانية)'),
-          FormFieldRow(
-            label: 'ليلي بلا حدود',
-            child: Switch(
-              value: nightlyUnlimited,
-              onChanged: onNightlyUnlimitedChanged,
-            ),
+          FormFieldPair(
+            first: num('cir_down_kbps', 'الحد الأدنى للتنزيل'),
+            second: num('cir_up_kbps', 'الحد الأدنى للرفع'),
+          ),
+          _switchRow(
+            'تفعيل دفعة السرعة المؤقتة',
+            burstEnabled,
+            onBurstEnabledChanged,
+          ),
+          FormFieldPair(
+            first: num('burst_down_kbps', 'دفعة تنزيل مؤقتة'),
+            second: num('burst_up_kbps', 'دفعة رفع مؤقتة'),
+          ),
+          FormFieldPair(
+            first: num('burst_threshold_kbps', 'حد دفعة السرعة'),
+            second: num('burst_time_sec', 'مدة الدفعة (ث)'),
+          ),
+          _switchRow(
+            'ليلي بلا حدود',
+            nightlyUnlimited,
+            onNightlyUnlimitedChanged,
           ),
         ],
       ),
@@ -299,36 +309,26 @@ class PlanSessionSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'الجلسات المتزامنة',
-            child: TextFormField(
-              controller: controllers['concurrent_sessions'],
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: _numField(
+              controllers,
+              'concurrent_sessions',
+              'الجلسات المتزامنة',
+            ),
+            second: _numField(controllers, 'vlan_id', 'معرّف VLAN'),
+          ),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'مجموعة عناوين IP',
+              child: TextFormField(controller: controllers['address_pool']),
+            ),
+            second: FormFieldRow(
+              label: 'مجموعة الاتصال',
+              child: TextFormField(controller: controllers['framed_pool']),
             ),
           ),
-          FormFieldRow(
-            label: 'مجموعة عناوين IP',
-            child: TextFormField(controller: controllers['address_pool']),
-          ),
-          FormFieldRow(
-            label: 'مجموعة الاتصال',
-            child: TextFormField(controller: controllers['framed_pool']),
-          ),
-          FormFieldRow(
-            label: 'معرّف VLAN',
-            child: TextFormField(
-              controller: controllers['vlan_id'],
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          FormFieldRow(
-            label: 'قفل على MAC',
-            child: Switch(value: bindMac, onChanged: onBindMacChanged),
-          ),
-          FormFieldRow(
-            label: 'قفل على IP',
-            child: Switch(value: bindIp, onChanged: onBindIpChanged),
-          ),
+          _switchRow('قفل على MAC', bindMac, onBindMacChanged),
+          _switchRow('قفل على IP', bindIp, onBindIpChanged),
         ],
       ),
     );
@@ -367,24 +367,26 @@ class PlanWindowSection extends StatelessWidget {
               onChanged: onAllowedDaysChanged,
             ),
           ),
-          FormFieldRow(
-            label: 'من الساعة',
-            child: WheelTimePickerField(
-              label: 'من',
-              value: controllers['allowed_hours_from']!.text.isEmpty
-                  ? '08:00'
-                  : controllers['allowed_hours_from']!.text,
-              onChanged: onAllowedFromChanged,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'من الساعة',
+              child: WheelTimePickerField(
+                label: 'من',
+                value: controllers['allowed_hours_from']!.text.isEmpty
+                    ? '08:00'
+                    : controllers['allowed_hours_from']!.text,
+                onChanged: onAllowedFromChanged,
+              ),
             ),
-          ),
-          FormFieldRow(
-            label: 'حتى الساعة',
-            child: WheelTimePickerField(
-              label: 'إلى',
-              value: controllers['allowed_hours_to']!.text.isEmpty
-                  ? '22:00'
-                  : controllers['allowed_hours_to']!.text,
-              onChanged: onAllowedToChanged,
+            second: FormFieldRow(
+              label: 'حتى الساعة',
+              child: WheelTimePickerField(
+                label: 'إلى',
+                value: controllers['allowed_hours_to']!.text.isEmpty
+                    ? '22:00'
+                    : controllers['allowed_hours_to']!.text,
+                onChanged: onAllowedToChanged,
+              ),
             ),
           ),
         ],
@@ -422,17 +424,20 @@ class PlanCommerceSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'السعر',
-            child: TextFormField(
-              controller: controllers['price'],
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'السعر',
+              child: TextFormField(
+                controller: controllers['price'],
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+              ),
             ),
-          ),
-          FormFieldRow(
-            label: 'العملة',
-            child: TextFormField(controller: controllers['currency']),
+            second: FormFieldRow(
+              label: 'العملة',
+              child: TextFormField(controller: controllers['currency']),
+            ),
           ),
           FormFieldRow(
             label: 'الفئة',
@@ -446,14 +451,8 @@ class PlanCommerceSection extends StatelessWidget {
               onChanged: (v) => onPlanTierChanged(v ?? 'Personal'),
             ),
           ),
-          FormFieldRow(
-            label: 'مدفوع مسبقًا',
-            child: Switch(value: prepaid, onChanged: onPrepaidChanged),
-          ),
-          FormFieldRow(
-            label: 'تجديد تلقائي',
-            child: Switch(value: autoRenew, onChanged: onAutoRenewChanged),
-          ),
+          _switchRow('مدفوع مسبقًا', prepaid, onPrepaidChanged),
+          _switchRow('تجديد تلقائي', autoRenew, onAutoRenewChanged),
         ],
       ),
     );
@@ -487,24 +486,9 @@ class PlanServicesSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'هوتسبوت',
-            child: Switch(
-              value: hotspotEnabled,
-              onChanged: onHotspotChanged,
-            ),
-          ),
-          FormFieldRow(
-            label: 'اتصال PPPoE',
-            child: Switch(value: pppEnabled, onChanged: onPppChanged),
-          ),
-          FormFieldRow(
-            label: 'استخدام واحد فقط',
-            child: Switch(
-              value: singleUseOnce,
-              onChanged: onSingleUseChanged,
-            ),
-          ),
+          _switchRow('هوتسبوت', hotspotEnabled, onHotspotChanged),
+          _switchRow('اتصال PPPoE', pppEnabled, onPppChanged),
+          _switchRow('استخدام واحد فقط', singleUseOnce, onSingleUseChanged),
         ],
       ),
     );
@@ -541,36 +525,24 @@ class PlanLoanDeviceSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'السماح بالسلف',
-            child: Switch(value: loanEnabled, onChanged: onLoanEnabledChanged),
+          _switchRow('السماح بالسلف', loanEnabled, onLoanEnabledChanged),
+          _switchRow(
+            'السماح بتجاوز السرعة',
+            speedOverrideAllowed,
+            onSpeedOverrideChanged,
           ),
-          FormFieldRow(
-            label: 'أقصى دقائق السلفة',
-            child: TextFormField(
-              controller: controllers['max_loan_minutes'],
-              keyboardType: TextInputType.number,
+          _switchRow('إلزام ربط الـ MAC', forceMacAddress, onForceMacChanged),
+          const SizedBox(height: 4),
+          FormFieldPair(
+            first: _numField(
+              controllers,
+              'max_loan_minutes',
+              'أقصى دقائق السلفة',
             ),
-          ),
-          FormFieldRow(
-            label: 'السماح بتجاوز السرعة',
-            child: Switch(
-              value: speedOverrideAllowed,
-              onChanged: onSpeedOverrideChanged,
-            ),
-          ),
-          FormFieldRow(
-            label: 'عدد الأجهزة المسموحة',
-            child: TextFormField(
-              controller: controllers['allowed_devices_count'],
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          FormFieldRow(
-            label: 'إلزام ربط الـ MAC',
-            child: Switch(
-              value: forceMacAddress,
-              onChanged: onForceMacChanged,
+            second: _numField(
+              controllers,
+              'allowed_devices_count',
+              'عدد الأجهزة المسموحة',
             ),
           ),
         ],
