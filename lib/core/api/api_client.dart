@@ -253,18 +253,15 @@ class ApiClient {
       status == 502 || status == 503 || status == 504;
 
   bool _isRetryableDio(DioException e) {
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.receiveTimeout:
-      case DioExceptionType.sendTimeout:
-      case DioExceptionType.connectionError:
-        return true;
-      case DioExceptionType.badResponse:
-      case DioExceptionType.cancel:
-      case DioExceptionType.badCertificate:
-      case DioExceptionType.unknown:
-        return false;
-    }
+    // A set (not an exhaustive switch) so newer dio versions that add enum
+    // values (e.g. transformTimeout in dio 5.9) keep compiling in CI.
+    const retryable = {
+      DioExceptionType.connectionTimeout,
+      DioExceptionType.receiveTimeout,
+      DioExceptionType.sendTimeout,
+      DioExceptionType.connectionError,
+    };
+    return retryable.contains(e.type);
   }
 
   /// Exponential backoff with full jitter, capped at [ApiClientConfig.maxBackoff].
