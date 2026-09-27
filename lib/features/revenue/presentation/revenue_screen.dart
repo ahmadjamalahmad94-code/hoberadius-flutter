@@ -6,6 +6,7 @@ import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/revenue_repository.dart';
@@ -42,17 +43,17 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
       children: [
         PageHeader(
           title: 'الإيرادات',
-          subtitle:
-              'سجلات السعر والتحصيل والتكلفة والربح الناتجة عن العمليات المالية في الويب.',
+          subtitle: 'التحصيل والتكلفة والربح لكل عملية مالية.',
           leading: const Icon(
             Icons.monetization_on_outlined,
             color: AppTokens.brand,
           ),
+          inlineActions: true,
           actions: [
-            OutlinedButton.icon(
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(_revenueProvider),
-              icon: const Icon(Icons.refresh),
-              label: const Text('تحديث'),
             ),
           ],
         ),
@@ -109,7 +110,7 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
                           children: [
                             for (final item in filtered) ...[
                               _RevenueCard(item: item),
-                              const SizedBox(height: AppTokens.s12),
+                              const SizedBox(height: AppTokens.s8),
                             ],
                           ],
                         );
@@ -146,38 +147,48 @@ class _RevenueFilters extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       padding: const EdgeInsets.all(AppTokens.s12),
-      child: Wrap(
-        spacing: AppTokens.s12,
-        runSpacing: AppTokens.s8,
-        crossAxisAlignment: WrapCrossAlignment.center,
+      child: Row(
         children: [
-          const Text(
-            'الفلاتر:',
-            style: TextStyle(fontWeight: FontWeight.w900),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: status,
+              decoration: const InputDecoration(labelText: 'الحالة'),
+              items: _statusOptions
+                  .map(
+                    (option) => DropdownMenuItem(
+                      value: option.value,
+                      child: Text(
+                        option.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: onStatusChanged,
+            ),
           ),
-          DropdownButton<String>(
-            value: status,
-            items: _statusOptions
-                .map(
-                  (option) => DropdownMenuItem(
-                    value: option.value,
-                    child: Text(option.label),
-                  ),
-                )
-                .toList(),
-            onChanged: onStatusChanged,
-          ),
-          DropdownButton<String>(
-            value: sourceType,
-            items: sourceOptions
-                .map(
-                  (option) => DropdownMenuItem(
-                    value: option.$1,
-                    child: Text(option.$2),
-                  ),
-                )
-                .toList(),
-            onChanged: onSourceChanged,
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: sourceType,
+              decoration: const InputDecoration(labelText: 'المصدر'),
+              items: sourceOptions
+                  .map(
+                    (option) => DropdownMenuItem(
+                      value: option.$1,
+                      child: Text(
+                        option.$2,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
+                  .toList(),
+              onChanged: onSourceChanged,
+            ),
           ),
         ],
       ),
@@ -200,97 +211,32 @@ class _RevenueStatsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth < 720 ? 2 : 4;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppTokens.s8,
-          crossAxisSpacing: AppTokens.s8,
-          childAspectRatio: constraints.maxWidth < 720 ? 2.25 : 2.75,
-          children: [
-            _StatCard(
-              icon: Icons.savings_outlined,
-              title: 'إجمالي المحصل',
-              value: _money(summary.totalCollected),
+        return CountGrid(
+          columns: constraints.maxWidth < 720 ? 2 : 4,
+          items: [
+            CountItem.text(
+              'إجمالي المحصل',
+              _money(summary.totalCollected),
               tone: PillTone.green,
             ),
-            _StatCard(
-              icon: Icons.trending_up_outlined,
-              title: 'الربح الصافي',
-              value: _money(summary.totalNetProfit),
+            CountItem.text(
+              'الربح الصافي',
+              _money(summary.totalNetProfit),
               tone: PillTone.amber,
             ),
-            _StatCard(
-              icon: Icons.people_alt_outlined,
-              title: 'حصة الشركة',
-              value: _money(summary.totalCompanyShare),
+            CountItem.text(
+              'حصة الشركة',
+              _money(summary.totalCompanyShare),
               tone: PillTone.brand,
             ),
-            _StatCard(
-              icon: Icons.receipt_long_outlined,
-              title: 'السجلات المعروضة',
-              value: '$visibleCount من $totalCount',
+            CountItem.text(
+              'السجلات المعروضة',
+              '$visibleCount من $totalCount',
               tone: PillTone.blue,
             ),
           ],
         );
       },
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-  final PillTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppTokens.s12),
-      child: Row(
-        children: [
-          StatusPill(text: '', icon: icon, tone: tone),
-          const SizedBox(width: AppTokens.s8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTokens.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppTokens.textPrimary,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -363,17 +309,17 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String m(num v) => '${_money(v)} ${item.currency}';
     return AppCard(
-      padding: const EdgeInsets.all(AppTokens.s16),
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppTokens.greenSoft,
                   borderRadius: BorderRadius.circular(AppTokens.r10),
@@ -382,28 +328,38 @@ class _RevenueCard extends StatelessWidget {
                 child: const Icon(
                   Icons.monetization_on_outlined,
                   color: AppTokens.greenInk,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: AppTokens.s12),
+              const SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       item.sourceLabel,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppTokens.textPrimary,
-                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppTokens.sidebarBg,
+                        fontSize: 15,
+                      ),
                     ),
-                    const SizedBox(height: 3),
                     Text(
-                      'سجل إيراد رقم ${item.id}',
-                      style: const TextStyle(color: AppTokens.textSecondary),
+                      'سجل رقم ${item.id} · ${_fmt(item.createdAt)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppTokens.s8),
               StatusPill(
                 text: item.statusLabel,
                 tone: _statusTone(item.status),
@@ -411,57 +367,31 @@ class _RevenueCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s12),
-          _InfoLine(
-            label: 'المحصل',
-            value: '${_money(item.collectedAmount)} ${item.currency}',
-          ),
-          _InfoLine(
-            label: 'تكلفة الجملة',
-            value: '${_money(item.wholesaleCost)} ${item.currency}',
-          ),
-          _InfoLine(
-            label: 'الربح الصافي',
-            value: '${_money(item.netProfit)} ${item.currency}',
-          ),
-          _InfoLine(
-            label: 'حصة الشركة',
-            value: '${_money(item.companyShare)} ${item.currency}',
-          ),
-          _InfoLine(label: 'التاريخ', value: _fmt(item.createdAt)),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 108,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppTokens.textSecondary,
-                fontWeight: FontWeight.w800,
+          const SizedBox(height: AppTokens.s8),
+          InfoGrid(
+            columns: 2,
+            items: [
+              InfoItem(
+                icon: Icons.savings_outlined,
+                label: 'المحصل',
+                value: m(item.collectedAmount),
               ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
+              InfoItem(
+                icon: Icons.inventory_2_outlined,
+                label: 'تكلفة الجملة',
+                value: m(item.wholesaleCost),
+              ),
+              InfoItem(
+                icon: Icons.trending_up_outlined,
+                label: 'الربح الصافي',
+                value: m(item.netProfit),
+              ),
+              InfoItem(
+                icon: Icons.business_outlined,
+                label: 'حصة الشركة',
+                value: m(item.companyShare),
+              ),
+            ],
           ),
         ],
       ),

@@ -6,6 +6,8 @@ import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/accounting_repository.dart';
@@ -41,48 +43,51 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
       children: [
         PageHeader(
           title: 'السلف والديون',
-          subtitle:
-              'متابعة السلف المفتوحة والديون المسجلة على المشتركين، مع إنشاء دين أو سلفة وتسويتها من التطبيق.',
+          subtitle: 'سلف وديون المشتركين وتسويتها.',
           leading: const Icon(
             Icons.handshake_outlined,
             color: AppTokens.brand,
           ),
+          inlineActions: true,
           actions: [
-            OutlinedButton.icon(
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(_loansProvider(_status)),
-              icon: const Icon(Icons.refresh),
-              label: const Text('تحديث'),
-            ),
-            FilledButton.icon(
-              onPressed: _createLoan,
-              icon: const Icon(Icons.add_circle_outline),
-              label: const Text('تسجيل سلفة أو دين'),
             ),
           ],
         ),
         const SizedBox(height: AppTokens.s12),
         AppCard(
           padding: const EdgeInsets.all(AppTokens.s12),
-          child: Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          child: Row(
             children: [
-              const Text(
-                'الحالة:',
-                style: TextStyle(fontWeight: FontWeight.w900),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  initialValue: _status,
+                  decoration: const InputDecoration(labelText: 'الحالة'),
+                  items: _statusOptions
+                      .map(
+                        (option) => DropdownMenuItem(
+                          value: option.value,
+                          child: Text(option.label),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) => setState(() => _status = value ?? ''),
+                ),
               ),
-              DropdownButton<String>(
-                value: _status,
-                items: _statusOptions
-                    .map(
-                      (option) => DropdownMenuItem(
-                        value: option.value,
-                        child: Text(option.label),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) => setState(() => _status = value ?? ''),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: HubActionButton(
+                  item: ActionItem(
+                    icon: Icons.add_circle_outline,
+                    label: 'تسجيل سلفة أو دين',
+                    primary: true,
+                    onPressed: _createLoan,
+                  ),
+                ),
               ),
             ],
           ),
@@ -117,7 +122,7 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
                         children: [
                           for (final loan in items) ...[
                             _LoanCard(loan: loan, onSettle: _settleLoan),
-                            const SizedBox(height: AppTokens.s12),
+                            const SizedBox(height: AppTokens.s8),
                           ],
                         ],
                       );
@@ -194,99 +199,18 @@ class _LoansSummary extends StatelessWidget {
     final debt = open.fold<num>(0, (sum, item) => sum + item.amount);
     final minutes =
         open.fold<int>(0, (sum, item) => sum + item.durationMinutes);
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth < 720 ? 2 : 4;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppTokens.s8,
-          crossAxisSpacing: AppTokens.s8,
-          childAspectRatio: constraints.maxWidth < 720 ? 2.35 : 2.8,
-          children: [
-            _StatCard(
-              icon: Icons.list_alt_outlined,
-              title: 'عدد السجلات',
-              value: '${items.length}',
-              tone: PillTone.blue,
-            ),
-            _StatCard(
-              icon: Icons.hourglass_bottom_outlined,
-              title: 'مفتوحة',
-              value: '${open.length}',
-              tone: PillTone.amber,
-            ),
-            _StatCard(
-              icon: Icons.payments_outlined,
-              title: 'الدين المفتوح',
-              value: _money(debt),
-              tone: PillTone.red,
-            ),
-            _StatCard(
-              icon: Icons.schedule_outlined,
-              title: 'دقائق مفتوحة',
-              value: _duration(minutes),
-              tone: PillTone.brand,
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.title,
-    required this.value,
-    required this.tone,
-  });
-
-  final IconData icon;
-  final String title;
-  final String value;
-  final PillTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      padding: const EdgeInsets.all(AppTokens.s12),
-      child: Row(
-        children: [
-          StatusPill(text: '', icon: icon, tone: tone),
-          const SizedBox(width: AppTokens.s8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTokens.textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: AppTokens.textPrimary,
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+    return CountGrid(
+      columns: 4,
+      items: [
+        CountItem('عدد السجلات', items.length),
+        CountItem('مفتوحة', open.length, tone: PillTone.amber),
+        CountItem.text('الدين المفتوح', _money(debt), tone: PillTone.red),
+        CountItem.text(
+          'مدة مفتوحة',
+          _shortDuration(minutes),
+          tone: PillTone.brand,
+        ),
+      ],
     );
   }
 }
@@ -366,17 +290,17 @@ class _LoanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reason = loan.reason.trim();
     return AppCard(
-      padding: const EdgeInsets.all(AppTokens.s16),
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: AppTokens.brandSoft,
                   borderRadius: BorderRadius.circular(AppTokens.r10),
@@ -385,9 +309,10 @@ class _LoanCard extends StatelessWidget {
                 child: const Icon(
                   Icons.handshake_outlined,
                   color: AppTokens.brandInk,
+                  size: 20,
                 ),
               ),
-              const SizedBox(width: AppTokens.s12),
+              const SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,19 +321,26 @@ class _LoanCard extends StatelessWidget {
                       loan.username.isEmpty
                           ? 'مشترك رقم ${loan.subscriberId}'
                           : loan.username,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w900,
-                            color: AppTokens.textPrimary,
-                          ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppTokens.sidebarBg,
+                        fontSize: 15,
+                      ),
                     ),
-                    const SizedBox(height: 3),
                     Text(
                       'سجل رقم ${loan.id}',
-                      style: const TextStyle(color: AppTokens.textSecondary),
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: AppTokens.s8),
               StatusPill(
                 text: loan.statusLabel,
                 tone: _statusTone(loan.status),
@@ -416,62 +348,55 @@ class _LoanCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s12),
-          _InfoLine(label: 'المدة', value: _duration(loan.durationMinutes)),
-          _InfoLine(
-            label: 'المبلغ',
-            value: '${_money(loan.amount)} ${loan.currency}',
+          const SizedBox(height: AppTokens.s8),
+          InfoGrid(
+            items: [
+              InfoItem(
+                icon: Icons.schedule_outlined,
+                label: 'المدة',
+                value: _shortDuration(loan.durationMinutes),
+              ),
+              InfoItem(
+                icon: Icons.payments_outlined,
+                label: 'المبلغ',
+                value: '${_money(loan.amount)} ${loan.currency}',
+              ),
+              InfoItem(
+                icon: Icons.verified_outlined,
+                label: 'الاعتماد',
+                value: loan.approvalStatusLabel,
+              ),
+              InfoItem(
+                icon: Icons.play_circle_outline,
+                label: 'البداية',
+                value: _fmtShort(loan.startsAt),
+              ),
+              InfoItem(
+                icon: Icons.event_outlined,
+                label: 'النهاية',
+                value: _fmtShort(loan.endsAt),
+              ),
+              if (reason.isNotEmpty)
+                InfoItem(
+                  icon: Icons.notes_outlined,
+                  label: 'السبب',
+                  value: reason,
+                ),
+            ],
           ),
-          _InfoLine(label: 'الاعتماد', value: loan.approvalStatusLabel),
-          _InfoLine(label: 'البداية', value: _fmt(loan.startsAt)),
-          _InfoLine(label: 'النهاية', value: _fmt(loan.endsAt)),
-          if (loan.reason.trim().isNotEmpty)
-            _InfoLine(label: 'السبب', value: loan.reason),
           if (loan.isOpen) ...[
             const SizedBox(height: AppTokens.s8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => onSettle(loan),
-                icon: const Icon(Icons.done_all, size: 16),
-                label: const Text('تسوية'),
-              ),
+            ActionBar(
+              items: [
+                ActionItem(
+                  icon: Icons.done_all,
+                  label: 'تسوية',
+                  tone: PillTone.green,
+                  onPressed: () => onSettle(loan),
+                ),
+              ],
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoLine extends StatelessWidget {
-  const _InfoLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 92,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppTokens.textSecondary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
         ],
       ),
     );
@@ -529,6 +454,7 @@ Future<_LoanDraft?> _loanDialog(BuildContext context) async {
 
   return showDialog<_LoanDraft>(
     context: context,
+    useRootNavigator: true,
     builder: (context) => StatefulBuilder(
       builder: (context, setState) => AlertDialog(
         title: const Text('تسجيل سلفة أو دين'),
@@ -578,6 +504,7 @@ Future<_LoanDraft?> _loanDialog(BuildContext context) async {
                           labelText: 'المبلغ',
                           helperText:
                               'ضع 0 للسلفة المجانية أو مبلغًا لتسجيل دين.',
+                          helperMaxLines: 2,
                         ),
                       ),
                     ),
@@ -596,28 +523,30 @@ Future<_LoanDraft?> _loanDialog(BuildContext context) async {
                   controller: reason,
                   decoration: const InputDecoration(labelText: 'السبب'),
                 ),
-                SwitchListTile.adaptive(
+                const SizedBox(height: AppTokens.s4),
+                HubSwitchRow(
+                  dense: true,
                   value: priceFromDays,
                   onChanged: (value) => setState(() => priceFromDays = value),
-                  title: const Text('احتساب الدين من عدد الأيام'),
-                  subtitle: const Text(
-                    'استخدمها عندما تريد تسجيل دين طويل بناءً على سعر الباقة.',
-                  ),
+                  label: 'احتساب الدين من عدد الأيام',
+                  subtitle:
+                      'استخدمها عندما تريد تسجيل دين طويل بناءً على سعر الباقة.',
                 ),
-                SwitchListTile.adaptive(
+                HubSwitchRow(
+                  dense: true,
                   value: applyToRadius,
                   onChanged: (value) => setState(() => applyToRadius = value),
-                  title: const Text('تطبيق المدة على الريدياس'),
-                  subtitle: const Text(
-                    'أبقها مغلقة إذا كنت تسجل الدين فقط دون تمديد فعلي.',
-                  ),
+                  label: 'تطبيق المدة على الريدياس',
+                  subtitle:
+                      'أبقها مغلقة إذا كنت تسجل الدين فقط دون تمديد فعلي.',
                 ),
-                SwitchListTile.adaptive(
+                HubSwitchRow(
+                  dense: true,
                   value: dryRun,
                   onChanged: applyToRadius
                       ? (value) => setState(() => dryRun = value)
                       : null,
-                  title: const Text('تجربة آمنة بدون تطبيق نهائي'),
+                  label: 'تجربة آمنة بدون تطبيق نهائي',
                 ),
               ],
             ),
@@ -675,6 +604,7 @@ Future<_SettlementDraft?> _settlementDialog(
 
   return showDialog<_SettlementDraft>(
     context: context,
+    useRootNavigator: true,
     builder: (context) => AlertDialog(
       title: const Text('تسوية سلفة أو دين'),
       content: SizedBox(
@@ -766,6 +696,28 @@ String _duration(int minutes) {
     if (mins > 0 || (days == 0 && hours == 0)) '$mins دقيقة',
   ];
   return parts.join(' و ');
+}
+
+/// Compact duration for counters and grid cells («26 ي 12 س»).
+String _shortDuration(int minutes) {
+  final days = minutes ~/ 1440;
+  final hours = (minutes % 1440) ~/ 60;
+  final mins = minutes % 60;
+  final parts = <String>[
+    if (days > 0) '$days ي',
+    if (hours > 0) '$hours س',
+    if (mins > 0 || (days == 0 && hours == 0)) '$mins د',
+  ];
+  return parts.join(' ');
+}
+
+/// Date for narrow grid cells: the year only when it is not this year.
+String _fmtShort(DateTime? value) {
+  if (value == null) return 'غير محدد';
+  final local = value.toLocal();
+  final pattern =
+      local.year == DateTime.now().year ? 'MM-dd HH:mm' : 'yyyy-MM-dd';
+  return DateFormat(pattern).format(local);
 }
 
 String _fmt(DateTime? value) {

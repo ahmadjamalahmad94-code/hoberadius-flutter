@@ -6,6 +6,8 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../data/accounting_repository.dart';
 
 const _reports = <String, String>{
@@ -156,103 +158,87 @@ class _FinancialReportsScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'التقارير المالية',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.sidebarBg,
-                      fontWeight: FontWeight.w800,
-                    ),
-              ),
-            ),
+        PageHeader(
+          title: 'التقارير المالية',
+          subtitle: 'مبنية من Ledger؛ التصحيح قيد عكسي ولا يحذف الأصل.',
+          leading: const Icon(
+            Icons.insert_chart_outlined,
+            color: AppTokens.brand,
+          ),
+          inlineActions: true,
+          actions: [
             IconButton(
               tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () {
                 ref.invalidate(_reportProvider(_slug));
                 ref.invalidate(_snapshotProvider(_slug));
               },
-              icon: const Icon(Icons.refresh),
             ),
           ],
         ),
         const SizedBox(height: AppTokens.s12),
-        const AppCard(
-          child: Row(
-            children: [
-              Icon(Icons.lock_clock_outlined, color: AppTokens.brand),
-              SizedBox(width: AppTokens.s8),
-              Expanded(
-                child: Text(
-                  'هذه التقارير مبنية من Ledger. التصحيح يظهر كقيد عكسي ولا يحذف الأصل.',
-                  style: TextStyle(color: AppTokens.textMuted),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppTokens.s12),
         AppCard(
           padding: const EdgeInsets.all(AppTokens.s12),
-          child: Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                'التقرير:',
-                style: TextStyle(fontWeight: FontWeight.w700),
-              ),
-              for (final entry in _reports.entries)
-                ChoiceChip(
-                  label: Text(entry.value),
-                  selected: _slug == entry.key,
-                  onSelected: (_) => setState(() => _slug = entry.key),
+              // One scrollable row of report types instead of a ragged
+              // wrap of nine chips.
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final entry in _reports.entries) ...[
+                      if (entry.key != _reports.keys.first)
+                        const SizedBox(width: AppTokens.s8),
+                      ChoiceChip(
+                        label: Text(entry.value),
+                        selected: _slug == entry.key,
+                        onSelected: (_) => setState(() => _slug = entry.key),
+                      ),
+                    ],
+                  ],
                 ),
-              FilledButton.icon(
-                onPressed: _savingSnapshot ? null : _saveSnapshot,
-                icon: _savingSnapshot
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.lock_clock_outlined),
-                label: const Text('حفظ لقطة ثابتة'),
               ),
-              OutlinedButton.icon(
-                onPressed: _exportingCsv ? null : _exportCsv,
-                icon: _exportingCsv
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.file_download_outlined),
-                label: const Text('تصدير CSV'),
+              const SizedBox(height: AppTokens.s12),
+              ActionBar(
+                items: [
+                  ActionItem(
+                    icon: _savingSnapshot
+                        ? Icons.hourglass_top
+                        : Icons.lock_clock_outlined,
+                    label: 'حفظ لقطة ثابتة',
+                    primary: true,
+                    onPressed: _savingSnapshot ? null : _saveSnapshot,
+                  ),
+                ],
               ),
-              OutlinedButton.icon(
-                onPressed: _exportingXlsx ? null : _exportXlsx,
-                icon: _exportingXlsx
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.grid_on_outlined),
-                label: const Text('تصدير Excel'),
-              ),
-              OutlinedButton.icon(
-                onPressed: _exportingPdf ? null : _exportPdf,
-                icon: _exportingPdf
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.picture_as_pdf_outlined),
-                label: const Text('تصدير PDF'),
+              const SizedBox(height: AppTokens.s8),
+              ActionBar(
+                items: [
+                  ActionItem(
+                    icon: _exportingCsv
+                        ? Icons.hourglass_top
+                        : Icons.file_download_outlined,
+                    label: 'CSV',
+                    onPressed: _exportingCsv ? null : _exportCsv,
+                  ),
+                  ActionItem(
+                    icon: _exportingXlsx
+                        ? Icons.hourglass_top
+                        : Icons.grid_on_outlined,
+                    label: 'Excel',
+                    onPressed: _exportingXlsx ? null : _exportXlsx,
+                  ),
+                  ActionItem(
+                    icon: _exportingPdf
+                        ? Icons.hourglass_top
+                        : Icons.picture_as_pdf_outlined,
+                    label: 'PDF',
+                    onPressed: _exportingPdf ? null : _exportPdf,
+                  ),
+                ],
               ),
             ],
           ),
@@ -280,12 +266,18 @@ class _FinancialReportsScreenState
               );
             }
             final columns = rows.expand((row) => row.keys).toSet().toList()
-              ..sort();
+              ..sort(_compareColumns);
             return AppCard(
               padding: EdgeInsets.zero,
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
+                  columnSpacing: AppTokens.s20,
+                  headingTextStyle:
+                      Theme.of(context).textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: AppTokens.sidebarBg,
+                          ),
                   columns: columns
                       .map((column) => DataColumn(label: Text(_label(column))))
                       .toList(),
@@ -322,6 +314,7 @@ class _SnapshotStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     if (message != null) {
       return AppCard(
+        padding: const EdgeInsets.all(AppTokens.s12),
         child: Text(
           message!,
           style: const TextStyle(color: Colors.redAccent),
@@ -330,9 +323,10 @@ class _SnapshotStrip extends StatelessWidget {
     }
     if (items.isEmpty) {
       return const AppCard(
+        padding: EdgeInsets.all(AppTokens.s12),
         child: Row(
           children: [
-            Icon(Icons.lock_clock_outlined, color: AppTokens.brand),
+            Icon(Icons.lock_clock_outlined, color: AppTokens.brand, size: 20),
             SizedBox(width: AppTokens.s8),
             Expanded(
               child: Text(
@@ -397,20 +391,55 @@ String _cell(Object? value) {
   return value.toString();
 }
 
-String _label(String key) {
-  const labels = {
-    'period': 'الفترة',
-    'count': 'العدد',
-    'total': 'الإجمالي',
-    'username': 'اسم الدخول',
-    'subscriber_id': 'رقم المستفيد',
-    'earned_minutes': 'الدقائق المستحقة',
-    'credits': 'دائن',
-    'debits': 'مدين',
-    'net': 'الصافي',
-    'debt_balance': 'الدين',
-    'balance': 'الرصيد',
-    'credit_limit': 'حد الائتمان',
-  };
-  return labels[key] ?? key;
+const _columnLabels = {
+  'period': 'الفترة',
+  'status': 'الحالة',
+  'username': 'اسم الدخول',
+  'subscriber_id': 'رقم المستفيد',
+  'distributor_id': 'رقم الموزع',
+  'batch_id': 'رقم الحزمة',
+  'name': 'الاسم',
+  'display_name': 'الاسم الظاهر',
+  'count': 'العدد',
+  'transactions': 'المعاملات',
+  'subscribers': 'المشتركون',
+  'entries': 'القيود',
+  'total': 'الإجمالي',
+  'amount': 'المبلغ',
+  'avg_amount': 'متوسط المبلغ',
+  'currency': 'العملة',
+  'minutes': 'الدقائق',
+  'duration_minutes': 'الدقائق',
+  'earned_minutes': 'الدقائق المستحقة',
+  'activation_count': 'عدد التفعيلات',
+  'still_open': 'ما زالت مفتوحة',
+  'open_count': 'المفتوحة',
+  'open_total': 'إجمالي المفتوح',
+  'owed': 'المستحق',
+  'owed_count': 'عدد المستحق',
+  'credits': 'دائن',
+  'debits': 'مدين',
+  'net': 'الصافي',
+  'debt_balance': 'الدين',
+  'balance': 'الرصيد',
+  'credit_limit': 'حد الائتمان',
+  'sessions': 'الجلسات',
+  'bytes_in': 'التحميل',
+  'bytes_out': 'الرفع',
+  'last_entry_at': 'آخر قيد',
+  'source': 'المصدر',
+};
+
+String _label(String key) => _columnLabels[key] ?? key;
+
+/// Known columns keep the order of [_columnLabels] (period / name first,
+/// then counts and money); unknown keys follow alphabetically.
+int _compareColumns(String a, String b) {
+  final order = _columnLabels.keys.toList();
+  final ia = order.indexOf(a);
+  final ib = order.indexOf(b);
+  if (ia >= 0 && ib >= 0) return ia.compareTo(ib);
+  if (ia >= 0) return -1;
+  if (ib >= 0) return 1;
+  return a.compareTo(b);
 }

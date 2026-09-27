@@ -5,7 +5,7 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
@@ -32,25 +32,30 @@ class PaymentRequestDetailScreen extends ConsumerWidget {
         children: [
           PageHeader(
             title: 'طلب دفع ${data.request.referenceCodeOrId}',
-            subtitle:
-                'تفاصيل التحصيل والإثباتات ومحاولات تطبيق الخدمة المرتبطة بهذا الطلب.',
+            subtitle: 'الإثباتات ومحاولات تطبيق الخدمة.',
             leading: IconButton(
+              tooltip: 'رجوع',
+              visualDensity: VisualDensity.compact,
               onPressed: () => context.goNamed('payment-collection'),
               icon: const Icon(Icons.arrow_back),
             ),
+            inlineActions: true,
             actions: [
-              OutlinedButton.icon(
+              IconButton(
+                tooltip: 'تحديث',
+                icon: const Icon(
+                  Icons.refresh,
+                  color: AppTokens.textSecondary,
+                ),
                 onPressed: () {
                   ref.invalidate(paymentRequestDetailProvider(requestId));
                   ref.invalidate(paymentRequestsProvider);
                   ref.invalidate(paymentReconciliationProvider);
                 },
-                icon: const Icon(Icons.refresh),
-                label: const Text('تحديث'),
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 920;
@@ -64,9 +69,9 @@ class PaymentRequestDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     summary,
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     proofs,
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     attempts,
                   ],
                 );
@@ -105,42 +110,116 @@ class _RequestSummaryPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'ملخص الطلب',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              StatusPill(
-                text: request.statusLabel,
+          CountGrid(
+            items: [
+              CountItem.text(
+                'الحالة',
+                request.statusLabel,
                 tone: _statusTone(request.status),
-                dot: true,
               ),
-              StatusPill(text: request.amountLabel, tone: PillTone.green),
-              StatusPill(text: request.serviceApplyLabel, tone: PillTone.blue),
+              CountItem.text(
+                'المبلغ',
+                request.amountLabel,
+                tone: PillTone.green,
+              ),
+              CountItem.text(
+                'الخدمة',
+                request.serviceApplyLabel,
+                tone: PillTone.blue,
+              ),
             ],
           ),
-          const Divider(height: AppTokens.s24),
-          _Line(label: 'رقم الطلب', value: '#${request.id}'),
-          _Line(label: 'المرجع', value: request.referenceCodeOrId),
-          _Line(label: 'الغرض', value: request.purposeLabel),
-          _Line(label: 'الدافع', value: request.payerLabel),
-          _Line(label: 'المحفظة المستقبلة', value: request.receiverWallet),
-          _Line(label: 'القيد المالي', value: request.ledgerLabel),
-          _Line(
-            label: 'تاريخ الترحيل',
-            value: _dateLabel(request.ledgerAppliedAt),
+          const SizedBox(height: AppTokens.s8),
+          InfoGrid(
+            columns: 2,
+            items: [
+              InfoItem(
+                icon: Icons.tag,
+                label: 'رقم الطلب',
+                value: '#${request.id}',
+              ),
+              InfoItem(
+                icon: Icons.qr_code_2_outlined,
+                label: 'المرجع',
+                value: _orUnset(request.referenceCodeOrId),
+              ),
+              InfoItem(
+                icon: Icons.category_outlined,
+                label: 'الغرض',
+                value: _orUnset(request.purposeLabel),
+              ),
+              InfoItem(
+                icon: Icons.person_outline,
+                label: 'الدافع',
+                value: _orUnset(request.payerLabel),
+              ),
+              InfoItem(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'المحفظة المستقبلة',
+                value: _orUnset(request.receiverWallet),
+              ),
+              InfoItem(
+                icon: Icons.receipt_long_outlined,
+                label: 'القيد المالي',
+                value: _orUnset(request.ledgerLabel),
+              ),
+              InfoItem(
+                icon: Icons.add_circle_outline,
+                label: 'تاريخ الإنشاء',
+                value: _dateLabel(request.createdAt),
+              ),
+              InfoItem(
+                icon: Icons.update,
+                label: 'آخر تحديث',
+                value: _dateLabel(request.updatedAt),
+              ),
+              InfoItem(
+                icon: Icons.event_busy_outlined,
+                label: 'ينتهي في',
+                value: _dateLabel(request.expiresAt),
+              ),
+              InfoItem(
+                icon: Icons.account_balance_outlined,
+                label: 'تاريخ الترحيل',
+                value: _dateLabel(request.ledgerAppliedAt),
+              ),
+              InfoItem(
+                icon: Icons.playlist_add_check_circle_outlined,
+                label: 'تاريخ تطبيق الخدمة',
+                value: _dateLabel(request.serviceAppliedAt),
+              ),
+            ],
           ),
-          _Line(
-            label: 'تاريخ تطبيق الخدمة',
-            value: _dateLabel(request.serviceAppliedAt),
-          ),
-          _Line(label: 'تاريخ الإنشاء', value: _dateLabel(request.createdAt)),
-          _Line(label: 'آخر تحديث', value: _dateLabel(request.updatedAt)),
-          _Line(label: 'ينتهي في', value: _dateLabel(request.expiresAt)),
         ],
       ),
+    );
+  }
+}
+
+/// One muted line instead of a full [EmptyState] halo inside a panel.
+class _PanelEmpty extends StatelessWidget {
+  const _PanelEmpty({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppTokens.textMuted),
+        const SizedBox(width: AppTokens.s8),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: AppTokens.textMuted),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -155,18 +234,25 @@ class _ProofsPanel extends StatelessWidget {
     if (proofs.isEmpty) {
       return const AppCard(
         title: 'إثباتات الدفع',
-        child: EmptyState(
+        padding: EdgeInsets.all(AppTokens.s12),
+        child: _PanelEmpty(
           icon: Icons.file_present_outlined,
-          title: 'لا توجد إثباتات بعد',
-          subtitle: 'عند رفع مرجع العملية أو صورة الإثبات ستظهر هنا للمراجعة.',
+          text: 'لا توجد إثباتات بعد. عند رفع مرجع العملية أو صورة الإثبات '
+              'ستظهر هنا للمراجعة.',
         ),
       );
     }
     return AppCard(
       title: 'إثباتات الدفع',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: proofs.map((proof) => _ProofRow(proof: proof)).toList(),
+        children: [
+          for (var i = 0; i < proofs.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppTokens.s8),
+            _ProofRow(proof: proofs[i]),
+          ],
+        ],
       ),
     );
   }
@@ -179,51 +265,65 @@ class _ProofRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppTokens.s12),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border.all(color: AppTokens.border),
-          borderRadius: BorderRadius.circular(AppTokens.r12),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppTokens.s12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Wrap(
-                spacing: AppTokens.s8,
-                runSpacing: AppTokens.s8,
-                children: [
-                  StatusPill(text: proof.proofTypeLabel, tone: PillTone.cyan),
-                  StatusPill(
-                    text: proof.reviewStatusLabel,
-                    tone: _proofTone(proof.reviewStatus),
-                    dot: true,
-                  ),
-                  if (proof.referenceNumber.isNotEmpty)
-                    StatusPill(
-                      text: 'مرجع العملية ${proof.referenceNumber}',
-                      tone: PillTone.neutral,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: AppTokens.border),
+        borderRadius: BorderRadius.circular(AppTokens.r12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTokens.s8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    proof.proofTypeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppTokens.sidebarBg,
                     ),
-                ],
-              ),
-              const SizedBox(height: AppTokens.s8),
-              _Line(
-                label: 'تاريخ الإرسال',
-                value: _dateLabel(proof.submittedAt),
-              ),
-              if (proof.note.isNotEmpty)
-                _Line(label: 'ملاحظة العميل', value: proof.note),
-              if (proof.reviewNote.isNotEmpty)
-                _Line(label: 'ملاحظة المراجعة', value: proof.reviewNote),
-              if (proof.reviewedAt != null)
-                _Line(
-                  label: 'تاريخ المراجعة',
-                  value: _dateLabel(proof.reviewedAt),
+                  ),
                 ),
-            ],
-          ),
+                const SizedBox(width: AppTokens.s8),
+                StatusPill(
+                  text: proof.reviewStatusLabel,
+                  tone: _proofTone(proof.reviewStatus),
+                  dot: true,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppTokens.s8),
+            InfoGrid(
+              columns: 2,
+              items: [
+                if (proof.referenceNumber.isNotEmpty)
+                  InfoItem(
+                    icon: Icons.qr_code_2_outlined,
+                    label: 'مرجع العملية',
+                    value: proof.referenceNumber,
+                  ),
+                InfoItem(
+                  icon: Icons.send_outlined,
+                  label: 'تاريخ الإرسال',
+                  value: _dateLabel(proof.submittedAt),
+                ),
+                if (proof.reviewedAt != null)
+                  InfoItem(
+                    icon: Icons.fact_check_outlined,
+                    label: 'تاريخ المراجعة',
+                    value: _dateLabel(proof.reviewedAt),
+                  ),
+              ],
+            ),
+            if (proof.note.isNotEmpty)
+              _Line(label: 'ملاحظة العميل', value: proof.note),
+            if (proof.reviewNote.isNotEmpty)
+              _Line(label: 'ملاحظة المراجعة', value: proof.reviewNote),
+          ],
         ),
       ),
     );
@@ -240,72 +340,96 @@ class _ApplyAttemptsPanel extends StatelessWidget {
     if (attempts.isEmpty) {
       return const AppCard(
         title: 'تطبيق الخدمة',
-        child: EmptyState(
+        padding: EdgeInsets.all(AppTokens.s12),
+        child: _PanelEmpty(
           icon: Icons.playlist_add_check_circle_outlined,
-          title: 'لم يتم تسجيل تطبيق للخدمة',
-          subtitle:
-              'بعد اعتماد الدفع يمكن تسجيل تطبيق الاستحقاق بدون تنفيذ مباشر على الراوتر.',
+          text: 'لم يتم تسجيل تطبيق للخدمة. بعد اعتماد الدفع يمكن تسجيل '
+              'تطبيق الاستحقاق بدون تنفيذ مباشر على الراوتر.',
         ),
       );
     }
     return AppCard(
       title: 'محاولات تطبيق الخدمة',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: attempts.map((attempt) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: AppTokens.s12),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: attempt.status == 'failed'
-                    ? AppTokens.redSoft
-                    : AppTokens.soft,
-                border: Border.all(color: AppTokens.border),
-                borderRadius: BorderRadius.circular(AppTokens.r12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(AppTokens.s12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Wrap(
-                      spacing: AppTokens.s8,
-                      runSpacing: AppTokens.s8,
-                      children: [
-                        StatusPill(
-                          text: attempt.statusLabel,
-                          tone: attempt.status == 'failed'
-                              ? PillTone.red
-                              : PillTone.green,
-                          dot: true,
-                        ),
-                        StatusPill(
-                          text: attempt.modeLabel,
-                          tone: PillTone.blue,
-                        ),
-                        if (attempt.serviceLabel.isNotEmpty)
-                          StatusPill(
-                            text: attempt.serviceLabel,
-                            tone: PillTone.cyan,
-                          ),
-                      ],
+        children: [
+          for (var i = 0; i < attempts.length; i++) ...[
+            if (i > 0) const SizedBox(height: AppTokens.s8),
+            _AttemptRow(attempt: attempts[i]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AttemptRow extends StatelessWidget {
+  const _AttemptRow({required this.attempt});
+
+  final PaymentApplyAttempt attempt;
+
+  @override
+  Widget build(BuildContext context) {
+    final failed = attempt.status == 'failed';
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: failed ? AppTokens.redSoft : AppTokens.soft,
+        border: Border.all(color: AppTokens.border),
+        borderRadius: BorderRadius.circular(AppTokens.r12),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTokens.s8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    attempt.serviceLabel.isNotEmpty
+                        ? '${attempt.modeLabel} · ${attempt.serviceLabel}'
+                        : attempt.modeLabel,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppTokens.sidebarBg,
                     ),
-                    const SizedBox(height: AppTokens.s8),
-                    _Line(label: 'رقم المحاولة', value: '#${attempt.id}'),
-                    _Line(
-                      label: 'تاريخ التسجيل',
-                      value: _dateLabel(attempt.createdAt),
-                    ),
-                    if (attempt.actor.isNotEmpty)
-                      _Line(label: 'منفذ العملية', value: attempt.actor),
-                    if (attempt.errorMessage.isNotEmpty)
-                      _Line(label: 'سبب الفشل', value: attempt.errorMessage),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(width: AppTokens.s8),
+                StatusPill(
+                  text: attempt.statusLabel,
+                  tone: failed ? PillTone.red : PillTone.green,
+                  dot: true,
+                ),
+              ],
             ),
-          );
-        }).toList(),
+            const SizedBox(height: AppTokens.s8),
+            InfoGrid(
+              items: [
+                InfoItem(
+                  icon: Icons.tag,
+                  label: 'رقم المحاولة',
+                  value: '#${attempt.id}',
+                ),
+                InfoItem(
+                  icon: Icons.schedule_outlined,
+                  label: 'تاريخ التسجيل',
+                  value: _dateLabel(attempt.createdAt),
+                ),
+                InfoItem(
+                  icon: Icons.person_outline,
+                  label: 'منفذ العملية',
+                  value: _orUnset(attempt.actor),
+                ),
+              ],
+            ),
+            if (attempt.errorMessage.isNotEmpty)
+              _Line(label: 'سبب الفشل', value: attempt.errorMessage),
+          ],
+        ),
       ),
     );
   }
@@ -321,12 +445,12 @@ class _Line extends StatelessWidget {
   Widget build(BuildContext context) {
     final cleanValue = value.trim().isEmpty ? 'غير محدد' : value.trim();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: const EdgeInsets.only(top: AppTokens.s8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 132,
+            width: 112,
             child: Text(
               label,
               style: const TextStyle(
@@ -359,6 +483,9 @@ PillTone _proofTone(String status) => switch (status) {
       'rejected' => PillTone.red,
       _ => PillTone.amber,
     };
+
+String _orUnset(String value) =>
+    value.trim().isEmpty ? 'غير محدد' : value.trim();
 
 String _dateLabel(DateTime? value) {
   if (value == null) return 'غير محدد';
