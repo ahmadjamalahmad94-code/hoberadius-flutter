@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_time_picker_circular.dart';
-import '../../../../shared/widgets/hub_toggle_switch.dart';
+import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../../../shared/widgets/wheel_picker_fields.dart';
 import '../../../admins/data/admins_repository.dart';
 import 'expire_picker.dart';
@@ -52,98 +52,86 @@ class SubscriberCoreSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final username = FormFieldRow(
+      label: 'اسم المستخدم',
+      required: true,
+      child: TextFormField(
+        controller: controllers['username'],
+        enabled: !isEdit,
+        validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
+      ),
+    );
+    final fullName = FormFieldRow(
+      label: 'الاسم الكامل',
+      child: TextFormField(controller: controllers['full_name']),
+    );
     return CollapsibleSection(
       storageKey: 'sub.core',
       icon: Icons.person_outline,
       title: 'البيانات الأساسية',
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'اسم المستخدم',
-            required: true,
-            child: TextFormField(
-              controller: controllers['username'],
-              enabled: !isEdit,
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
-            ),
-          ),
-          if (!isEdit)
-            FormFieldRow(
-              label: 'كلمة المرور',
-              required: true,
-              child: TextFormField(
-                controller: controllers['password'],
-                obscureText: true,
-                validator: (v) => (v == null || v.isEmpty) ? 'مطلوب' : null,
+          // Short fields ride in pairs — the phone form was one tall column.
+          if (isEdit)
+            FormFieldPair(first: username, second: fullName)
+          else ...[
+            FormFieldPair(
+              first: username,
+              second: FormFieldRow(
+                label: 'كلمة المرور',
+                required: true,
+                child: TextFormField(
+                  controller: controllers['password'],
+                  obscureText: true,
+                  validator: (v) => (v == null || v.isEmpty) ? 'مطلوب' : null,
+                ),
               ),
             ),
-          FormFieldRow(
-            label: 'الاسم الكامل',
-            child: TextFormField(controller: controllers['full_name']),
-          ),
-          FormFieldRow(
-            label: 'الجوال',
-            child: TextFormField(controller: controllers['mobile']),
-          ),
-          FormFieldRow(
-            label: 'البريد',
-            child: TextFormField(controller: controllers['email']),
+            fullName,
+          ],
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'الجوال',
+              child: TextFormField(controller: controllers['mobile']),
+            ),
+            second: FormFieldRow(
+              label: 'البريد',
+              child: TextFormField(controller: controllers['email']),
+            ),
           ),
           FormFieldRow(
             label: 'مرجع المستفيد',
             child: TextFormField(controller: controllers['beneficiary_ref']),
           ),
-          FormFieldRow(
-            label: 'الحالة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: status,
-              items: const [
-                DropdownMenuItem(value: 'enabled', child: Text('مفعّل')),
-                DropdownMenuItem(value: 'disabled', child: Text('معطّل')),
-                DropdownMenuItem(value: 'expired', child: Text('منتهي')),
-              ],
-              onChanged: (v) => onStatusChanged(v ?? 'enabled'),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'الحالة',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: status,
+                items: const [
+                  DropdownMenuItem(value: 'enabled', child: Text('مفعّل')),
+                  DropdownMenuItem(value: 'disabled', child: Text('معطّل')),
+                  DropdownMenuItem(value: 'expired', child: Text('منتهي')),
+                ],
+                onChanged: (v) => onStatusChanged(v ?? 'enabled'),
+              ),
             ),
-          ),
-          FormFieldRow(
-            label: 'نوع المستخدم',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: userType,
-              items: const [
-                DropdownMenuItem(
-                  value: 'subscriber',
-                  child: Text('مشترك'),
-                ),
-                DropdownMenuItem(value: 'card', child: Text('كرت')),
-                DropdownMenuItem(value: 'employee', child: Text('موظف')),
-              ],
-              onChanged: (v) => onUserTypeChanged(v ?? 'subscriber'),
-            ),
-          ),
-          FormFieldRow(
-            label: 'نوع الخدمة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: const [
-                'Hotspot',
-                'PPPoE',
-                'Balance',
-                'Voucher',
-                'Others',
-              ].contains(serviceType)
-                  ? serviceType
-                  : 'Hotspot',
-              items: const [
-                DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
-                DropdownMenuItem(value: 'PPPoE', child: Text('PPPoE')),
-                DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
-                DropdownMenuItem(value: 'Voucher', child: Text('كوبون')),
-                DropdownMenuItem(value: 'Others', child: Text('أخرى')),
-              ],
-              onChanged: (v) => onServiceTypeChanged(v ?? 'Hotspot'),
+            second: FormFieldRow(
+              label: 'نوع المستخدم',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: userType,
+                items: const [
+                  DropdownMenuItem(
+                    value: 'subscriber',
+                    child: Text('مشترك'),
+                  ),
+                  DropdownMenuItem(value: 'card', child: Text('كرت')),
+                  DropdownMenuItem(value: 'employee', child: Text('موظف')),
+                ],
+                onChanged: (v) => onUserTypeChanged(v ?? 'subscriber'),
+              ),
             ),
           ),
           FormFieldRow(
@@ -151,16 +139,42 @@ class SubscriberCoreSection extends StatelessWidget {
             hint: 'اختر باقة من القائمة',
             child: PlanPicker(controller: controllers['plan_id']!),
           ),
-          FormFieldRow(
-            label: 'السعر المخصص',
-            hint: 'اتركه فارغًا لاستخدام سعر الباقة',
-            child: TextFormField(
-              controller: controllers['custom_price'],
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'نوع الخدمة',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: const [
+                  'Hotspot',
+                  'PPPoE',
+                  'Balance',
+                  'Voucher',
+                  'Others',
+                ].contains(serviceType)
+                    ? serviceType
+                    : 'Hotspot',
+                items: const [
+                  DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
+                  DropdownMenuItem(value: 'PPPoE', child: Text('PPPoE')),
+                  DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
+                  DropdownMenuItem(value: 'Voucher', child: Text('كوبون')),
+                  DropdownMenuItem(value: 'Others', child: Text('أخرى')),
+                ],
+                onChanged: (v) => onServiceTypeChanged(v ?? 'Hotspot'),
               ),
-              decoration: const InputDecoration(
-                suffixText: 'اختياري',
+            ),
+            second: FormFieldRow(
+              label: 'السعر المخصص',
+              child: TextFormField(
+                controller: controllers['custom_price'],
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                // The «leave empty» hint lives inside the field so the pair's
+                // labels stay one line each.
+                decoration: const InputDecoration(
+                  hintText: 'فارغ = سعر الباقة',
+                ),
               ),
             ),
           ),
@@ -253,13 +267,15 @@ class SubscriberRadiusSection extends StatelessWidget {
       title: 'سمات الريدياس وDNS',
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'خادم DNS الأول',
-            child: TextFormField(controller: controllers['dns1']),
-          ),
-          FormFieldRow(
-            label: 'خادم DNS الثاني',
-            child: TextFormField(controller: controllers['dns2']),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'خادم DNS الأول',
+              child: TextFormField(controller: controllers['dns1']),
+            ),
+            second: FormFieldRow(
+              label: 'خادم DNS الثاني',
+              child: TextFormField(controller: controllers['dns2']),
+            ),
           ),
           FormFieldRow(
             label: 'الجلسات المتزامنة',
@@ -268,18 +284,20 @@ class SubscriberRadiusSection extends StatelessWidget {
               keyboardType: TextInputType.number,
             ),
           ),
-          FormFieldRow(
-            label: 'مهلة الجلسة (ث)',
-            child: TextFormField(
-              controller: controllers['session_timeout'],
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'مهلة الجلسة (ث)',
+              child: TextFormField(
+                controller: controllers['session_timeout'],
+                keyboardType: TextInputType.number,
+              ),
             ),
-          ),
-          FormFieldRow(
-            label: 'مهلة الخمول (ث)',
-            child: TextFormField(
-              controller: controllers['idle_timeout'],
-              keyboardType: TextInputType.number,
+            second: FormFieldRow(
+              label: 'مهلة الخمول (ث)',
+              child: TextFormField(
+                controller: controllers['idle_timeout'],
+                keyboardType: TextInputType.number,
+              ),
             ),
           ),
           FormFieldRow(
@@ -321,14 +339,16 @@ class SubscriberLockSection extends StatelessWidget {
             label: 'IP ثابت',
             child: TextFormField(controller: controllers['static_ip']),
           ),
-          FormFieldRow(
-            label: 'عدد الأجهزة المسموحة',
-            hint: 'الحد الأقصى للجلسات المتزامنة',
-            child: _NumField(controller: controllers['device_count']!),
-          ),
-          FormFieldRow(
-            label: 'VLAN',
-            child: _NumField(controller: controllers['vlan_id']!),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'عدد الأجهزة المسموحة',
+              hint: 'الحد الأقصى للجلسات المتزامنة',
+              child: _NumField(controller: controllers['device_count']!),
+            ),
+            second: FormFieldRow(
+              label: 'VLAN',
+              child: _NumField(controller: controllers['vlan_id']!),
+            ),
           ),
           FormFieldRow(
             label: 'ملف اتصال الجهاز',
@@ -399,14 +419,16 @@ class SubscriberManagementSection extends ConsumerWidget {
               ),
             ),
           ),
-          FormFieldRow(
-            label: 'المجموعة',
-            hint: 'اسم مجموعة المشتركين',
-            child: TextFormField(controller: controllers['group']),
-          ),
-          FormFieldRow(
-            label: 'مجموعة العناوين (Pool)',
-            child: TextFormField(controller: controllers['pool']),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'المجموعة',
+              hint: 'اسم مجموعة المشتركين',
+              child: TextFormField(controller: controllers['group']),
+            ),
+            second: FormFieldRow(
+              label: 'مجموعة العناوين (Pool)',
+              child: TextFormField(controller: controllers['pool']),
+            ),
           ),
           FormFieldRow(
             label: 'الرصيد',
@@ -453,54 +475,65 @@ class SubscriberPersonalSection extends StatelessWidget {
               onChanged: (v) => onAccountTypeChanged(v ?? 'Personal'),
             ),
           ),
-          FormFieldRow(
-            label: 'اسم الأب',
-            child: TextFormField(controller: controllers['father_name']),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'اسم الأب',
+              child: TextFormField(controller: controllers['father_name']),
+            ),
+            second: FormFieldRow(
+              label: 'الرقم الوطني',
+              child: TextFormField(controller: controllers['national_id']),
+            ),
           ),
-          FormFieldRow(
-            label: 'الرقم الوطني',
-            child: TextFormField(controller: controllers['national_id']),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'الجنسية',
+              child: TextFormField(controller: controllers['nationality']),
+            ),
+            second: FormFieldRow(
+              label: 'الدولة',
+              child: TextFormField(controller: controllers['country']),
+            ),
           ),
-          FormFieldRow(
-            label: 'الجنسية',
-            child: TextFormField(controller: controllers['nationality']),
-          ),
-          FormFieldRow(
-            label: 'الدولة',
-            child: TextFormField(controller: controllers['country']),
-          ),
-          FormFieldRow(
-            label: 'المدينة',
-            child: TextFormField(controller: controllers['city']),
-          ),
-          FormFieldRow(
-            label: 'المنطقة / الحي',
-            child: TextFormField(controller: controllers['district']),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'المدينة',
+              child: TextFormField(controller: controllers['city']),
+            ),
+            second: FormFieldRow(
+              label: 'المنطقة / الحي',
+              child: TextFormField(controller: controllers['district']),
+            ),
           ),
           FormFieldRow(
             label: 'العنوان',
             child: TextFormField(controller: controllers['address']),
           ),
-          FormFieldRow(
-            label: 'المحافظة / الولاية',
-            child: TextFormField(controller: controllers['state']),
-          ),
-          FormFieldRow(
-            label: 'الرمز البريدي',
-            child: TextFormField(controller: controllers['zip']),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'المحافظة / الولاية',
+              child: TextFormField(controller: controllers['state']),
+            ),
+            second: FormFieldRow(
+              label: 'الرمز البريدي',
+              child: TextFormField(controller: controllers['zip']),
+            ),
           ),
           FormFieldRow(
             label: 'الإحداثيات',
             hint: 'lat,lng',
             child: TextFormField(controller: controllers['coordinates']),
           ),
-          FormFieldRow(
-            label: 'طريقة الدفع المفضلة',
-            child: TextFormField(controller: controllers['payment_method']),
-          ),
-          FormFieldRow(
-            label: 'مرجع الدفع',
-            child: TextFormField(controller: controllers['payment_reference']),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'طريقة الدفع المفضلة',
+              child: TextFormField(controller: controllers['payment_method']),
+            ),
+            second: FormFieldRow(
+              label: 'مرجع الدفع',
+              child:
+                  TextFormField(controller: controllers['payment_reference']),
+            ),
           ),
         ],
       ),
@@ -538,39 +571,38 @@ class SubscriberSpeedSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
+          HubSwitchRow(
             label: 'سرعة أساسية مخصّصة',
-            hint: 'قيم ثابتة تتجاوز سرعة الباقة',
-            child: HubToggleSwitch(
-              value: bandwidthControlEnabled,
-              onChanged: onBandwidthControlChanged,
-            ),
+            subtitle: 'قيم ثابتة تتجاوز سرعة الباقة',
+            value: bandwidthControlEnabled,
+            onChanged: onBandwidthControlChanged,
+            dense: true,
           ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'تفعيل السرعة المخصصة',
-            hint: 'فعّلها لتطبيق سرعة خاصة بدل سرعة الباقة',
-            child: HubToggleSwitch(
-              value: customSpeed,
-              onChanged: onCustomSpeedChanged,
+            subtitle: 'فعّلها لتطبيق سرعة خاصة بدل سرعة الباقة',
+            value: customSpeed,
+            onChanged: onCustomSpeedChanged,
+            dense: true,
+          ),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'سرعة التنزيل (kbps)',
+              hint: '0 = استخدم قيمة الباقة',
+              child: _NumField(controller: controllers['download_speed_kbps']!),
+            ),
+            second: FormFieldRow(
+              label: 'سرعة الرفع (kbps)',
+              hint: '0 = استخدم قيمة الباقة',
+              child: _NumField(controller: controllers['upload_speed_kbps']!),
             ),
           ),
-          FormFieldRow(
-            label: 'سرعة التنزيل (kbps)',
-            hint: '0 = استخدم قيمة الباقة',
-            child: _NumField(controller: controllers['download_speed_kbps']!),
-          ),
-          FormFieldRow(
-            label: 'سرعة الرفع (kbps)',
-            hint: '0 = استخدم قيمة الباقة',
-            child: _NumField(controller: controllers['upload_speed_kbps']!),
-          ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'سرعة مؤقتة',
-            hint: 'رفع مؤقت بدون تغيير الباقة',
-            child: HubToggleSwitch(
-              value: temporarySpeed,
-              onChanged: onTemporarySpeedChanged,
-            ),
+            subtitle: 'رفع مؤقت بدون تغيير الباقة',
+            value: temporarySpeed,
+            onChanged: onTemporarySpeedChanged,
+            dense: true,
           ),
         ],
       ),
@@ -617,57 +649,57 @@ class SubscriberQuotaSection extends StatelessWidget {
             hint: 'تحلّ محل كوتا التنزيل/الرفع. 0 = غير محدودة',
             child: _NumField(controller: controllers['combined_quota_mb']!),
           ),
-          FormFieldRow(
-            label: 'كوتا التنزيل (MB)',
-            hint: '0 = غير محدودة',
-            child: _NumField(controller: controllers['download_quota_mb']!),
-          ),
-          FormFieldRow(
-            label: 'كوتا الرفع (MB)',
-            hint: '0 = غير محدودة',
-            child: _NumField(controller: controllers['upload_quota_mb']!),
-          ),
-          FormFieldRow(
-            label: 'إجمالي وقت الاتصال (دقيقة)',
-            hint: '0 = بلا حد',
-            child: _NumField(
-              controller: controllers['total_connection_time_min']!,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'كوتا التنزيل (MB)',
+              hint: '0 = غير محدودة',
+              child: _NumField(controller: controllers['download_quota_mb']!),
+            ),
+            second: FormFieldRow(
+              label: 'كوتا الرفع (MB)',
+              hint: '0 = غير محدودة',
+              child: _NumField(controller: controllers['upload_quota_mb']!),
             ),
           ),
-          FormFieldRow(
-            label: 'وقت الاتصال اليومي (دقيقة)',
-            hint: '0 = بلا حد',
-            child: _NumField(
-              controller: controllers['daily_connection_time_min']!,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'إجمالي وقت الاتصال (دقيقة)',
+              hint: '0 = بلا حد',
+              child: _NumField(
+                controller: controllers['total_connection_time_min']!,
+              ),
+            ),
+            second: FormFieldRow(
+              label: 'وقت الاتصال اليومي (دقيقة)',
+              hint: '0 = بلا حد',
+              child: _NumField(
+                controller: controllers['daily_connection_time_min']!,
+              ),
             ),
           ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'تطبيق حد الكوتا',
-            child: HubToggleSwitch(
-              value: quotaLimitEnabled,
-              onChanged: onQuotaLimitChanged,
-            ),
+            value: quotaLimitEnabled,
+            onChanged: onQuotaLimitChanged,
+            dense: true,
           ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'تطبيق حد وقت الاتصال',
-            child: HubToggleSwitch(
-              value: connectionTimeLimitEnabled,
-              onChanged: onConnectionTimeLimitChanged,
-            ),
+            value: connectionTimeLimitEnabled,
+            onChanged: onConnectionTimeLimitChanged,
+            dense: true,
           ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'توزيع متساوٍ للتنزيل',
-            child: HubToggleSwitch(
-              value: equalShareDownload,
-              onChanged: onEqualShareDownloadChanged,
-            ),
+            value: equalShareDownload,
+            onChanged: onEqualShareDownloadChanged,
+            dense: true,
           ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'توزيع متساوٍ للرفع',
-            child: HubToggleSwitch(
-              value: equalShareUpload,
-              onChanged: onEqualShareUploadChanged,
-            ),
+            value: equalShareUpload,
+            onChanged: onEqualShareUploadChanged,
+            dense: true,
           ),
         ],
       ),
@@ -770,12 +802,11 @@ class SubscriberAdvancedSection extends StatelessWidget {
               onChanged: onWorkingDaysChanged,
             ),
           ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'تعطيل تلقائي بعد أول استخدام',
-            child: HubToggleSwitch(
-              value: disableOnFirstUse,
-              onChanged: onDisableOnFirstUseChanged,
-            ),
+            value: disableOnFirstUse,
+            onChanged: onDisableOnFirstUseChanged,
+            dense: true,
           ),
         ],
       ),
@@ -805,20 +836,21 @@ class SubscriberNotificationsSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
+          HubSwitchRow(
             label: 'تنبيه عند الدخول',
-            child: HubToggleSwitch(
-              value: notifyOnLogin,
-              onChanged: onNotifyOnLoginChanged,
+            value: notifyOnLogin,
+            onChanged: onNotifyOnLoginChanged,
+            dense: true,
+          ),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'بريد التنبيهات',
+              child: TextFormField(controller: controllers['notify_email']),
             ),
-          ),
-          FormFieldRow(
-            label: 'بريد التنبيهات',
-            child: TextFormField(controller: controllers['notify_email']),
-          ),
-          FormFieldRow(
-            label: 'جوال التنبيهات',
-            child: TextFormField(controller: controllers['notify_mobile']),
+            second: FormFieldRow(
+              label: 'جوال التنبيهات',
+              child: TextFormField(controller: controllers['notify_mobile']),
+            ),
           ),
         ],
       ),
@@ -852,35 +884,36 @@ class SubscriberSubscriptionSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'نوع الاشتراك',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: subscriptionType,
-              items: const [
-                DropdownMenuItem(value: 'fixed', child: Text('ثابت')),
-                DropdownMenuItem(value: 'rolling', child: Text('متجدّد')),
-                DropdownMenuItem(
-                  value: 'prepaid',
-                  child: Text('مدفوع مسبقًا'),
-                ),
-              ],
-              onChanged: (v) => onSubscriptionTypeChanged(v ?? 'fixed'),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'نوع الاشتراك',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: subscriptionType,
+                items: const [
+                  DropdownMenuItem(value: 'fixed', child: Text('ثابت')),
+                  DropdownMenuItem(value: 'rolling', child: Text('متجدّد')),
+                  DropdownMenuItem(
+                    value: 'prepaid',
+                    child: Text('مدفوع مسبقًا'),
+                  ),
+                ],
+                onChanged: (v) => onSubscriptionTypeChanged(v ?? 'fixed'),
+              ),
+            ),
+            second: FormFieldRow(
+              label: 'مدّة الاشتراك (أيام)',
+              child: TextFormField(
+                controller: controllers['subscription_days'],
+                keyboardType: TextInputType.number,
+              ),
             ),
           ),
-          FormFieldRow(
-            label: 'مدّة الاشتراك (أيام)',
-            child: TextFormField(
-              controller: controllers['subscription_days'],
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          FormFieldRow(
+          HubSwitchRow(
             label: 'تجديد تلقائي',
-            child: HubToggleSwitch(
-              value: autoRenew,
-              onChanged: onAutoRenewChanged,
-            ),
+            value: autoRenew,
+            onChanged: onAutoRenewChanged,
+            dense: true,
           ),
         ],
       ),

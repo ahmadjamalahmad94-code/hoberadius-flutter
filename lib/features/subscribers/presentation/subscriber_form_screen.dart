@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../application/subscriber_form_controller.dart';
 import '../application/subscriber_form_mapper.dart';
@@ -264,7 +265,30 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
               onPressed: () => context.goNamed('subscribers'),
               icon: const Icon(Icons.arrow_back),
             ),
+            // Title + «حفظ» (and the ⋮ menu on edit) share ONE row — the save
+            // button used to float alone on a row of its own.
+            inlineActions: true,
             actions: [
+              FilledButton.icon(
+                onPressed: loading ? null : _submit,
+                icon: const Icon(Icons.save_outlined, size: 18),
+                label: const Text('حفظ'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTokens.brand,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppTokens.s16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppTokens.s12),
+                  ),
+                  textStyle: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
               if (widget.isEdit)
                 SubscriberActionMenu(
                   isDisabled: _status == 'disabled',
@@ -273,31 +297,32 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                   onResetPw: loading ? null : _showResetPwDialog,
                   onDelete: loading ? null : _showDeleteConfirm,
                 ),
-              if (widget.isEdit)
-                OutlinedButton.icon(
+            ],
+          ),
+          if (widget.isEdit) ...[
+            const SizedBox(height: AppTokens.s12),
+            ActionBar(
+              maxPerRow: 2,
+              items: [
+                ActionItem(
+                  icon: Icons.dashboard_customize_outlined,
+                  label: 'ملف 360',
                   onPressed: () => context.goNamed(
                     'subscriber-360',
                     pathParameters: {'username': _c['username']!.text.trim()},
                   ),
-                  icon: const Icon(Icons.dashboard_customize_outlined),
-                  label: const Text('ملف 360'),
                 ),
-              if (widget.isEdit)
-                OutlinedButton.icon(
+                ActionItem(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'الدفعات والسلف',
                   onPressed: () => context.goNamed(
                     'subscriber-finance',
                     pathParameters: {'username': _c['username']!.text.trim()},
                   ),
-                  icon: const Icon(Icons.account_balance_wallet_outlined),
-                  label: const Text('الدفعات والسلف'),
                 ),
-              ElevatedButton.icon(
-                onPressed: loading ? null : _submit,
-                icon: const Icon(Icons.save_outlined),
-                label: const Text('حفظ'),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
           if (error != null) ...[
             const SizedBox(height: AppTokens.s12),
             Container(
@@ -309,7 +334,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
               child: Text(error, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberCoreSection(
             controllers: _c,
             isEdit: widget.isEdit,
@@ -322,19 +347,19 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             onServiceTypeChanged: (v) => setState(() => _serviceType = v),
             onExpireChanged: (d) => setState(() => _expireAt = d),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberManagementSection(
             controllers: _c,
             managerId: _managerId,
             onManagerChanged: (v) => setState(() => _managerId = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberPersonalSection(
             controllers: _c,
             accountType: _accountType,
             onAccountTypeChanged: (v) => setState(() => _accountType = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberSpeedSection(
             controllers: _c,
             bandwidthControlEnabled: _bandwidthControlEnabled,
@@ -345,7 +370,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             temporarySpeed: _temporarySpeed,
             onTemporarySpeedChanged: (v) => setState(() => _temporarySpeed = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberQuotaSection(
             controllers: _c,
             quotaLimitEnabled: _quotaLimitEnabled,
@@ -360,19 +385,19 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             onEqualShareUploadChanged: (v) =>
                 setState(() => _equalShareUpload = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberPppoeSection(controllers: _c),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberMtSection(
             controllers: _c,
             mtService: _mtService,
             onMtServiceChanged: (v) => setState(() => _mtService = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberRadiusSection(controllers: _c),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberLockSection(controllers: _c),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberAdvancedSection(
             allowedFrom: _allowedFrom,
             allowedTo: _allowedTo,
@@ -388,13 +413,13 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             onDisableOnFirstUseChanged: (v) =>
                 setState(() => _disableOnFirstUse = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberNotificationsSection(
             controllers: _c,
             notifyOnLogin: _notifyOnLogin,
             onNotifyOnLoginChanged: (v) => setState(() => _notifyOnLogin = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberSubscriptionSection(
             controllers: _c,
             subscriptionType: _subscriptionType,
@@ -403,7 +428,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             autoRenew: _autoRenew,
             onAutoRenewChanged: (v) => setState(() => _autoRenew = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           SubscriberGeneralSection(controllers: _c),
           const SizedBox(height: AppTokens.s40),
         ],

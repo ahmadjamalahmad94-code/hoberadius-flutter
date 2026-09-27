@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
-import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/subscribers_repository.dart';
@@ -71,29 +71,13 @@ class _Subscriber360Content extends ConsumerWidget {
       children: [
         PageHeader(
           title: s.fullName.isEmpty ? s.username : s.fullName,
-          subtitle:
-              'ملف المشترك 360: هوية، خدمة، مالية، استخدام، أجهزة، وأحداث.',
+          subtitle: s.fullName.isEmpty ? 'ملف المشترك 360' : s.username,
           leading: IconButton(
             onPressed: () => context.goNamed('subscribers'),
             icon: const Icon(Icons.arrow_back),
           ),
+          inlineActions: true,
           actions: [
-            OutlinedButton.icon(
-              onPressed: () => context.goNamed(
-                'subscriber-edit',
-                pathParameters: {'username': s.username},
-              ),
-              icon: const Icon(Icons.edit_outlined),
-              label: const Text('تعديل'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => context.goNamed(
-                'subscriber-finance',
-                pathParameters: {'username': s.username},
-              ),
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: const Text('المالية'),
-            ),
             IconButton(
               tooltip: 'تحديث',
               onPressed: () =>
@@ -102,7 +86,30 @@ class _Subscriber360Content extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          maxPerRow: 2,
+          items: [
+            ActionItem(
+              icon: Icons.edit_outlined,
+              label: 'تعديل',
+              primary: true,
+              onPressed: () => context.goNamed(
+                'subscriber-edit',
+                pathParameters: {'username': s.username},
+              ),
+            ),
+            ActionItem(
+              icon: Icons.account_balance_wallet_outlined,
+              label: 'المالية',
+              onPressed: () => context.goNamed(
+                'subscriber-finance',
+                pathParameters: {'username': s.username},
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
         Wrap(
           spacing: AppTokens.s8,
           runSpacing: AppTokens.s8,
@@ -125,42 +132,50 @@ class _Subscriber360Content extends ConsumerWidget {
               ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
-        _KpiGrid(
+        const SizedBox(height: AppTokens.s12),
+        // Six tight colour-coded counters instead of six one-per-row cards.
+        CountGrid(
+          columns: 3,
           items: [
-            _Kpi(
+            CountItem.text(
               'الرصيد',
               _money(data.walletBalance),
-              Icons.wallet_outlined,
+              tone: data.walletBalance < 0
+                  ? PillTone.red
+                  : data.walletBalance > 0
+                      ? PillTone.green
+                      : PillTone.brand,
             ),
-            _Kpi(
+            CountItem.text(
               'دين مفتوح',
               _money(data.openDebt),
-              Icons.receipt_long_outlined,
+              tone: data.openDebt > 0 ? PillTone.red : PillTone.neutral,
             ),
-            _Kpi(
+            CountItem.text(
               'إجمالي المدفوع',
               _money(data.financial.totalPaid),
-              Icons.payments_outlined,
+              tone: data.financial.totalPaid > 0
+                  ? PillTone.green
+                  : PillTone.neutral,
             ),
-            _Kpi(
+            CountItem.text(
               'الاستخدام',
               _bytes(data.usage.totalBytes),
-              Icons.data_usage_outlined,
+              tone: PillTone.blue,
             ),
-            _Kpi(
+            CountItem(
               'الجلسات',
-              '${data.sessionCount}',
-              Icons.online_prediction,
+              data.sessionCount,
+              tone: data.sessionCount > 0 ? PillTone.blue : PillTone.neutral,
             ),
-            _Kpi(
+            CountItem(
               'الأجهزة',
-              '${data.devices.length}',
-              Icons.devices_other_outlined,
+              data.devices.length,
+              tone: data.devices.isNotEmpty ? PillTone.brand : PillTone.neutral,
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 920;
@@ -170,7 +185,7 @@ class _Subscriber360Content extends ConsumerWidget {
               return Column(
                 children: [
                   details,
-                  const SizedBox(height: AppTokens.s16),
+                  const SizedBox(height: AppTokens.s12),
                   usage,
                 ],
               );
@@ -185,105 +200,12 @@ class _Subscriber360Content extends ConsumerWidget {
             );
           },
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _DevicesCard(devices: data.devices),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _TimelineCard(items: data.timeline),
         const SizedBox(height: AppTokens.s40),
       ],
-    );
-  }
-}
-
-class _KpiGrid extends StatelessWidget {
-  const _KpiGrid({required this.items});
-
-  final List<_Kpi> items;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cols = constraints.maxWidth >= 980
-            ? 3
-            : constraints.maxWidth >= 620
-                ? 2
-                : 1;
-        return GridView.count(
-          crossAxisCount: cols,
-          crossAxisSpacing: AppTokens.s8,
-          mainAxisSpacing: AppTokens.s8,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          childAspectRatio: cols == 1 ? 3.4 : 2.4,
-          children: items.map(_KpiTile.new).toList(),
-        );
-      },
-    );
-  }
-}
-
-class _Kpi {
-  const _Kpi(this.label, this.value, this.icon);
-  final String label;
-  final String value;
-  final IconData icon;
-}
-
-class _KpiTile extends StatelessWidget {
-  const _KpiTile(this.item);
-
-  final _Kpi item;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppTokens.s12),
-      decoration: BoxDecoration(
-        color: AppTokens.card,
-        border: Border.all(color: AppTokens.border),
-        borderRadius: BorderRadius.circular(AppTokens.r14),
-        boxShadow: AppTokens.shCard,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppTokens.brandSoft,
-              borderRadius: BorderRadius.circular(AppTokens.r10),
-            ),
-            child: Icon(item.icon, color: AppTokens.brand),
-          ),
-          const SizedBox(width: AppTokens.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  item.label,
-                  style: const TextStyle(
-                    color: AppTokens.textMuted,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                Text(
-                  item.value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTokens.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -299,6 +221,12 @@ class _DetailsCard extends StatelessWidget {
     return AppCard(
       title: 'بيانات الحساب والخدمة',
       icon: Icons.badge_outlined,
+      padding: const EdgeInsets.fromLTRB(
+        AppTokens.s12,
+        AppTokens.s4,
+        AppTokens.s12,
+        AppTokens.s8,
+      ),
       child: Column(
         children: [
           _InfoRow('اسم الدخول', s.username),
@@ -332,12 +260,35 @@ class _UsageCard extends StatelessWidget {
     return AppCard(
       title: 'الاستخدام والجلسات',
       icon: Icons.insights_outlined,
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _InfoRow('إجمالي وقت الاتصال', _duration(data.usage.totalSeconds)),
-          _InfoRow('التحميل', _bytes(data.usage.downloadBytes)),
-          _InfoRow('الرفع', _bytes(data.usage.uploadBytes)),
-          _InfoRow('عدد الجلسات', '${data.usage.sessions.length}'),
+          InfoGrid(
+            columns: 2,
+            items: [
+              InfoItem(
+                icon: Icons.timer_outlined,
+                label: 'إجمالي وقت الاتصال',
+                value: _duration(data.usage.totalSeconds),
+              ),
+              InfoItem(
+                icon: Icons.format_list_numbered,
+                label: 'عدد الجلسات',
+                value: '${data.usage.sessions.length}',
+              ),
+              InfoItem(
+                icon: Icons.download_outlined,
+                label: 'التحميل',
+                value: _bytes(data.usage.downloadBytes),
+              ),
+              InfoItem(
+                icon: Icons.upload_outlined,
+                label: 'الرفع',
+                value: _bytes(data.usage.uploadBytes),
+              ),
+            ],
+          ),
           if (data.usage.sessions.isNotEmpty)
             _InfoRow(
               'آخر جلسة',
@@ -364,11 +315,9 @@ class _DevicesCard extends StatelessWidget {
     return AppCard(
       title: 'الأجهزة المرتبطة',
       icon: Icons.devices_other_outlined,
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: devices.isEmpty
-          ? const EmptyState(
-              icon: Icons.devices_other_outlined,
-              title: 'لا توجد أجهزة مرتبطة بعد',
-            )
+          ? const _EmptyLine('لا توجد أجهزة مرتبطة بعد')
           : Wrap(
               spacing: AppTokens.s8,
               runSpacing: AppTokens.s8,
@@ -396,14 +345,15 @@ class _TimelineCard extends StatelessWidget {
       icon: Icons.timeline,
       padding: EdgeInsets.zero,
       child: items.isEmpty
-          ? const EmptyState(
-              icon: Icons.timeline,
-              title: 'لا توجد أحداث حديثة',
+          ? const Padding(
+              padding: EdgeInsets.all(AppTokens.s12),
+              child: _EmptyLine('لا توجد أحداث حديثة'),
             )
           : Column(
               children: [
                 for (final item in items.take(8)) ...[
                   ListTile(
+                    dense: true,
                     title: Text(item.label),
                     subtitle: Text(
                       item.createdAt.isEmpty ? 'بدون وقت' : item.createdAt,
@@ -422,6 +372,33 @@ class _TimelineCard extends StatelessWidget {
   }
 }
 
+/// Empty section → one muted line instead of a big centred illustration.
+class _EmptyLine extends StatelessWidget {
+  const _EmptyLine(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      decoration: BoxDecoration(
+        color: AppTokens.slate100,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(color: AppTokens.textMuted, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
 class _InfoRow extends StatelessWidget {
   const _InfoRow(this.label, this.value);
 
@@ -432,7 +409,7 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (value.trim().isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Expanded(
@@ -492,7 +469,11 @@ String _serviceTypeLabel(String value) {
 
 String _money(num value) => value == 0 ? '0' : value.toStringAsFixed(2);
 
-String _bytes(num bytes) {
+/// Left-to-right mark: keeps «0 B» / «1.2 GB» in reading order inside the
+/// RTL layout (it rendered as «B 0»).
+String _bytes(num bytes) => '\u200E${_bytesRaw(bytes)}';
+
+String _bytesRaw(num bytes) {
   final value = bytes.toDouble();
   if (value >= 1024 * 1024 * 1024) {
     return '${(value / 1024 / 1024 / 1024).toStringAsFixed(1)} GB';
