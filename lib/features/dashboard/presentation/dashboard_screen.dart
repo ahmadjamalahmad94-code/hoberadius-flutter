@@ -128,17 +128,49 @@ class _RecentBatchesCard extends StatelessWidget {
               title: 'لا توجد حزم بعد',
               subtitle: 'ستظهر أحدث الحزم هنا',
             )
-          : Column(
-              children: [
-                for (final b in batches.take(4)) _BatchRow(batch: b),
-              ],
-            ),
+          : _BatchGrid(batches: batches.take(4).toList()),
     );
   }
 }
 
-class _BatchRow extends StatelessWidget {
-  const _BatchRow({required this.batch});
+/// Recent batches as a tight 2-column grid of equal cards (same visual
+/// language as the stat cells above); a leftover odd card spans the row.
+class _BatchGrid extends StatelessWidget {
+  const _BatchGrid({required this.batches});
+  final List<RecentBatch> batches;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (var i = 0; i < batches.length; i += 2) {
+      final a = batches[i];
+      final b = i + 1 < batches.length ? batches[i + 1] : null;
+      rows.add(
+        b == null
+            ? _BatchCard(batch: a)
+            : Row(
+                children: [
+                  Expanded(child: _BatchCard(batch: a)),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(child: _BatchCard(batch: b)),
+                ],
+              ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < rows.length; i++) ...[
+          if (i > 0) const SizedBox(height: AppTokens.s8),
+          rows[i],
+        ],
+      ],
+    );
+  }
+}
+
+class _BatchCard extends StatelessWidget {
+  const _BatchCard({required this.batch});
   final RecentBatch batch;
 
   @override
@@ -147,42 +179,75 @@ class _BatchRow extends StatelessWidget {
     final title = batch.packageName.isNotEmpty
         ? batch.packageName
         : (batch.batchCode.isNotEmpty ? batch.batchCode : 'حزمة بدون اسم');
-    final sub = batch.batchCode.isNotEmpty ? batch.batchCode : 'بدون كود';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppTokens.s8),
-      child: Row(
+    // When the title already fell back to the code, don't repeat it below.
+    final code = batch.packageName.isNotEmpty && batch.batchCode.isNotEmpty
+        ? batch.batchCode
+        : '#${batch.id}';
+    final total = batch.total;
+    final ratio = total > 0 ? (batch.used / total).clamp(0.0, 1.0) : 0.0;
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: p.surfaceTinted,
+        borderRadius: BorderRadius.circular(AppTokens.s12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          _CodeChip(text: '#${batch.id}'),
-          const SizedBox(width: AppTokens.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
+          Row(
+            children: [
+              Icon(Icons.style_outlined, color: p.brand, size: 18),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: Text(
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: AppTypography.bodyMedium.copyWith(
+                  style: AppTypography.labelLarge.copyWith(
                     color: p.textPrimary,
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
-                Text(
-                  sub,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption.copyWith(color: p.textMuted),
-                ),
-              ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            code,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textDirection: TextDirection.ltr,
+            style: AppTypography.caption.copyWith(color: p.textMuted),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: 6,
+              backgroundColor: p.card,
+              valueColor: AlwaysStoppedAnimation(p.brand),
             ),
           ),
-          const SizedBox(width: AppTokens.s8),
-          Text(
-            '${batch.used} / ${batch.total}',
-            style: AppTypography.labelLarge.copyWith(
-              color: p.brand,
-              fontWeight: FontWeight.w800,
-            ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Text(
+                'مستخدم',
+                style: AppTypography.caption.copyWith(color: p.textMuted),
+              ),
+              const Spacer(),
+              // LTR so «used / total» never flips to «total / used» in RTL.
+              Text(
+                '${batch.used} / $total',
+                textDirection: TextDirection.ltr,
+                style: AppTypography.labelMedium.copyWith(
+                  color: p.brand,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -846,15 +911,12 @@ class _SystemHealth extends StatelessWidget {
           bg: ok ? p.successBg : p.dangerBg,
           fg: ok ? p.successStrong : p.dangerStrong,
         );
-    _StatItem info(IconData icon, String label, String value,
-            {bool full = false,}) =>
-        _StatItem(
+    _StatItem info(IconData icon, String label, String value) => _StatItem(
           icon: icon,
           label: label,
           value: value,
           bg: p.surfaceTinted,
           fg: p.brand,
-          full: full,
         );
     return [
       if (metrics.dbOk != null)
@@ -875,8 +937,6 @@ class _SystemHealth extends StatelessWidget {
         info(Icons.power_settings_new, 'تشغيل النظام', metrics.systemUptime),
       if (metrics.processUptime.isNotEmpty)
         info(Icons.timer_outlined, 'تشغيل التطبيق', metrics.processUptime),
-      if (metrics.hostname.isNotEmpty)
-        info(Icons.dns_outlined, 'الخادم', metrics.hostname, full: true),
     ];
   }
 
