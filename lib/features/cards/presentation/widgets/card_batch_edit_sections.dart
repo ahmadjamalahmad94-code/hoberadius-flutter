@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
+import '../../../../shared/widgets/hub_switch_row.dart';
 
 class CardBatchCoreSection extends StatelessWidget {
   const CardBatchCoreSection({
@@ -46,33 +47,35 @@ class CardBatchCoreSection extends StatelessWidget {
                   int.tryParse(v?.trim() ?? '') == null ? 'مطلوب' : null,
             ),
           ),
-          FormFieldRow(
-            label: 'عدد الباقة',
-            required: true,
-            hint: 'لا يمكن أن يكون أقل من $minCount',
-            child: TextFormField(
-              controller: count,
-              keyboardType: TextInputType.number,
-              validator: (v) {
-                final n = int.tryParse(v?.trim() ?? '');
-                if (n == null || n < minCount) {
-                  return 'لا يقلّ عن $minCount';
-                }
-                return null;
-              },
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'عدد الباقة',
+              required: true,
+              hint: 'لا يقلّ عن $minCount',
+              child: TextFormField(
+                controller: count,
+                keyboardType: TextInputType.number,
+                validator: (v) {
+                  final n = int.tryParse(v?.trim() ?? '');
+                  if (n == null || n < minCount) {
+                    return 'لا يقلّ عن $minCount';
+                  }
+                  return null;
+                },
+              ),
             ),
-          ),
-          FormFieldRow(
-            label: 'الحالة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              value: status,
-              items: const [
-                DropdownMenuItem(value: 'active', child: Text('نشطة')),
-                DropdownMenuItem(value: 'exhausted', child: Text('مستهلكة')),
-                DropdownMenuItem(value: 'revoked', child: Text('ملغاة')),
-              ],
-              onChanged: onStatus,
+            second: FormFieldRow(
+              label: 'الحالة',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                value: status,
+                items: const [
+                  DropdownMenuItem(value: 'active', child: Text('نشطة')),
+                  DropdownMenuItem(value: 'exhausted', child: Text('مستهلكة')),
+                  DropdownMenuItem(value: 'revoked', child: Text('ملغاة')),
+                ],
+                onChanged: onStatus,
+              ),
             ),
           ),
         ],
@@ -102,25 +105,30 @@ class CardBatchMoneySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget num(TextEditingController c, String label) => FormFieldRow(
-          label: label,
-          child:
-              TextFormField(controller: c, keyboardType: TextInputType.number),
-        );
+      label: label,
+      child: TextFormField(controller: c, keyboardType: TextInputType.number),
+    );
     return CollapsibleSection(
       storageKey: 'batch.edit.money',
       icon: Icons.sell_outlined,
       title: 'السعر والحصة',
       child: Column(
         children: [
-          num(pricePerCard, 'سعر البطاقة'),
-          num(priceBulk, 'سعر الجملة'),
-          num(totalPrice, 'السعر الإجمالي'),
-          num(totalQuota, 'الحصة الكلية MB'),
-          FormFieldRow(
-            label: 'اسم الخدمة',
-            child: TextFormField(controller: serviceName),
+          FormFieldPair(
+            first: num(pricePerCard, 'سعر البطاقة'),
+            second: num(priceBulk, 'سعر الجملة'),
           ),
-          num(managerId, 'معرّف المدير'),
+          FormFieldPair(
+            first: num(totalPrice, 'السعر الإجمالي'),
+            second: num(totalQuota, 'الحصة الكلية MB'),
+          ),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'اسم الخدمة',
+              child: TextFormField(controller: serviceName),
+            ),
+            second: num(managerId, 'معرّف المدير'),
+          ),
         ],
       ),
     );
@@ -174,26 +182,30 @@ class CardBatchGenerationSection extends StatelessWidget {
               onChanged: (v) => onAffixMode(v == 'none' ? '' : v),
             ),
           ),
-          FormFieldRow(
-            label: 'البادئة',
-            child: TextFormField(controller: prefix),
-          ),
-          FormFieldRow(
-            label: 'اللاحقة',
-            child: TextFormField(controller: suffix),
-          ),
-          FormFieldRow(
-            label: 'طول اسم الدخول',
-            child: TextFormField(
-              controller: ulen,
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'البادئة',
+              child: TextFormField(controller: prefix),
+            ),
+            second: FormFieldRow(
+              label: 'اللاحقة',
+              child: TextFormField(controller: suffix),
             ),
           ),
-          FormFieldRow(
-            label: 'طول كلمة المرور',
-            child: TextFormField(
-              controller: plen,
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'طول اسم الدخول',
+              child: TextFormField(
+                controller: ulen,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            second: FormFieldRow(
+              label: 'طول كلمة المرور',
+              child: TextFormField(
+                controller: plen,
+                keyboardType: TextInputType.number,
+              ),
             ),
           ),
           FormFieldRow(
@@ -210,11 +222,11 @@ class CardBatchGenerationSection extends StatelessWidget {
               onChanged: onPasswordType,
             ),
           ),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
+          HubSwitchRow(
+            dense: true,
+            label: 'تضمين رقم الباقة',
             value: includeBatchNumber,
             onChanged: onIncludeBatchNumber,
-            title: const Text('تضمين رقم الباقة'),
           ),
         ],
       ),

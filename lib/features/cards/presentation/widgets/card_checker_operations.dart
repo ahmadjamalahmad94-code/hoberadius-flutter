@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/hub_layout.dart';
+import '../../../../shared/widgets/status_pill.dart';
 import '../../domain/card_model.dart';
 
 class CardCheckerOperations extends StatelessWidget {
@@ -35,53 +37,55 @@ class CardCheckerOperations extends StatelessWidget {
     return AppCard(
       title: 'إجراءات البطاقة',
       icon: Icons.tune,
-      child: Wrap(
-        spacing: AppTokens.s8,
-        runSpacing: AppTokens.s8,
-        children: [
-          ElevatedButton.icon(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      child: ActionBar(
+        maxPerRow: 2,
+        items: [
+          ActionItem(
+            icon: Icons.play_arrow,
+            label: 'تفعيل',
+            primary: true,
             onPressed: enabled && card.operations.canEnable ? onEnable : null,
-            icon: const Icon(Icons.play_arrow),
-            label: const Text('تفعيل'),
           ),
-          OutlinedButton.icon(
+          ActionItem(
+            icon: Icons.pause_circle_outline,
+            label: 'تعطيل',
+            tone: PillTone.amber,
             onPressed: enabled && card.operations.canDisable ? onDisable : null,
-            icon: const Icon(Icons.pause_circle_outline),
-            label: const Text('تعطيل'),
           ),
-          OutlinedButton.icon(
+          ActionItem(
+            icon: Icons.lock_outline,
+            label: 'تثبيت MAC',
             onPressed: enabled ? onLockMac : null,
-            icon: const Icon(Icons.lock_outline),
-            label: const Text('تثبيت MAC'),
           ),
-          OutlinedButton.icon(
+          ActionItem(
+            icon: Icons.lock_open,
+            label: 'فك MAC',
             onPressed: enabled && (card.lockedMac?.isNotEmpty ?? false)
                 ? onUnlockMac
                 : null,
-            icon: const Icon(Icons.lock_open),
-            label: const Text('فك MAC'),
           ),
-          OutlinedButton.icon(
+          ActionItem(
+            icon: Icons.restart_alt,
+            label: 'تصفير الاستخدام',
             onPressed: enabled && card.operations.canResetUsage
                 ? onResetUsage
                 : null,
-            icon: const Icon(Icons.restart_alt),
-            label: const Text('تصفير الاستخدام'),
           ),
-          OutlinedButton.icon(
+          ActionItem(
+            icon: Icons.power_settings_new,
+            label: 'طرد الجلسة',
             onPressed: enabled && card.operations.canDisconnect
                 ? onDisconnect
                 : null,
-            icon: const Icon(Icons.power_settings_new),
-            label: const Text('طرد الجلسة'),
           ),
-          OutlinedButton.icon(
-            style: OutlinedButton.styleFrom(foregroundColor: AppTokens.red),
+          ActionItem(
+            icon: Icons.delete_forever,
+            label: 'حذف نهائي',
+            tone: PillTone.red,
             onPressed: enabled && card.operations.canDeletePermanently
                 ? onDeletePermanent
                 : null,
-            icon: const Icon(Icons.delete_forever),
-            label: const Text('حذف نهائي'),
           ),
         ],
       ),

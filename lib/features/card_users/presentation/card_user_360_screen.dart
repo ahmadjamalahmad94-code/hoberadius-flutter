@@ -8,7 +8,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
-import '../../../shared/widgets/hub_kpi.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../application/card_users_providers.dart';
@@ -38,34 +38,43 @@ class CardUser360Screen extends ConsumerWidget {
           PageHeader(
             title: profile.cardUser.title,
             subtitle: 'ملف كروت 360',
+            inlineActions: true,
             leading: IconButton(
+              tooltip: 'رجوع',
+              visualDensity: VisualDensity.compact,
               onPressed: () => context.goNamed('card-users'),
               icon: const Icon(Icons.arrow_back),
             ),
             actions: [
-              OutlinedButton.icon(
+              IconButton(
+                tooltip: 'تحديث',
+                icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
                 onPressed: () {
                   ref.invalidate(cardUser360Provider(cardUserId));
                   ref.invalidate(cardUsersPageProvider);
                 },
-                icon: const Icon(Icons.refresh),
-                label: const Text('تحديث'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => _showRechargeDialog(context, ref, cardUserId),
-                icon: const Icon(Icons.account_balance_wallet_outlined),
-                label: const Text('شحن المحفظة'),
-              ),
-              OutlinedButton.icon(
-                onPressed: () => _showPasswordDialog(context, ref, cardUserId),
-                icon: const Icon(Icons.lock_reset_outlined),
-                label: const Text('تغيير كلمة المرور'),
               ),
             ],
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
+          ActionBar(
+            items: [
+              ActionItem(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'شحن المحفظة',
+                primary: true,
+                onPressed: () => _showRechargeDialog(context, ref, cardUserId),
+              ),
+              ActionItem(
+                icon: Icons.lock_reset_outlined,
+                label: 'تغيير كلمة المرور',
+                onPressed: () => _showPasswordDialog(context, ref, cardUserId),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s12),
           _Kpis(profile: profile),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           LayoutBuilder(
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 980;
@@ -82,21 +91,19 @@ class CardUser360Screen extends ConsumerWidget {
                   onRetry: () =>
                       ref.invalidate(cardMarketplacePackagesProvider),
                 ),
-                data: (packages) => _PurchasePanel(
-                  packages: packages,
-                  cardUserId: cardUserId,
-                ),
+                data: (packages) =>
+                    _PurchasePanel(packages: packages, cardUserId: cardUserId),
               );
               if (!wide) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _IdentityPanel(profile: profile),
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     packages,
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     cards,
-                    const SizedBox(height: AppTokens.s16),
+                    const SizedBox(height: AppTokens.s12),
                     purchases,
                   ],
                 );
@@ -110,7 +117,7 @@ class CardUser360Screen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _IdentityPanel(profile: profile),
-                        const SizedBox(height: AppTokens.s16),
+                        const SizedBox(height: AppTokens.s12),
                         packages,
                       ],
                     ),
@@ -121,7 +128,7 @@ class CardUser360Screen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         cards,
-                        const SizedBox(height: AppTokens.s16),
+                        const SizedBox(height: AppTokens.s12),
                         purchases,
                       ],
                     ),
@@ -143,35 +150,24 @@ class _Kpis extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppTokens.s12,
-      runSpacing: AppTokens.s12,
-      children: [
-        HubKpi(
-          label: 'رصيد المحفظة',
-          value: '${profile.wallet.balance} ${profile.wallet.currency}',
-          icon: Icons.account_balance_wallet_outlined,
-          variant: KpiVariant.brand,
-        ),
-        HubKpi(
-          label: 'الكروت',
-          value: '${profile.cards.length}',
-          icon: Icons.credit_card_outlined,
-          variant: KpiVariant.green,
-        ),
-        HubKpi(
-          label: 'المشتريات',
-          value: '${profile.purchases.length}',
-          icon: Icons.shopping_bag_outlined,
-          variant: KpiVariant.blue,
-        ),
-        HubKpi(
-          label: 'الجلسات',
-          value: '${profile.usage.sessionsCount}',
-          icon: Icons.online_prediction,
-          variant: KpiVariant.amber,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, c) => CountGrid(
+        columns: c.maxWidth >= 620 ? 4 : 2,
+        items: [
+          CountItem.text(
+            'رصيد المحفظة',
+            '${profile.wallet.balance} ${profile.wallet.currency}',
+            tone: PillTone.brand,
+          ),
+          CountItem('الكروت', profile.cards.length, tone: PillTone.blue),
+          CountItem('المشتريات', profile.purchases.length),
+          CountItem(
+            'الجلسات',
+            profile.usage.sessionsCount,
+            tone: PillTone.green,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -186,6 +182,7 @@ class _IdentityPanel extends StatelessWidget {
     final user = profile.cardUser;
     return AppCard(
       title: 'بيانات المستخدم',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -218,20 +215,33 @@ class _IdentityPanel extends StatelessWidget {
               ),
             ],
           ),
-          const Divider(height: AppTokens.s24),
-          _Line(
-            label: 'البريد',
-            value: user.email.isEmpty ? 'غير مدخل' : user.email,
+          const SizedBox(height: AppTokens.s12),
+          InfoGrid(
+            columns: 2,
+            items: [
+              InfoItem(
+                icon: Icons.alternate_email,
+                label: 'البريد',
+                value: user.email.isEmpty ? 'غير مدخل' : user.email,
+              ),
+              InfoItem(
+                icon: Icons.key_outlined,
+                label: 'كلمة مرور البوابة',
+                value: user.hasPortalPassword ? 'مضبوطة' : 'غير مضبوطة',
+              ),
+              InfoItem(
+                icon: Icons.payments_outlined,
+                label: 'الإنفاق',
+                value:
+                    '${user.spent.toStringAsFixed(2)} ${user.walletCurrency}',
+              ),
+              InfoItem(
+                icon: Icons.data_usage,
+                label: 'الاستخدام',
+                value: _usageLabel(profile.usage),
+              ),
+            ],
           ),
-          _Line(
-            label: 'كلمة مرور البوابة',
-            value: user.hasPortalPassword ? 'مضبوطة' : 'غير مضبوطة',
-          ),
-          _Line(
-            label: 'الإنفاق',
-            value: '${user.spent.toStringAsFixed(2)} ${user.walletCurrency}',
-          ),
-          _Line(label: 'الاستخدام', value: _usageLabel(profile.usage)),
         ],
       ),
     );
@@ -239,10 +249,7 @@ class _IdentityPanel extends StatelessWidget {
 }
 
 class _PurchasePanel extends ConsumerStatefulWidget {
-  const _PurchasePanel({
-    required this.packages,
-    required this.cardUserId,
-  });
+  const _PurchasePanel({required this.packages, required this.cardUserId});
 
   final List<MarketplacePackage> packages;
   final int cardUserId;
@@ -259,6 +266,7 @@ class _PurchasePanelState extends ConsumerState<_PurchasePanel> {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'شراء كرت من السوق',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: widget.packages.isEmpty
           ? const EmptyState(
               icon: Icons.inventory_2_outlined,
@@ -285,10 +293,17 @@ class _PurchasePanelState extends ConsumerState<_PurchasePanel> {
                       : (value) => setState(() => _selectedId = value),
                 ),
                 const SizedBox(height: AppTokens.s12),
-                ElevatedButton.icon(
-                  onPressed: _busy || _selectedId == null ? null : _purchase,
-                  icon: const Icon(Icons.shopping_cart_checkout_outlined),
-                  label: const Text('تنفيذ الشراء'),
+                ActionBar(
+                  items: [
+                    ActionItem(
+                      icon: Icons.shopping_cart_checkout_outlined,
+                      label: 'تنفيذ الشراء',
+                      primary: true,
+                      onPressed: _busy || _selectedId == null
+                          ? null
+                          : _purchase,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -300,21 +315,20 @@ class _PurchasePanelState extends ConsumerState<_PurchasePanel> {
     if (packageId == null) return;
     setState(() => _busy = true);
     try {
-      await ref.read(cardUsersRepositoryProvider).purchase(
-            widget.cardUserId,
-            packageId: packageId,
-          );
+      await ref
+          .read(cardUsersRepositoryProvider)
+          .purchase(widget.cardUserId, packageId: packageId);
       ref.invalidate(cardUser360Provider(widget.cardUserId));
       ref.invalidate(cardUsersPageProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم شراء الكرت')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم شراء الكرت')));
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(visibleErrorMessage(error))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(error))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -330,42 +344,80 @@ class _CardsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'الكروت المملوكة',
+      padding: cards.isEmpty
+          ? const EdgeInsets.all(AppTokens.s12)
+          : EdgeInsets.zero,
       child: cards.isEmpty
           ? const EmptyState(
               icon: Icons.credit_card_off_outlined,
               title: 'لا توجد كروت مملوكة بعد',
             )
-          : SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('الكرت')),
-                  DataColumn(label: Text('كلمة المرور')),
-                  DataColumn(label: Text('الحالة')),
-                  DataColumn(label: Text('أول استخدام')),
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < cards.length; i++) ...[
+                  if (i > 0) const Divider(height: 1),
+                  _OwnedCardRow(card: cards[i]),
                 ],
-                rows: [
-                  for (final card in cards)
-                    DataRow(
-                      cells: [
-                        DataCell(Text(card.username)),
-                        DataCell(_CopyValue(value: card.password)),
-                        DataCell(
-                          StatusPill(
-                            text: card.statusLabel,
-                            tone: card.revoked
-                                ? PillTone.red
-                                : card.used
-                                    ? PillTone.orange
-                                    : PillTone.green,
-                          ),
-                        ),
-                        DataCell(Text(_dateLabel(card.firstUsedAt))),
-                      ],
-                    ),
-                ],
-              ),
+              ],
             ),
+    );
+  }
+}
+
+/// One owned card: code + first use on the start side, the password (tap to
+/// copy) and a coloured status on the end — replaces a wide DataTable that
+/// scrolled sideways on phones.
+class _OwnedCardRow extends StatelessWidget {
+  const _OwnedCardRow({required this.card});
+
+  final CardUserOwnedCard card;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = card.revoked
+        ? PillTone.red
+        : card.used
+        ? PillTone.brand
+        : PillTone.blue;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  card.username,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AppTokens.sidebarBg,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+                Text(
+                  'أول استخدام: ${_dateLabel(card.firstUsedAt)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTokens.textMuted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _CopyValue(value: card.password),
+          const SizedBox(width: AppTokens.s4),
+          StatusPill(text: card.statusLabel, tone: tone),
+        ],
+      ),
     );
   }
 }
@@ -379,6 +431,7 @@ class _PurchasesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'المشتريات',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: purchases.isEmpty
           ? const EmptyState(
               icon: Icons.receipt_long_outlined,
@@ -388,9 +441,16 @@ class _PurchasesPanel extends StatelessWidget {
               children: [
                 for (final purchase in purchases.take(12))
                   ListTile(
+                    dense: true,
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.receipt_long_outlined),
-                    title: Text('${purchase.amount} ${purchase.currency}'),
+                    leading: const Icon(
+                      Icons.receipt_long_outlined,
+                      color: AppTokens.brandInk,
+                    ),
+                    title: Text(
+                      '${purchase.amount} ${purchase.currency}',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     subtitle: Text(_dateLabel(purchase.createdAt)),
                     trailing: StatusPill(
                       text: purchase.statusLabel,
@@ -405,37 +465,6 @@ class _PurchasesPanel extends StatelessWidget {
   }
 }
 
-class _Line extends StatelessWidget {
-  const _Line({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(color: AppTokens.textMuted),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _CopyValue extends StatelessWidget {
   const _CopyValue({required this.value});
 
@@ -445,11 +474,15 @@ class _CopyValue extends StatelessWidget {
   Widget build(BuildContext context) {
     if (value.isEmpty) return const Text('غير متاحة');
     return TextButton.icon(
+      style: TextButton.styleFrom(
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: AppTokens.s8),
+      ),
       onPressed: () {
         Clipboard.setData(ClipboardData(text: value));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم النسخ')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم النسخ')));
       },
       icon: const Icon(Icons.copy, size: 16),
       label: Text(value),
@@ -472,18 +505,17 @@ Future<void> _showRechargeDialog(
           if ((num.tryParse(amount.text.trim()) ?? 0) <= 0) return;
           setState(() => busy = true);
           try {
-            await ref.read(cardUsersRepositoryProvider).recharge(
-                  cardUserId,
-                  amount: amount.text.trim(),
-                );
+            await ref
+                .read(cardUsersRepositoryProvider)
+                .recharge(cardUserId, amount: amount.text.trim());
             ref.invalidate(cardUser360Provider(cardUserId));
             ref.invalidate(cardUsersPageProvider);
             if (dialogContext.mounted) Navigator.pop(dialogContext);
           } catch (error) {
             if (!dialogContext.mounted) return;
-            ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text(visibleErrorMessage(error))),
-            );
+            ScaffoldMessenger.of(
+              dialogContext,
+            ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(error))));
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);
           }
@@ -531,18 +563,17 @@ Future<void> _showPasswordDialog(
           if (password.text.length < 4) return;
           setState(() => busy = true);
           try {
-            await ref.read(cardUsersRepositoryProvider).updatePassword(
-                  cardUserId,
-                  password: password.text,
-                );
+            await ref
+                .read(cardUsersRepositoryProvider)
+                .updatePassword(cardUserId, password: password.text);
             ref.invalidate(cardUser360Provider(cardUserId));
             ref.invalidate(cardUsersPageProvider);
             if (dialogContext.mounted) Navigator.pop(dialogContext);
           } catch (error) {
             if (!dialogContext.mounted) return;
-            ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text(visibleErrorMessage(error))),
-            );
+            ScaffoldMessenger.of(
+              dialogContext,
+            ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(error))));
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);
           }

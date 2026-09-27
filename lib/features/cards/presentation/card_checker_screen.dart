@@ -32,9 +32,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
   }
 
   Future<void> _search() async {
-    await ref
-        .read(cardCheckerControllerProvider.notifier)
-        .search(_query.text);
+    await ref.read(cardCheckerControllerProvider.notifier).search(_query.text);
   }
 
   Future<void> _runAction(
@@ -50,8 +48,9 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
     if (!mounted) return;
     final message = outcome.error ?? outcome.success;
     if (message != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
@@ -64,6 +63,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
       children: [
         PageHeader(
           title: 'منصة عمليات البطاقة',
+          inlineActions: true,
           actions: [
             IconButton(
               tooltip: 'تحديث',
@@ -74,7 +74,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         CardCheckerSearch(
           controller: _query,
           loading: state.loading,
@@ -84,7 +84,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
           const SizedBox(height: AppTokens.s12),
           CardCheckerInlineError(text: state.error!),
         ],
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         if (result == null)
           const EmptyState(
             icon: Icons.manage_search_outlined,
@@ -99,7 +99,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
           )
         else ...[
           CardCheckerSummary(card: result),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CardCheckerOperations(
             card: result,
             busy: state.actionLoading,
@@ -140,8 +140,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
               final ok = await cardCheckerConfirm(
                 context,
                 title: 'تصفير استخدام البطاقة',
-                body:
-                    'سيتم تصفير وقت بداية الاستخدام والجهاز المرصود. متابعة؟',
+                body: 'سيتم تصفير وقت بداية الاستخدام والجهاز المرصود. متابعة؟',
               );
               if (!mounted || !ok) return;
               await _runAction(
@@ -164,10 +163,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
                 }
               }
               await _runAction(
-                (repo) => repo.disconnectCard(
-                  result.id!,
-                  sessionId: sessionId,
-                ),
+                (repo) => repo.disconnectCard(result.id!, sessionId: sessionId),
                 success: 'تم إرسال طلب الطرد إلى الخادم.',
               );
             },
@@ -187,11 +183,11 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
               );
             },
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CardCheckerDetails(card: result),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CardCheckerMacsCard(summary: result.accountingSummary),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CardCheckerSessionsCard(
             sessions: result.accountingSummary.latestSessions,
           ),

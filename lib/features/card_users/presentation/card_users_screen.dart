@@ -9,7 +9,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/currency_field.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
-import '../../../shared/widgets/hub_kpi.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../application/card_users_providers.dart';
@@ -29,28 +29,35 @@ class CardUsersScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'مستخدمو الكروت والسوق الإلكتروني',
+          inlineActions: true,
           actions: [
-            OutlinedButton.icon(
+            IconButton(
+              tooltip: 'تحديث',
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () {
                 ref.invalidate(cardUsersPageProvider);
                 ref.invalidate(cardMarketplacePackagesProvider);
               },
-              icon: const Icon(Icons.refresh),
-              label: const Text('تحديث'),
-            ),
-            OutlinedButton.icon(
-              onPressed: () => _showCreatePackageDialog(context, ref),
-              icon: const Icon(Icons.sell_outlined),
-              label: const Text('باقة جديدة'),
-            ),
-            ElevatedButton.icon(
-              onPressed: () => _showCreateUserDialog(context, ref),
-              icon: const Icon(Icons.person_add_alt_1_outlined),
-              label: const Text('مستخدم جديد'),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.person_add_alt_1_outlined,
+              label: 'مستخدم جديد',
+              primary: true,
+              onPressed: () => _showCreateUserDialog(context, ref),
+            ),
+            ActionItem(
+              icon: Icons.sell_outlined,
+              label: 'باقة جديدة',
+              onPressed: () => _showCreatePackageDialog(context, ref),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppTokens.s12),
         usersAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => HubErrorState(
@@ -75,7 +82,7 @@ class CardUsersScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _Summary(summary: page.summary),
-                const SizedBox(height: AppTokens.s16),
+                const SizedBox(height: AppTokens.s12),
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final wide = constraints.maxWidth > 980;
@@ -85,16 +92,15 @@ class CardUsersScreen extends ConsumerWidget {
                         children: [
                           for (final user in page.items) ...[
                             _UserCard(user: user),
-                            const SizedBox(height: AppTokens.s12),
+                            const SizedBox(height: AppTokens.s8),
                           ],
-                          const SizedBox(height: AppTokens.s8),
+                          const SizedBox(height: AppTokens.s4),
                           packagesAsync.when(
                             loading: () => const SizedBox.shrink(),
                             error: (error, stackTrace) =>
                                 const SizedBox.shrink(),
-                            data: (packages) => _PackagesPanel(
-                              packages: packages,
-                            ),
+                            data: (packages) =>
+                                _PackagesPanel(packages: packages),
                           ),
                         ],
                       );
@@ -123,9 +129,8 @@ class CardUsersScreen extends ConsumerWidget {
                                 cardMarketplacePackagesProvider,
                               ),
                             ),
-                            data: (packages) => _PackagesPanel(
-                              packages: packages,
-                            ),
+                            data: (packages) =>
+                                _PackagesPanel(packages: packages),
                           ),
                         ),
                       ],
@@ -148,35 +153,20 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: AppTokens.s12,
-      runSpacing: AppTokens.s12,
-      children: [
-        HubKpi(
-          label: 'المستخدمون',
-          value: '${summary.users}',
-          icon: Icons.people_alt_outlined,
-          variant: KpiVariant.brand,
-        ),
-        HubKpi(
-          label: 'النشطون',
-          value: '${summary.active}',
-          icon: Icons.verified_user_outlined,
-          variant: KpiVariant.green,
-        ),
-        HubKpi(
-          label: 'الكروت المملوكة',
-          value: '${summary.cards}',
-          icon: Icons.credit_card_outlined,
-          variant: KpiVariant.blue,
-        ),
-        HubKpi(
-          label: 'رصيد المحافظ',
-          value: '${summary.balance.toStringAsFixed(2)} ${summary.currency}',
-          icon: Icons.account_balance_wallet_outlined,
-          variant: KpiVariant.amber,
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, c) => CountGrid(
+        columns: c.maxWidth >= 620 ? 4 : 2,
+        items: [
+          CountItem('المستخدمون', summary.users),
+          CountItem('النشطون', summary.active, tone: PillTone.green),
+          CountItem('الكروت المملوكة', summary.cards, tone: PillTone.blue),
+          CountItem.text(
+            'رصيد المحافظ',
+            '${summary.balance.toStringAsFixed(2)} ${summary.currency}',
+            tone: PillTone.brand,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -238,40 +228,44 @@ class _UserCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      padding: EdgeInsets.zero,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppTokens.r10),
+        borderRadius: BorderRadius.circular(AppTokens.r14),
         onTap: () => context.goNamed(
           'card-user-360',
           pathParameters: {'id': '${user.id}'},
         ),
         child: Padding(
-          padding: const EdgeInsets.all(AppTokens.s4),
+          padding: const EdgeInsets.all(AppTokens.s12),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
                   Expanded(child: _UserName(user: user)),
+                  const SizedBox(width: AppTokens.s8),
                   _Status(user: user),
+                  const Icon(Icons.chevron_left, color: AppTokens.textMuted),
                 ],
               ),
-              const SizedBox(height: AppTokens.s12),
-              Wrap(
-                spacing: AppTokens.s8,
-                runSpacing: AppTokens.s8,
-                children: [
-                  _MiniMetric(
+              const SizedBox(height: AppTokens.s8),
+              InfoGrid(
+                items: [
+                  InfoItem(
                     icon: Icons.account_balance_wallet_outlined,
-                    label:
+                    label: 'الرصيد',
+                    value:
                         '${user.balance.toStringAsFixed(2)} ${user.walletCurrency}',
                   ),
-                  _MiniMetric(
+                  InfoItem(
                     icon: Icons.credit_card_outlined,
-                    label: '${user.ownedCardsCount} كرت',
+                    label: 'الكروت',
+                    value: '${user.ownedCardsCount} كرت',
                   ),
-                  _MiniMetric(
+                  InfoItem(
                     icon: Icons.shopping_bag_outlined,
-                    label: '${user.purchaseCount} عملية',
+                    label: 'المشتريات',
+                    value: '${user.purchaseCount} عملية',
                   ),
                 ],
               ),
@@ -332,6 +326,7 @@ class _PackagesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'باقات السوق الإلكتروني',
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: packages.isEmpty
           ? const EmptyState(
               icon: Icons.inventory_2_outlined,
@@ -342,7 +337,8 @@ class _PackagesPanel extends StatelessWidget {
               children: [
                 for (final package in packages.take(8)) ...[
                   _PackageTile(package: package),
-                  const Divider(height: AppTokens.s20),
+                  if (package != packages.take(8).last)
+                    const Divider(height: AppTokens.s16),
                 ],
               ],
             ),
@@ -360,13 +356,17 @@ class _PackageTile extends StatelessWidget {
     return Row(
       children: [
         Container(
-          width: 38,
-          height: 38,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             color: AppTokens.brandSoft,
             borderRadius: BorderRadius.circular(AppTokens.r10),
           ),
-          child: const Icon(Icons.local_activity_outlined),
+          child: const Icon(
+            Icons.local_activity_outlined,
+            size: 20,
+            color: AppTokens.brandInk,
+          ),
         ),
         const SizedBox(width: AppTokens.s12),
         Expanded(
@@ -397,33 +397,6 @@ class _PackageTile extends StatelessWidget {
   }
 }
 
-class _MiniMetric extends StatelessWidget {
-  const _MiniMetric({required this.icon, required this.label});
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppTokens.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppTokens.r10),
-        border: Border.all(color: AppTokens.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppTokens.textSecondary),
-          const SizedBox(width: 5),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-}
-
 Future<void> _showCreatePackageDialog(
   BuildContext context,
   WidgetRef ref,
@@ -445,10 +418,13 @@ Future<void> _showCreatePackageDialog(
           if (name.text.trim().isEmpty) return;
           setState(() => busy = true);
           try {
-            await ref.read(cardUsersRepositoryProvider).createPackage(
+            await ref
+                .read(cardUsersRepositoryProvider)
+                .createPackage(
                   name: name.text.trim(),
                   planId: int.tryParse(planId.text.trim()),
-                  price: num.tryParse(price.text.trim().replaceAll(',', '.')) ?? 0,
+                  price:
+                      num.tryParse(price.text.trim().replaceAll(',', '.')) ?? 0,
                   currency: currency,
                   durationMinutes: int.tryParse(duration.text.trim()) ?? 0,
                   speedDownKbps: int.tryParse(down.text.trim()) ?? 0,
@@ -458,9 +434,9 @@ Future<void> _showCreatePackageDialog(
             if (dialogContext.mounted) Navigator.pop(dialogContext);
           } catch (error) {
             if (!dialogContext.mounted) return;
-            ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text(visibleErrorMessage(error))),
-            );
+            ScaffoldMessenger.of(
+              dialogContext,
+            ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(error))));
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);
           }
@@ -505,9 +481,7 @@ Future<void> _showCreatePackageDialog(
                 TextField(
                   controller: duration,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'المدة (دقائق)',
-                  ),
+                  decoration: const InputDecoration(labelText: 'المدة (دقائق)'),
                 ),
                 const SizedBox(height: AppTokens.s8),
                 Row(
@@ -568,7 +542,9 @@ Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
           if (name.text.trim().isEmpty) return;
           setState(() => busy = true);
           try {
-            await ref.read(cardUsersRepositoryProvider).createUser(
+            await ref
+                .read(cardUsersRepositoryProvider)
+                .createUser(
                   displayName: name.text.trim(),
                   mobile: mobile.text.trim(),
                   email: email.text.trim(),
@@ -578,9 +554,9 @@ Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
             if (dialogContext.mounted) Navigator.pop(dialogContext);
           } catch (error) {
             if (!dialogContext.mounted) return;
-            ScaffoldMessenger.of(dialogContext).showSnackBar(
-              SnackBar(content: Text(visibleErrorMessage(error))),
-            );
+            ScaffoldMessenger.of(
+              dialogContext,
+            ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(error))));
           } finally {
             if (dialogContext.mounted) setState(() => busy = false);
           }

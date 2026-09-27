@@ -16,6 +16,7 @@ class CardCheckerMacsCard extends StatelessWidget {
       return const AppCard(
         title: 'الأجهزة التي استخدمت البطاقة',
         icon: Icons.devices_outlined,
+        padding: EdgeInsets.all(AppTokens.s12),
         child: Text(
           'لا توجد أجهزة مسجلة بعد. ستظهر هنا بعد أول اتصال فعلي.',
           style: TextStyle(color: AppTokens.textMuted),
@@ -25,6 +26,7 @@ class CardCheckerMacsCard extends StatelessWidget {
     return AppCard(
       title: 'الأجهزة التي استخدمت البطاقة',
       icon: Icons.devices_outlined,
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         children: [
           for (final mac in summary.macs)
@@ -57,6 +59,7 @@ class CardCheckerSessionsCard extends StatelessWidget {
       return const AppCard(
         title: 'جلسات البطاقة',
         icon: Icons.table_rows_outlined,
+        padding: EdgeInsets.all(AppTokens.s12),
         child: Text(
           'لا توجد جلسات محفوظة لهذه البطاقة بعد.',
           style: TextStyle(color: AppTokens.textMuted),
@@ -77,16 +80,14 @@ class CardCheckerSessionsCard extends StatelessWidget {
           return ListTile(
             dense: true,
             contentPadding: const EdgeInsets.symmetric(
-              horizontal: AppTokens.s16,
-              vertical: AppTokens.s8,
+              horizontal: AppTokens.s12,
+              vertical: AppTokens.s4,
             ),
             title: Row(
               children: [
                 Expanded(
                   child: Text(
-                    s.sessionId.isEmpty
-                        ? 'جلسة #${s.id ?? '-'}'
-                        : s.sessionId,
+                    s.sessionId.isEmpty ? 'جلسة #${s.id ?? '-'}' : s.sessionId,
                     style: const TextStyle(fontWeight: FontWeight.w800),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -150,8 +151,7 @@ class _Tiny extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           text,
-          style:
-              const TextStyle(color: AppTokens.textSecondary, fontSize: 12),
+          style: const TextStyle(color: AppTokens.textSecondary, fontSize: 12),
         ),
       ],
     );

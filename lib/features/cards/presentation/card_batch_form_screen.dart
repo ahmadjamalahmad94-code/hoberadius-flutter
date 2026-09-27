@@ -13,9 +13,11 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
 import '../application/cards_list_providers.dart';
+import 'widgets/cards_form_header.dart';
 
 class CardBatchFormScreen extends ConsumerStatefulWidget {
   const CardBatchFormScreen({super.key});
@@ -125,6 +127,11 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     );
   }
 
+  Widget _num(TextEditingController c, String label) => FormFieldRow(
+        label: label,
+        child: TextFormField(controller: c, keyboardType: TextInputType.number),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -132,47 +139,13 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    onPressed: () => context.goNamed('cards'),
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                  Flexible(
-                    child: Text(
-                      'توليد دفعة كروت',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppTokens.sidebarBg,
-                              ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-              ElevatedButton.icon(
-                onPressed: _loading ? null : _submit,
-                icon: _loading
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Icon(Icons.play_arrow_outlined),
-                label: const Text('توليد'),
-              ),
-            ],
+          CardsFormHeader(
+            title: 'توليد دفعة كروت',
+            onBack: () => context.goNamed('cards'),
+            actionLabel: 'توليد',
+            actionIcon: Icons.play_arrow_outlined,
+            busy: _loading,
+            onAction: _submit,
           ),
           if (_error != null) ...[
             const SizedBox(height: AppTokens.s12),
@@ -182,11 +155,13 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                 color: AppTokens.dangerBg,
                 borderRadius: BorderRadius.circular(AppTokens.r10),
               ),
-              child:
-                  Text(_error!, style: const TextStyle(color: AppTokens.red)),
+              child: Text(
+                _error!,
+                style: const TextStyle(color: AppTokens.red),
+              ),
             ),
           ],
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'batch.core',
             icon: Icons.credit_card_outlined,
@@ -197,149 +172,136 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   label: 'اسم باقة الكروت',
                   child: TextFormField(controller: _packageName),
                 ),
-                FormFieldRow(
-                  label: 'معرّف الباقة',
-                  required: true,
-                  child: TextFormField(
-                    controller: _plan,
-                    keyboardType: TextInputType.number,
-                    validator: (v) =>
-                        (v == null || int.tryParse(v.trim()) == null)
-                            ? 'مطلوب'
-                            : null,
+                FormFieldPair(
+                  first: FormFieldRow(
+                    label: 'معرّف الباقة',
+                    required: true,
+                    child: TextFormField(
+                      controller: _plan,
+                      keyboardType: TextInputType.number,
+                      validator: (v) =>
+                          (v == null || int.tryParse(v.trim()) == null)
+                              ? 'مطلوب'
+                              : null,
+                    ),
+                  ),
+                  second: FormFieldRow(
+                    label: 'العدد',
+                    required: true,
+                    hint: '1 فأكثر',
+                    child: TextFormField(
+                      controller: _count,
+                      keyboardType: TextInputType.number,
+                      validator: (v) {
+                        final n = int.tryParse(v?.trim() ?? '');
+                        if (n == null || n < 1) {
+                          return 'أدخل عددًا صحيحًا (1 فأكثر)';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ),
+                FormFieldPair(
+                  first: _num(_pricePerCard, 'سعر البطاقة'),
+                  second: _num(_totalPrice, 'السعر الإجمالي'),
+                ),
+                FormFieldPair(
+                  first: _num(_totalQuota, 'الحصة الكلية MB'),
+                  second: FormFieldRow(
+                    label: 'اسم الخدمة',
+                    child: TextFormField(controller: _serviceName),
                   ),
                 ),
                 FormFieldRow(
-                  label: 'العدد',
-                  required: true,
-                  hint: 'العدد المطلوب (1 فأكثر)',
-                  child: TextFormField(
-                    controller: _count,
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      final n = int.tryParse(v?.trim() ?? '');
-                      if (n == null || n < 1) return 'أدخل عددًا صحيحًا (1 فأكثر)';
-                      return null;
-                    },
-                  ),
-                ),
-                FormFieldRow(
-                    label: 'ملاحظات', child: TextFormField(controller: _notes)),
-                FormFieldRow(
-                  label: 'سعر البطاقة',
-                  child: TextFormField(
-                    controller: _pricePerCard,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                FormFieldRow(
-                  label: 'السعر الإجمالي',
-                  child: TextFormField(
-                    controller: _totalPrice,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                FormFieldRow(
-                  label: 'الحصة الكلية MB',
-                  child: TextFormField(
-                    controller: _totalQuota,
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                FormFieldRow(
-                  label: 'اسم الخدمة',
-                  child: TextFormField(controller: _serviceName),
+                  label: 'ملاحظات',
+                  child: TextFormField(controller: _notes),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'batch.username',
             icon: Icons.text_fields,
             title: 'إعدادات اسم المستخدم',
             child: Column(
               children: [
-                FormFieldRow(
-                  label: 'موضع البادئة/اللاحقة',
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: _affixMode,
-                    items: const [
-                      DropdownMenuItem(value: 'none', child: Text('بدون')),
-                      DropdownMenuItem(value: 'prefix', child: Text('بادئة')),
-                      DropdownMenuItem(value: 'suffix', child: Text('لاحقة')),
-                    ],
-                    onChanged: (v) => setState(() => _affixMode = v ?? 'none'),
+                FormFieldPair(
+                  first: FormFieldRow(
+                    label: 'موضع البادئة/اللاحقة',
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _affixMode,
+                      items: const [
+                        DropdownMenuItem(value: 'none', child: Text('بدون')),
+                        DropdownMenuItem(value: 'prefix', child: Text('بادئة')),
+                        DropdownMenuItem(value: 'suffix', child: Text('لاحقة')),
+                      ],
+                      onChanged: (v) =>
+                          setState(() => _affixMode = v ?? 'none'),
+                    ),
+                  ),
+                  second: FormFieldRow(
+                    label: 'القيمة',
+                    child: TextFormField(
+                      controller: _prefix,
+                      decoration: const InputDecoration(hintText: 'مثال: qa-'),
+                    ),
                   ),
                 ),
-                FormFieldRow(
-                  label: 'القيمة',
-                  hint: 'مثال: qa-',
-                  child: TextFormField(controller: _prefix),
-                ),
-                FormFieldRow(
-                  label: 'طول الاسم',
-                  child: TextFormField(
-                      controller: _ulen, keyboardType: TextInputType.number),
-                ),
+                _num(_ulen, 'طول الاسم'),
               ],
             ),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'batch.password',
             icon: Icons.password,
             title: 'إعدادات كلمة المرور',
-            child: Column(
-              children: [
-                FormFieldRow(
-                  label: 'الطول',
-                  child: TextFormField(
-                      controller: _plen, keyboardType: TextInputType.number),
+            child: FormFieldPair(
+              first: _num(_plen, 'الطول'),
+              second: FormFieldRow(
+                label: 'مستوى التعقيد',
+                child: DropdownButtonFormField<String>(
+                  isExpanded: true,
+                  value: _passwordType,
+                  items: const [
+                    DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),
+                    DropdownMenuItem(value: 'weak', child: Text('ضعيف')),
+                    DropdownMenuItem(value: 'medium', child: Text('متوسط')),
+                    DropdownMenuItem(value: 'strong', child: Text('قوي')),
+                  ],
+                  onChanged: (v) =>
+                      setState(() => _passwordType = v ?? 'medium'),
                 ),
-                FormFieldRow(
-                  label: 'مستوى التعقيد',
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: _passwordType,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 'digits', child: Text('أرقام فقط')),
-                      DropdownMenuItem(value: 'weak', child: Text('ضعيف')),
-                      DropdownMenuItem(value: 'medium', child: Text('متوسط')),
-                      DropdownMenuItem(value: 'strong', child: Text('قوي')),
-                    ],
-                    onChanged: (v) =>
-                        setState(() => _passwordType = v ?? 'medium'),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           CollapsibleSection(
             storageKey: 'batch.expiry',
             icon: Icons.timer_outlined,
             title: 'الصلاحية',
             child: Column(
               children: [
-                FormFieldRow(
-                  label: 'القيمة',
-                  child: TextFormField(
-                      controller: _timeVal, keyboardType: TextInputType.number),
-                ),
-                FormFieldRow(
-                  label: 'الوحدة',
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: _timeUnit,
-                    items: const [
-                      DropdownMenuItem(value: 'minutes', child: Text('دقائق')),
-                      DropdownMenuItem(value: 'hours', child: Text('ساعات')),
-                      DropdownMenuItem(value: 'days', child: Text('أيام')),
-                    ],
-                    onChanged: (v) => setState(() => _timeUnit = v ?? 'days'),
+                FormFieldPair(
+                  first: _num(_timeVal, 'القيمة'),
+                  second: FormFieldRow(
+                    label: 'الوحدة',
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _timeUnit,
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'minutes',
+                          child: Text('دقائق'),
+                        ),
+                        DropdownMenuItem(value: 'hours', child: Text('ساعات')),
+                        DropdownMenuItem(value: 'days', child: Text('أيام')),
+                      ],
+                      onChanged: (v) => setState(() => _timeUnit = v ?? 'days'),
+                    ),
                   ),
                 ),
                 FormFieldRow(
@@ -361,7 +323,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
             ),
           ),
           if (_result != null) ...[
-            const SizedBox(height: AppTokens.s20),
+            const SizedBox(height: AppTokens.s16),
             _BatchResult(result: _result!, onExportCsv: _exportCsv),
           ],
           const SizedBox(height: AppTokens.s40),
@@ -390,7 +352,7 @@ class _BatchResult extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.all(AppTokens.s16),
+            padding: const EdgeInsets.all(AppTokens.s12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [p.successBg, p.card],
@@ -402,23 +364,33 @@ class _BatchResult extends ConsumerWidget {
                 topLeft: Radius.circular(AppTokens.r14),
               ),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Icon(Icons.check_circle, color: p.successStrong),
-                const SizedBox(width: AppTokens.s8),
-                Expanded(
-                  child: Text(
-                    'تم توليد ${result.cards.length} كرت — الدفعة ${result.batch.batchCode}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: p.textPrimary,
+                Row(
+                  children: [
+                    Icon(Icons.check_circle, color: p.successStrong),
+                    const SizedBox(width: AppTokens.s8),
+                    Expanded(
+                      child: Text(
+                        'تم توليد ${result.cards.length} كرت — الدفعة ${result.batch.batchCode}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: p.textPrimary,
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-                OutlinedButton.icon(
-                  onPressed: onExportCsv,
-                  icon: const Icon(Icons.file_download_outlined),
-                  label: const Text('تصدير ملف'),
+                const SizedBox(height: AppTokens.s12),
+                ActionBar(
+                  items: [
+                    ActionItem(
+                      icon: Icons.file_download_outlined,
+                      label: 'تصدير ملف',
+                      onPressed: onExportCsv,
+                    ),
+                  ],
                 ),
               ],
             ),
