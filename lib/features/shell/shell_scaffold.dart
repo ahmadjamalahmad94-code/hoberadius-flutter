@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/ota/ota_banner.dart';
+import '../../core/ota/ota_updater.dart';
 import '../../core/router/nav_history.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/hub_toast.dart';
@@ -46,7 +48,10 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
     // Record each visited location so the hardware/gesture back button can
     // walk back through the go-history instead of exiting the app.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(navHistoryProvider).record(location);
+      if (!mounted) return;
+      ref.read(navHistoryProvider).record(location);
+      // OTA (Shorebird) — no-op on web / non-Shorebird builds.
+      ref.read(otaControllerProvider.notifier).checkOnce();
     });
 
     final width = MediaQuery.sizeOf(context).width;
@@ -62,7 +67,12 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
         if (didPop) return;
         _handleBack();
       },
-      child: shell,
+      child: Column(
+        children: [
+          const OtaBanner(),
+          Expanded(child: shell),
+        ],
+      ),
     );
   }
 
