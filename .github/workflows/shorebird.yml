@@ -114,14 +114,18 @@ jobs:
 
       - name: Release (new installable APK)
         if: inputs.mode == 'release'
-        run: shorebird release android --artifact apk --no-confirm
+        # --no-tree-shake-icons: ship the full icon fonts. With tree-shaking the
+        # font file changes whenever a screen starts/stops using an icon, and
+        # Shorebird cannot patch asset changes — every UI tweak adding an icon
+        # would then need a reinstall. (Patches pass the same flag below.)
+        run: shorebird release android --artifact apk --no-confirm -- --no-tree-shake-icons
 
       - name: Patch (OTA update for the release matching pubspec version)
         if: inputs.mode == 'patch'
         run: |
           VER=$(grep -E '^version:' pubspec.yaml | awk '{print $2}')
           echo "patching release $VER on track ${{ inputs.track }}"
-          shorebird patch android --release-version="$VER" --track="${{ inputs.track }}" --no-confirm
+          shorebird patch android --release-version="$VER" --track="${{ inputs.track }}" --no-confirm -- --no-tree-shake-icons
 
       - name: Collect APK
         if: inputs.mode == 'release'
