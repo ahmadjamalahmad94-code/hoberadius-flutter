@@ -26,6 +26,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   String _scheme = 'https';
   bool _obscure = true;
   bool _obscureKey = true;
+  bool _showAdvanced = false;
   late final AnimationController _heroAnim;
 
   @override
@@ -50,6 +51,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
       if (savedKey != null && savedKey.isNotEmpty) {
         _securityKey.text = savedKey;
+        _showAdvanced = true;
       }
     });
   }
@@ -153,30 +155,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               ),
                               const SizedBox(height: AppTokens.s12),
                               TextFormField(
-                                controller: _securityKey,
-                                obscureText: _obscureKey,
-                                textInputAction: TextInputAction.next,
-                                autocorrect: false,
-                                enableSuggestions: false,
-                                decoration: InputDecoration(
-                                  labelText: 'مفتاح الأمان (X-API-Key)',
-                                  helperText:
-                                      'مفتاح الخادم المؤمّن — اتركه فارغًا إن لم يطلبه خادمك.',
-                                  prefixIcon: const Icon(Icons.key_outlined),
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscureKey
-                                          ? Icons.visibility_off_outlined
-                                          : Icons.visibility_outlined,
-                                    ),
-                                    onPressed: () => setState(
-                                      () => _obscureKey = !_obscureKey,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: AppTokens.s12),
-                              TextFormField(
                                 controller: _username,
                                 textInputAction: TextInputAction.next,
                                 decoration: const InputDecoration(
@@ -211,6 +189,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     (v == null || v.isEmpty) ? 'مطلوب' : null,
                                 onFieldSubmitted: (_) => _submit(),
                               ),
+                              // «متقدّم» — the per-server security key is only
+                              // needed by servers that enforce an API key on
+                              // every request (an opt-in setting), so it stays
+                              // out of the way unless the owner opens it or a
+                              // key was saved before.
+                              const SizedBox(height: AppTokens.s4),
+                              Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: TextButton.icon(
+                                  onPressed: () => setState(
+                                    () => _showAdvanced = !_showAdvanced,
+                                  ),
+                                  icon: Icon(
+                                    _showAdvanced
+                                        ? Icons.expand_less
+                                        : Icons.expand_more,
+                                    size: 18,
+                                  ),
+                                  label: const Text('إعدادات متقدّمة'),
+                                ),
+                              ),
+                              if (_showAdvanced) ...[
+                                TextFormField(
+                                  controller: _securityKey,
+                                  obscureText: _obscureKey,
+                                  textInputAction: TextInputAction.done,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  decoration: InputDecoration(
+                                    labelText: 'مفتاح الأمان (X-API-Key)',
+                                    helperText:
+                                        'يُطلب فقط إن كان خادمك يفرض مفتاح API على كلّ الطلبات.',
+                                    prefixIcon: const Icon(Icons.key_outlined),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _obscureKey
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                      ),
+                                      onPressed: () => setState(
+                                        () => _obscureKey = !_obscureKey,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                               if (auth.error != null) ...[
                                 const SizedBox(height: AppTokens.s12),
                                 _ErrorBanner(message: auth.error!),
