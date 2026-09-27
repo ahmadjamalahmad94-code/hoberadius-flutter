@@ -1,0 +1,131 @@
+name: shorebird
+
+# Over-the-air updates (Shorebird code push).
+#
+#   mode=release  → builds a Shorebird *release* APK (0.x.y+N from pubspec) and
+#                   uploads it as an artifact. Install this once on the phone.
+#   mode=patch    → builds a Dart-only *patch* for the release matching the
+#                   current pubspec version and publishes it. Phones running
+#                   that release download it on next launch — no reinstall.
+#
+# Native changes (new plugin with native code, Gradle/manifest changes,
+# Flutter upgrade) need a new release; Shorebird refuses to patch them unless
+# --allow-native-diffs is passed, which we deliberately do not do.
+#
+# Needs the repository secret SHOREBIRD_TOKEN (Shorebird console → Account →
+# API Keys). The Android scaffold steps mirror build.yml so the patch is built
+# against the same native layer as the release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "release (new installable APK) or patch (OTA update)"
+        required: true
+        default: patch
+        type: choice
+        options: [patch, release]
+      track:
+        description: "patch track (stable = everyone, staging = testers only)"
+        required: false
+        default: stable
+        type: choice
+        options: [stable, staging]
+
+env:
+  SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+
+jobs:
+  shorebird:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Shorebird (bundles its own Flutter)
+        uses: shorebirdtech/setup-shorebird@v1
+        with:
+          cache: true
+
+      - name: Shorebird version
+        run: shorebird --version
+
+      - name: Install dependencies
+        run: shorebird flutter pub get
+
+      - name: Analyze + test (same gate as build.yml)
+        run: |
+          shorebird flutter analyze --no-fatal-infos
+          shorebird flutter test --exclude-tags "golden || render"
+
+      - name: Scaffold Android platform (android/ is gitignored)
+        run: shorebird flutter create --platforms=android --org com.hoberadius .
+
+      - name: Configure Firebase + Android build (google-services, plugin, perms)
+        run: bash tool/configure_android.sh
+
+      - name: Enable cleartext HTTP + INTERNET permission
+        run: |
+          set -euo pipefail
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' "$MANIFEST" || \
+            sed -i 's|<manifest\([^>]*\)>|<manifest\1>\n    <uses-permission android:name="android.permission.INTERNET"/>|' "$MANIFEST"
+          grep -q 'usesCleartextTraffic' "$MANIFEST" || \
+            sed -i 's|<application|<application android:usesCleartextTraffic="true"|' "$MANIFEST"
+
+      - name: Generate debug keystore (release is debug-signed → installable)
+        run: |
+          mkdir -p ~/.android
+          [ -f ~/.android/debug.keystore ] || keytool -genkeypair -v \
+            -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey \
+            -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=Android Debug,O=Android,C=US"
+
+      - name: Patch stale-plugin + app compileSdk to 36 (mirrors build.yml)
+        run: |
+          CACHE="${PUB_CACHE:-$HOME/.pub-cache}"
+          while IFS= read -r g; do
+            if grep -qiE 'compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)' "$g"; then
+              sed -i -E 's/compileSdk(Version)?[[:space:]]+3[345]([^0-9]|$)/compileSdk 36\2/' "$g"
+            fi
+          done < <(find "$CACHE" -path "*/android/build.gradle" -o -path "*/android/build.gradle.kts" 2>/dev/null)
+          for app in android/app/build.gradle android/app/build.gradle.kts; do
+            [ -f "$app" ] || continue
+            sed -i -E 's/compileSdk(Version)?[[:space:]]*=?[[:space:]]*(flutter\.compileSdkVersion|3[0-5])/compileSdk = 36/' "$app"
+          done
+
+      - name: Doctor
+        run: shorebird doctor || true
+
+      - name: Release (new installable APK)
+        if: inputs.mode == 'release'
+        run: shorebird release android --artifact apk --no-confirm
+
+      - name: Patch (OTA update for the release matching pubspec version)
+        if: inputs.mode == 'patch'
+        run: |
+          VER=$(grep -E '^version:' pubspec.yaml | awk '{print $2}')
+          echo "patching release $VER on track ${{ inputs.track }}"
+          shorebird patch android --release-version="$VER" --track="${{ inputs.track }}" --no-confirm
+
+      - name: Collect APK
+        if: inputs.mode == 'release'
+        run: |
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-release.apk artifacts/radius-app.apk
+          ls -la artifacts
+
+      - name: Upload APK artifact
+        if: inputs.mode == 'release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: radius-app-apk
+          path: artifacts/radius-app.apk
+          retention-days: 30
