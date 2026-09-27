@@ -81,60 +81,10 @@ class CardCheckerDetails extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final columns = constraints.maxWidth > 900 ? 3 : 2;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              InfoGrid(items: items, columns: columns),
-              const SizedBox(height: AppTokens.s8),
-              // Lists can be long — full-width lines so nothing is cut off.
-              _WideLine(
-                label: 'مصادر البيانات',
-                value: joinLocalizedFields(card.dataSources),
-              ),
-              _WideLine(
-                label: 'حقول ناقصة',
-                value: card.missingFields.isEmpty
-                    ? 'لا يوجد'
-                    : joinLocalizedFields(card.missingFields),
-              ),
-            ],
-          );
+          // Internal diagnostics (data sources / missing fields) are not
+          // shown: they were English table names, noise for the operator.
+          return InfoGrid(items: items, columns: columns);
         },
-      ),
-    );
-  }
-}
-
-class _WideLine extends StatelessWidget {
-  const _WideLine({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppTokens.s4),
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: const TextStyle(
-                color: AppTokens.textMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            TextSpan(
-              text: value,
-              style: const TextStyle(
-                color: AppTokens.sidebarBg,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

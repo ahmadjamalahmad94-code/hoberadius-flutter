@@ -24,7 +24,8 @@ class CurrencyField extends StatelessWidget {
     return InputDecorator(
       decoration: InputDecoration(
         labelText: label,
-        helperText: 'عملة المنشأة المركزية',
+        helperText: 'عملة المنشأة',
+        helperMaxLines: 2,
         suffixIcon: const Icon(Icons.lock_outline, size: 16),
       ),
       child: Text(
