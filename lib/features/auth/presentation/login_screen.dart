@@ -293,6 +293,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   color: p.textMuted,
                                 ),
                               ),
+                              const SizedBox(height: AppTokens.s8),
+                              // TEMP: live-update (Shorebird OTA) proof marker.
+                              // Remove after confirming the patch landed.
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppTokens.s12,
+                                  vertical: AppTokens.s8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0x1422C55E),
+                                  borderRadius:
+                                      BorderRadius.circular(AppTokens.s8),
+                                ),
+                                child: Text(
+                                  '🟢 التحديث الحيّ يعمل — اختبار رقم ١ (٢٠٢٦-٠٩-٢٧)',
+                                  textAlign: TextAlign.center,
+                                  style: AppTypography.caption.copyWith(
+                                    color: const Color(0xFF15803D),
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
