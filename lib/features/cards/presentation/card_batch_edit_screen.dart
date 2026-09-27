@@ -13,6 +13,7 @@ import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
 import 'widgets/card_batch_edit_runtime_section.dart';
 import 'widgets/card_batch_edit_sections.dart';
+import 'widgets/cards_form_header.dart';
 
 class CardBatchEditScreen extends ConsumerStatefulWidget {
   const CardBatchEditScreen({super.key, required this.batchId});
@@ -125,7 +126,9 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
       _error = null;
     });
     try {
-      final updated = await ref.read(cardsRepositoryProvider).updateBatch(
+      final updated = await ref
+          .read(cardsRepositoryProvider)
+          .updateBatch(
             widget.batchId,
             UpdateBatchRequest(
               planId: int.parse(_plan.text.trim()),
@@ -148,8 +151,8 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
               prefixOrSuffixValue: _affixMode == 'suffix'
                   ? _suffix.text.trim()
                   : _affixMode == 'prefix'
-                      ? _prefix.text.trim()
-                      : '',
+                  ? _prefix.text.trim()
+                  : '',
               timeValue: int.tryParse(_timeVal.text.trim()) ?? 0,
               timeUnit: _timeUnit,
               deviceCount: int.tryParse(_devices.text.trim()) ?? 1,
@@ -198,54 +201,16 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: AppTokens.s8,
-                runSpacing: AppTokens.s8,
-                children: [
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () => context.goNamed(
-                          'card-batch-detail',
-                          pathParameters: {
-                            'id': '${batch.id ?? widget.batchId}',
-                          },
-                        ),
-                        icon: const Icon(Icons.arrow_back),
-                      ),
-                      Flexible(
-                        child: Text(
-                          'تعديل ${batch.batchCode}',
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppTokens.sidebarBg,
-                              ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _saving ? null : () => _save(batch),
-                    icon: _saving
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: const Text('حفظ'),
-                  ),
-                ],
+              CardsFormHeader(
+                title: 'تعديل ${batch.batchCode}',
+                onBack: () => context.goNamed(
+                  'card-batch-detail',
+                  pathParameters: {'id': '${batch.id ?? widget.batchId}'},
+                ),
+                actionLabel: 'حفظ',
+                actionIcon: Icons.save_outlined,
+                busy: _saving,
+                onAction: () => _save(batch),
               ),
               if (_error != null) ...[
                 const SizedBox(height: AppTokens.s12),
@@ -261,7 +226,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                   ),
                 ),
               ],
-              const SizedBox(height: AppTokens.s16),
+              const SizedBox(height: AppTokens.s12),
               CardBatchCoreSection(
                 packageName: _packageName,
                 plan: _plan,
@@ -270,7 +235,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 onStatus: (v) => setState(() => _status = v ?? 'active'),
                 minCount: batch.generated <= 0 ? 1 : batch.generated,
               ),
-              const SizedBox(height: AppTokens.s16),
+              const SizedBox(height: AppTokens.s12),
               CardBatchMoneySection(
                 pricePerCard: _pricePerCard,
                 priceBulk: _priceBulk,
@@ -279,7 +244,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 serviceName: _serviceName,
                 managerId: _managerId,
               ),
-              const SizedBox(height: AppTokens.s16),
+              const SizedBox(height: AppTokens.s12),
               CardBatchGenerationSection(
                 prefix: _prefix,
                 suffix: _suffix,
@@ -294,7 +259,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 onIncludeBatchNumber: (v) =>
                     setState(() => _includeBatchNumber = v),
               ),
-              const SizedBox(height: AppTokens.s16),
+              const SizedBox(height: AppTokens.s12),
               CardBatchRuntimeSection(
                 timeVal: _timeVal,
                 devices: _devices,

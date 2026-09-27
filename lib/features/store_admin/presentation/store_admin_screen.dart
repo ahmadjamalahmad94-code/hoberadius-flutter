@@ -5,7 +5,9 @@ import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/hub_kpi.dart';
+import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/hub_switch_row.dart';
+import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/store_admin_repository.dart';
 import '../domain/store_admin_model.dart';
@@ -23,22 +25,14 @@ class StoreAdminScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                'إدارة المتجر',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppTokens.sidebarBg,
-                      fontWeight: FontWeight.w800,
-                    ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+        PageHeader(
+          title: 'إدارة المتجر',
+          inlineActions: true,
+          actions: [
             IconButton(
               tooltip: 'تحديث',
               onPressed: () => ref.invalidate(storeSupportProvider),
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],
         ),
@@ -73,7 +67,7 @@ class _Body extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _Hero(snapshot: snapshot),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _RequestsCard(
           title: 'طلبات الإيداع',
           icon: Icons.south_west_outlined,
@@ -81,7 +75,7 @@ class _Body extends StatelessWidget {
           resolved: snapshot.depositsResolved,
           isDeposit: true,
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _RequestsCard(
           title: 'طلبات السحب',
           icon: Icons.north_east_outlined,
@@ -89,9 +83,9 @@ class _Body extends StatelessWidget {
           resolved: snapshot.withdrawalsResolved,
           isDeposit: false,
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _PaymentMethodsCard(methods: snapshot.paymentMethods),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _ChatInboxCard(threads: snapshot.chatThreads),
       ],
     );
@@ -104,49 +98,38 @@ class _Hero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kpis = <Widget>[
-      HubKpi(
-        label: 'إيداعات معلّقة',
-        value: '${snapshot.depositsPendingCount}',
-        icon: Icons.south_west_outlined,
-        variant: KpiVariant.amber,
-      ),
-      HubKpi(
-        label: 'سحوبات معلّقة',
-        value: '${snapshot.withdrawalsPendingCount}',
-        icon: Icons.north_east_outlined,
-        variant: KpiVariant.blue,
-      ),
-      HubKpi(
-        label: 'رسائل غير مقروءة',
-        value: '${snapshot.chatUnreadCount}',
-        icon: Icons.mark_chat_unread_outlined,
-        variant: KpiVariant.brand,
-      ),
-      HubKpi(
-        label: 'محافظ الاستلام',
-        value: '${snapshot.paymentMethods.length}',
-        icon: Icons.account_balance_outlined,
-        variant: KpiVariant.green,
-      ),
-    ];
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 880
-            ? 4
-            : constraints.maxWidth >= 560
-                ? 2
-                : 1;
-        const gap = AppTokens.s12;
-        final w =
-            ((constraints.maxWidth - gap * (columns - 1)) / columns)
-                .floorToDouble();
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [for (final k in kpis) SizedBox(width: w, child: k)],
-        );
-      },
+      builder: (context, c) => CountGrid(
+        columns: c.maxWidth >= 620 ? 4 : 2,
+        items: [
+          CountItem(
+            'إيداعات معلّقة',
+            snapshot.depositsPendingCount,
+            tone: snapshot.depositsPendingCount > 0
+                ? PillTone.amber
+                : PillTone.neutral,
+          ),
+          CountItem(
+            'سحوبات معلّقة',
+            snapshot.withdrawalsPendingCount,
+            tone: snapshot.withdrawalsPendingCount > 0
+                ? PillTone.amber
+                : PillTone.neutral,
+          ),
+          CountItem(
+            'رسائل غير مقروءة',
+            snapshot.chatUnreadCount,
+            tone: snapshot.chatUnreadCount > 0
+                ? PillTone.red
+                : PillTone.neutral,
+          ),
+          CountItem(
+            'محافظ الاستلام',
+            snapshot.paymentMethods.length,
+            tone: PillTone.blue,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -179,12 +162,13 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
     return AppCard(
       title: '${widget.title} (${widget.pending.length} معلّق)',
       icon: widget.icon,
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (widget.pending.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppTokens.s12),
+              padding: EdgeInsets.symmetric(vertical: AppTokens.s4),
               child: Text(
                 'لا توجد طلبات معلّقة.',
                 style: TextStyle(color: AppTokens.textMuted),
@@ -202,7 +186,7 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
               const SizedBox(height: AppTokens.s8),
             ],
           if (widget.resolved.isNotEmpty) ...[
-            const Divider(height: AppTokens.s24),
+            const Divider(height: AppTokens.s16),
             TextButton.icon(
               onPressed: () => setState(() => _showResolved = !_showResolved),
               icon: Icon(
@@ -317,12 +301,14 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
       await action();
       ref.invalidate(storeSupportProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تم تحديث الطلب')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم تحديث الطلب')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _busyId = null);
     }
@@ -381,9 +367,11 @@ class _RequestRow extends StatelessWidget {
                         ),
                       ),
                     Text(
-                      [r.method, r.reference, r.createdAt]
-                          .where((e) => e.isNotEmpty)
-                          .join(' • '),
+                      [
+                        r.method,
+                        r.reference,
+                        r.createdAt,
+                      ].where((e) => e.isNotEmpty).join(' • '),
                       style: const TextStyle(
                         color: AppTokens.textMuted,
                         fontSize: 11,
@@ -397,9 +385,7 @@ class _RequestRow extends StatelessWidget {
                 text: r.statusAr.isEmpty ? r.status : r.statusAr,
                 tone: r.isPending
                     ? PillTone.amber
-                    : (r.status == 'confirmed'
-                        ? PillTone.green
-                        : PillTone.red),
+                    : (r.status == 'confirmed' ? PillTone.green : PillTone.red),
               ),
             ],
           ),
@@ -414,22 +400,19 @@ class _RequestRow extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
-                : Wrap(
-                    spacing: AppTokens.s8,
-                    runSpacing: AppTokens.s8,
-                    children: [
-                      FilledButton.icon(
+                : ActionBar(
+                    items: [
+                      ActionItem(
+                        icon: Icons.check,
+                        label: 'تأكيد',
+                        primary: true,
                         onPressed: onConfirm,
-                        icon: const Icon(Icons.check, size: 18),
-                        label: const Text('تأكيد'),
                       ),
-                      OutlinedButton.icon(
+                      ActionItem(
+                        icon: Icons.close,
+                        label: 'رفض',
+                        tone: PillTone.red,
                         onPressed: onReject,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTokens.redInk,
-                        ),
-                        icon: const Icon(Icons.close, size: 18),
-                        label: const Text('رفض'),
                       ),
                     ],
                   ),
@@ -449,6 +432,7 @@ class _PaymentMethodsCard extends ConsumerWidget {
     return AppCard(
       title: 'محافظ الاستلام',
       icon: Icons.account_balance_outlined,
+      padding: const EdgeInsets.all(AppTokens.s12),
       actions: [
         FilledButton.icon(
           onPressed: () => _edit(context, ref, null),
@@ -461,7 +445,7 @@ class _PaymentMethodsCard extends ConsumerWidget {
         children: [
           if (methods.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppTokens.s12),
+              padding: EdgeInsets.symmetric(vertical: AppTokens.s4),
               child: Text(
                 'لا توجد محافظ استلام بعد.',
                 style: TextStyle(color: AppTokens.textMuted),
@@ -492,9 +476,10 @@ class _PaymentMethodsCard extends ConsumerWidget {
                             ),
                           ),
                           Text(
-                            [m.accountName, m.accountNumber]
-                                .where((e) => e.isNotEmpty)
-                                .join(' • '),
+                            [
+                              m.accountName,
+                              m.accountNumber,
+                            ].where((e) => e.isNotEmpty).join(' • '),
                             style: const TextStyle(
                               color: AppTokens.textSecondary,
                               fontSize: 12,
@@ -568,17 +553,19 @@ class _PaymentMethodsCard extends ConsumerWidget {
     );
     if (ok != true) return;
     try {
-      await ref.read(storeAdminRepositoryProvider).deletePaymentMethod(
-            method.id,
-          );
+      await ref
+          .read(storeAdminRepositoryProvider)
+          .deletePaymentMethod(method.id);
       ref.invalidate(storeSupportProvider);
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('تم الحذف')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('تم الحذف')));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     }
   }
 }
@@ -636,7 +623,9 @@ class _PaymentMethodDialogState extends ConsumerState<_PaymentMethodDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.method == null ? 'محفظة استلام جديدة' : 'تعديل المحفظة'),
+      title: Text(
+        widget.method == null ? 'محفظة استلام جديدة' : 'تعديل المحفظة',
+      ),
       content: SizedBox(
         width: 460,
         child: SingleChildScrollView(
@@ -666,7 +655,9 @@ class _PaymentMethodDialogState extends ConsumerState<_PaymentMethodDialog> {
               const SizedBox(height: AppTokens.s8),
               TextField(
                 controller: _accountNumber,
-                decoration: const InputDecoration(labelText: 'رقم الحساب/المحفظة'),
+                decoration: const InputDecoration(
+                  labelText: 'رقم الحساب/المحفظة',
+                ),
               ),
               const SizedBox(height: AppTokens.s8),
               TextField(
@@ -686,11 +677,11 @@ class _PaymentMethodDialogState extends ConsumerState<_PaymentMethodDialog> {
                   ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
-                    child: SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
+                    child: HubSwitchRow(
+                      dense: true,
+                      label: 'مفعّلة',
                       value: _active,
                       onChanged: (v) => setState(() => _active = v),
-                      title: const Text('مفعّلة'),
                     ),
                   ),
                 ],
@@ -720,9 +711,9 @@ class _PaymentMethodDialogState extends ConsumerState<_PaymentMethodDialog> {
 
   Future<void> _save() async {
     if (_label.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('اكتب الاسم المعروض.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('اكتب الاسم المعروض.')));
       return;
     }
     setState(() => _saving = true);
@@ -755,8 +746,9 @@ class _PaymentMethodDialogState extends ConsumerState<_PaymentMethodDialog> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     }
   }
 }
@@ -770,12 +762,13 @@ class _ChatInboxCard extends StatelessWidget {
     return AppCard(
       title: 'صندوق الدعم',
       icon: Icons.forum_outlined,
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (threads.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: AppTokens.s12),
+              padding: EdgeInsets.symmetric(vertical: AppTokens.s4),
               child: Text(
                 'لا توجد محادثات.',
                 style: TextStyle(color: AppTokens.textMuted),
@@ -806,7 +799,10 @@ class _ChatInboxCard extends StatelessWidget {
                         text: '${t.unreadAdminCount}',
                         tone: PillTone.red,
                       )
-                    : const Icon(Icons.chevron_left, color: AppTokens.textMuted),
+                    : const Icon(
+                        Icons.chevron_left,
+                        color: AppTokens.textMuted,
+                      ),
                 onTap: () => showStoreChatDialog(context, t),
               ),
         ],

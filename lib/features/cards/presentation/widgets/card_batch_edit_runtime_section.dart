@@ -3,7 +3,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
+import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/form_field_row.dart';
+import '../../../../shared/widgets/hub_switch_row.dart';
 
 class CardBatchRuntimeSection extends StatelessWidget {
   const CardBatchRuntimeSection({
@@ -54,11 +56,11 @@ class CardBatchRuntimeSection extends StatelessWidget {
   final ValueChanged<bool> onPhoneOnly;
 
   Widget _switch(String label, bool value, ValueChanged<bool> onChanged) =>
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
+      HubSwitchRow(
+        dense: true,
+        label: label,
         value: value,
         onChanged: onChanged,
-        title: Text(label),
       );
 
   @override
@@ -69,46 +71,50 @@ class CardBatchRuntimeSection extends StatelessWidget {
       title: 'الصلاحية والسلوك',
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'قيمة الوقت',
-            child: TextFormField(
-              controller: timeVal,
-              keyboardType: TextInputType.number,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'قيمة الوقت',
+              child: TextFormField(
+                controller: timeVal,
+                keyboardType: TextInputType.number,
+              ),
+            ),
+            second: FormFieldRow(
+              label: 'وحدة الوقت',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                value: timeUnit,
+                items: const [
+                  DropdownMenuItem(value: 'minutes', child: Text('دقائق')),
+                  DropdownMenuItem(value: 'hours', child: Text('ساعات')),
+                  DropdownMenuItem(value: 'days', child: Text('أيام')),
+                ],
+                onChanged: onTimeUnit,
+              ),
             ),
           ),
-          FormFieldRow(
-            label: 'وحدة الوقت',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              value: timeUnit,
-              items: const [
-                DropdownMenuItem(value: 'minutes', child: Text('دقائق')),
-                DropdownMenuItem(value: 'hours', child: Text('ساعات')),
-                DropdownMenuItem(value: 'days', child: Text('أيام')),
-              ],
-              onChanged: onTimeUnit,
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'عدد الأجهزة',
+              child: TextFormField(
+                controller: devices,
+                keyboardType: TextInputType.number,
+              ),
             ),
-          ),
-          FormFieldRow(
-            label: 'عدد الأجهزة',
-            child: TextFormField(
-              controller: devices,
-              keyboardType: TextInputType.number,
-            ),
-          ),
-          FormFieldRow(
-            label: 'وضع المدة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              value: durationMode,
-              items: const [
-                DropdownMenuItem(
-                  value: 'time_unit',
-                  child: Text('حسب الوحدة'),
-                ),
-                DropdownMenuItem(value: 'seconds', child: Text('بالثواني')),
-              ],
-              onChanged: onDurationMode,
+            second: FormFieldRow(
+              label: 'وضع المدة',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                value: durationMode,
+                items: const [
+                  DropdownMenuItem(
+                    value: 'time_unit',
+                    child: Text('حسب الوحدة'),
+                  ),
+                  DropdownMenuItem(value: 'seconds', child: Text('بالثواني')),
+                ],
+                onChanged: onDurationMode,
+              ),
             ),
           ),
           FormFieldRow(
@@ -137,6 +143,7 @@ class CardBatchRuntimeSection extends StatelessWidget {
           _switch('ربط MAC عند الاتصال', switchMac, onSwitchMac),
           _switch('قفل MAC عند الإغلاق', lockMac, onLockMac),
           _switch('دخول برقم الجوال فقط', phoneOnly, onPhoneOnly),
+          const SizedBox(height: AppTokens.s8),
           FormFieldRow(
             label: 'ملاحظات',
             child: TextFormField(controller: notes, maxLines: 3),

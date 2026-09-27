@@ -13,6 +13,7 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
@@ -25,8 +26,10 @@ final _cardFilterProvider = StateProvider.autoDispose<_CardFilter>(
   (_) => _CardFilter.all,
 );
 
-final _batchDetailProvider =
-    FutureProvider.autoDispose.family<CardBatch, int>((ref, id) {
+final _batchDetailProvider = FutureProvider.autoDispose.family<CardBatch, int>((
+  ref,
+  id,
+) {
   return ref.watch(cardsRepositoryProvider).getBatch(id);
 });
 
@@ -59,40 +62,28 @@ class CardBatchDetailScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppTokens.s4,
-          runSpacing: AppTokens.s4,
+        Row(
           children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: () => context.goNamed('cards'),
-                  icon: const Icon(Icons.arrow_back),
+            IconButton(
+              tooltip: 'رجوع',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => context.goNamed('cards'),
+              icon: const Icon(Icons.arrow_back),
+            ),
+            const SizedBox(width: AppTokens.s4),
+            Expanded(
+              child: Text(
+                batchAsync.maybeWhen(
+                  data: (b) => b.batchCode,
+                  orElse: () => 'دفعة #$batchId',
                 ),
-                Flexible(
-                  child: batchAsync.maybeWhen(
-                    data: (b) => Text(
-                      b.batchCode,
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppTokens.sidebarBg,
-                              ),
-                      overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: AppTokens.sidebarBg,
                     ),
-                    orElse: () => Text(
-                      'دفعة #$batchId',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: AppTokens.sidebarBg,
-                              ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
             IconButton(
               tooltip: 'تحديث',
@@ -103,28 +94,33 @@ class CardBatchDetailScreen extends ConsumerWidget {
                 ref.invalidate(batchesListProvider);
               },
             ),
-            IconButton(
-              tooltip: 'تعديل الباقة',
+          ],
+        ),
+        const SizedBox(height: AppTokens.s8),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.edit_outlined,
+              label: 'تعديل',
+              primary: true,
               onPressed: () => context.goNamed(
                 'card-batch-edit',
                 pathParameters: {'id': '$batchId'},
               ),
-              icon: const Icon(Icons.edit_outlined,
-                  color: AppTokens.textSecondary),
             ),
-            cardsAsync.maybeWhen(
-              data: (cards) => OutlinedButton.icon(
-                onPressed: cards.isEmpty
+            ActionItem(
+              icon: Icons.file_download_outlined,
+              label: 'تصدير ملف',
+              onPressed: cardsAsync.maybeWhen(
+                data: (cards) => cards.isEmpty
                     ? null
                     : () => _exportCsv(batchAsync.valueOrNull, cards),
-                icon: const Icon(Icons.file_download_outlined),
-                label: const Text('تصدير ملف'),
+                orElse: () => null,
               ),
-              orElse: () => const SizedBox.shrink(),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         batchAsync.when(
           loading: () => const SizedBox.shrink(),
           error: (e, _) => EmptyState(
@@ -134,7 +130,7 @@ class CardBatchDetailScreen extends ConsumerWidget {
           ),
           data: (b) => _BatchSummary(batch: b),
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         _FilterBar(
           current: filter,
           onChanged: (f) => ref.read(_cardFilterProvider.notifier).state = f,
@@ -200,138 +196,169 @@ class _BatchSummary extends StatelessWidget {
   const _BatchSummary({required this.batch});
   final CardBatch batch;
 
+  static String _unitLabel(String unit) => switch (unit) {
+        'minutes' => 'دقيقة',
+        'hours' => 'ساعة',
+        'days' => 'يوم',
+        _ => unit,
+      };
+
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd HH:mm');
     final usedPct =
         batch.count == 0 ? 0.0 : (batch.used / batch.count).clamp(0.0, 1.0);
+    final heading = batch.packageName.isNotEmpty
+        ? batch.packageName
+        : (batch.planName.isNotEmpty ? batch.planName : batch.batchCode);
+    final meta = <InfoItem>[
+      if (batch.createdAt != null)
+        InfoItem(
+          icon: Icons.event,
+          label: 'أُنشئت',
+          value: df.format(batch.createdAt!),
+        ),
+      if (batch.expireAt != null)
+        InfoItem(
+          icon: Icons.timer_outlined,
+          label: 'تنتهي',
+          value: df.format(batch.expireAt!),
+        ),
+      if (batch.timeValue > 0)
+        InfoItem(
+          icon: Icons.access_time,
+          label: 'المدة',
+          value: '${batch.timeValue} ${_unitLabel(batch.timeUnit)}',
+        ),
+      if (batch.deviceCount > 0)
+        InfoItem(
+          icon: Icons.devices,
+          label: 'الأجهزة',
+          value: '${batch.deviceCount} جهاز',
+        ),
+      if (batch.createdBy.isNotEmpty)
+        InfoItem(
+          icon: Icons.person_outline,
+          label: 'بواسطة',
+          value: batch.createdBy,
+        ),
+    ];
     return AppCard(
-      padding: const EdgeInsets.all(AppTokens.s16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final wide = c.maxWidth >= 620;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.workspace_premium_outlined,
+                    size: 18,
+                    color: AppTokens.brandInk,
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: Text(
+                      heading,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppTokens.sidebarBg,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  StatusPill(
+                    text: batchStatusLabel(batch.status),
+                    tone: batchStatusTone(batch.status),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTokens.s12),
+              // The single-batch endpoint may omit expired/revoked counts, so
+              // those cells only appear when they carry a real number.
+              CountGrid(
+                items: [
+                  CountItem('الإجمالي', batch.count),
+                  CountItem('متاح', batch.available, tone: PillTone.blue),
+                  CountItem('مستخدم', batch.used, tone: PillTone.brand),
+                  CountItem(
+                    'منتهي',
+                    batch.expiredCount,
+                    tone: PillTone.amber,
+                    hideWhenZero: true,
+                  ),
+                  CountItem(
+                    'ملغى',
+                    batch.revokedCount,
+                    tone: PillTone.red,
+                    hideWhenZero: true,
+                  ),
+                  if (batch.generated != batch.count)
+                    CountItem('مُولَّد', batch.generated),
+                ],
+              ),
+              const SizedBox(height: AppTokens.s12),
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: usedPct,
+                        minHeight: 6,
+                        backgroundColor: AppTokens.surfaceTinted,
+                        valueColor: AlwaysStoppedAnimation(
+                          usedPct >= 0.9 ? AppTokens.red : AppTokens.brand,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  Text(
+                    'مستخدم \u200E${(usedPct * 100).round()}%',
+                    style: const TextStyle(
+                      color: AppTokens.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: AppTokens.s12),
+                InfoGrid(items: meta, columns: wide ? 3 : 2),
+              ],
+              if (batch.notes.isNotEmpty) ...[
+                const SizedBox(height: AppTokens.s8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Chip(label: 'الإجمالي', value: '${batch.count}'),
-                    _Chip(label: 'مُولَّد', value: '${batch.generated}'),
-                    _Chip(label: 'مُستخدَم', value: '${batch.used}'),
-                    _Chip(label: 'المتاح', value: '${batch.available}'),
+                    const Icon(
+                      Icons.sticky_note_2_outlined,
+                      size: 14,
+                      color: AppTokens.textMuted,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        batch.notes,
+                        style: const TextStyle(
+                          color: AppTokens.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              StatusPill(
-                text: batchStatusLabel(batch.status),
-                tone: batchStatusTone(batch.status),
-              ),
+              ],
             ],
-          ),
-          const SizedBox(height: AppTokens.s12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: LinearProgressIndicator(
-              value: usedPct,
-              minHeight: 8,
-              backgroundColor: AppTokens.surfaceTinted,
-              valueColor: AlwaysStoppedAnimation(
-                usedPct >= 0.9 ? AppTokens.red : AppTokens.brand,
-              ),
-            ),
-          ),
-          const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: 16,
-            runSpacing: 6,
-            children: [
-              if (batch.packageName.isNotEmpty)
-                _MetaLine(
-                    icon: Icons.workspace_premium_outlined,
-                    text: batch.packageName),
-              if (batch.createdAt != null)
-                _MetaLine(
-                    icon: Icons.event,
-                    text: 'أُنشئت: ${df.format(batch.createdAt!)}'),
-              if (batch.expireAt != null)
-                _MetaLine(
-                    icon: Icons.timer_outlined,
-                    text: 'تنتهي: ${df.format(batch.expireAt!)}'),
-              if (batch.createdBy.isNotEmpty)
-                _MetaLine(icon: Icons.person_outline, text: batch.createdBy),
-              if (batch.timeValue > 0)
-                _MetaLine(
-                    icon: Icons.access_time,
-                    text: '${batch.timeValue} ${batch.timeUnit}'),
-              if (batch.deviceCount > 0)
-                _MetaLine(
-                    icon: Icons.devices, text: '${batch.deviceCount} جهاز'),
-            ],
-          ),
-          if (batch.notes.isNotEmpty) ...[
-            const SizedBox(height: AppTokens.s8),
-            Text(
-              batch.notes,
-              style: const TextStyle(color: AppTokens.textSecondary),
-            ),
-          ],
-        ],
+          );
+        },
       ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({required this.label, required this.value});
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppTokens.brandSoft,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(color: AppTokens.sidebarBg, fontSize: 13),
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: const TextStyle(color: AppTokens.textSecondary),
-            ),
-            TextSpan(
-              text: value,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MetaLine extends StatelessWidget {
-  const _MetaLine({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: AppTokens.textMuted),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(color: AppTokens.textSecondary, fontSize: 13),
-        ),
-      ],
     );
   }
 }
@@ -369,6 +396,48 @@ class _CardsTable extends ConsumerWidget {
   const _CardsTable({required this.cards});
   final List<CardItem> cards;
 
+  Future<void> _revoke(BuildContext ctx, WidgetRef ref, CardItem c) async {
+    final confirm = await showDialog<bool>(
+      context: ctx,
+      useRootNavigator: true,
+      builder: (d) => AlertDialog(
+        title: const Text('إلغاء الكرت'),
+        content: Text('سيُلغى الكرت "${c.username}" نهائيًا. متأكّد؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(d, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTokens.red),
+            onPressed: () => Navigator.pop(d, true),
+            child: const Text('تأكيد'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await ref.read(cardsRepositoryProvider).revoke(c.id!);
+      if (!ctx.mounted) return;
+      ScaffoldMessenger.of(
+        ctx,
+      ).showSnackBar(const SnackBar(content: Text('تم إلغاء الكرت')));
+      // Refresh both lists
+      final batchId = c.batchId;
+      if (batchId != null) {
+        ref.invalidate(_cardsOfBatchProvider(batchId));
+        ref.invalidate(_batchDetailProvider(batchId));
+      }
+      ref.invalidate(batchesListProvider);
+    } catch (e) {
+      if (!ctx.mounted) return;
+      ScaffoldMessenger.of(
+        ctx,
+      ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView.separated(
@@ -381,89 +450,90 @@ class _CardsTable extends ConsumerWidget {
         final tone = c.revoked
             ? PillTone.red
             : c.used
-                ? PillTone.orange
-                : PillTone.green;
+                ? PillTone.brand
+                : PillTone.blue;
         final label = c.revoked
             ? 'مُلغى'
             : c.used
                 ? 'مُستخدَم'
                 : 'متاح';
-        return ListTile(
-          dense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: AppTokens.s16,
-            vertical: AppTokens.s4,
+        final canRevoke = !c.revoked && c.id != null;
+        return Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTokens.s12,
+            vertical: AppTokens.s8,
           ),
-          title: Row(
+          child: Row(
             children: [
               Expanded(
-                child: Text(
-                  c.username,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontFamily: 'monospace',
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      c.username,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppTokens.sidebarBg,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    Text(
+                      'كلمة المرور: ${c.password}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: AppTokens.s8),
               StatusPill(text: label, tone: tone),
+              const SizedBox(width: AppTokens.s8),
+              // Fixed slot so the pills line up whether or not a row can
+              // still be revoked.
+              SizedBox(
+                width: 34,
+                height: 34,
+                child: canRevoke
+                    ? _RevokeButton(onPressed: () => _revoke(ctx, ref, c))
+                    : null,
+              ),
             ],
           ),
-          subtitle: Text(
-            'كلمة المرور: ${c.password}',
-            style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
-          ),
-          trailing: c.revoked || c.id == null
-              ? null
-              : IconButton(
-                  tooltip: 'إلغاء',
-                  icon: const Icon(Icons.block, color: AppTokens.red),
-                  onPressed: () async {
-                    final confirm = await showDialog<bool>(
-                      context: ctx,
-                      builder: (d) => AlertDialog(
-                        title: const Text('إلغاء الكرت'),
-                        content: Text(
-                          'سيُلغى الكرت "${c.username}" نهائيًا. متأكّد؟',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(d, false),
-                            child: const Text('إلغاء'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppTokens.red,
-                            ),
-                            onPressed: () => Navigator.pop(d, true),
-                            child: const Text('تأكيد'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm != true) return;
-                    try {
-                      await ref.read(cardsRepositoryProvider).revoke(c.id!);
-                      if (!ctx.mounted) return;
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text('تم إلغاء الكرت')),
-                      );
-                      // Refresh both lists
-                      final batchId = c.batchId;
-                      if (batchId != null) {
-                        ref.invalidate(_cardsOfBatchProvider(batchId));
-                        ref.invalidate(_batchDetailProvider(batchId));
-                      }
-                      ref.invalidate(batchesListProvider);
-                    } catch (e) {
-                      if (!ctx.mounted) return;
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        SnackBar(content: Text(visibleErrorMessage(e))),
-                      );
-                    }
-                  },
-                ),
         );
       },
+    );
+  }
+}
+
+/// Small red-tinted square button — a clear, bordered target instead of a
+/// bare red icon floating at the row's edge.
+class _RevokeButton extends StatelessWidget {
+  const _RevokeButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg, border) = pillToneColors(PillTone.red);
+    return Tooltip(
+      message: 'إلغاء الكرت',
+      child: Material(
+        color: bg,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppTokens.r10),
+          side: BorderSide(color: border),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppTokens.r10),
+          onTap: onPressed,
+          child: Icon(Icons.block, size: 18, color: fg),
+        ),
+      ),
     );
   }
 }
