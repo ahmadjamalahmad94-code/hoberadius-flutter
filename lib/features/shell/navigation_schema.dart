@@ -77,6 +77,8 @@ const kWebOnlyPaths = <String>{
   '/recycle-bin',
   '/lifecycle',
   '/admin-control',
+  '/audit',
+  '/invoices',
 };
 
 const appNavSections = <AppNavSection>[
@@ -205,13 +207,6 @@ const appNavSections = <AppNavSection>[
         description: 'راوترات ونقاط وصول RADIUS واختبار الاتصال.',
       ),
       AppNavItem(
-        icon: Icons.history,
-        label: 'سجل العمليات',
-        routeName: 'audit',
-        path: '/audit',
-        description: 'الأحداث الإدارية والتغييرات الحساسة.',
-      ),
-      AppNavItem(
         icon: Icons.build_outlined,
         label: 'الأدوات',
         routeName: 'tools',
@@ -241,13 +236,6 @@ const appNavSections = <AppNavSection>[
         routeName: 'loans-center',
         path: '/loans',
         description: 'متابعة السلف المفتوحة وتسجيل دين أو تسويته.',
-      ),
-      AppNavItem(
-        icon: Icons.receipt_outlined,
-        label: 'الفواتير',
-        routeName: 'invoices',
-        path: '/invoices',
-        description: 'إصدار الفواتير وتحديث حالتها ومتابعة التحصيل.',
       ),
       AppNavItem(
         icon: Icons.fact_check_outlined,

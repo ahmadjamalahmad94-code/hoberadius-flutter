@@ -23,9 +23,7 @@ void main() {
 
     final criticalRoutes = {
       'account': '/account',
-      'audit': '/audit',
       'payment-collection': '/payment-collection',
-      'invoices': '/invoices',
       'loans-center': '/loans',
       'revenue': '/revenue',
       'tickets': '/tickets',
