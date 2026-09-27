@@ -40,31 +40,46 @@ patch_app_id() {
 patch_app_id "$ROOT/android/app/build.gradle.kts"
 patch_app_id "$ROOT/android/app/build.gradle"
 
-# 2b) core library desugaring (required by flutter_local_notifications) -------
-DESUGAR_VER="2.1.4"
-patch_desugar() {
-  local f="$1" kotlin="$2"
+# 2b) minSdk floor 23 — Firebase Cloud Messaging requires minSdk 23+. The
+#     scaffolded app uses `flutter.minSdkVersion` (currently 21), which fails
+#     the manifest merge against firebase_messaging. Raise the floor.
+patch_min_sdk() {
+  local f="$1"
   [ -f "$f" ] || return 0
-  # enable the flag inside compileOptions
-  if ! grep -q 'isCoreLibraryDesugaringEnabled\|coreLibraryDesugaringEnabled' "$f"; then
-    if [ "$kotlin" = "1" ]; then
-      sed -i -E '/compileOptions \{/a\        isCoreLibraryDesugaringEnabled = true' "$f"
-    else
-      sed -i -E '/compileOptions \{/a\        coreLibraryDesugaringEnabled true' "$f"
-    fi
+  if grep -qE 'minSdk\s*=' "$f"; then                       # Kotlin DSL
+    sed -i -E 's|minSdk\s*=\s*[^[:space:]]+|minSdk = maxOf(flutter.minSdkVersion, 23)|' "$f"
+  elif grep -qE 'minSdkVersion\s+' "$f"; then               # Groovy
+    sed -i -E 's|minSdkVersion\s+[^[:space:]]+|minSdkVersion 23|' "$f"
   fi
-  # add the desugar dependency (a second dependencies{} block is valid Gradle)
+  echo "✓ minSdk floor set in $(basename "$f")"
+}
+patch_min_sdk "$ROOT/android/app/build.gradle.kts"
+patch_min_sdk "$ROOT/android/app/build.gradle"
+
+# 2c) core library desugaring — flutter_local_notifications (used by the FCM
+#     foreground/system-notification path) requires it. Enable the flag inside
+#     compileOptions and add the desugar_jdk_libs dependency. Idempotent.
+patch_desugaring() {
+  local f="$1"
+  [ -f "$f" ] || return 0
+  if grep -q 'isCoreLibraryDesugaringEnabled' "$f"; then        # Kotlin DSL
+    : # already enabled
+  elif grep -qE 'targetCompatibility\s*=' "$f"; then             # Kotlin DSL
+    sed -i -E 's|(targetCompatibility\s*=\s*JavaVersion\.[A-Z0-9_]+)|\1\n        isCoreLibraryDesugaringEnabled = true|' "$f"
+  elif grep -qE 'targetCompatibility\s+JavaVersion' "$f"; then   # Groovy
+    sed -i -E 's|(targetCompatibility\s+JavaVersion\.[A-Z0-9_]+)|\1\n        coreLibraryDesugaringEnabled true|' "$f"
+  fi
   if ! grep -q 'desugar_jdk_libs' "$f"; then
-    if [ "$kotlin" = "1" ]; then
-      printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:%s")\n}\n' "$DESUGAR_VER" >> "$f"
+    if [[ "$f" == *.kts ]]; then
+      printf '\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")\n}\n' >> "$f"
     else
-      printf "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:%s'\n}\n" "$DESUGAR_VER" >> "$f"
+      printf "\ndependencies {\n    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'\n}\n" >> "$f"
     fi
   fi
   echo "✓ core library desugaring enabled in $(basename "$f")"
 }
-patch_desugar "$ROOT/android/app/build.gradle.kts" 1
-patch_desugar "$ROOT/android/app/build.gradle" 0
+patch_desugaring "$ROOT/android/app/build.gradle.kts"
+patch_desugaring "$ROOT/android/app/build.gradle"
 
 # 3) google-services Gradle plugin ------------------------------------------
 # Kotlin DSL (modern Flutter): declarative plugins{} in settings + app.

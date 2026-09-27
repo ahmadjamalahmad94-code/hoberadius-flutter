@@ -27,6 +27,9 @@ class PushTokenApi {
   }
 
   Future<void> unregister(String token) {
+    // The backend (push_token_unregister) reads the token from the JSON body at
+    // the base path — there is no `/push-token/<token>` route — so send it in
+    // the body, not the URL.
     return _api.delete(
       '/api/v1/devices/push-token',
       body: {'token': token},

@@ -54,7 +54,7 @@ void main() {
     expect(req.data, {'token': 'FCMTOKEN123', 'platform': 'android'});
   });
 
-  test('unregister DELETEs with token in the JSON body', () async {
+  test('unregister DELETEs the base path with the token in the body', () async {
     await PushTokenApi(client).unregister('FCMTOKEN123');
     expect(captured, hasLength(1));
     final req = captured.single;
