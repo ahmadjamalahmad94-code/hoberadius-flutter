@@ -8,6 +8,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../nas/domain/nas_model.dart';
@@ -35,17 +36,9 @@ class _RouterOperationsScreenState
       children: [
         PageHeader(
           title: 'عمليات الراوتر',
-          subtitle:
-              'متابعة حالة الراوتر الحية من عقد ميكروتك الموجود في الريدياس، مع إبقاء أوامر التغيير وإعادة التشغيل ضمن إجراءات محمية ومراجعة.',
+          subtitle: 'الحالة الحيّة للراوتر وأوامره المحمية',
+          inlineActions: true,
           actions: [
-            // «سياسات الشبكة» تعيش الآن داخل لوحة عمليات الراوتر (مطابقةً للويب
-            // الذي دمجها هنا) بدل بند مستقل في القائمة — حظر المواقع والمواقع
-            // المسموحة لكل راوتر.
-            OutlinedButton.icon(
-              onPressed: () => context.go('/network-policy'),
-              icon: const Icon(Icons.policy_outlined, size: 18),
-              label: const Text('سياسات الشبكة'),
-            ),
             IconButton(
               tooltip: 'تحديث الراوترات',
               onPressed: () => ref.invalidate(mikrotikRoutersProvider),
@@ -53,7 +46,7 @@ class _RouterOperationsScreenState
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         routersAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, _) => HubErrorState(
@@ -96,55 +89,32 @@ class _RouterOperationsScreenState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AppCard(
+          padding: const EdgeInsets.all(AppTokens.s12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              DropdownButtonFormField<int>(
-                isExpanded: true,
-                initialValue: selected.id,
-                decoration: const InputDecoration(labelText: 'الراوتر'),
-                items: [
-                  for (final router in available)
-                    DropdownMenuItem(
-                      value: router.id,
-                      child: Text('${router.name} - ${router.address}'),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() => _selectedRouterId = value);
-                  }
-                },
-              ),
-              const SizedBox(height: AppTokens.s12),
-              Wrap(
-                spacing: AppTokens.s8,
-                runSpacing: AppTokens.s8,
+              Row(
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (_) =>
-                          _DiagnosticsDialog(routerId: selected.id!),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      isExpanded: true,
+                      initialValue: selected.id,
+                      decoration: const InputDecoration(labelText: 'الراوتر'),
+                      items: [
+                        for (final router in available)
+                          DropdownMenuItem(
+                            value: router.id,
+                            child: Text('${router.name} - ${router.address}'),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _selectedRouterId = value);
+                        }
+                      },
                     ),
-                    icon: const Icon(Icons.troubleshoot_outlined),
-                    label: const Text('تشخيص'),
                   ),
-                  OutlinedButton.icon(
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (_) => _HealthDialog(routerId: selected.id!),
-                    ),
-                    icon: const Icon(Icons.health_and_safety_outlined),
-                    label: const Text('المخاطر'),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () => context.go(
-                      '/router-programming/${selected.id!}',
-                    ),
-                    icon: const Icon(Icons.tune_outlined),
-                    label: const Text('برمجة'),
-                  ),
+                  const SizedBox(width: AppTokens.s4),
                   IconButton(
                     tooltip: 'تحديث الحالة',
                     onPressed: () {
@@ -155,7 +125,47 @@ class _RouterOperationsScreenState
                         mikrotikLiveSnapshotProvider(selected.id!),
                       );
                     },
-                    icon: const Icon(Icons.sync),
+                    icon: const Icon(Icons.sync, color: AppTokens.brand),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTokens.s12),
+              ActionBar(
+                maxPerRow: 2,
+                items: [
+                  ActionItem(
+                    icon: Icons.troubleshoot_outlined,
+                    label: 'تشخيص',
+                    onPressed: () => showDialog<void>(
+                      useRootNavigator: true,
+                      context: context,
+                      builder: (_) =>
+                          _DiagnosticsDialog(routerId: selected.id!),
+                    ),
+                  ),
+                  ActionItem(
+                    icon: Icons.health_and_safety_outlined,
+                    label: 'المخاطر',
+                    onPressed: () => showDialog<void>(
+                      useRootNavigator: true,
+                      context: context,
+                      builder: (_) => _HealthDialog(routerId: selected.id!),
+                    ),
+                  ),
+                  ActionItem(
+                    icon: Icons.tune_outlined,
+                    label: 'برمجة',
+                    onPressed: () => context.go(
+                      '/router-programming/${selected.id!}',
+                    ),
+                  ),
+                  // «سياسات الشبكة» تعيش الآن داخل لوحة عمليات الراوتر (مطابقةً
+                  // للويب الذي دمجها هنا) بدل بند مستقل في القائمة — حظر
+                  // المواقع والمواقع المسموحة لكل راوتر.
+                  ActionItem(
+                    icon: Icons.policy_outlined,
+                    label: 'سياسات الشبكة',
+                    onPressed: () => context.go('/network-policy'),
                   ),
                 ],
               ),
@@ -227,6 +237,12 @@ class _RouterProtectedActions extends ConsumerWidget {
     final state = ref.watch(routerOperationControllerProvider);
     final controller = ref.read(routerOperationControllerProvider.notifier);
     return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppTokens.s12,
+        0,
+        AppTokens.s12,
+        AppTokens.s12,
+      ),
       title: 'أوامر محمية للراوتر',
       icon: Icons.admin_panel_settings_outlined,
       actions: [
@@ -240,8 +256,12 @@ class _RouterProtectedActions extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'هذه الأوامر تُرسل عبر API محمي إلى الريدياس، ثم ينفذها الريدياس على الراوتر المسجل. لا يتم تشغيل أي أمر قبل التأكيد الواضح.',
-            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+            'تُرسل عبر API محمي ولا يُنفَّذ أي أمر قبل التأكيد الواضح.',
+            style: TextStyle(
+              color: AppTokens.textMuted,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
           ),
           if (state.notice.isNotEmpty || state.error.isNotEmpty) ...[
             const SizedBox(height: AppTokens.s12),
@@ -254,13 +274,13 @@ class _RouterProtectedActions extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: AppTokens.s12),
-          Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              _ActionButton(
-                label: 'حفظ نسخة من الراوتر',
+          ActionBar(
+            maxPerRow: 2,
+            items: [
+              _protectedAction(
+                label: 'حفظ نسخة',
                 icon: Icons.backup_outlined,
+                primary: true,
                 busy: state.busyAction == 'backup_save',
                 disabled: state.isBusy,
                 onPressed: () async {
@@ -273,8 +293,8 @@ class _RouterProtectedActions extends ConsumerWidget {
                   );
                 },
               ),
-              _ActionButton(
-                label: 'تغيير اسم الراوتر',
+              _protectedAction(
+                label: 'تغيير الاسم',
                 icon: Icons.badge_outlined,
                 busy: state.busyAction == 'identity',
                 disabled: state.isBusy,
@@ -288,7 +308,7 @@ class _RouterProtectedActions extends ConsumerWidget {
                   );
                 },
               ),
-              _ActionButton(
+              _protectedAction(
                 label: 'مزامنة الوقت',
                 icon: Icons.schedule_send_outlined,
                 busy: state.busyAction == 'ntp',
@@ -304,8 +324,8 @@ class _RouterProtectedActions extends ConsumerWidget {
                   if (ok) await controller.syncNtp(routerId);
                 },
               ),
-              _ActionButton(
-                label: 'تفريغ ذاكرة DNS',
+              _protectedAction(
+                label: 'تفريغ DNS',
                 icon: Icons.cleaning_services_outlined,
                 busy: state.busyAction == 'dns',
                 disabled: state.isBusy,
@@ -320,10 +340,15 @@ class _RouterProtectedActions extends ConsumerWidget {
                   if (ok) await controller.flushDns(routerId);
                 },
               ),
-              _ActionButton(
-                label: 'إعادة تشغيل الراوتر',
+              ActionItem(
+                icon: Icons.refresh,
+                label: 'تحديث الحالة',
+                onPressed: state.isBusy ? null : onRefresh,
+              ),
+              _protectedAction(
+                label: 'إعادة التشغيل',
                 icon: Icons.power_settings_new_outlined,
-                tone: _ActionTone.danger,
+                tone: PillTone.red,
                 busy: state.busyAction == 'reboot',
                 disabled: state.isBusy,
                 onPressed: () async {
@@ -332,11 +357,6 @@ class _RouterProtectedActions extends ConsumerWidget {
                   await controller.reboot(routerId, reason: reason);
                 },
               ),
-              OutlinedButton.icon(
-                onPressed: state.isBusy ? null : onRefresh,
-                icon: const Icon(Icons.refresh),
-                label: const Text('تحديث الحالة'),
-              ),
             ],
           ),
         ],
@@ -344,6 +364,25 @@ class _RouterProtectedActions extends ConsumerWidget {
     );
   }
 }
+
+/// A protected router command as an [ActionBar] button: disabled while any
+/// command runs; the running one shows an hourglass instead of its icon.
+ActionItem _protectedAction({
+  required String label,
+  required IconData icon,
+  required bool busy,
+  required bool disabled,
+  required VoidCallback onPressed,
+  bool primary = false,
+  PillTone? tone,
+}) =>
+    ActionItem(
+      icon: busy ? Icons.hourglass_top : icon,
+      label: label,
+      primary: primary,
+      tone: tone,
+      onPressed: disabled || busy ? null : onPressed,
+    );
 
 class _GuidedAssistantPanel extends ConsumerStatefulWidget {
   const _GuidedAssistantPanel({required this.routerId});
@@ -363,6 +402,12 @@ class _GuidedAssistantPanelState extends ConsumerState<_GuidedAssistantPanel> {
     final request = (routerId: widget.routerId, operation: _operation);
     final async = ref.watch(mikrotikGuidedAssistantProvider(request));
     return AppCard(
+      padding: const EdgeInsets.fromLTRB(
+        AppTokens.s12,
+        0,
+        AppTokens.s12,
+        AppTokens.s12,
+      ),
       title: 'مساعد ما قبل التنفيذ',
       icon: Icons.fact_check_outlined,
       actions: [
@@ -378,8 +423,12 @@ class _GuidedAssistantPanelState extends ConsumerState<_GuidedAssistantPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'يفحص حالة الراوتر، صلاحية المستخدم، النسخة الاحتياطية، وآخر العمليات قبل تنفيذ أي تغيير حساس. الفحص للقراءة فقط ولا يرسل أوامر للراوتر.',
-            style: TextStyle(color: AppTokens.textSecondary, height: 1.45),
+            'فحص للقراءة فقط قبل أي تغيير حساس — لا يرسل أوامر للراوتر.',
+            style: TextStyle(
+              color: AppTokens.textMuted,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
           ),
           const SizedBox(height: AppTokens.s12),
           DropdownButtonFormField<String>(
@@ -466,7 +515,7 @@ class _GuidedAssistantPanelState extends ConsumerState<_GuidedAssistantPanel> {
             children: [
               for (final step in checklist.steps) ...[
                 _GuidedStepRow(step: step),
-                const SizedBox(height: AppTokens.s8),
+                const SizedBox(height: 6),
               ],
             ],
           ),
@@ -474,7 +523,11 @@ class _GuidedAssistantPanelState extends ConsumerState<_GuidedAssistantPanel> {
           const SizedBox(height: AppTokens.s8),
           const Text(
             'يمكن المتابعة من أوامر الراوتر المحمية أو من شاشة العملية المناسبة عند توفرها داخل التطبيق.',
-            style: TextStyle(color: AppTokens.greenInk, height: 1.45),
+            style: TextStyle(
+              color: AppTokens.greenInk,
+              fontSize: 12.5,
+              height: 1.4,
+            ),
           ),
         ],
       ],
@@ -490,33 +543,43 @@ class _GuidedStepRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(AppTokens.s12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
       decoration: BoxDecoration(
         color: AppTokens.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppTokens.r12),
+        borderRadius: BorderRadius.circular(AppTokens.r10),
         border: Border.all(color: AppTokens.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(_guidedIcon(step.state), color: _guidedColor(step.state)),
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              _guidedIcon(step.state),
+              color: _guidedColor(step.state),
+              size: 20,
+            ),
+          ),
           const SizedBox(width: AppTokens.s8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: AppTokens.s8,
-                  runSpacing: AppTokens.s8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                Row(
                   children: [
-                    Text(
-                      step.label.isEmpty ? 'خطوة فحص' : step.label,
-                      style: const TextStyle(
-                        color: AppTokens.textPrimary,
-                        fontWeight: FontWeight.w900,
+                    Expanded(
+                      child: Text(
+                        step.label.isEmpty ? 'خطوة فحص' : step.label,
+                        style: const TextStyle(
+                          color: AppTokens.textPrimary,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: AppTokens.s8),
                     StatusPill(
                       text: step.stateLabel,
                       tone: _guidedTone(step.state),
@@ -524,12 +587,13 @@ class _GuidedStepRow extends StatelessWidget {
                   ],
                 ),
                 if (step.detail.isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 2),
                   Text(
                     step.detail,
                     style: const TextStyle(
                       color: AppTokens.textSecondary,
-                      height: 1.45,
+                      fontSize: 12.5,
+                      height: 1.4,
                     ),
                   ),
                 ],
@@ -685,27 +749,20 @@ class _BackupRow extends StatelessWidget {
               ],
             ],
           );
-          final actions = Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              OutlinedButton.icon(
+          final actions = ActionBar(
+            items: [
+              ActionItem(
+                icon: busy ? Icons.hourglass_top : Icons.restore,
+                label: 'استعادة',
                 onPressed: disabled || busy || !backup.canRestoreFromRouter
                     ? null
                     : onRestore,
-                icon: busy
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.restore),
-                label: const Text('استعادة'),
               ),
-              TextButton.icon(
+              ActionItem(
+                icon: Icons.delete_outline,
+                label: 'حذف السجل',
+                tone: PillTone.red,
                 onPressed: disabled || busy ? null : onDelete,
-                icon: const Icon(Icons.delete_outline),
-                label: const Text('حذف السجل'),
               ),
             ],
           );
@@ -724,7 +781,7 @@ class _BackupRow extends StatelessWidget {
             children: [
               Expanded(child: info),
               const SizedBox(width: AppTokens.s12),
-              actions,
+              SizedBox(width: 280, child: actions),
             ],
           );
         },
@@ -783,55 +840,6 @@ class _ActionMessage extends StatelessWidget {
   }
 }
 
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
-    required this.label,
-    required this.icon,
-    required this.busy,
-    required this.disabled,
-    required this.onPressed,
-    this.tone = _ActionTone.normal,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool busy;
-  final bool disabled;
-  final VoidCallback onPressed;
-  final _ActionTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final dangerous = tone == _ActionTone.danger;
-    return dangerous
-        ? OutlinedButton.icon(
-            onPressed: disabled || busy ? null : onPressed,
-            icon: busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(icon),
-            label: Text(label),
-            style: OutlinedButton.styleFrom(foregroundColor: AppTokens.redInk),
-          )
-        : ElevatedButton.icon(
-            onPressed: disabled || busy ? null : onPressed,
-            icon: busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(icon),
-            label: Text(label),
-          );
-  }
-}
-
-enum _ActionTone { normal, danger }
-
 class _OverviewBody extends StatelessWidget {
   const _OverviewBody({required this.overview});
 
@@ -857,30 +865,45 @@ class _OverviewBody extends StatelessWidget {
             ),
             StatusPill(text: overview.modeLabel, tone: PillTone.blue),
           ],
-          child: Wrap(
-            spacing: AppTokens.s8,
-            runSpacing: AppTokens.s8,
-            children: [
-              _InfoChip(
-                Icons.memory_outlined,
-                'المعالج ${_value(resource, 'cpu-load', fallback: 'غير معروف')}%',
+          padding: const EdgeInsets.fromLTRB(
+            AppTokens.s12,
+            0,
+            AppTokens.s12,
+            AppTokens.s12,
+          ),
+          child: InfoGrid(
+            columns: 2,
+            items: [
+              InfoItem(
+                icon: Icons.memory_outlined,
+                label: 'المعالج',
+                value:
+                    '${_value(resource, 'cpu-load', fallback: 'غير معروف')}%',
               ),
-              _InfoChip(
-                Icons.schedule_outlined,
-                'مدة التشغيل ${_value(resource, 'uptime')}',
+              InfoItem(
+                icon: Icons.schedule_outlined,
+                label: 'مدة التشغيل',
+                value: _value(resource, 'uptime'),
               ),
-              _InfoChip(
-                Icons.system_update_alt_outlined,
-                'الإصدار ${_value(resource, 'version')}',
+              InfoItem(
+                icon: Icons.system_update_alt_outlined,
+                label: 'الإصدار',
+                value: _value(resource, 'version'),
               ),
-              _InfoChip(
-                Icons.developer_board_outlined,
-                'اللوحة ${_value(routerboard, 'model', fallback: _value(resource, 'board-name'))}',
+              InfoItem(
+                icon: Icons.developer_board_outlined,
+                label: 'اللوحة',
+                value: _value(
+                  routerboard,
+                  'model',
+                  fallback: _value(resource, 'board-name'),
+                ),
               ),
               if (overview.dialAddress.isNotEmpty)
-                _InfoChip(
-                  Icons.lan_outlined,
-                  'عنوان الاتصال ${overview.dialAddress}',
+                InfoItem(
+                  icon: Icons.lan_outlined,
+                  label: 'عنوان الاتصال',
+                  value: overview.dialAddress,
                 ),
             ],
           ),
@@ -967,33 +990,6 @@ class _SectionCard extends StatelessWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  const _InfoChip(this.icon, this.text);
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      decoration: BoxDecoration(
-        color: AppTokens.surfaceMuted,
-        borderRadius: BorderRadius.circular(AppTokens.r10),
-        border: Border.all(color: AppTokens.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: AppTokens.textMuted),
-          const SizedBox(width: 6),
-          Text(text, style: const TextStyle(color: AppTokens.textSecondary)),
-        ],
-      ),
-    );
-  }
-}
-
 class _LiveSnapshotPanel extends StatelessWidget {
   const _LiveSnapshotPanel({
     required this.routerId,
@@ -1013,41 +1009,34 @@ class _LiveSnapshotPanel extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'تفاصيل تشغيل الراوتر',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                          color: AppTokens.textPrimary,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'قراءة مباشرة من عقود MikroTik الموجودة في الخادم: الواجهات، الجلسات، الطوابير، الجدار الناري، الملفات، والنسخ.',
-                    style: TextStyle(color: AppTokens.textSecondary),
-                  ),
-                ],
+              child: Text(
+                'تفاصيل تشغيل الراوتر',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: AppTokens.textPrimary,
+                    ),
               ),
             ),
-            const SizedBox(width: AppTokens.s12),
+            IconButton(
+              tooltip: 'تحديث تفاصيل التشغيل',
+              onPressed: onRefresh,
+              icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
+            ),
+          ],
+        ),
+        Wrap(
+          spacing: AppTokens.s8,
+          runSpacing: AppTokens.s8,
+          children: [
             StatusPill(
               text: '${snapshot.totalRows} عنصر',
               tone: snapshot.anyOk ? PillTone.blue : PillTone.neutral,
             ),
-            if (snapshot.failedSections > 0) ...[
-              const SizedBox(width: AppTokens.s8),
+            if (snapshot.failedSections > 0)
               StatusPill(
                 text: '${snapshot.failedSections} أقسام تعذرت',
                 tone: PillTone.amber,
               ),
-            ],
-            IconButton(
-              tooltip: 'تحديث تفاصيل التشغيل',
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh),
-            ),
           ],
         ),
         const SizedBox(height: AppTokens.s12),
@@ -1365,6 +1354,7 @@ class _RouterRowActionsState extends ConsumerState<_RouterRowActions> {
 
   Future<void> _editQueue(String id) async {
     final changes = await showDialog<Map<String, dynamic>>(
+      useRootNavigator: true,
       context: context,
       builder: (_) => _QueueEditDialog(row: widget.row),
     );
@@ -1518,6 +1508,7 @@ class _AddAddressListButton extends ConsumerWidget {
       icon: const Icon(Icons.add, size: 18),
       onPressed: () async {
         final entry = await showDialog<_AddressListEntry>(
+          useRootNavigator: true,
           context: context,
           builder: (_) => const _AddressListAddDialog(),
         );
@@ -1718,6 +1709,7 @@ Future<(String, String)?> _showBackupDialog(
   final notes = TextEditingController();
   try {
     return await showDialog<(String, String)>(
+      useRootNavigator: true,
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('حفظ نسخة احتياطية'),
@@ -1779,6 +1771,7 @@ Future<(String, String)?> _showIdentityDialog(
   final reason = TextEditingController();
   try {
     return await showDialog<(String, String)>(
+      useRootNavigator: true,
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تغيير اسم الراوتر'),
@@ -1834,6 +1827,7 @@ Future<String?> _showRebootDialog(BuildContext context) async {
   var confirmed = false;
   try {
     return await showDialog<String>(
+      useRootNavigator: true,
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
@@ -1897,6 +1891,7 @@ Future<String?> _showRestoreDialog(
   var confirmed = false;
   try {
     return await showDialog<String>(
+      useRootNavigator: true,
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
@@ -1963,6 +1958,7 @@ Future<bool> _confirm(
   bool danger = false,
 }) async {
   final result = await showDialog<bool>(
+    useRootNavigator: true,
     context: context,
     builder: (context) => AlertDialog(
       title: Text(title),

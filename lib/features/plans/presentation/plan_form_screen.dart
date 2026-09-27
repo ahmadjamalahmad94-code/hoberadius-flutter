@@ -201,6 +201,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
         children: [
           PageHeader(
             title: widget.isEdit ? 'تعديل باقة' : 'باقة جديدة',
+            inlineActions: true,
             leading: IconButton(
               onPressed: () => context.goNamed('plans'),
               icon: const Icon(Icons.arrow_back),
@@ -216,10 +217,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                 IconButton(
                   tooltip: 'أرشفة الباقة',
                   onPressed: loading ? null : _delete,
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: AppTokens.red,
-                  ),
+                  icon: const Icon(Icons.delete_outline, color: AppTokens.red),
                 ),
               ElevatedButton.icon(
                 onPressed: loading ? null : _submit,
@@ -239,7 +237,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
               child: Text(error, style: const TextStyle(color: AppTokens.red)),
             ),
           ],
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanCoreSection(
             controllers: _c,
             planType: _planType,
@@ -249,11 +247,11 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             onServiceTypeChanged: (v) => setState(() => _serviceType = v),
             onEnabledChanged: (v) => setState(() => _enabled = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanTimeSection(controllers: _c),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanQuotaSection(controllers: _c),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanSpeedSection(
             controllers: _c,
             speedControl: _speedControl,
@@ -264,7 +262,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             onNightlyUnlimitedChanged: (v) =>
                 setState(() => _nightlyUnlimited = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanSessionSection(
             controllers: _c,
             bindMac: _bindMac,
@@ -272,7 +270,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             onBindMacChanged: (v) => setState(() => _bindMac = v),
             onBindIpChanged: (v) => setState(() => _bindIp = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanWindowSection(
             controllers: _c,
             allowedDays: _allowedDays,
@@ -286,7 +284,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             onAllowedToChanged: (value) =>
                 setState(() => _c['allowed_hours_to']!.text = value),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanCommerceSection(
             controllers: _c,
             planTier: _planTier,
@@ -296,7 +294,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             onPrepaidChanged: (v) => setState(() => _prepaid = v),
             onAutoRenewChanged: (v) => setState(() => _autoRenew = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanServicesSection(
             hotspotEnabled: _hotspotEnabled,
             pppEnabled: _pppEnabled,
@@ -305,7 +303,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             onPppChanged: (v) => setState(() => _pppEnabled = v),
             onSingleUseChanged: (v) => setState(() => _singleUseOnce = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanLoanDeviceSection(
             controllers: _c,
             loanEnabled: _loanEnabled,
@@ -316,7 +314,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             forceMacAddress: _forceMacAddress,
             onForceMacChanged: (v) => setState(() => _forceMacAddress = v),
           ),
-          const SizedBox(height: AppTokens.s16),
+          const SizedBox(height: AppTokens.s12),
           PlanMetaSection(controllers: _c),
           const SizedBox(height: AppTokens.s40),
         ],

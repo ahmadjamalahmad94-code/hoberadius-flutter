@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../domain/tools_models.dart';
 import 'tools_common.dart';
 
@@ -37,14 +38,14 @@ class _ToolsSetSpeedsPanelState extends State<ToolsSetSpeedsPanel> {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const ToolsPanelTitle(
             icon: Icons.speed_outlined,
             title: 'تعديل سرعات باقات محددة',
-            subtitle:
-                'اكتب أرقام الباقات مفصولة بفاصلة. استخدم المعاينة بدون تنفيذ أولًا قبل اعتماد التغيير الحقيقي.',
+            subtitle: 'أرقام الباقات بفواصل، وعاين قبل الاعتماد.',
           ),
           const SizedBox(height: AppTokens.s12),
           ToolsTextField(
@@ -54,6 +55,7 @@ class _ToolsSetSpeedsPanelState extends State<ToolsSetSpeedsPanel> {
           ),
           const SizedBox(height: AppTokens.s8),
           ToolsTwoFields(
+            alwaysRow: true,
             first: ToolsTextField(
               controller: _down,
               label: 'تنزيل Kbps',
@@ -65,12 +67,14 @@ class _ToolsSetSpeedsPanelState extends State<ToolsSetSpeedsPanel> {
               keyboardType: TextInputType.number,
             ),
           ),
-          SwitchListTile(
+          HubSwitchRow(
+            dense: true,
             value: _dryRun,
             onChanged: (value) => setState(() => _dryRun = value),
-            title: const Text('معاينة بدون تنفيذ'),
-            subtitle: const Text('يعرض التأثير المتوقع ولا يغيّر الخادم إلا عند إيقاف هذا الخيار.'),
+            label: 'معاينة بدون تنفيذ',
+            subtitle: 'لا يغيّر الخادم إلا عند إيقاف هذا الخيار.',
           ),
+          const SizedBox(height: AppTokens.s4),
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,
             icon: widget.busy

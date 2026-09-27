@@ -26,6 +26,7 @@ class PlansListScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'الباقات',
+          inlineActions: true,
           actions: [
             IconButton(
               tooltip: 'تحديث',
@@ -34,7 +35,7 @@ class PlansListScreen extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s8),
         const LimitUsageBanner(serviceKey: 'profiles'),
         async.when(
           loading: () => const Padding(
@@ -59,21 +60,55 @@ class PlansListScreen extends ConsumerWidget {
                 subtitle: 'أضف الباقات من لوحة الويب لتظهر هنا.',
               );
             }
-            return GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 360,
-                mainAxisSpacing: AppTokens.s16,
-                crossAxisSpacing: AppTokens.s16,
-                childAspectRatio: 1.55,
-              ),
-              itemCount: items.length,
-              itemBuilder: (ctx, i) => _PlanCard(plan: items[i]),
-            );
+            return _PlanGrid(plans: items);
           },
         ),
       ],
+    );
+  }
+}
+
+/// Plan cards whose height follows their content: one column on phones,
+/// equal-width columns on wide screens (a row takes its tallest card's
+/// height) — no fixed aspect ratio, so no dead space under short cards.
+class _PlanGrid extends StatelessWidget {
+  const _PlanGrid({required this.plans});
+  final List<Plan> plans;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = (c.maxWidth / 360).floor().clamp(1, 4);
+        final rows = <Widget>[];
+        for (var i = 0; i < plans.length; i += cols) {
+          final row = Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var j = 0; j < cols; j++) ...[
+                if (j > 0) const SizedBox(width: AppTokens.s12),
+                Expanded(
+                  child: i + j < plans.length
+                      ? _PlanCard(plan: plans[i + j])
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          );
+          rows.add(
+            cols == 1 ? _PlanCard(plan: plans[i]) : IntrinsicHeight(child: row),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < rows.length; i++) ...[
+              if (i > 0) const SizedBox(height: AppTokens.s8),
+              rows[i],
+            ],
+          ],
+        );
+      },
     );
   }
 }
@@ -114,7 +149,19 @@ class _PlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = _typeTone(plan.planType);
+    final facts = <(IconData, String)>[
+      if (plan.speedDownKbps > 0 || plan.speedUpKbps > 0)
+        (
+          Icons.speed,
+          'تنزيل ${plan.speedDownKbps} • رفع ${plan.speedUpKbps} kbps',
+        ),
+      if (plan.validityDays > 0)
+        (Icons.timer_outlined, 'صلاحية: ${plan.validityDays} يوم'),
+      if (plan.quotaTotalMb > 0)
+        (Icons.data_usage, 'حصة: ${plan.quotaTotalMb} MB'),
+    ];
     return Card(
+      margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTokens.r14),
         onTap: plan.id == null
@@ -124,15 +171,16 @@ class _PlanCard extends StatelessWidget {
                   pathParameters: {'id': '${plan.id}'},
                 ),
         child: Padding(
-          padding: const EdgeInsets.all(AppTokens.s16),
+          padding: const EdgeInsets.all(AppTokens.s12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 children: [
                   Container(
-                    width: 32,
-                    height: 32,
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
                       color: accent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
@@ -141,23 +189,46 @@ class _PlanCard extends StatelessWidget {
                     child: Icon(
                       Icons.workspace_premium_outlined,
                       color: accent,
-                      size: 18,
+                      size: 17,
                     ),
                   ),
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: Text(
                       plan.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: AppTokens.sidebarBg,
                       ),
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (!plan.enabled)
-                    const StatusPill(text: 'معطّل', tone: PillTone.red),
+                  if (plan.price > 0) ...[
+                    const SizedBox(width: AppTokens.s8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: accent.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Text(
+                        '${plan.price.toStringAsFixed(2)} ${plan.currency}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: accent,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: AppTokens.s8),
@@ -165,100 +236,44 @@ class _PlanCard extends StatelessWidget {
                 spacing: 6,
                 runSpacing: 6,
                 children: [
+                  if (!plan.enabled)
+                    const StatusPill(text: 'معطّل', tone: PillTone.red),
                   StatusPill(
                     text: _typeLabel(plan.planType),
-                    tone: PillTone.cyan,
+                    tone: PillTone.brand,
                   ),
                   StatusPill(
                     text: _serviceTypeLabel(plan.serviceType),
-                    tone: PillTone.navy,
+                    tone: PillTone.blue,
                   ),
                   if (plan.autoRenew)
-                    const StatusPill(text: 'متجدّد', tone: PillTone.purple),
+                    const StatusPill(text: 'متجدّد', tone: PillTone.green),
                 ],
               ),
-              const SizedBox(height: AppTokens.s12),
-              if (plan.speedDownKbps > 0 || plan.speedUpKbps > 0)
-                Row(
+              if (facts.isNotEmpty) ...[
+                const SizedBox(height: AppTokens.s8),
+                Wrap(
+                  spacing: AppTokens.s12,
+                  runSpacing: 4,
                   children: [
-                    const Icon(
-                      Icons.speed,
-                      size: 14,
-                      color: AppTokens.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'تنزيل ${plan.speedDownKbps} • رفع ${plan.speedUpKbps} kbps',
-                        style: const TextStyle(
-                          color: AppTokens.textSecondary,
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                    for (final f in facts)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(f.$1, size: 14, color: AppTokens.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            f.$2,
+                            style: const TextStyle(
+                              color: AppTokens.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
-              if (plan.validityDays > 0) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.timer_outlined,
-                      size: 14,
-                      color: AppTokens.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'صلاحية: ${plan.validityDays} يوم',
-                      style: const TextStyle(
-                        color: AppTokens.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
                   ],
                 ),
               ],
-              if (plan.quotaTotalMb > 0) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.data_usage,
-                      size: 14,
-                      color: AppTokens.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'حصة: ${plan.quotaTotalMb} MB',
-                      style: const TextStyle(
-                        color: AppTokens.textSecondary,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const Spacer(),
-              if (plan.price > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    '${plan.price.toStringAsFixed(2)} ${plan.currency}',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: accent,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

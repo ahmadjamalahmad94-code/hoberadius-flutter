@@ -39,26 +39,31 @@ class _ToolsTestAuthPanelState extends State<ToolsTestAuthPanel> {
   @override
   Widget build(BuildContext context) {
     return AppCard(
+      padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const ToolsPanelTitle(
             icon: Icons.verified_user_outlined,
             title: 'اختبار مصادقة',
-            subtitle:
-                'يفحص قرار السماح من محرك السياسات في الخادم بدون اتصال مباشر من التطبيق إلى الريدياس.',
+            subtitle: 'قرار السماح من محرك السياسات في الخادم.',
           ),
           const SizedBox(height: AppTokens.s12),
           ToolsTwoFields(
+            alwaysRow: true,
             first: ToolsTextField(controller: _username, label: 'اسم الدخول'),
-            second:
-                ToolsTextField(controller: _password, label: 'كلمة المرور'),
+            second: ToolsTextField(controller: _password, label: 'كلمة المرور'),
           ),
           const SizedBox(height: AppTokens.s8),
           ToolsTwoFields(
-            first: ToolsTextField(controller: _mac, label: 'العنوان الفيزيائي للجهاز'),
-            second: ToolsTextField(controller: _nas, label: 'عنوان جهاز الشبكة'),
+            first: ToolsTextField(
+              controller: _mac,
+              label: 'العنوان الفيزيائي للجهاز',
+            ),
+            second:
+                ToolsTextField(controller: _nas, label: 'عنوان جهاز الشبكة'),
           ),
+          const SizedBox(height: AppTokens.s12),
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,
             icon: const Icon(Icons.check_circle_outline),

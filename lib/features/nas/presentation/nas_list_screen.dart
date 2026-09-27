@@ -8,8 +8,10 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../provider_grants/application/provider_grants_provider.dart';
 import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/nas_repository.dart';
 import '../domain/nas_model.dart';
@@ -48,9 +50,9 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(visibleErrorMessage(e))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     } finally {
       if (mounted) setState(() => _testing.remove(d.id));
     }
@@ -64,20 +66,31 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
       children: [
         PageHeader(
           title: 'أجهزة الشبكة',
+          inlineActions: true,
           actions: [
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
               onPressed: () => ref.invalidate(nasListProvider),
             ),
-            GuardedCreateButton(
-              serviceKey: 'nas',
+          ],
+        ),
+        const SizedBox(height: AppTokens.s8),
+        ActionBar(
+          items: [
+            ActionItem(
+              icon: Icons.add,
               label: 'جهاز جديد',
-              onCreate: () => context.goNamed('nas-new'),
+              primary: true,
+              // blocked at the provider's NAS cap (the limit banner below
+              // explains why) — same rule the guarded create button applied.
+              onPressed: (ref.watch(grantLimitProvider('nas'))?.atCap ?? false)
+                  ? null
+                  : () => context.goNamed('nas-new'),
             ),
           ],
         ),
-        const SizedBox(height: AppTokens.s16),
+        const SizedBox(height: AppTokens.s12),
         const LimitUsageBanner(serviceKey: 'nas'),
         async.when(
           loading: () => const Padding(
@@ -109,8 +122,11 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
             }
             return AppCard(
               padding: EdgeInsets.zero,
-              child:
-                  _NasTable(items: items, testing: _testing, onTest: _runTest),
+              child: _NasTable(
+                items: items,
+                testing: _testing,
+                onTest: _runTest,
+              ),
             );
           },
         ),
@@ -131,104 +147,153 @@ class _NasTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final df = DateFormat('yyyy-MM-dd HH:mm');
-    final p = AppPalette.of(context);
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: items.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (ctx, i) {
-        final d = items[i];
-        final tone = switch (d.lastCheckStatus) {
-          'reachable' => PillTone.green,
-          'timeout' || 'unreachable' => PillTone.red,
-          '' => PillTone.neutral,
-          _ => PillTone.orange,
-        };
-        final pulseOk = d.lastCheckStatus == 'reachable' && d.enabled;
-        return ListTile(
-          leading: Stack(
-            alignment: Alignment.bottomLeft,
-            children: [
-              CircleAvatar(
-                backgroundColor: p.brandSoft,
-                child: Icon(
-                  d.enabled ? Icons.router : Icons.router_outlined,
-                  color: p.brand,
-                ),
-              ),
-              if (pulseOk)
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: p.successStrong,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: p.card, width: 2),
-                  ),
-                ),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) const Divider(height: 1),
+          _NasRow(
+            device: items[i],
+            testing: items[i].id != null && testing.contains(items[i].id),
+            onTest: () => onTest(items[i]),
           ),
-          title: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  d.name.isEmpty ? d.address : d.name,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (!d.enabled)
-                const Padding(
-                  padding: EdgeInsets.only(left: 6),
-                  child: StatusPill(text: 'معطّل', tone: PillTone.neutral),
-                ),
-            ],
-          ),
-          subtitle: Text(
-            [
-              d.address,
-              _nasVendorLabel(d.vendor),
-              if (d.lastCheckAt != null)
-                'آخر فحص: ${df.format(d.lastCheckAt!)}',
-            ].join(' • '),
-            style: const TextStyle(color: AppTokens.textMuted),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              StatusPill(
-                text: _nasCheckStatusLabel(d.lastCheckStatus),
-                tone: tone,
-              ),
-              const SizedBox(width: AppTokens.s4),
-              if (d.id != null && testing.contains(d.id))
-                const SizedBox(
-                  width: 36,
-                  height: 36,
-                  child: Padding(
-                    padding: EdgeInsets.all(8),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else
-                IconButton(
-                  tooltip: 'اختبار الاتصال',
-                  onPressed: () => onTest(d),
-                  icon: const Icon(Icons.network_check),
-                ),
-            ],
-          ),
-          onTap: d.id == null
-              ? null
-              : () =>
-                  ctx.goNamed('nas-edit', pathParameters: {'id': '${d.id}'}),
-        );
-      },
+        ],
+      ],
     );
   }
 }
+
+/// One device: name + a single status pill on line 1, «IP · vendor» on
+/// line 2, a short «فحص» time on line 3, and the test button at the end.
+class _NasRow extends StatelessWidget {
+  const _NasRow({
+    required this.device,
+    required this.testing,
+    required this.onTest,
+  });
+  final NasDevice device;
+  final bool testing;
+  final VoidCallback onTest;
+
+  @override
+  Widget build(BuildContext context) {
+    final d = device;
+    final p = AppPalette.of(context);
+    final df = DateFormat('MM-dd HH:mm');
+    final pulseOk = d.lastCheckStatus == 'reachable' && d.enabled;
+    final (pillText, pillTone) = d.enabled
+        ? (_nasCheckStatusLabel(d.lastCheckStatus), _nasCheckTone(d))
+        : ('معطّل', PillTone.neutral);
+    const muted = TextStyle(color: AppTokens.textMuted, fontSize: 12.5);
+    return InkWell(
+      onTap: d.id == null
+          ? null
+          : () =>
+              context.goNamed('nas-edit', pathParameters: {'id': '${d.id}'}),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AppTokens.s4,
+          AppTokens.s8 + 2,
+          AppTokens.s12,
+          AppTokens.s8 + 2,
+        ),
+        child: Row(
+          children: [
+            Stack(
+              alignment: Alignment.bottomLeft,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: p.brandSoft,
+                  child: Icon(
+                    d.enabled ? Icons.router : Icons.router_outlined,
+                    color: d.enabled ? p.brand : AppTokens.textMuted,
+                    size: 20,
+                  ),
+                ),
+                if (pulseOk)
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: p.successStrong,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: p.card, width: 2),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: AppTokens.s12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          d.name.isEmpty ? d.address : d.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AppTokens.sidebarBg,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AppTokens.s8),
+                      StatusPill(text: pillText, tone: pillTone),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${d.address} · ${_nasVendorLabel(d.vendor)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: muted,
+                  ),
+                  if (d.lastCheckAt != null)
+                    Text(
+                      'فحص: ${df.format(d.lastCheckAt!)}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: muted,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppTokens.s4),
+            if (testing)
+              const SizedBox(
+                width: 40,
+                height: 40,
+                child: Padding(
+                  padding: EdgeInsets.all(10),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              )
+            else
+              IconButton(
+                tooltip: 'اختبار الاتصال',
+                onPressed: onTest,
+                icon: const Icon(Icons.network_check, color: AppTokens.brand),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// online green · timeout amber · unreachable/failed red · never checked grey.
+PillTone _nasCheckTone(NasDevice d) =>
+    switch (d.lastCheckStatus.toLowerCase()) {
+      'reachable' => PillTone.green,
+      'timeout' => PillTone.amber,
+      'unreachable' || 'failed' => PillTone.red,
+      '' => PillTone.neutral,
+      _ => PillTone.amber,
+    };
 
 String _nasVendorLabel(String value) {
   final v = value.toLowerCase();
@@ -243,7 +308,7 @@ String _nasVendorLabel(String value) {
 String _nasCheckStatusLabel(String value) {
   final v = value.toLowerCase();
   return switch (v) {
-    '' => '—',
+    '' => 'لم يُفحص',
     'reachable' => 'متصل',
     'timeout' => 'انتهت المهلة',
     'unreachable' => 'غير متاح',
