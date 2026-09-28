@@ -124,6 +124,7 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
         if (l is Map && l['is_default'] == true) tpl = t;
       }
       tpl ??= templates.isEmpty ? null : templates.first;
+      tpl = await _repo.fullTemplate(tpl);
       state = state.copyWith(
         loading: false,
         templates: templates,
@@ -144,11 +145,15 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     }
   }
 
-  void selectTemplate(int id) {
+  Future<void> selectTemplate(int id) async {
     Map<String, dynamic>? tpl;
     for (final t in state.templates) {
       if (_id(t) == id) tpl = t;
     }
+    // Light template list (updated servers): fetch the full row so the
+    // stored background image/design come with it.
+    tpl = await _repo.fullTemplate(tpl);
+    if (!mounted) return;
     state = state.copyWith(
       templateId: tpl == null ? 0 : id,
       form: QuickPrintForm.fromTemplate(
@@ -180,20 +185,24 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
   /// coordinates become explicit (the web drag writes both too).
   void moveElement(String name, double x, double y) {
     double r(double v) => double.parse(v.clamp(0.5, 200).toStringAsFixed(1));
-    updateForm((f) => switch (name) {
-          'username' => f.copyWith(usernameX: r(x), usernameY: r(y)),
-          'password' => f.copyWith(passwordX: r(x), passwordY: r(y)),
-          _ => f.copyWith(qrX: r(x), qrY: r(y)),
-        },);
+    updateForm(
+      (f) => switch (name) {
+        'username' => f.copyWith(usernameX: r(x), usernameY: r(y)),
+        'password' => f.copyWith(passwordX: r(x), passwordY: r(y)),
+        _ => f.copyWith(qrX: r(x), qrY: r(y)),
+      },
+    );
   }
 
   /// Back to the automatic place.
   void resetElement(String name) {
-    updateForm((f) => switch (name) {
-          'username' => f.copyWith(usernameX: 0, usernameY: 0),
-          'password' => f.copyWith(passwordX: 0, passwordY: 0),
-          _ => f.copyWith(qrX: 0, qrY: 0),
-        },);
+    updateForm(
+      (f) => switch (name) {
+        'username' => f.copyWith(usernameX: 0, usernameY: 0),
+        'password' => f.copyWith(passwordX: 0, passwordY: 0),
+        _ => f.copyWith(qrX: 0, qrY: 0),
+      },
+    );
   }
 
   /// A picked image goes once through the web's optimizer; the optimized

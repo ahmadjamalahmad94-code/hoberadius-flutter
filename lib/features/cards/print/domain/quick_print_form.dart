@@ -1,3 +1,56 @@
+/// Template design keys the quick form does not edit but must NOT lose: the
+/// server's quick-save defaults every absent field, so re-saving a template
+/// from the app reset its brand, footer, price, gradient colours, label font
+/// size and surface opacity. They are loaded from the template and sent back
+/// as they were (the updated server also merges on its side).
+const kPreservedTemplateKeys = <String>[
+  'brand_name',
+  'card_title',
+  'footer_text',
+  'price_text',
+  'validity_text',
+  'instructions_text',
+  'gradient_start',
+  'gradient_end',
+  'accent_color',
+  'text_color',
+  'color',
+  'credential_label_color',
+  'credential_text_color',
+  'credential_label_font_size',
+  'credential_label_language',
+  'surface_opacity',
+  'image_opacity',
+  'pattern_style',
+  'pattern_color',
+  'pattern_opacity',
+  'preset_background_image',
+  'qr_style',
+  'qr_color',
+  'qr_background_color',
+  'logo_size_pct',
+  'logo_x',
+  'logo_y',
+  'font_size',
+  'text_direction',
+  'card_orientation',
+];
+
+/// Colour keys that belong to a design preset: a preset change in the app
+/// drops them so the new preset's colours apply.
+const _presetColourKeys = <String>{
+  'gradient_start',
+  'gradient_end',
+  'accent_color',
+  'text_color',
+  'color',
+  'credential_label_color',
+  'credential_text_color',
+  'pattern_color',
+  'qr_color',
+  'qr_background_color',
+};
+
 /// The web «منشئ كروت PDF» form, field for field (cards_print_quick.html).
 ///
 /// The app sends exactly these fields and the server runs the web designer's
@@ -32,7 +85,20 @@ class QuickPrintForm {
     this.qrX = 0,
     this.qrY = 0,
     this.qrSizePct = 0,
+    this.preservedFields = const {},
+    this.loadedPreset = '',
+    this.storedImage = false,
   });
+
+  /// [kPreservedTemplateKeys] values of the loaded template (as strings).
+  final Map<String, String> preservedFields;
+
+  /// The preset the template had when loaded (see [_presetColourKeys]).
+  final String loadedPreset;
+
+  /// The template has a background image on the server that the light
+  /// template list did not inline (`has_background_image`).
+  final bool storedImage;
 
   final String name;
   final String imageFit;
@@ -70,7 +136,9 @@ class QuickPrintForm {
   final double qrSizePct;
 
   bool get vertical => renderEngine != 'ar_horizontal';
-  bool get hasImage => backgroundDataUrl.startsWith('data:image/');
+  bool get hasImage =>
+      backgroundDataUrl.startsWith('data:image/') ||
+      (storedImage && backgroundStyle == 'image');
 
   /// Web prefill for a saved template (`tpl` row: columns + `layout_json`).
   /// [fallbackLoginUrl]: the first non-empty login URL of any template (the
@@ -106,6 +174,16 @@ class QuickPrintForm {
             : true;
     final surface = str('surface_color', '#e8f7fb');
     final ownLogin = '${fl['hotspot_login_url'] ?? ''}'.trim();
+    String asField(Object? v) => v is bool ? (v ? '1' : '0') : '$v';
+    final preserved = <String, String>{
+      for (final k in kPreservedTemplateKeys)
+        if (fl[k] != null && '${fl[k]}'.isNotEmpty)
+          k: asField(fl[k])
+        else if (tpl[k] != null && '${tpl[k]}'.isNotEmpty)
+          k: asField(tpl[k]),
+    };
+    final storedImage = truthy(tpl['has_background_image']) ||
+        truthy(fl['has_background_image']);
     return QuickPrintForm(
       name: '${tpl['name'] ?? ''}'.trim().isEmpty
           ? 'قالب سريع'
@@ -143,6 +221,9 @@ class QuickPrintForm {
       qrX: numOf(tpl['qr_x'], 0),
       qrY: numOf(tpl['qr_y'], 0),
       qrSizePct: numOf(fl['qr_size_pct'], 0),
+      preservedFields: preserved,
+      loadedPreset: str('design_preset', 'modern'),
+      storedImage: storedImage,
     );
   }
 
@@ -184,7 +265,14 @@ class QuickPrintForm {
   Map<String, String> toFields({bool passwordShown = true}) {
     String n(double v) => v == 0 ? '' : _fmt(v);
     String b(bool v) => v ? '1' : '0';
+    final presetChanged =
+        loadedPreset.isNotEmpty && loadedPreset != designPreset;
     return {
+      // Kept design (brand, footer, price, colours…) first: every field the
+      // quick form edits below overrides it.
+      for (final e in preservedFields.entries)
+        if (!(presetChanged && _presetColourKeys.contains(e.key)))
+          e.key: e.value,
       'name': name,
       'font_size_unit': 'pt',
       'image_fit': imageFit,
@@ -247,8 +335,14 @@ class QuickPrintForm {
     double? qrX,
     double? qrY,
     double? qrSizePct,
+    Map<String, String>? preservedFields,
+    String? loadedPreset,
+    bool? storedImage,
   }) =>
       QuickPrintForm(
+        preservedFields: preservedFields ?? this.preservedFields,
+        loadedPreset: loadedPreset ?? this.loadedPreset,
+        storedImage: storedImage ?? this.storedImage,
         name: name ?? this.name,
         imageFit: imageFit ?? this.imageFit,
         backgroundStyle: backgroundStyle ?? this.backgroundStyle,

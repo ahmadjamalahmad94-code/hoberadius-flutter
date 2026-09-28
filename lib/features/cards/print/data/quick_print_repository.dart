@@ -4,6 +4,19 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/api_client.dart';
+import '../../../../core/api/idempotency.dart';
+
+/// A light-list row whose image lives on the server only.
+bool needsFullTemplate(Map<String, dynamic> tpl) {
+  final raw = tpl['layout_json'] ?? tpl['layout'];
+  final layout = raw is Map ? raw : const {};
+  final inline = '${layout['background_image_data_url'] ?? ''}';
+  if (inline.startsWith('data:image/')) return false;
+  bool truthy(Object? v) =>
+      v == true || v == 1 || '$v' == '1' || '$v' == 'true';
+  return truthy(tpl['has_background_image']) ||
+      truthy(layout['has_background_image']);
+}
 
 /// «طباعة الكروت» — the server does ALL rendering (the same engine that
 /// prints from the web), the app never redraws a card itself:
@@ -24,6 +37,30 @@ class QuickPrintRepository {
     return items is List
         ? items.whereType<Map>().map(_stringKeys).toList()
         : const [];
+  }
+
+  /// The FULL template (background image inline). Updated servers return a
+  /// light list (no `background_image_data_url`, only `has_background_image`
+  /// + URLs); `GET /print-templates/<id>` has the full row. Older servers
+  /// already inline everything in the list → null here is fine.
+  Future<Map<String, dynamic>?> template(int id) async {
+    try {
+      final res = await _api.get('/api/v1/print-templates/$id');
+      final d = _data(res);
+      final t = d['template'];
+      if (t is Map) return _stringKeys(t);
+      return d.containsKey('id') ? d : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// [tpl] as-is when it already carries its image; else the full row.
+  Future<Map<String, dynamic>?> fullTemplate(Map<String, dynamic>? tpl) async {
+    if (tpl == null || !needsFullTemplate(tpl)) return tpl;
+    final id = int.tryParse('${tpl['id'] ?? ''}') ?? 0;
+    if (id <= 0) return tpl;
+    return await template(id) ?? tpl;
   }
 
   Future<Map<String, String>> lastSettings() async {
@@ -103,9 +140,11 @@ class QuickPrintRepository {
     required Map<String, String> form,
     int? templateId,
     Map<String, String> printSettings = const {},
+    String? idempotencyKey,
   }) async {
     final res = await _api.post(
       '/api/v1/print-templates/quick-save',
+      headers: idempotencyHeaders(idempotencyKey),
       body: {
         if (templateId != null && templateId > 0) 'template_id': templateId,
         'form': form,
