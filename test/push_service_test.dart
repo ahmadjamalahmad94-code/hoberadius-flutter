@@ -14,10 +14,13 @@ class _CountingRepo implements NotificationsRepository {
     bool unreadOnly = false,
     int limit = 30,
     int offset = 0,
+    int? beforeId,
   }) async {
     listCalls++;
     return NotificationsPage(
-      items: [AppNotification.fromJson({'id': 1, 'is_read': false})],
+      items: [
+        AppNotification.fromJson({'id': 1, 'is_read': false})
+      ],
       unreadCount: 1,
       limit: limit,
       offset: offset,
@@ -65,7 +68,8 @@ void main() {
     expect(await c.read(probe.future), isTrue);
   });
 
-  test('FcmPushService is firebase-gated to mobile — safe no-op on desktop host',
+  test(
+      'FcmPushService is firebase-gated to mobile — safe no-op on desktop host',
       () async {
     // The test host is desktop (not Android/iOS), so initialize must return
     // before touching Firebase or the network, and onLogout must be safe.

@@ -17,6 +17,7 @@ class _FakeRepo implements NotificationsRepository {
     bool unreadOnly = false,
     int limit = 30,
     int offset = 0,
+    int? beforeId,
   }) async {
     final src = unreadOnly ? _items.where((n) => !n.isRead).toList() : _items;
     final slice = src.skip(offset).take(limit).toList();
@@ -34,9 +35,8 @@ class _FakeRepo implements NotificationsRepository {
 
   @override
   Future<int> markRead(int id) async {
-    _items = _items
-        .map((n) => n.id == id ? n.copyWith(isRead: true) : n)
-        .toList();
+    _items =
+        _items.map((n) => n.id == id ? n.copyWith(isRead: true) : n).toList();
     return _unread;
   }
 

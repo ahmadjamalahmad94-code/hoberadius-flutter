@@ -185,7 +185,8 @@ ParsedBody parseNotificationBody(String body, {String title = ''}) {
   for (final raw in body.split('\n')) {
     final line = raw.trim();
     if (line.isEmpty || _isBoilerplate(line)) continue;
-    final isBullet = line.replaceAll(_isolates, '').trimLeft().startsWith('\u2022');
+    final isBullet =
+        line.replaceAll(_isolates, '').trimLeft().startsWith('\u2022');
     final text = _clean(line);
     if (text.isEmpty) continue;
     if (isBullet) {

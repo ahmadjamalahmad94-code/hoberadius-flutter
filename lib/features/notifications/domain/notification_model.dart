@@ -82,6 +82,7 @@ class NotificationsPage {
     required this.limit,
     required this.offset,
     required this.hasMore,
+    this.nextBeforeId,
   });
 
   final List<AppNotification> items;
@@ -89,6 +90,10 @@ class NotificationsPage {
   final int limit;
   final int offset;
   final bool hasMore;
+
+  /// Keyset cursor (`next_before_id`) sent by updated servers: the next page
+  /// is `before_id=<this>`, immune to rows arriving between two requests.
+  final int? nextBeforeId;
 
   static const empty = NotificationsPage(
     items: [],
@@ -118,6 +123,8 @@ class NotificationsPage {
       limit: _int(json['limit']),
       offset: _int(json['offset']),
       hasMore: json['has_more'] == true,
+      nextBeforeId:
+          json['next_before_id'] == null ? null : _int(json['next_before_id']),
     );
   }
 }

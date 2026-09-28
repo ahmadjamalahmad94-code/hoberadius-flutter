@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/api/paging.dart';
 import '../data/notifications_repository.dart';
 import '../domain/notification_model.dart';
 
@@ -29,23 +30,37 @@ class NotificationCenterController extends AsyncNotifier<NotificationsPage> {
     _syncPoller();
   }
 
-  /// Appends the next page (if any).
+  bool _loadingMore = false;
+
+  /// Appends the next page (if any). Uses the server's `next_before_id`
+  /// cursor when it sends one; with plain offsets new notifications arriving
+  /// meanwhile shift the page, so rows are de-duplicated by id and a page
+  /// that brings nothing new ends the paging.
   Future<void> loadMore() async {
     final current = state.valueOrNull;
-    if (current == null || !current.hasMore) return;
-    final next = await ref.read(notificationsRepositoryProvider).list(
-          limit: _pageSize,
-          offset: current.items.length,
-        );
-    state = AsyncData(
-      NotificationsPage(
-        items: [...current.items, ...next.items],
-        unreadCount: next.unreadCount,
-        limit: next.limit,
-        offset: next.offset,
-        hasMore: next.hasMore,
-      ),
-    );
+    if (current == null || !current.hasMore || _loadingMore) return;
+    _loadingMore = true;
+    try {
+      final next = await ref.read(notificationsRepositoryProvider).list(
+            limit: _pageSize,
+            offset: current.items.length,
+            beforeId: current.nextBeforeId,
+          );
+      final (merged, added) =
+          mergeUniqueBy(current.items, next.items, (n) => n.id);
+      state = AsyncData(
+        NotificationsPage(
+          items: merged,
+          unreadCount: next.unreadCount,
+          limit: next.limit,
+          offset: next.offset,
+          hasMore: next.hasMore && added > 0,
+          nextBeforeId: next.nextBeforeId,
+        ),
+      );
+    } finally {
+      _loadingMore = false;
+    }
   }
 
   Future<void> markRead(int id) async {
@@ -92,6 +107,7 @@ class NotificationCenterController extends AsyncNotifier<NotificationsPage> {
       limit: base.limit,
       offset: base.offset,
       hasMore: base.hasMore,
+      nextBeforeId: base.nextBeforeId,
     );
   }
 

@@ -7,7 +7,6 @@ import '../../../core/ota/ota_banner_card.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
-import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../application/notifications_providers.dart';
 import '../domain/notification_presentation.dart';
@@ -38,6 +37,16 @@ class NotificationCenterScreen extends ConsumerWidget {
           subtitle: unread > 0 ? '$unread إشعار غير مقروء' : 'لا إشعارات جديدة',
           inlineActions: true,
           actions: [
+            // «تعليم الكل كمقروء» lives up here, away from the filter chips
+            // (a tap meant for «الكل» marked 3,045 notifications read), and
+            // asks first — it cannot be undone.
+            IconButton(
+              tooltip: 'تعليم الكل كمقروء',
+              icon: const Icon(Icons.done_all, color: AppTokens.textSecondary),
+              onPressed: unread == 0
+                  ? null
+                  : () => _confirmMarkAll(context, controller, unread),
+            ),
             IconButton(
               tooltip: 'تحديث',
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
@@ -49,16 +58,6 @@ class NotificationCenterScreen extends ConsumerWidget {
         // App updates live here too (they come as a push, not from the
         // server's notification list).
         const OtaBannerCard(),
-        ActionBar(
-          items: [
-            ActionItem(
-              icon: Icons.done_all,
-              label: 'تعليم الكل كمقروء',
-              onPressed: unread == 0 ? null : controller.markAllRead,
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTokens.s12),
         async.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),
@@ -139,6 +138,35 @@ class NotificationCenterScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _confirmMarkAll(
+    BuildContext context,
+    NotificationCenterController controller,
+    int unread,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تعليم الكل كمقروء؟'),
+        content: Text(
+          'سيُعلَّم $unread إشعارًا غير مقروء كمقروء لكل الشبكة. '
+          'لا يمكن التراجع عن ذلك.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('تعليم الكل'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await controller.markAllRead();
   }
 
   Future<void> _markGroupRead(WidgetRef ref, NotificationGroup g) async {
