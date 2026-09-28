@@ -8,7 +8,6 @@ import '../../../shared/widgets/page_header.dart';
 import '../application/subscriber_form_controller.dart';
 import '../application/subscriber_form_mapper.dart';
 import 'widgets/subscriber_action_menu.dart';
-import 'widgets/subscriber_dialogs.dart';
 import 'widgets/subscriber_form_sections.dart';
 
 /// Subscriber create / edit form. UI-local state (text controllers and
@@ -201,54 +200,6 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
     context.goNamed('subscribers');
   }
 
-  Future<void> _toggleStatus() async {
-    final u = widget.username;
-    if (u == null) return;
-    final enable = _status == 'disabled';
-    final err = await ref
-        .read(subscriberFormActionProvider.notifier)
-        .toggle(u, enable: enable);
-    if (!mounted || err != null) return;
-    setState(() => _status = enable ? 'enabled' : 'disabled');
-    _snack(enable ? 'تم التفعيل' : 'تم التعطيل');
-  }
-
-  Future<void> _showExtendDialog() async {
-    final mins = await askExtendMinutes(context);
-    if (!mounted || mins == null) return;
-    final result = await ref
-        .read(subscriberFormActionProvider.notifier)
-        .extendTime(widget.username!, mins);
-    if (!mounted || result.newExpire == null) return;
-    setState(() => _expireAt = result.newExpire);
-    _snack('تم التمديد $mins دقيقة');
-  }
-
-  Future<void> _showResetPwDialog() async {
-    final pw = await askNewPassword(context);
-    if (!mounted || pw == null) return;
-    final err = await ref
-        .read(subscriberFormActionProvider.notifier)
-        .resetPassword(widget.username!, pw);
-    if (!mounted || err != null) return;
-    _snack('تمّ تحديث كلمة المرور');
-  }
-
-  Future<void> _showDeleteConfirm() async {
-    final ok = await confirmDeleteSubscriber(context, widget.username!);
-    if (!mounted || !ok) return;
-    final err = await ref
-        .read(subscriberFormActionProvider.notifier)
-        .delete(widget.username!);
-    if (!mounted || err != null) return;
-    context.goNamed('subscribers');
-  }
-
-  void _snack(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
   @override
   Widget build(BuildContext context) {
     final action = ref.watch(subscriberFormActionProvider);
@@ -291,11 +242,15 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
               ),
               if (widget.isEdit)
                 SubscriberActionMenu(
-                  isDisabled: _status == 'disabled',
-                  onToggle: loading ? null : _toggleStatus,
-                  onExtend: loading ? null : _showExtendDialog,
-                  onResetPw: loading ? null : _showResetPwDialog,
-                  onDelete: loading ? null : _showDeleteConfirm,
+                  enabled: !loading,
+                  subscriber: () => buildSubscriberFromForm(_c, _selections)
+                      .copyWith(username: widget.username),
+                  onChanged: _loadExisting,
+                  onRenamed: (name) => context.goNamed(
+                    'subscriber-edit',
+                    pathParameters: {'username': name},
+                  ),
+                  onArchived: () => context.goNamed('subscribers'),
                 ),
             ],
           ),

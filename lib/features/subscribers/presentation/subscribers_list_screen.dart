@@ -16,7 +16,7 @@ import '../../provider_grants/application/provider_grants_provider.dart';
 import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
-import 'widgets/subscriber_dialogs.dart';
+import 'widgets/subscriber_actions_sheet.dart';
 
 /// Pseudo-status for «ينتهي خلال ٣ أيام» (active subscribers whose expiry
 /// falls in the next 3 days) — matches the web's `attention=expiring_3d` and
@@ -259,135 +259,17 @@ class _Table extends ConsumerWidget {
   final List<Subscriber> items;
   final _Density density;
 
-  Future<void> _runAction(
-    BuildContext context,
-    WidgetRef ref,
-    Subscriber s,
-    String action,
-  ) async {
-    final repo = ref.read(subscribersRepositoryProvider);
-    final messenger = ScaffoldMessenger.of(context);
-    void snack(String m) => messenger.showSnackBar(SnackBar(content: Text(m)));
-    try {
-      switch (action) {
-        case 'edit':
-          context.goNamed(
-            'subscriber-edit',
-            pathParameters: {'username': s.username},
-          );
-          return;
-        case 'toggle':
-          if (s.status == 'disabled') {
-            await repo.enable(s.username);
-            snack('تم التفعيل');
-          } else {
-            await repo.disable(s.username);
-            snack('تم التعطيل');
-          }
-        case 'extend':
-          final mins = await askExtendMinutes(context);
-          if (mins == null) return;
-          await repo.extendTime(s.username, mins);
-          snack('تم التمديد $mins دقيقة');
-        case 'reset':
-          final pw = await askNewPassword(context);
-          if (pw == null) return;
-          await repo.resetPassword(s.username, pw);
-          snack('تمّ تحديث كلمة المرور');
-        case 'delete':
-          final ok = await confirmDeleteSubscriber(context, s.username);
-          if (!ok) return;
-          await repo.delete(s.username);
-          snack('تم حذف ${s.username}');
-      }
-      ref.invalidate(subscribersListProvider);
-    } catch (e) {
-      snack(visibleErrorMessage(e));
-    }
-  }
-
   Future<void> _showActions(
     BuildContext context,
     WidgetRef ref,
     Subscriber s,
-  ) async {
-    final action = await showModalBottomSheet<String>(
-      // Above the whole app: the shell's pages live inside one scroll view,
-      // so a sheet on the inner navigator was drawn below the long content,
-      // off-screen — only the dim barrier showed.
-      useRootNavigator: true,
-      context: context,
-      showDragHandle: true,
-      builder: (sheet) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppTokens.s12,
-            0,
-            AppTokens.s12,
-            AppTokens.s8,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppTokens.s8),
-                child: Text(
-                  s.fullName.isEmpty ? s.username : s.fullName,
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(sheet).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: AppTokens.sidebarBg,
-                      ),
-                ),
-              ),
-              for (final (value, icon, label, tone) in [
-                ('edit', Icons.edit_outlined, 'تعديل', PillTone.brand),
-                if (s.status == 'disabled')
-                  (
-                    'toggle',
-                    Icons.play_circle_outline,
-                    'تفعيل',
-                    PillTone.green,
-                  )
-                else
-                  (
-                    'toggle',
-                    Icons.pause_circle_outline,
-                    'تعطيل',
-                    PillTone.amber,
-                  ),
-                (
-                  'extend',
-                  Icons.more_time_outlined,
-                  'تمديد الوقت',
-                  PillTone.green,
-                ),
-                (
-                  'reset',
-                  Icons.password_outlined,
-                  'إعادة تعيين كلمة المرور',
-                  PillTone.blue,
-                ),
-                ('delete', Icons.delete_outline, 'حذف', PillTone.red),
-              ])
-                _SheetAction(
-                  icon: icon,
-                  label: label,
-                  tone: tone,
-                  onTap: () => Navigator.pop(sheet, value),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (action != null && context.mounted) {
-      await _runAction(context, ref, s, action);
-    }
-  }
+  ) =>
+      showSubscriberActionsSheet(
+        context,
+        ref,
+        subscriber: s,
+        onChanged: () => ref.invalidate(subscribersListProvider),
+      );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -560,62 +442,6 @@ class _Table extends ConsumerWidget {
         'banned' => 'محظور',
         _ => s,
       };
-}
-
-/// One row of the subscriber actions sheet: a tinted icon chip in the
-/// action's colour + its label — compact, and each action reads at a glance.
-class _SheetAction extends StatelessWidget {
-  const _SheetAction({
-    required this.icon,
-    required this.label,
-    required this.tone,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final PillTone tone;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final (bg, fg, border) = pillToneColors(tone);
-    final danger = tone == PillTone.red;
-    return InkWell(
-      borderRadius: BorderRadius.circular(AppTokens.r10),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppTokens.s4,
-          vertical: 6,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(AppTokens.r10),
-                border: Border.all(color: border.withValues(alpha: 0.6)),
-              ),
-              child: Icon(icon, size: 19, color: fg),
-            ),
-            const SizedBox(width: AppTokens.s12),
-            Expanded(
-              child: Text(
-                label,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: danger ? AppTokens.red : AppTokens.textPrimary,
-                    ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 /// One subscriber = one white card (rounded, border, soft shadow) — clear
