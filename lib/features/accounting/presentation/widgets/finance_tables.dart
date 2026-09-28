@@ -4,13 +4,31 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/status_pill.dart';
+import '../../../subscribers/domain/subscriber_actions_model.dart'
+    show formatMoney;
 import '../../domain/accounting_model.dart';
+
+/// Width under which the finance tables turn into stacked rows: on phones
+/// the old DataTable pushed «عكس» and the date ~280 px off-screen with no
+/// hint that the table scrolls sideways.
+const double kFinanceTableBreakpoint = 700;
+
+String _money(num amount, String currency) =>
+    formatMoney(amount.toDouble(), currency);
 
 class PaymentsTable extends StatelessWidget {
   const PaymentsTable({super.key, required this.items, required this.onVoid});
 
   final List<PaymentTransaction> items;
   final Future<void> Function(PaymentTransaction payment)? onVoid;
+
+  Widget _voidCell(PaymentTransaction p) => p.status == 'voided'
+      ? const Text('معكوسة')
+      : TextButton.icon(
+          onPressed: onVoid == null ? null : () => onVoid!(p),
+          icon: const Icon(Icons.undo, size: 18),
+          label: const Text('عكس'),
+        );
 
   @override
   Widget build(BuildContext context) {
@@ -23,51 +41,124 @@ class PaymentsTable extends StatelessWidget {
     }
     return AppCard(
       padding: EdgeInsets.zero,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const _TableTitle('آخر الدفعات'),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('#')),
-                DataColumn(label: Text('المبلغ')),
-                DataColumn(label: Text('المدة')),
-                DataColumn(label: Text('الحالة')),
-                DataColumn(label: Text('التاريخ')),
-                DataColumn(label: Text('إجراء')),
-              ],
-              rows: items
-                  .map(
-                    (p) => DataRow(
-                      cells: [
-                        DataCell(Text('${p.id}')),
-                        DataCell(Text('${p.amount} ${p.currency}')),
-                        DataCell(Text('${p.earnedMinutes} دقيقة')),
-                        DataCell(
-                          StatusPill(
-                            text: _accountingStatusLabel(p.status),
-                            tone: _accountingStatusTone(p.status),
-                          ),
-                        ),
-                        DataCell(Text(formatFinanceDate(p.createdAt))),
-                        DataCell(
-                          p.status == 'voided'
-                              ? const Text('معكوسة')
-                              : TextButton.icon(
-                                  onPressed:
-                                      onVoid == null ? null : () => onVoid!(p),
-                                  icon: const Icon(Icons.undo, size: 18),
-                                  label: const Text('عكس'),
-                                ),
-                        ),
-                      ],
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final narrow = c.maxWidth < kFinanceTableBreakpoint;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const _TableTitle('آخر الدفعات'),
+              if (narrow)
+                for (final p in items) ...[
+                  const Divider(height: 1),
+                  _StackedRow(
+                    title: '#${p.id} · ${_money(p.amount, p.currency)}',
+                    subtitle:
+                        '${p.earnedMinutes} دقيقة · ${formatFinanceDate(p.createdAt)}',
+                    pill: StatusPill(
+                      text: _accountingStatusLabel(p.status),
+                      tone: _accountingStatusTone(p.status),
                     ),
-                  )
-                  .toList(),
+                    trailing: _voidCell(p),
+                  ),
+                ]
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('#')),
+                      DataColumn(label: Text('المبلغ')),
+                      DataColumn(label: Text('المدة')),
+                      DataColumn(label: Text('الحالة')),
+                      DataColumn(label: Text('التاريخ')),
+                      DataColumn(label: Text('إجراء')),
+                    ],
+                    rows: items
+                        .map(
+                          (p) => DataRow(
+                            cells: [
+                              DataCell(Text('${p.id}')),
+                              DataCell(Text(_money(p.amount, p.currency))),
+                              DataCell(Text('${p.earnedMinutes} دقيقة')),
+                              DataCell(
+                                StatusPill(
+                                  text: _accountingStatusLabel(p.status),
+                                  tone: _accountingStatusTone(p.status),
+                                ),
+                              ),
+                              DataCell(Text(formatFinanceDate(p.createdAt))),
+                              DataCell(_voidCell(p)),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// One row of a stacked (phone) finance table: text on the start side, the
+/// status pill and the action always on screen at the end.
+class _StackedRow extends StatelessWidget {
+  const _StackedRow({
+    required this.title,
+    required this.subtitle,
+    this.pill,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget? pill;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppTokens.s12,
+        vertical: AppTokens.s8,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppTokens.sidebarBg,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: text.bodySmall?.copyWith(color: AppTokens.textMuted),
+                ),
+                if (pill != null) ...[
+                  const SizedBox(height: 4),
+                  pill!,
+                ],
+              ],
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: AppTokens.s8),
+            trailing!,
+          ],
         ],
       ),
     );
@@ -75,9 +166,15 @@ class PaymentsTable extends StatelessWidget {
 }
 
 class LoansTable extends StatelessWidget {
-  const LoansTable({super.key, required this.items, required this.onSettle});
+  const LoansTable({
+    super.key,
+    required this.items,
+    required this.onSettle,
+    this.currency = '',
+  });
 
   final List<LoanEntry> items;
+  final String currency;
   final Future<void> Function(LoanEntry loan)? onSettle;
 
   @override
@@ -96,13 +193,20 @@ class LoansTable extends StatelessWidget {
         children: [
           const _TableTitle('السلف والتسويات'),
           const Divider(height: 1),
-          ...items.map(
-            (loan) => ListTile(
+          ...items.map((loan) {
+            final cur = loan.currency.isEmpty ? currency : loan.currency;
+            final partial = loan.isOpen &&
+                loan.outstanding > 0 &&
+                loan.outstanding < loan.amount;
+            return ListTile(
               title: Text(
-                '${loan.durationMinutes} دقيقة • ${loan.amount} ${loan.currency}',
+                '#${loan.id} · ${loan.durationMinutes} دقيقة • ${_money(loan.amount, cur)}',
               ),
               subtitle: Text(
-                loan.reason.isEmpty ? 'بدون سبب مسجل' : loan.reason,
+                [
+                  if (partial) 'المتبقّي ${_money(loan.outstanding, cur)}',
+                  loan.reason.isEmpty ? 'بدون سبب مسجل' : loan.reason,
+                ].join(' · '),
               ),
               trailing: loan.status == 'open'
                   ? TextButton(
@@ -114,8 +218,8 @@ class LoansTable extends StatelessWidget {
                       text: 'تمت التسوية',
                       tone: PillTone.neutral,
                     ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -136,20 +240,44 @@ class LedgerTable extends StatelessWidget {
         message: 'لا توجد قيود مالية',
       );
     }
-    return _SectionTable(
-      title: 'سجل القيود',
-      columns: const ['#', 'النوع', 'المبلغ', 'المصدر', 'التاريخ'],
-      rows: items
-          .map(
-            (e) => [
-              '${e.id}',
-              _ledgerTypeLabel(e.entryType),
-              '${e.amount} ${e.currency}',
-              _ledgerSourceLabel(e.sourceType),
-              formatFinanceDate(e.createdAt),
-            ],
-          )
-          .toList(),
+    return LayoutBuilder(
+      builder: (context, c) {
+        if (c.maxWidth < kFinanceTableBreakpoint) {
+          return AppCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const _TableTitle('سجل القيود'),
+                for (final e in items) ...[
+                  const Divider(height: 1),
+                  _StackedRow(
+                    title:
+                        '#${e.id} · ${_ledgerTypeLabel(e.entryType)} · ${_money(e.amount, e.currency)}',
+                    subtitle:
+                        '${_ledgerSourceLabel(e.sourceType)} · ${formatFinanceDate(e.createdAt)}',
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+        return _SectionTable(
+          title: 'سجل القيود',
+          columns: const ['#', 'النوع', 'المبلغ', 'المصدر', 'التاريخ'],
+          rows: items
+              .map(
+                (e) => [
+                  '${e.id}',
+                  _ledgerTypeLabel(e.entryType),
+                  _money(e.amount, e.currency),
+                  _ledgerSourceLabel(e.sourceType),
+                  formatFinanceDate(e.createdAt),
+                ],
+              )
+              .toList(),
+        );
+      },
     );
   }
 }

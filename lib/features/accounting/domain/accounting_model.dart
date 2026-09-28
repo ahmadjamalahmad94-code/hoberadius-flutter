@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class PaymentTransaction {
   PaymentTransaction({
     required this.id,
@@ -35,7 +37,7 @@ class PaymentTransaction {
       subscriberId: _int(j['subscriber_id']) ?? 0,
       username: _string(j['username']),
       amount: _num(j['amount']) ?? 0,
-      currency: _string(j['currency'], fallback: 'JOD'),
+      currency: _string(j['currency']),
       method: _string(j['method']),
       status: _string(j['status'], fallback: 'posted'),
       earnedMinutes: _int(j['earned_minutes']) ?? 0,
@@ -64,13 +66,22 @@ class LoanEntry {
     this.settledAt,
     this.approvalStatus = '',
     this.activationResult = const {},
-  });
+    num? outstanding,
+    this.settledAmount = 0,
+  }) : outstanding = outstanding ?? (status == 'open' ? amount : 0);
 
   final int id;
   final int subscriberId;
   final String username;
   final int durationMinutes;
+
+  /// The loan's original value.
   final num amount;
+
+  /// What is still owed (`outstanding` on updated servers: amount minus the
+  /// posted partial settlements; older servers → the whole amount while open).
+  final num outstanding;
+  final num settledAmount;
   final String currency;
   final String reason;
   final String status;
@@ -88,7 +99,7 @@ class LoanEntry {
       username: _string(j['username']),
       durationMinutes: _int(j['duration_minutes']) ?? 0,
       amount: _num(j['amount']) ?? 0,
-      currency: _string(j['currency'], fallback: 'JOD'),
+      currency: _string(j['currency']),
       reason: _string(j['reason']),
       status: _string(j['status'], fallback: 'open'),
       createdAt: _date(j['created_at']),
@@ -97,6 +108,8 @@ class LoanEntry {
       settledAt: _date(j['settled_at']),
       approvalStatus: _string(j['approval_status']),
       activationResult: _map(j['activation_result']),
+      outstanding: _num(j['outstanding']),
+      settledAmount: _num(j['settled_amount']) ?? 0,
     );
   }
 
@@ -105,6 +118,28 @@ class LoanEntry {
   String get approvalStatusLabel => loanApprovalStatusLabel(approvalStatus);
 
   bool get isOpen => status == 'open';
+}
+
+/// `/loans` → `totals` (updated servers): the whole filter, not one page.
+class LoanTotals {
+  const LoanTotals({
+    this.count = 0,
+    this.openCount = 0,
+    this.totalAmount = 0,
+    this.outstanding = 0,
+  });
+
+  final int count;
+  final int openCount;
+  final num totalAmount;
+  final num outstanding;
+
+  factory LoanTotals.fromJson(Map<String, dynamic> j) => LoanTotals(
+        count: _int(j['count']) ?? 0,
+        openCount: _int(j['open_count']) ?? 0,
+        totalAmount: _num(j['total_amount']) ?? 0,
+        outstanding: _num(j['outstanding']) ?? 0,
+      );
 }
 
 String loanStatusLabel(String value) {
@@ -163,7 +198,7 @@ class LedgerEntry {
       entryType: _string(j['entry_type']),
       direction: _string(j['direction']),
       amount: _num(j['amount']) ?? 0,
-      currency: _string(j['currency'], fallback: 'JOD'),
+      currency: _string(j['currency']),
       username: _string(j['username']),
       status: _string(j['status'], fallback: 'posted'),
       createdAt: _date(j['created_at']),
@@ -195,7 +230,7 @@ num? _num(Object? value) {
 DateTime? _date(Object? value) {
   final text = value?.toString();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text);
+  return parseServerDateTime(text);
 }
 
 Map<String, dynamic> _map(Object? value) {
