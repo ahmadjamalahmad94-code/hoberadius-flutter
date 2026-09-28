@@ -9,15 +9,22 @@ class TicketsRepository {
 
   final ApiClient _api;
 
-  Future<TicketsPage> list({String status = '', int limit = 200}) async {
+  /// One page (limit/offset — both old and new servers honour them; the
+  /// updated server adds an exact `has_more`). The list used to stop at 200.
+  Future<TicketsPage> list({
+    String status = '',
+    int limit = 50,
+    int offset = 0,
+  }) async {
     final res = await _api.get(
       '/api/v1/tickets',
       query: {
         if (status.isNotEmpty) 'status': status,
         'limit': limit,
+        'offset': offset,
       },
     );
-    return TicketsPage.fromJson(res);
+    return TicketsPage.fromJson(res, requestedLimit: limit, offset: offset);
   }
 
   Future<TicketDetail> get(int ticketId) async {
@@ -80,9 +87,12 @@ class TicketsRepository {
     return ServiceRequestResult.fromJson(res);
   }
 
+  /// [expectedStatus]: the status the operator saw; the updated server
+  /// answers 409 when someone else decided meanwhile (no double decision).
   Future<ServiceRequestResult> decideServiceRequest({
     required int ticketId,
     required String decision,
+    String? expectedStatus,
     String note = '',
     double? amount,
     int? trialDays,
@@ -93,6 +103,8 @@ class TicketsRepository {
       '/api/v1/service-requests/$ticketId/decision',
       body: {
         'decision': decision,
+        if (expectedStatus != null && expectedStatus.isNotEmpty)
+          'expected_status': expectedStatus,
         'note': note,
         if (trialDays != null) 'trial_days': trialDays,
         if (amount != null)

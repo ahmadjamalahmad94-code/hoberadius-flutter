@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/api/paging.dart';
 import '../../../core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
@@ -104,19 +105,36 @@ class TicketReply {
 }
 
 class TicketsPage {
-  const TicketsPage({required this.items, required this.count});
+  const TicketsPage({
+    required this.items,
+    required this.count,
+    this.hasMore = false,
+  });
 
   final List<SupportTicket> items;
   final int count;
+  final bool hasMore;
 
-  factory TicketsPage.fromJson(Map<String, dynamic> json) {
+  factory TicketsPage.fromJson(
+    Map<String, dynamic> json, {
+    int requestedLimit = 0,
+    int offset = 0,
+  }) {
     final data = _data(json);
+    final items = (data['items'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(SupportTicket.fromJson)
+        .toList();
+    final info = readPageInfo(
+      data,
+      requestedLimit: requestedLimit,
+      offset: offset,
+      itemCount: items.length,
+    );
     return TicketsPage(
-      items: (data['items'] as List? ?? const [])
-          .whereType<Map<String, dynamic>>()
-          .map(SupportTicket.fromJson)
-          .toList(),
+      items: items,
       count: _int(data['count']),
+      hasMore: info.hasMore,
     );
   }
 }

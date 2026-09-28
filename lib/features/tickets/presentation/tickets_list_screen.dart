@@ -12,17 +12,12 @@ import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
-import '../../subscribers/data/subscribers_repository.dart';
-import '../../subscribers/domain/subscriber_model.dart';
+import '../../subscribers/presentation/widgets/subscriber_search_field.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../application/tickets_providers.dart';
 import '../data/tickets_repository.dart';
 import '../domain/ticket_model.dart';
 import 'ticket_tones.dart';
-
-final _ticketSubscribersProvider =
-    FutureProvider.autoDispose<List<Subscriber>>((ref) {
-  return ref.watch(subscribersRepositoryProvider).list(limit: 300);
-});
 
 class TicketsListScreen extends ConsumerWidget {
   const TicketsListScreen({super.key});
@@ -93,6 +88,14 @@ class TicketsListScreen extends ConsumerWidget {
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final wide = constraints.maxWidth > 760;
+                  final footer = LoadMoreFooter(
+                    hasMore: page.hasMore,
+                    loading: page.loadingMore,
+                    error: page.loadMoreError,
+                    shown: page.items.length,
+                    onLoadMore: () =>
+                        ref.read(ticketsPageProvider.notifier).loadMore(),
+                  );
                   if (!wide) {
                     return Column(
                       children: [
@@ -100,43 +103,49 @@ class TicketsListScreen extends ConsumerWidget {
                           if (i > 0) const Divider(height: 1),
                           _TicketTile(ticket: page.items[i]),
                         ],
+                        footer,
                       ],
                     );
                   }
-                  return SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: const [
-                        DataColumn(label: Text('التذكرة')),
-                        DataColumn(label: Text('المشترك')),
-                        DataColumn(label: Text('الأولوية')),
-                        DataColumn(label: Text('الحالة')),
-                        DataColumn(label: Text('آخر تحديث')),
-                        DataColumn(label: Text('')),
-                      ],
-                      rows: [
-                        for (final ticket in page.items)
-                          DataRow(
-                            cells: [
-                              DataCell(_TicketTitle(ticket: ticket)),
-                              DataCell(Text('#${ticket.subscriberId}')),
-                              DataCell(_Priority(ticket: ticket)),
-                              DataCell(_Status(ticket: ticket)),
-                              DataCell(Text(_dateLabel(ticket.updatedAt))),
-                              DataCell(
-                                IconButton(
-                                  tooltip: 'فتح التذكرة',
-                                  icon: const Icon(Icons.chevron_left),
-                                  onPressed: () => context.goNamed(
-                                    'ticket-detail',
-                                    pathParameters: {'id': '${ticket.id}'},
+                  return Column(
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columns: const [
+                            DataColumn(label: Text('التذكرة')),
+                            DataColumn(label: Text('المشترك')),
+                            DataColumn(label: Text('الأولوية')),
+                            DataColumn(label: Text('الحالة')),
+                            DataColumn(label: Text('آخر تحديث')),
+                            DataColumn(label: Text('')),
+                          ],
+                          rows: [
+                            for (final ticket in page.items)
+                              DataRow(
+                                cells: [
+                                  DataCell(_TicketTitle(ticket: ticket)),
+                                  DataCell(Text('#${ticket.subscriberId}')),
+                                  DataCell(_Priority(ticket: ticket)),
+                                  DataCell(_Status(ticket: ticket)),
+                                  DataCell(Text(_dateLabel(ticket.updatedAt))),
+                                  DataCell(
+                                    IconButton(
+                                      tooltip: 'فتح التذكرة',
+                                      icon: const Icon(Icons.chevron_left),
+                                      onPressed: () => context.goNamed(
+                                        'ticket-detail',
+                                        pathParameters: {'id': '${ticket.id}'},
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                ],
                               ),
-                            ],
-                          ),
-                      ],
-                    ),
+                          ],
+                        ),
+                      ),
+                      footer,
+                    ],
                   );
                 },
               ),
@@ -366,19 +375,11 @@ Future<void> _showServiceRequestDialog(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final subscribers = await ref.read(_ticketSubscribersProvider.future);
-  if (!context.mounted) return;
-  if (subscribers.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('لا يوجد مشتركون لربط الطلب بهم')),
-    );
-    return;
-  }
-
   final notes = TextEditingController();
   final customServiceName = TextEditingController();
   final amount = TextEditingController();
-  var subscriberId = subscribers.first.id;
+  // No pre-selected subscriber: the operator searches the whole tenant.
+  int? subscriberId;
   var service = _serviceOptions.first;
   var requestType = _requestTypeOptions.first;
   var createPayment = false;
@@ -391,7 +392,12 @@ Future<void> _showServiceRequestDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
-          if (subscriberId == null) return;
+          if (subscriberId == null) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              const SnackBar(content: Text('اختر المشترك أولًا')),
+            );
+            return;
+          }
           final serviceName = service.key == 'other'
               ? customServiceName.text.trim()
               : service.label;
@@ -464,21 +470,9 @@ Future<void> _showServiceRequestDialog(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    initialValue: subscriberId,
-                    decoration: const InputDecoration(labelText: 'المشترك'),
-                    items: [
-                      for (final subscriber in subscribers)
-                        if (subscriber.id != null)
-                          DropdownMenuItem(
-                            value: subscriber.id,
-                            child: Text(_subscriberLabel(subscriber)),
-                          ),
-                    ],
-                    onChanged: busy
-                        ? null
-                        : (value) => setState(() => subscriberId = value),
+                  SubscriberSearchField(
+                    enabled: !busy,
+                    onChanged: (s) => setState(() => subscriberId = s?.id),
                   ),
                   const SizedBox(height: AppTokens.s12),
                   DropdownButtonFormField<_ServiceOption>(
@@ -603,20 +597,10 @@ Future<void> _showCreateTicketDialog(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final subscribers = await ref.read(_ticketSubscribersProvider.future);
-  if (!context.mounted) return;
-  if (subscribers.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('لا يوجد مشتركون لربط التذكرة بهم'),
-      ),
-    );
-    return;
-  }
-
   final subject = TextEditingController();
   final body = TextEditingController();
-  var subscriberId = subscribers.first.id;
+  // No pre-selected subscriber: the operator searches the whole tenant.
+  int? subscriberId;
   var category = 'general';
   var priority = 'normal';
   var busy = false;
@@ -627,7 +611,18 @@ Future<void> _showCreateTicketDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
-          if (subscriberId == null || subject.text.trim().isEmpty) return;
+          if (subscriberId == null || subject.text.trim().isEmpty) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              SnackBar(
+                content: Text(
+                  subscriberId == null
+                      ? 'اختر المشترك أولًا'
+                      : 'اكتب عنوان الطلب',
+                ),
+              ),
+            );
+            return;
+          }
           setState(() => busy = true);
           try {
             final ticket = await ref.read(ticketsRepositoryProvider).create(
@@ -661,21 +656,9 @@ Future<void> _showCreateTicketDialog(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                DropdownButtonFormField<int>(
-                  isExpanded: true,
-                  initialValue: subscriberId,
-                  decoration: const InputDecoration(labelText: 'المشترك'),
-                  items: [
-                    for (final subscriber in subscribers)
-                      if (subscriber.id != null)
-                        DropdownMenuItem(
-                          value: subscriber.id,
-                          child: Text(_subscriberLabel(subscriber)),
-                        ),
-                  ],
-                  onChanged: busy
-                      ? null
-                      : (value) => setState(() => subscriberId = value),
+                SubscriberSearchField(
+                  enabled: !busy,
+                  onChanged: (s) => setState(() => subscriberId = s?.id),
                 ),
                 const SizedBox(height: AppTokens.s8),
                 TextField(
@@ -784,12 +767,6 @@ Future<void> _showCreateTicketDialog(
       },
     ),
   );
-}
-
-String _subscriberLabel(Subscriber subscriber) {
-  final name =
-      subscriber.fullName.isEmpty ? subscriber.username : subscriber.fullName;
-  return '$name · ${subscriber.username}';
 }
 
 String _dateLabel(DateTime? date) {

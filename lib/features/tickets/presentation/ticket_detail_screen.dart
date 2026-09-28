@@ -417,6 +417,8 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                   .decideServiceRequest(
                     ticketId: widget.ticket.id,
                     decision: decision,
+                    // what the operator saw → 409 if decided meanwhile
+                    expectedStatus: widget.ticket.status,
                     note: note.text.trim(),
                     amount: paymentAmount,
                     trialDays: trialDaysValue,
