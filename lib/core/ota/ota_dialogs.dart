@@ -41,6 +41,18 @@ class _OtaDialogHostState extends ConsumerState<OtaDialogHost>
     }
   }
 
+  Future<void> _showWhatsNew(List<String> items) async {
+    if (_open || !mounted) return;
+    _open = true;
+    await showDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      builder: (_) => WhatsNewDialog(items: items),
+    );
+    _open = false;
+    if (mounted) ref.read(otaControllerProvider.notifier).dismissWhatsNew();
+  }
+
   Future<void> _show() async {
     if (_open || !mounted) return;
     _open = true;
@@ -56,6 +68,9 @@ class _OtaDialogHostState extends ConsumerState<OtaDialogHost>
   @override
   Widget build(BuildContext context) {
     ref.listen<OtaState>(otaControllerProvider, (prev, next) {
+      if (next.whatsNew.isNotEmpty && (prev?.whatsNew.isEmpty ?? true)) {
+        _showWhatsNew(next.whatsNew);
+      }
       final wantsDialog = !next.snoozed &&
           (next.phase == OtaPhase.available ||
               next.phase == OtaPhase.readyToRestart);
@@ -196,6 +211,12 @@ class _OtaUpdateDialogState extends ConsumerState<OtaUpdateDialog> {
                 textAlign: TextAlign.center,
                 style: text.bodyMedium?.copyWith(color: AppTokens.textMuted),
               ),
+              if (ota.notes.isNotEmpty &&
+                  (ota.phase == OtaPhase.available ||
+                      ota.phase == OtaPhase.readyToRestart)) ...[
+                const SizedBox(height: AppTokens.s12),
+                ReleaseNotesList(items: ota.notes),
+              ],
               if (ota.phase == OtaPhase.downloading) ...[
                 const SizedBox(height: AppTokens.s16),
                 const _DownloadProgress(),
@@ -278,6 +299,136 @@ class _Btn extends StatelessWidget {
       style: style,
       icon: Icon(icon, size: 18),
       label: child,
+    );
+  }
+}
+
+/// «الجديد في هذا التحديث» — a short, scrollable bullet list.
+class ReleaseNotesList extends StatelessWidget {
+  const ReleaseNotesList(
+      {super.key, required this.items, this.maxHeight = 220,});
+  final List<String> items;
+  final double maxHeight;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Container(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AppTokens.brandSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'الجديد في هذا التحديث',
+            style: text.labelLarge?.copyWith(
+              color: AppTokens.brandInk,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final item in items)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 3),
+                            child: Icon(
+                              Icons.check_circle,
+                              size: 15,
+                              color: AppTokens.brand,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item,
+                              style: text.bodySmall?.copyWith(
+                                color: AppTokens.sidebarBg,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// After an update was applied: «تم التحديث» + what it brought (once).
+class WhatsNewDialog extends StatelessWidget {
+  const WhatsNewDialog({super.key, required this.items});
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTokens.r14),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppTokens.green.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.celebration_outlined,
+                  color: AppTokens.green,
+                  size: 30,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            Text(
+              'تم تحديث التطبيق',
+              textAlign: TextAlign.center,
+              style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: AppTokens.s12),
+            ReleaseNotesList(items: items, maxHeight: 320),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(46),
+                textStyle:
+                    text.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+              ),
+              child: const Text('تم'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

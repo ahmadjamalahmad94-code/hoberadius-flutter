@@ -25,17 +25,26 @@ def main() -> int:
     )
     creds.refresh(Request())
     url = f"https://fcm.googleapis.com/v1/projects/{info['project_id']}/messages:send"
+    # What's new: items separated by " | " (workflow input «notes»).
+    items = [i.strip() for i in os.environ.get("NOTES", "").split("|") if i.strip()]
+    if items:
+        body = "\n".join("• " + i for i in items[:4])
+        if len(items) > 4:
+            body += f"\n… و{len(items) - 4} أخرى"
+    else:
+        body = "اضغط لتثبيت التحديث الجديد لتطبيق HobeRadius."
     message = {
         "message": {
             "topic": TOPIC,
             "notification": {
                 "title": "يوجد تحديث جديد",
-                "body": "اضغط لتثبيت التحديث الجديد لتطبيق HobeRadius.",
+                "body": body,
             },
-            "data": {"type": "app_update"},
+            "data": {"type": "app_update", "notes": " | ".join(items)},
             "android": {
                 "priority": "high",
-                "notification": {"channel_id": CHANNEL},
+                # Long «what's new» lists expand in the notification shade.
+                "notification": {"channel_id": CHANNEL, "notification_count": 1},
             },
         }
     }

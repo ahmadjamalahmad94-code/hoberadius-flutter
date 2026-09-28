@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
+
+import 'release_notes.dart';
 
 /// Over-the-air (Shorebird) update flow, surfaced as pop-up dialogs
 /// (see `ota_dialogs.dart`):
@@ -38,6 +41,8 @@ class OtaState {
     this.currentPatch,
     this.error = '',
     this.snoozed = false,
+    this.notes = const [],
+    this.whatsNew = const [],
   });
   final OtaPhase phase;
   final int? currentPatch;
@@ -47,25 +52,91 @@ class OtaState {
   /// or an explicit check asks for it.
   final bool snoozed;
 
+  /// «الجديد في هذا التحديث» — items of the patches waiting to install.
+  final List<String> notes;
+
+  /// Shown once after an update was applied (items of the patch now running).
+  final List<String> whatsNew;
+
   OtaState copyWith({
     OtaPhase? phase,
     int? currentPatch,
     String? error,
     bool? snoozed,
+    List<String>? notes,
+    List<String>? whatsNew,
   }) =>
       OtaState(
         phase: phase ?? this.phase,
         currentPatch: currentPatch ?? this.currentPatch,
         error: error ?? this.error,
         snoozed: snoozed ?? this.snoozed,
+        notes: notes ?? this.notes,
+        whatsNew: whatsNew ?? this.whatsNew,
       );
 }
 
 class OtaController extends StateNotifier<OtaState> {
-  OtaController({ShorebirdUpdater? updater, bool? enabled})
-      : _updater = updater ?? ShorebirdUpdater(),
+  OtaController({
+    ShorebirdUpdater? updater,
+    bool? enabled,
+    Future<List<ReleaseNote>> Function()? notesLoader,
+    Future<int?> Function()? readLastSeenPatch,
+    Future<void> Function(int patch)? writeLastSeenPatch,
+  })  : _updater = updater ?? ShorebirdUpdater(),
         _enabled = enabled ?? !kIsWeb,
+        _loadNotes = notesLoader ?? fetchReleaseNotes,
+        _readSeen = readLastSeenPatch ?? _prefsReadSeen,
+        _writeSeen = writeLastSeenPatch ?? _prefsWriteSeen,
         super(const OtaState());
+
+  final Future<List<ReleaseNote>> Function() _loadNotes;
+  final Future<int?> Function() _readSeen;
+  final Future<void> Function(int patch) _writeSeen;
+  bool _whatsNewChecked = false;
+
+  static const _seenKey = 'ota.last_seen_patch.$kAppRelease';
+
+  static Future<int?> _prefsReadSeen() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getInt(_seenKey);
+  }
+
+  static Future<void> _prefsWriteSeen(int patch) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setInt(_seenKey, patch);
+  }
+
+  Future<List<ReleaseNote>> _safeNotes() async {
+    try {
+      return await _loadNotes();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// After an update was applied: the notes of the patch(es) now running,
+  /// once (from the last patch this device saw).
+  Future<void> _checkWhatsNew(int? current) async {
+    if (_whatsNewChecked || current == null || current <= 0) return;
+    _whatsNewChecked = true;
+    final seen = await _readSeen();
+    await _writeSeen(current);
+    if (seen != null && seen >= current) return;
+    // No record yet (first run with this feature, or first patch after an
+    // install): show just the patch now running.
+    final items = noteItems(
+      notesBetween(
+        await _safeNotes(),
+        after: seen ?? current - 1,
+        upTo: current,
+      ),
+    );
+    if (items.isNotEmpty) state = state.copyWith(whatsNew: items);
+  }
+
+  /// «تم» on the what's-new dialog.
+  void dismissWhatsNew() => state = state.copyWith(whatsNew: const []);
 
   final ShorebirdUpdater _updater;
   final bool _enabled;
@@ -101,10 +172,21 @@ class OtaController extends StateNotifier<OtaState> {
         snoozed: force ? false : state.snoozed,
       );
       final status = await _updater.checkForUpdate();
+      await _checkWhatsNew(current?.number);
+      final pending = status == UpdateStatus.outdated ||
+              status == UpdateStatus.restartRequired
+          ? noteItems(
+              notesBetween(
+                await _safeNotes(),
+                after: current?.number ?? 0,
+              ),
+            )
+          : const <String>[];
       state = switch (status) {
-        UpdateStatus.outdated => state.copyWith(phase: OtaPhase.available),
+        UpdateStatus.outdated =>
+          state.copyWith(phase: OtaPhase.available, notes: pending),
         UpdateStatus.restartRequired =>
-          state.copyWith(phase: OtaPhase.readyToRestart),
+          state.copyWith(phase: OtaPhase.readyToRestart, notes: pending),
         UpdateStatus.upToDate ||
         UpdateStatus.unavailable =>
           state.copyWith(phase: OtaPhase.upToDate),

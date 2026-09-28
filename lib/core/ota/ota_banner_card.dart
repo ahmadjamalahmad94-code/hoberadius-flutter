@@ -19,7 +19,11 @@ class OtaBannerCard extends ConsumerWidget {
         switch (ota.phase) {
       OtaPhase.available => (
           'يوجد تحديث جديد للتطبيق',
-          'ثبّته الآن ليظهر آخر ما وصل من تحسينات.',
+          ota.notes.isEmpty
+              ? 'ثبّته الآن ليظهر آخر ما وصل من تحسينات.'
+              : ota.notes.length == 1
+                  ? ota.notes.first
+                  : '${ota.notes.first}  (+${ota.notes.length - 1})',
           'تثبيت',
           Icons.system_update,
         ),
@@ -83,6 +87,8 @@ class OtaBannerCard extends ConsumerWidget {
                   ),
                   Text(
                     body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: text.bodySmall?.copyWith(
                       color: Colors.white.withValues(alpha: 0.88),
                     ),

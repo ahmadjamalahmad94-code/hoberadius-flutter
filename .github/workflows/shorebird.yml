@@ -42,6 +42,11 @@ on:
         required: false
         default: true
         type: boolean
+      notes:
+        description: "patch only: what's new, items separated by ' | ' (shown in the push)"
+        required: false
+        default: ""
+        type: string
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
@@ -161,6 +166,7 @@ jobs:
         if: inputs.mode == 'patch' && inputs.notify && inputs.track == 'stable'
         env:
           FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          NOTES: ${{ inputs.notes }}
         run: |
           if [ -z "$FIREBASE_SA" ]; then echo "no FIREBASE_SERVICE_ACCOUNT_JSON secret — skipping push"; exit 0; fi
           pip install --quiet google-auth requests
