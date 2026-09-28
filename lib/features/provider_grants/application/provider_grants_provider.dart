@@ -52,14 +52,22 @@ final effectiveGrantsProvider = Provider<ProviderGrants>((ref) {
       ProviderGrants.permissive;
 });
 
+/// The ONLY quantity cap the product still has: concurrent online sessions
+/// (enforced by RADIUS at login). Owner decision: card / device / plan /
+/// admin / template caps were abolished — the web panel shows and enforces
+/// none of them, so the app must not either, even when an old license
+/// contract still carries those numbers.
+const kEnforcedLimitKeys = <String>{'active_online'};
+
 /// The quantity cap for a service-key (null = no cap / unknown).
 final grantLimitProvider = Provider.family<GrantLimit?, String>((ref, key) {
+  if (!kEnforcedLimitKeys.contains(key)) return null;
   return ref.watch(effectiveGrantsProvider).limit(key);
 });
 
 /// Limit for the service-key that governs a given route location.
 GrantLimit? grantLimitForLocation(WidgetRef ref, String location) {
   final key = serviceKeyForLocation(location);
-  if (key == null) return null;
+  if (key == null || !kEnforcedLimitKeys.contains(key)) return null;
   return ref.watch(effectiveGrantsProvider).limit(key);
 }
