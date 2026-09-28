@@ -13,7 +13,13 @@ class CardItem {
     this.expireAt,
     this.firstUsedAt,
     this.createdAt,
+    this.lockedMac = '',
+    this.usedByMac = '',
   });
+
+  /// MAC lock / the device that used the card (updated servers).
+  final String lockedMac;
+  final String usedByMac;
 
   final int? id;
   final String username;
@@ -37,5 +43,7 @@ class CardItem {
         expireAt: cardParseDate(j['expire_at']),
         firstUsedAt: cardParseDate(j['first_used_at']),
         createdAt: cardParseDate(j['created_at']),
+        lockedMac: (j['locked_mac'] ?? '').toString(),
+        usedByMac: (j['used_by_mac'] ?? '').toString(),
       );
 }

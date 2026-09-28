@@ -103,6 +103,9 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
 
   final QuickPrintRepository _repo;
   final int batchId;
+
+  /// The batch's card price («5 ILS»), offered as the price text.
+  String batchPriceText = '';
   Timer? _debounce;
   CancelToken? _inflight;
   int _seq = 0;
@@ -139,6 +142,7 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
         noPassword: batch['login_without_password'] == true ||
             batch['login_without_password'] == 1,
       );
+      batchPriceText = batchPriceLabel(batch);
       refreshPreview(immediate: true);
     } catch (e) {
       state = state.copyWith(loading: false, error: _message(e));
@@ -170,9 +174,30 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     refreshPreview();
   }
 
+  /// «إظهار السعر»: switching it on with no price text fills the batch's
+  /// card price, so something is actually printed.
+  void setShowPrice(bool on) {
+    updateForm((f) {
+      var next = f.copyWith(showPrice: on);
+      if (on && next.priceText.isEmpty && batchPriceText.isNotEmpty) {
+        next = next.withPriceText(batchPriceText);
+      }
+      return next;
+    });
+  }
+
+  void setPriceText(String text) => updateForm((f) => f.withPriceText(text));
+
+  /// Page-layout controls only change the «الصفحة» preview: switch to it so
+  /// the change is visible (they looked like they did nothing on «الكرت»).
   void updateSheet(QuickSheet Function(QuickSheet s) edit) {
     state = state.copyWith(sheet: edit(state.sheet));
-    if (state.mode == PreviewMode.page) refreshPreview();
+    if (state.mode == PreviewMode.page) {
+      refreshPreview();
+    } else {
+      state = state.copyWith(mode: PreviewMode.page);
+      refreshPreview(immediate: true);
+    }
   }
 
   void setMode(PreviewMode mode) {
@@ -368,3 +393,15 @@ final quickPrintControllerProvider = StateNotifierProvider.autoDispose
   (ref, batchId) =>
       QuickPrintController(ref.watch(quickPrintRepositoryProvider), batchId),
 );
+
+/// «5 ILS» from a batch row (`price_per_card` + `currency`), '' when free.
+String batchPriceLabel(Map<String, dynamic> batch) {
+  final raw = batch['price_per_card'] ?? batch['card_price'] ?? batch['price'];
+  final n = raw is num ? raw : num.tryParse('${raw ?? ''}');
+  if (n == null || n <= 0) return '';
+  final v = n.toDouble();
+  final text =
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  final cur = '${batch['currency'] ?? ''}'.trim();
+  return cur.isEmpty ? text : '$text $cur';
+}

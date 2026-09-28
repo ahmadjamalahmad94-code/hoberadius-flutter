@@ -86,9 +86,8 @@ class CardCheckResult {
       startedAt: cardParseDate(json['started_at']),
       expiresAt: cardParseDate(json['expires_at']),
       remainingSeconds: cardParseInt(json['remaining_seconds']),
-      batch: batch is Map<String, dynamic>
-          ? CardCheckBatch.fromJson(batch)
-          : null,
+      batch:
+          batch is Map<String, dynamic> ? CardCheckBatch.fromJson(batch) : null,
       profile: profile is Map<String, dynamic>
           ? CardCheckProfile.fromJson(profile)
           : null,
@@ -96,7 +95,9 @@ class CardCheckResult {
           ? CardAssignedTo.fromJson(assignedTo)
           : null,
       lastSeenAt: cardParseDate(json['last_seen_at']),
-      macAddress: cardParseStringOrNull(json['mac_address']),
+      macAddress: cardParseStringOrNull(
+        json['mac_address'] ?? json['used_by_mac'],
+      ),
       ipAddress: cardParseStringOrNull(json['ip_address']),
       nasAddress: cardParseStringOrNull(json['nas_address']),
       activeSession: json.containsKey('active_session')

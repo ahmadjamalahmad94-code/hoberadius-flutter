@@ -136,6 +136,14 @@ class QuickPrintForm {
   final double qrSizePct;
 
   bool get vertical => renderEngine != 'ar_horizontal';
+
+  /// The text printed as the price (template `price_text`). «إظهار السعر»
+  /// with an empty text drew nothing.
+  String get priceText => preservedFields['price_text'] ?? '';
+
+  QuickPrintForm withPriceText(String text) => copyWith(
+        preservedFields: {...preservedFields, 'price_text': text.trim()},
+      );
   bool get hasImage =>
       backgroundDataUrl.startsWith('data:image/') ||
       (storedImage && backgroundStyle == 'image');

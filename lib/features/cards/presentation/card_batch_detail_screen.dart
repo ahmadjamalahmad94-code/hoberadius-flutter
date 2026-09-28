@@ -529,6 +529,18 @@ class _CardsTable extends ConsumerWidget {
                         fontSize: 12,
                       ),
                     ),
+                    if (c.lockedMac.isNotEmpty || c.usedByMac.isNotEmpty)
+                      Text(
+                        c.lockedMac.isNotEmpty
+                            ? 'مقفلة على MAC: ${c.lockedMac}'
+                            : 'استُخدمت من MAC: ${c.usedByMac}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTokens.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
                   ],
                 ),
               ),

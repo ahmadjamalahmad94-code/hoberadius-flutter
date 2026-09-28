@@ -547,6 +547,15 @@ Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
             );
             return;
           }
+          // Same minimum as the server (4) for card-user passwords.
+          if (password.text.isNotEmpty && password.text.length < 4) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              const SnackBar(
+                content: Text('كلمة المرور 4 أحرف على الأقل.'),
+              ),
+            );
+            return;
+          }
           setState(() => busy = true);
           try {
             await ref.read(cardUsersRepositoryProvider).createUser(

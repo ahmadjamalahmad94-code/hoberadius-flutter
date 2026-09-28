@@ -11,7 +11,12 @@ class CardBatchOperationsPage {
     this.page = 1,
     this.perPage = 25,
     this.pages = 1,
+    this.nextBatchId,
   });
+
+  /// `meta.next_batch_id` (updated servers): the id the NEXT generated batch
+  /// gets, as the web generator shows it. Null on older servers.
+  final int? nextBatchId;
 
   final List<CardBatch> items;
   final CardBatchOperationsTotals totals;
@@ -40,6 +45,10 @@ class CardBatchOperationsPage {
       page: cardParseInt(data['page']) ?? 1,
       perPage: cardParseInt(data['per_page']) ?? 25,
       pages: cardParseInt(data['pages']) ?? 1,
+      nextBatchId: cardParseInt(
+        (data['meta'] is Map ? (data['meta'] as Map)['next_batch_id'] : null) ??
+            data['next_batch_id'],
+      ),
     );
   }
 }

@@ -28,8 +28,9 @@ class CardCheckerSearch extends StatelessWidget {
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => onSearch(),
             decoration: const InputDecoration(
-              labelText: 'رقم البطاقة أو اسم الدخول',
-              helperText: 'ابحث بدون كشف كلمة مرور البطاقة.',
+              labelText: 'اسم دخول البطاقة',
+              helperText:
+                  'للبحث برقم البطاقة الداخلي اكتب #رقمها (مثال #1234).',
               prefixIcon: Icon(Icons.search),
             ),
           );

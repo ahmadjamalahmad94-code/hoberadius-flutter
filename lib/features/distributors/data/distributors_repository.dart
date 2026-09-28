@@ -65,15 +65,19 @@ class DistributorsRepository {
         .toList();
   }
 
+  /// [batchCode] travels too (updated servers accept `batch_code`); the
+  /// resolved [batchId] keeps older servers working.
   Future<void> assignBatch(
     int distributorId, {
     required int batchId,
+    String? batchCode,
     String notes = '',
   }) {
     return _api.post(
       '/api/v1/distributors/$distributorId/assign-batch',
       body: {
         'batch_id': batchId,
+        if (batchCode != null && batchCode.isNotEmpty) 'batch_code': batchCode,
         if (notes.isNotEmpty) 'notes': notes,
       },
     );

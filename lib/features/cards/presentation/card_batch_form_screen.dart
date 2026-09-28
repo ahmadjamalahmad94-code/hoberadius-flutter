@@ -82,10 +82,14 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   Future<void> _loadNextBatchId() async {
     if (_nextBatchId != null) return;
     try {
-      final rows =
-          await ref.read(cardsRepositoryProvider).listBatches(limit: 5);
-      final maxId = rows.fold<int>(0, (m, b) => (b.id ?? 0) > m ? b.id! : m);
-      if (mounted) setState(() => _nextBatchId = maxId + 1);
+      final page = await ref
+          .read(cardsRepositoryProvider)
+          .listBatchOperations(perPage: 5);
+      // The server's own number (as the web shows it); older servers →
+      // estimate from the newest batches.
+      final next = page.nextBatchId ??
+          page.items.fold<int>(0, (m, b) => (b.id ?? 0) > m ? b.id! : m) + 1;
+      if (mounted) setState(() => _nextBatchId = next);
     } catch (_) {
       // Preview only — the server applies the real batch number.
     }

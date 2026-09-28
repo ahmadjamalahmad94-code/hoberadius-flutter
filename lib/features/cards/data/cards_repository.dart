@@ -58,6 +58,7 @@ class CardsRepository {
 
   Future<CardBatchOperationsPage> listBatchOperations({
     String query = '',
+    String code = '',
     String status = '',
     int? planId,
     String manager = '',
@@ -69,6 +70,8 @@ class CardsRepository {
       '/api/v1/cards/batches',
       query: {
         if (query.trim().isNotEmpty) 'q': query.trim(),
+        // exact batch-code lookup (updated servers; old ones ignore it)
+        if (code.trim().isNotEmpty) 'code': code.trim(),
         if (status.isNotEmpty) 'status': status,
         if (planId != null) 'plan_id': planId,
         if (manager.trim().isNotEmpty) 'manager': manager.trim(),
@@ -271,8 +274,14 @@ class CardsRepository {
 
   Future<void> revoke(int cardId) => _api.post('/api/v1/cards/$cardId/revoke');
 
+  /// The checker matches the card USERNAME only on updated servers. A card
+  /// id is asked explicitly: «#123» or «id:123» → `card_id=123` (plus
+  /// `query=123`, which older servers matched as username-or-id).
   Future<CardCheckResult> checkCard(String query) async {
-    final res = await _api.get('/api/v1/cards/check', query: {'query': query});
+    final res = await _api.get(
+      '/api/v1/cards/check',
+      query: cardCheckQueryParams(query),
+    );
     final data = (res['data'] ?? res) as Map<String, dynamic>;
     final card = data['card'] as Map<String, dynamic>? ?? {};
     return CardCheckResult.fromJson(card);
@@ -316,6 +325,18 @@ class CardsRepository {
     final card = data['card'] as Map<String, dynamic>? ?? {};
     return CardCheckResult.fromJson(card);
   }
+}
+
+/// Query parameters of `GET /cards/check` for what the operator typed.
+Map<String, String> cardCheckQueryParams(String input) {
+  final text = input.trim();
+  final byId =
+      RegExp(r'^(?:#|id:)\s*(\d+)$', caseSensitive: false).firstMatch(text);
+  if (byId != null) {
+    final id = byId.group(1)!;
+    return {'card_id': id, 'query': id};
+  }
+  return {'query': text};
 }
 
 final cardsRepositoryProvider = Provider<CardsRepository>((ref) {

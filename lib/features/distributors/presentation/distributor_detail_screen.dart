@@ -344,6 +344,7 @@ class _ActionsState extends ConsumerState<_Actions> {
       await ref.read(distributorsRepositoryProvider).assignBatch(
             widget.distributorId,
             batchId: id,
+            batchCode: int.tryParse(raw) == null ? raw : null,
             notes: _assignNotes.text.trim(),
           );
       _batchId.clear();
@@ -469,7 +470,10 @@ Future<int?> resolveBatchId(CardsRepository cards, String raw) async {
   final text = raw.trim();
   final asId = int.tryParse(text);
   if (asId != null && asId > 0) return asId;
-  final page = await cards.listBatchOperations(query: text, perPage: 25);
+  // `code=` is an exact lookup on updated servers; `q=` keeps older ones
+  // working (the exact code is then picked from the matches).
+  final page =
+      await cards.listBatchOperations(code: text, query: text, perPage: 25);
   for (final b in page.items) {
     if (b.batchCode.trim().toLowerCase() == text.toLowerCase()) return b.id;
   }

@@ -172,6 +172,14 @@ class QuickPrintRepository {
     return PrintExportJob.fromJson(_job(res));
   }
 
+  /// Stops a queued/running export (updated servers). Older servers have no
+  /// cancel endpoint — the error is ignored and the dialog just closes.
+  Future<void> cancelJob(int id) async {
+    try {
+      await _api.post('/api/v1/print-jobs/$id/cancel');
+    } catch (_) {}
+  }
+
   Future<PrintExportJob> job(int id) async {
     final res = await _api.get('/api/v1/print-jobs/$id');
     return PrintExportJob.fromJson(_job(res));
