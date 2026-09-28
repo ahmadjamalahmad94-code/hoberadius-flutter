@@ -88,14 +88,15 @@ void main() {
       final keeper = IdempotencyKeeper();
       final a = keeper.keyFor('payment', {
         'amount': 10,
-        'x': [1, 2]
+        'x': [1, 2],
       });
       expect(
-          keeper.keyFor('payment', {
-            'x': [1, 2],
-            'amount': 10
-          }),
-          a);
+        keeper.keyFor('payment', {
+          'x': [1, 2],
+          'amount': 10,
+        }),
+        a,
+      );
       final b = keeper.keyFor('payment', {'amount': 11});
       expect(b, isNot(a));
       keeper.reset();
@@ -179,7 +180,10 @@ void main() {
       expect(
         isRetryableError(
           ApiException(
-              code: 'idempotency_in_progress', message: '', status: 409),
+            code: 'idempotency_in_progress',
+            message: '',
+            status: 409,
+          ),
         ),
         isTrue,
       );

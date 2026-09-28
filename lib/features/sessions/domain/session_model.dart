@@ -149,9 +149,11 @@ class AccountingSessionHistory {
       nasIpAddress:
           OnlineSession._s(json['nasipaddress'] ?? json['nas_ip_address']),
       framedIpAddress: OnlineSession._s(
-          json['framedipaddress'] ?? json['framed_ip_address']),
+        json['framedipaddress'] ?? json['framed_ip_address'],
+      ),
       callingStationId: OnlineSession._s(
-          json['callingstationid'] ?? json['calling_station_id']),
+        json['callingstationid'] ?? json['calling_station_id'],
+      ),
       startedAt: OnlineSession._dt(json['acctstarttime'] ?? json['started_at']),
       stoppedAt: OnlineSession._dt(json['acctstoptime'] ?? json['stopped_at']),
       updatedAt: OnlineSession._dt(json['acctupdatetime'] ?? json['update_at']),
@@ -164,7 +166,8 @@ class AccountingSessionHistory {
           OnlineSession._int(json['acctsessiontime'] ?? json['session_time']) ??
               0,
       terminateCause: OnlineSession._s(
-          json['acctterminatecause'] ?? json['terminate_cause']),
+        json['acctterminatecause'] ?? json['terminate_cause'],
+      ),
     );
   }
 }

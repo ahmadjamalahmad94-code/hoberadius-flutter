@@ -169,7 +169,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 // subscriber's state (inputs, loaded row, loans).
                 builder: (ctx, st) => SubscriberFormScreen(
                   key: ValueKey(
-                      'subscriber-edit:${st.pathParameters['username']}'),
+                    'subscriber-edit:${st.pathParameters['username']}',
+                  ),
                   username: st.pathParameters['username'],
                 ),
               ),
@@ -178,7 +179,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 name: 'subscriber-360',
                 builder: (ctx, st) => Subscriber360Screen(
                   key: ValueKey(
-                      'subscriber-360:${st.pathParameters['username']}'),
+                    'subscriber-360:${st.pathParameters['username']}',
+                  ),
                   username: st.pathParameters['username'] ?? '',
                 ),
               ),

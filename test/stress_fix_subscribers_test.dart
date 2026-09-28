@@ -99,7 +99,7 @@ void main() {
             'radius': {'session_timeout': 3600},
             'general': {
               'notes': 'n',
-              'tags': ['a', 'b']
+              'tags': ['a', 'b'],
             },
           },
         },
@@ -194,7 +194,7 @@ void main() {
     ProviderContainer container(RecordingAdapter adapter) {
       final c = ProviderContainer(
         overrides: [
-          apiClientProvider.overrideWithValue(fakeApiClient(adapter))
+          apiClientProvider.overrideWithValue(fakeApiClient(adapter)),
         ],
       );
       addTearDown(c.dispose);

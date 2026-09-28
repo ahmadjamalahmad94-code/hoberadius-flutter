@@ -202,7 +202,8 @@ class _SubscriberFinanceScreenState
                 );
         final applied = payment.activationResult['applied_to_radius'] == true;
         _toast(
-            applied ? 'تم التسجيل والتطبيق على الريدياس' : 'تم التسجيل المالي');
+          applied ? 'تم التسجيل والتطبيق على الريدياس' : 'تم التسجيل المالي',
+        );
       },
       onError: (e) => _paymentError = e,
     );

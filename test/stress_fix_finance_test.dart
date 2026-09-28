@@ -260,9 +260,12 @@ void main() {
 
   test('7: createReportSnapshot posts the mapped report_type', () async {
     final adapter = RecordingAdapter(
-      (_) => FakeResponse.ok({
-        'snapshot': {'id': 1}
-      }, status: 201),
+      (_) => FakeResponse.ok(
+        {
+          'snapshot': {'id': 1},
+        },
+        status: 201,
+      ),
     );
     final repo = AccountingRepository(fakeApiClient(adapter));
     await repo.createReportSnapshot('profit-loss');

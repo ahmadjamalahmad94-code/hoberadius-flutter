@@ -325,8 +325,9 @@ class Plan {
   static List<String> _strList(Object? v) {
     if (v == null) return const [];
     if (v is List) return v.map((e) => e.toString()).toList();
-    if (v is String && v.isNotEmpty)
+    if (v is String && v.isNotEmpty) {
       return v.split(',').map((e) => e.trim()).toList();
+    }
     return const [];
   }
 

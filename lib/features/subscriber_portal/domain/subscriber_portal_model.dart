@@ -283,8 +283,9 @@ class SubscriberPortalWallet {
   final String currency;
 
   String get balanceLabel {
-    if (balance.isNotEmpty)
+    if (balance.isNotEmpty) {
       return currency.isEmpty ? balance : '$balance $currency';
+    }
     final amount = (balanceMinor / 100).toStringAsFixed(2);
     return currency.isEmpty ? amount : '$amount $currency';
   }
