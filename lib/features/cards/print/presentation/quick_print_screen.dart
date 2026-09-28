@@ -14,12 +14,69 @@ import 'print_job_flow.dart';
 /// Layout (owner's pick): live preview first in its own card, then the saved
 /// designs as chips, then the settings sections. Every pixel of the preview
 /// comes from the server's print engine (see [QuickPrintController]).
-class QuickPrintScreen extends ConsumerWidget {
+class QuickPrintScreen extends ConsumerStatefulWidget {
   const QuickPrintScreen({super.key, required this.batchId});
   final int batchId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QuickPrintScreen> createState() => _QuickPrintScreenState();
+}
+
+class _QuickPrintScreenState extends ConsumerState<QuickPrintScreen> {
+  int get batchId => widget.batchId;
+
+  /// The in-page preview card; when it scrolls out of sight a floating copy
+  /// pins under the top bar (owner request: see every edit without scrolling
+  /// back up).
+  final _previewKey = GlobalKey();
+  final _floating = OverlayPortalController();
+  ScrollPosition? _position;
+  Rect? _viewport;
+  double _cardLeft = 0;
+  double _cardWidth = 0;
+  bool _dismissed = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final pos = Scrollable.maybeOf(context)?.position;
+    if (pos != _position) {
+      _position?.removeListener(_onScroll);
+      _position = pos?..addListener(_onScroll);
+    }
+  }
+
+  @override
+  void dispose() {
+    _position?.removeListener(_onScroll);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    final scrollBox =
+        Scrollable.maybeOf(context)?.context.findRenderObject() as RenderBox?;
+    final cardBox =
+        _previewKey.currentContext?.findRenderObject() as RenderBox?;
+    if (scrollBox == null || cardBox == null || !cardBox.attached) return;
+    final vpTop = scrollBox.localToGlobal(Offset.zero);
+    final cardTop = cardBox.localToGlobal(Offset.zero);
+    final cardBottom = cardTop.dy + cardBox.size.height;
+    // Float once most of the card is above the visible area.
+    final hidden = cardBottom < vpTop.dy + 120;
+    _viewport = vpTop & scrollBox.size;
+    _cardLeft = cardTop.dx;
+    _cardWidth = cardBox.size.width;
+    if (!hidden) _dismissed = false;
+    final show = hidden && !_dismissed;
+    if (show && !_floating.isShowing) {
+      _floating.show();
+    } else if (!show && _floating.isShowing) {
+      _floating.hide();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final provider = quickPrintControllerProvider(batchId);
     final st = ref.watch(provider);
     final ctl = ref.read(provider.notifier);
@@ -38,29 +95,54 @@ class QuickPrintScreen extends ConsumerWidget {
       );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _Header(
-          subtitle: 'حزمة ${st.batchCode}'
-              '${st.batchCards > 0 ? ' · ${st.batchCards} كرت' : ''}',
-          onBack: () => _back(context),
-          onPrint: st.saving ? null : () => runPrintFlow(context, ref, batchId),
+    return OverlayPortal(
+      controller: _floating,
+      overlayLocation: OverlayChildLocation.rootOverlay,
+      // The shell's pages live inside one scroll view (and its navigator's
+      // overlay scrolls with them) — pin to the app-wide overlay instead.
+      overlayChildBuilder: (_) => _FloatingPreview(
+        batchId: batchId,
+        viewport: _viewport,
+        left: _cardLeft,
+        width: _cardWidth,
+        onClose: () {
+          _dismissed = true;
+          _floating.hide();
+        },
+        onJumpUp: () => _position?.animateTo(
+          0,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
         ),
-        const SizedBox(height: AppTokens.s12),
-        _PreviewCard(st: st, ctl: ctl),
-        const SizedBox(height: AppTokens.s12),
-        _DesignCard(st: st, ctl: ctl),
-        const SizedBox(height: AppTokens.s12),
-        _CredentialsCard(st: st, ctl: ctl),
-        const SizedBox(height: AppTokens.s12),
-        _PositionsCard(st: st, ctl: ctl),
-        const SizedBox(height: AppTokens.s12),
-        _SheetCard(st: st, ctl: ctl),
-        const SizedBox(height: AppTokens.s16),
-        _SaveButton(st: st, ctl: ctl),
-        const SizedBox(height: AppTokens.s16),
-      ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Header(
+            subtitle: 'حزمة ${st.batchCode}'
+                '${st.batchCards > 0 ? ' · ${st.batchCards} كرت' : ''}',
+            onBack: () => _back(context),
+            onPrint:
+                st.saving ? null : () => runPrintFlow(context, ref, batchId),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          KeyedSubtree(
+            key: _previewKey,
+            child: _PreviewCard(st: st, ctl: ctl),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          _DesignCard(st: st, ctl: ctl),
+          const SizedBox(height: AppTokens.s12),
+          _CredentialsCard(st: st, ctl: ctl),
+          const SizedBox(height: AppTokens.s12),
+          _PositionsCard(st: st, ctl: ctl),
+          const SizedBox(height: AppTokens.s12),
+          _SheetCard(st: st, ctl: ctl),
+          const SizedBox(height: AppTokens.s16),
+          _SaveButton(st: st, ctl: ctl),
+          const SizedBox(height: AppTokens.s16),
+        ],
+      ),
     );
   }
 
@@ -213,6 +295,123 @@ class _Section extends StatelessWidget {
   }
 }
 
+// ─── floating preview (pinned while editing further down) ─────────────
+
+class _FloatingPreview extends ConsumerWidget {
+  const _FloatingPreview({
+    required this.batchId,
+    required this.viewport,
+    required this.left,
+    required this.width,
+    required this.onClose,
+    required this.onJumpUp,
+  });
+  final int batchId;
+  final Rect? viewport;
+  final double left;
+  final double width;
+  final VoidCallback onClose;
+  final VoidCallback onJumpUp;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final vp = viewport;
+    if (vp == null || width <= 0) return const SizedBox.shrink();
+    final st = ref.watch(quickPrintControllerProvider(batchId));
+    final png = st.previewPng;
+    final card = st.mode == PreviewMode.card;
+    // A third of the visible area at most, so the settings stay usable.
+    final maxH = (vp.height * (card ? 0.34 : 0.4)).clamp(140.0, 300.0);
+    return Positioned(
+      top: vp.top + 6,
+      left: left,
+      width: width,
+      child: Material(
+        color: Colors.white,
+        elevation: 10,
+        shadowColor: const Color(0x55000000),
+        borderRadius: BorderRadius.circular(18),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(10, 6, 10, 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.visibility_outlined,
+                    size: 18,
+                    color: AppTokens.brand,
+                  ),
+                  const SizedBox(width: 6),
+                  const Expanded(
+                    child: Text(
+                      'المعاينة الحية',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: AppTokens.sidebarBg,
+                      ),
+                    ),
+                  ),
+                  if (st.previewBusy)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6),
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  IconButton(
+                    tooltip: 'للأعلى',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onJumpUp,
+                    icon: const Icon(Icons.vertical_align_top, size: 20),
+                  ),
+                  IconButton(
+                    tooltip: 'إخفاء',
+                    visualDensity: VisualDensity.compact,
+                    onPressed: onClose,
+                    icon: const Icon(Icons.close, size: 20),
+                  ),
+                ],
+              ),
+              Container(
+                height: maxH,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTokens.surfaceTinted,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(8),
+                child: png == null
+                    ? const Icon(
+                        Icons.image_outlined,
+                        color: AppTokens.textMuted,
+                      )
+                    : AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity: st.previewBusy ? 0.6 : 1,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(card ? 8 : 2),
+                          child: Image.memory(
+                            png,
+                            fit: BoxFit.contain,
+                            gaplessPlayback: true,
+                            filterQuality: FilterQuality.medium,
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ─── 1. live preview ─────────────────────────────────────────────────
 
 class _PreviewCard extends StatelessWidget {
@@ -298,8 +497,11 @@ class _PreviewCard extends StatelessWidget {
                     child: CircularProgressIndicator(strokeWidth: 3),
                   ),
                 if (!st.previewBusy && png == null && st.previewError.isEmpty)
-                  const Icon(Icons.image_outlined,
-                      color: AppTokens.textMuted, size: 40,),
+                  const Icon(
+                    Icons.image_outlined,
+                    color: AppTokens.textMuted,
+                    size: 40,
+                  ),
               ],
             ),
           ),
@@ -682,8 +884,11 @@ class _LoginUrlFieldState extends State<_LoginUrlField> {
 }
 
 class _Swatch extends StatelessWidget {
-  const _Swatch(
-      {required this.hex, required this.selected, required this.onTap,});
+  const _Swatch({
+    required this.hex,
+    required this.selected,
+    required this.onTap,
+  });
   final String hex;
   final bool selected;
   final VoidCallback onTap;
@@ -729,16 +934,22 @@ class _PositionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final f = st.form;
-    Widget pair(String label, double x, double y,
-        QuickPrintForm Function(QuickPrintForm, double, double) set,) {
+    Widget pair(
+      String label,
+      double x,
+      double y,
+      QuickPrintForm Function(QuickPrintForm, double, double) set,
+    ) {
       return Padding(
         padding: const EdgeInsets.only(bottom: AppTokens.s8),
         child: Row(
           children: [
             SizedBox(
               width: 74,
-              child: Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w700),),
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             Expanded(
               child: _Stepper(
@@ -767,11 +978,19 @@ class _PositionsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          pair('المستخدم', f.usernameX, f.usernameY,
-              (q, x, y) => q.copyWith(usernameX: x, usernameY: y),),
+          pair(
+            'المستخدم',
+            f.usernameX,
+            f.usernameY,
+            (q, x, y) => q.copyWith(usernameX: x, usernameY: y),
+          ),
           if (!st.noPassword)
-            pair('كلمة المرور', f.passwordX, f.passwordY,
-                (q, x, y) => q.copyWith(passwordX: x, passwordY: y),),
+            pair(
+              'كلمة المرور',
+              f.passwordX,
+              f.passwordY,
+              (q, x, y) => q.copyWith(passwordX: x, passwordY: y),
+            ),
           if (f.showQr) ...[
             pair('QR', f.qrX, f.qrY, (q, x, y) => q.copyWith(qrX: x, qrY: y)),
             _SliderRow(
@@ -923,8 +1142,10 @@ class _SheetCard extends StatelessWidget {
                 ctl.updateSheet((x) => x.copyWith(rows: v.round())),
           ),
           const SizedBox(height: AppTokens.s4),
-          const Text('المسافة بين البطاقات',
-              style: TextStyle(fontWeight: FontWeight.w700),),
+          const Text(
+            'المسافة بين البطاقات',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: AppTokens.s8),
           SegmentedButton<double>(
             showSelectedIcon: false,
@@ -1006,8 +1227,10 @@ class _SliderRow extends StatelessWidget {
         Row(
           children: [
             Expanded(
-              child: Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w700),),
+              child: Text(
+                label,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
@@ -1018,7 +1241,9 @@ class _SliderRow extends StatelessWidget {
               child: Text(
                 display,
                 style: const TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 12.5,),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12.5,
+                ),
               ),
             ),
           ],
@@ -1074,8 +1299,11 @@ class _SaveButton extends StatelessWidget {
 }
 
 class _Message extends StatelessWidget {
-  const _Message(
-      {required this.icon, required this.text, required this.onBack,});
+  const _Message({
+    required this.icon,
+    required this.text,
+    required this.onBack,
+  });
   final IconData icon;
   final String text;
   final VoidCallback onBack;

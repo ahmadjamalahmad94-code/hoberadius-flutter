@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:printing/printing.dart';
 
 import '../../../../core/theme/tokens.dart';
@@ -13,7 +14,10 @@ import '../data/quick_print_repository.dart';
 /// for the whole batch, follow its REAL progress, then open the finished PDF
 /// (system print dialog / share / save).
 Future<void> runPrintFlow(
-    BuildContext context, WidgetRef ref, int batchId,) async {
+  BuildContext context,
+  WidgetRef ref,
+  int batchId,
+) async {
   final provider = quickPrintControllerProvider(batchId);
   final ctl = ref.read(provider.notifier);
   final repo = ref.read(quickPrintRepositoryProvider);
@@ -128,8 +132,10 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
       if (_closed) return;
       setState(() => _job = job);
       if (job.failed) {
-        setState(() =>
-            _error = job.message.isEmpty ? 'تعذّر إنشاء الملف.' : job.message,);
+        setState(
+          () =>
+              _error = job.message.isEmpty ? 'تعذّر إنشاء الملف.' : job.message,
+        );
         return;
       }
       if (!job.done) {
@@ -267,9 +273,10 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
   }
 }
 
-/// The finished PDF, shown by the platform's PDF renderer, with the system
-/// print dialog and share/save.
-class PrintPdfScreen extends StatelessWidget {
+/// The finished PDF: pages rasterized by the platform's PDF engine (exactly
+/// what prints), pinch-zoom / pan, and three actions — save to the device,
+/// share (WhatsApp to the print shop…), and the system print dialog.
+class PrintPdfScreen extends StatefulWidget {
   const PrintPdfScreen({
     super.key,
     required this.bytes,
@@ -281,19 +288,257 @@ class PrintPdfScreen extends StatelessWidget {
   final String title;
 
   @override
+  State<PrintPdfScreen> createState() => _PrintPdfScreenState();
+}
+
+class _PrintPdfScreenState extends State<PrintPdfScreen> {
+  final List<Uint8List> _pages = [];
+  final _zoom = TransformationController();
+  bool _rendering = true;
+  String _error = '';
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _render();
+  }
+
+  @override
+  void dispose() {
+    _zoom.dispose();
+    super.dispose();
+  }
+
+  Future<void> _render() async {
+    try {
+      // 170 dpi: sharp enough to read the smallest card text when zoomed.
+      await for (final page in Printing.raster(widget.bytes, dpi: 170)) {
+        final png = await page.toPng();
+        if (!mounted) return;
+        setState(() => _pages.add(png));
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'تعذّر عرض الملف: $e');
+    } finally {
+      if (mounted) setState(() => _rendering = false);
+    }
+  }
+
+  String get _baseName => widget.fileName.toLowerCase().endsWith('.pdf')
+      ? widget.fileName.substring(0, widget.fileName.length - 4)
+      : widget.fileName;
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      // The system «save as» picker: the operator chooses the folder.
+      final path = await FileSaver.instance.saveAs(
+        name: _baseName,
+        bytes: widget.bytes,
+        ext: 'pdf',
+        mimeType: MimeType.pdf,
+      );
+      if (path != null && path.isNotEmpty) {
+        messenger.showSnackBar(const SnackBar(content: Text('تم حفظ الملف')));
+      }
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('تعذّر الحفظ: $e')));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _share() =>
+      Printing.sharePdf(bytes: widget.bytes, filename: widget.fileName);
+
+  Future<void> _print() => Printing.layoutPdf(
+        name: _baseName,
+        onLayout: (_) async => widget.bytes,
+      );
+
+  void _resetZoom() => _zoom.value = Matrix4.identity();
+
+  Offset _tapAt = Offset.zero;
+
+  void _toggleZoom() {
+    if (_zoom.value.getMaxScaleOnAxis() > 1.01) {
+      _resetZoom();
+      return;
+    }
+    const k = 2.5;
+    final p = _tapAt;
+    _zoom.value = Matrix4.identity()
+      ..translateByDouble(-p.dx * (k - 1), -p.dy * (k - 1), 0, 1)
+      ..scaleByDouble(k, k, 1, 1);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: PdfPreview(
-        build: (_) async => bytes,
-        pdfFileName: fileName,
-        canChangePageFormat: false,
-        canChangeOrientation: false,
-        canDebug: false,
-        allowPrinting: true,
-        allowSharing: true,
-        loadingWidget: const Center(child: CircularProgressIndicator()),
+      backgroundColor: const Color(0xFFE9E7F2),
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          if (_pages.isNotEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  '${_pages.length} صفحة',
+                  style: text.labelLarge?.copyWith(color: AppTokens.textMuted),
+                ),
+              ),
+            ),
+          IconButton(
+            tooltip: 'الحجم الطبيعي',
+            onPressed: _resetZoom,
+            icon: const Icon(Icons.zoom_out_map),
+          ),
+        ],
+      ),
+      body: _error.isNotEmpty
+          ? Center(child: Text(_error, textAlign: TextAlign.center))
+          : _pages.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : LayoutBuilder(
+                  builder: (context, c) => GestureDetector(
+                    // Double tap: zoom ×2.5 on that spot, again to reset.
+                    onDoubleTapDown: (d) => _tapAt = d.localPosition,
+                    onDoubleTap: _toggleZoom,
+                    child: InteractiveViewer(
+                      transformationController: _zoom,
+                      constrained: false,
+                      minScale: 1,
+                      maxScale: 6,
+                      boundaryMargin: const EdgeInsets.all(24),
+                      child: SizedBox(
+                        width: c.maxWidth,
+                        child: Column(
+                          children: [
+                            for (final png in _pages)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                                child: DecoratedBox(
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Color(0x33000000),
+                                        blurRadius: 8,
+                                        offset: Offset(0, 3),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Image.memory(
+                                    png,
+                                    width: c.maxWidth - 24,
+                                    fit: BoxFit.fitWidth,
+                                    filterQuality: FilterQuality.medium,
+                                  ),
+                                ),
+                              ),
+                            if (_rendering)
+                              const Padding(
+                                padding: EdgeInsets.all(20),
+                                child: CircularProgressIndicator(),
+                              ),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+      bottomNavigationBar: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(top: BorderSide(color: AppTokens.borderStrong)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _PdfAction(
+                  icon: Icons.download_outlined,
+                  label: 'تحميل',
+                  busy: _saving,
+                  onTap: _save,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _PdfAction(
+                  icon: Icons.share_outlined,
+                  label: 'مشاركة',
+                  onTap: _share,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _PdfAction(
+                  icon: Icons.print_outlined,
+                  label: 'طباعة',
+                  primary: true,
+                  onTap: _print,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+}
+
+class _PdfAction extends StatelessWidget {
+  const _PdfAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.primary = false,
+    this.busy = false,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool primary;
+  final bool busy;
+
+  @override
+  Widget build(BuildContext context) {
+    final style = ButtonStyle(
+      minimumSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
+      textStyle: WidgetStatePropertyAll(
+        Theme.of(context)
+            .textTheme
+            .labelLarge
+            ?.copyWith(fontWeight: FontWeight.w800),
+      ),
+    );
+    final iconW = busy
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Icon(icon, size: 20);
+    return primary
+        ? FilledButton.icon(
+            onPressed: busy ? null : onTap,
+            style: style,
+            icon: iconW,
+            label: Text(label),
+          )
+        : OutlinedButton.icon(
+            onPressed: busy ? null : onTap,
+            style: style,
+            icon: iconW,
+            label: Text(label),
+          );
   }
 }
