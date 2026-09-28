@@ -333,6 +333,12 @@ class _RowActions extends ConsumerWidget {
           onPressed: () =>
               context.goNamed('card-batch-edit', pathParameters: id),
         ),
+        ActionItem(
+          icon: Icons.print_outlined,
+          label: 'طباعة',
+          onPressed: () =>
+              context.goNamed('card-batch-print', pathParameters: id),
+        ),
       ],
     );
   }

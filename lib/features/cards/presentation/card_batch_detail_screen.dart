@@ -100,9 +100,17 @@ class CardBatchDetailScreen extends ConsumerWidget {
         ActionBar(
           items: [
             ActionItem(
+              icon: Icons.print_outlined,
+              label: 'طباعة',
+              primary: true,
+              onPressed: () => context.goNamed(
+                'card-batch-print',
+                pathParameters: {'id': '$batchId'},
+              ),
+            ),
+            ActionItem(
               icon: Icons.edit_outlined,
               label: 'تعديل',
-              primary: true,
               onPressed: () => context.goNamed(
                 'card-batch-edit',
                 pathParameters: {'id': '$batchId'},

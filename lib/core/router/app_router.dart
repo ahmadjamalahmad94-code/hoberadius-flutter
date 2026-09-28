@@ -28,6 +28,7 @@ import '../../features/card_users/presentation/card_user_360_screen.dart';
 import '../../features/card_users/presentation/card_users_screen.dart';
 import '../../features/cards/presentation/card_batch_detail_screen.dart';
 import '../../features/cards/presentation/card_batch_edit_screen.dart';
+import '../../features/cards/print/presentation/quick_print_screen.dart';
 import '../../features/cards/presentation/card_batch_form_screen.dart';
 import '../../features/cards/presentation/card_batch_import_screen.dart';
 import '../../features/cards/presentation/card_checker_screen.dart';
@@ -207,6 +208,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: 'batches/:id',
                 name: 'card-batch-detail',
                 builder: (ctx, st) => CardBatchDetailScreen(
+                  batchId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+                ),
+              ),
+              GoRoute(
+                path: 'batches/:id/print',
+                name: 'card-batch-print',
+                builder: (ctx, st) => QuickPrintScreen(
                   batchId: int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
                 ),
               ),
