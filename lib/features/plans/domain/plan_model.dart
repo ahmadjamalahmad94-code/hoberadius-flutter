@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 /// Plan (Profile) model — mirrors `AccessPlan` on the server.
@@ -64,7 +65,7 @@ class Plan {
     this.price = 0,
     this.priceCard = 0,
     this.priceBulk = 0,
-    this.currency = 'JOD',
+    this.currency = kDefaultCurrency,
     this.planTier = 'Personal',
     this.prepaid = true,
     this.autoRenew = false,
@@ -220,7 +221,7 @@ class Plan {
       price: _num(j['price']) ?? 0,
       priceCard: _num(j['price_card']) ?? 0,
       priceBulk: _num(j['price_bulk']) ?? 0,
-      currency: (j['currency'] ?? 'JOD').toString(),
+      currency: normalizeCurrency(j['currency']?.toString()),
       planTier: (j['plan_tier'] ?? 'Personal').toString(),
       prepaid: j['prepaid'] == true,
       autoRenew: j['auto_renew'] == true,

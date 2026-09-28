@@ -156,7 +156,7 @@ class SubscriberActionsContext {
     this.fullName = '',
     this.status = 'enabled',
     this.expireAt,
-    this.currency = 'ILS',
+    this.currency = '',
     this.plan,
     this.effectivePrice = 0,
     this.balance = 0,
@@ -225,7 +225,7 @@ class SubscriberActionsContext {
       fullName: (j['full_name'] ?? '').toString(),
       status: (j['status'] ?? 'enabled').toString(),
       expireAt: parseServerUtc(j['expire_at']),
-      currency: (j['currency'] ?? 'ILS').toString(),
+      currency: (j['currency'] ?? '').toString(),
       plan: plan,
       effectivePrice: j.containsKey('effective_price')
           ? _double(j['effective_price'])

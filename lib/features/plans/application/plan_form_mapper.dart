@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter/material.dart';
 
 import '../../../shared/widgets/wheel_picker_fields.dart';
@@ -160,7 +161,8 @@ Plan buildPlanFromForm(
     allowedHoursFrom: parseStr('allowed_hours_from'),
     allowedHoursTo: parseStr('allowed_hours_to'),
     price: parseNum('price'),
-    currency: parseStr('currency').isEmpty ? 'JOD' : parseStr('currency'),
+    currency:
+        parseStr('currency').isEmpty ? kDefaultCurrency : parseStr('currency'),
     planTier: sel.planTier,
     prepaid: sel.prepaid,
     autoRenew: sel.autoRenew,
