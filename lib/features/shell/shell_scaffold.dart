@@ -649,22 +649,37 @@ class _ContentAreaState extends State<_ContentArea> {
       _offsets[previous] = _controller.offset;
     }
     _location = location;
-    _restore(_offsets[location] ?? 0, ++_restoreGen, attempts: 12);
+    _restoreStarted = DateTime.now();
+    _restore(_offsets[location] ?? 0, ++_restoreGen);
   }
 
-  /// Jump to [target] once the new page is tall enough (it may still be
-  /// laying out / loading), giving up after [attempts] frames.
-  void _restore(double target, int gen, {required int attempts}) {
+  DateTime _restoreStarted = DateTime.now();
+
+  /// Jump to [target] once the new page is tall enough. Pages whose list
+  /// comes from the network (التذاكر، الموزعون) grow only after the fetch:
+  /// a fixed 12 frames ran out while the spinner animated and the page came
+  /// back ~150 px off. It now keeps trying for [kScrollRestoreWindow] and
+  /// stops as soon as the operator scrolls himself.
+  void _restore(double target, int gen) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || gen != _restoreGen || !_controller.hasClients) return;
-      final max = _controller.position.maxScrollExtent;
-      if (target <= max || attempts <= 0) {
-        _controller.jumpTo(target.clamp(0.0, max));
-      } else {
-        _controller.jumpTo(max);
-        _restore(target, gen, attempts: attempts - 1);
+      final step = scrollRestoreStep(
+        target: target,
+        maxExtent: _controller.position.maxScrollExtent,
+        elapsed: DateTime.now().difference(_restoreStarted),
+      );
+      _controller.jumpTo(step.jumpTo);
+      if (!step.done) {
+        WidgetsBinding.instance.scheduleFrame();
+        _restore(target, gen);
       }
     });
+  }
+
+  bool _onUserScroll(ScrollNotification n) {
+    // A drag by the operator ends any pending restore.
+    if (n is ScrollStartNotification && n.dragDetails != null) _restoreGen++;
+    return false;
   }
 
   @override
@@ -684,24 +699,27 @@ class _ContentAreaState extends State<_ContentArea> {
         children: [
           if (widget.showTopBar) const _DesktopTopBar(),
           Expanded(
-            child: SingleChildScrollView(
-              controller: _controller,
-              padding: widget.padding,
-              // Center + cap the content column so wide desktops don't stretch
-              // content edge-to-edge (shared density rule — propagates to every
-              // screen via the shell).
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: AppTokens.contentMaxWidth,
-                  ),
-                  child: Consumer(
-                    builder: (context, ref, child) => TenantCurrencyScope(
-                      code: ref.watch(tenantCurrencyProvider),
-                      child: child!,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onUserScroll,
+              child: SingleChildScrollView(
+                controller: _controller,
+                padding: widget.padding,
+                // Center + cap the content column so wide desktops don't stretch
+                // content edge-to-edge (shared density rule — propagates to every
+                // screen via the shell).
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppTokens.contentMaxWidth,
                     ),
-                    child: ShellContentScope(child: widget.child),
+                    child: Consumer(
+                      builder: (context, ref, child) => TenantCurrencyScope(
+                        code: ref.watch(tenantCurrencyProvider),
+                        child: child!,
+                      ),
+                      child: ShellContentScope(child: widget.child),
+                    ),
                   ),
                 ),
               ),
@@ -785,4 +803,20 @@ class _DesktopTopBar extends ConsumerWidget {
 
 void _onTap(BuildContext context, int i) {
   context.goNamed(mobileNavDestinations[i].routeName);
+}
+
+/// How long the shell keeps trying to restore a page's scroll offset while
+/// the page is still loading.
+const Duration kScrollRestoreWindow = Duration(seconds: 4);
+
+/// One restore step: where to jump now, and whether restoring is over.
+({double jumpTo, bool done}) scrollRestoreStep({
+  required double target,
+  required double maxExtent,
+  required Duration elapsed,
+  Duration window = kScrollRestoreWindow,
+}) {
+  if (target <= maxExtent) return (jumpTo: target < 0 ? 0 : target, done: true);
+  if (elapsed >= window) return (jumpTo: maxExtent, done: true);
+  return (jumpTo: maxExtent, done: false);
 }
