@@ -171,4 +171,43 @@ else
   echo "::warning:: MainActivity.kt not found — in-app restart falls back to close"
 fi
 
+# 6) Fixed app signing key -------------------------------------------------
+#    Relying on AGP's implicit ~/.android/debug.keystore did NOT work on CI:
+#    releases 0.4.1 and 0.4.2 came out with two different random keys even
+#    though the fixed key had been restored — every full release then refused
+#    to install over the previous one (uninstall = saved server + login lost).
+#    Sign debug AND release explicitly with the keystore at $HR_KEYSTORE
+#    (written by the workflow from the ANDROID_DEBUG_KEYSTORE_B64 secret).
+#    The workflow verifies the APK certificate afterwards and fails on drift.
+GK="$ROOT/android/app/build.gradle.kts"
+if [ -f "$GK" ] && ! grep -q 'create("hoberadius")' "$GK"; then
+  python3 - "$GK" <<'PY'
+import re, sys
+p = sys.argv[1]
+s = open(p, encoding="utf-8").read()
+cfg = """
+    signingConfigs {
+        create("hoberadius") {
+            val ks = System.getenv("HR_KEYSTORE")
+            if (ks != null && file(ks).exists()) {
+                storeFile = file(ks)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+"""
+# right after the opening of the android { } block
+s = re.sub(r"(\nandroid\s*\{\n)", lambda m: m.group(1) + cfg, s, count=1)
+use = 'if (System.getenv("HR_KEYSTORE") != null) signingConfigs.getByName("hoberadius") else signingConfigs.getByName("debug")'
+s = s.replace('signingConfig = signingConfigs.getByName("debug")', "signingConfig = " + use)
+# debug builds too
+if 'getByName("debug") {' not in s and "buildTypes {" in s:
+    s = s.replace("buildTypes {", "buildTypes {\n        getByName(\"debug\") {\n            signingConfig = " + use + "\n        }", 1)
+open(p, "w", encoding="utf-8").write(s)
+PY
+  echo "✓ explicit signing config (HR_KEYSTORE) in build.gradle.kts"
+fi
+
 echo "✓ configure_android.sh complete"

@@ -111,7 +111,10 @@ jobs:
           mkdir -p ~/.android
           if [ -n "${KEYSTORE_B64:-}" ]; then
             echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            cp ~/.android/debug.keystore ~/.android/hoberadius.keystore
+            echo "HR_KEYSTORE=$HOME/.android/hoberadius.keystore" >> "$GITHUB_ENV"
             echo "fixed signing key restored"
+            keytool -list -v -keystore ~/.android/hoberadius.keystore -storepass android -alias androiddebugkey | grep 'SHA256:' 
           else
             echo "::warning::ANDROID_DEBUG_KEYSTORE_B64 missing - generating a throwaway key (installs will need an uninstall)"
             keytool -genkeypair -keystore ~/.android/debug.keystore -storepass android               -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048               -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
@@ -162,6 +165,20 @@ jobs:
           if [ -z "$FIREBASE_SA" ]; then echo "no FIREBASE_SERVICE_ACCOUNT_JSON secret — skipping push"; exit 0; fi
           pip install --quiet google-auth requests
           python tool/push_app_update.py
+
+      # The installed app only accepts an update signed with the SAME key.
+      # Fail the build instead of shipping an APK that forces an uninstall.
+      - name: Verify the APK is signed with the fixed key
+        if: inputs.mode == 'release'
+        run: |
+          set -euo pipefail
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          want=$(keytool -list -v -keystore "$HR_KEYSTORE" -storepass android -alias androiddebugkey | grep 'SHA256:' | head -1 | sed 's/.*SHA256: //' | tr -d ':' | tr 'A-F' 'a-f')
+          SIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          got=$("$SIGNER" verify --print-certs "$APK" | grep 'SHA-256 digest' | head -1 | awk '{print $NF}')
+          echo "expected $want"
+          echo "apk      $got"
+          [ "$want" = "$got" ] || { echo "::error::APK signed with the wrong key"; exit 1; }
 
       - name: Collect APK
         if: inputs.mode == 'release'
