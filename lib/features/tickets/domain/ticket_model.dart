@@ -1,4 +1,5 @@
 import '../../../core/format/currency.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 class SupportTicket {
   const SupportTicket({
@@ -264,7 +265,7 @@ bool _bool(dynamic value) {
 DateTime? _date(dynamic value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceFirst('Z', ''));
+  return parseServerDateTime(text);
 }
 
 String _dateLabel(DateTime? value) {

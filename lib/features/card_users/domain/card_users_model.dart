@@ -1,4 +1,5 @@
 import '../../../core/format/currency.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 class CardUser {
   const CardUser({
@@ -39,7 +40,8 @@ class CardUser {
       balance: _num(json['balance']),
       pendingBalance: _num(json['pending_balance']),
       spent: _num(json['spent']),
-      walletCurrency: _string(json['wallet_currency'], fallback: kDefaultCurrency),
+      walletCurrency:
+          _string(json['wallet_currency'], fallback: kDefaultCurrency),
       purchaseCount: _int(json['purchase_count']),
       ownedCardsCount: _int(json['owned_cards_count']),
       hasPortalPassword: _bool(json['has_portal_password']),
@@ -381,7 +383,7 @@ bool _bool(dynamic value, {bool fallback = false}) {
 DateTime? _date(dynamic value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceFirst('Z', ''));
+  return parseServerDateTime(text);
 }
 
 String _kbps(int value) {

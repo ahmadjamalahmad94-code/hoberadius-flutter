@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 /// Business OS console models — finance ledger corrections, pricing snapshots,
 /// and the operator summary. Mirrors the `/api/v1/business/*`, `/finance/*`,
 /// and `/pricing/*` contracts (admin-authed via `require_api_token`).
@@ -188,5 +190,5 @@ int? _int(Object? value) {
 DateTime? _date(Object? value) {
   final text = value?.toString();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text);
+  return parseServerDateTime(text);
 }

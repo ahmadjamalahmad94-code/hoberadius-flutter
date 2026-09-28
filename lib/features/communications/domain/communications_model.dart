@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class CommunicationsHome {
   const CommunicationsHome({
     required this.summary,
@@ -701,5 +703,5 @@ bool _bool(Object? value) {
 DateTime? _date(Object? value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceFirst('Z', ''));
+  return parseServerDateTime(text);
 }

@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class Distributor {
   const Distributor({
     this.id,
@@ -193,7 +195,7 @@ List<String> _stringList(Object? v) {
 DateTime? _dt(Object? v) {
   if (v == null) return null;
   try {
-    return DateTime.parse(v.toString().replaceAll('Z', ''));
+    return parseServerDateTime(v);
   } catch (_) {
     return null;
   }

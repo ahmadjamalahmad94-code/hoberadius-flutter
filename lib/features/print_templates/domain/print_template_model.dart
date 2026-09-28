@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class CardPrintTemplate {
   const CardPrintTemplate({
     required this.id,
@@ -95,7 +97,7 @@ class CardPrintTemplate {
       layout: layout is Map
           ? layout.map((key, value) => MapEntry(key.toString(), value))
           : const {},
-      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
+      createdAt: parseServerDateTime(json['created_at']),
     );
   }
 }
@@ -165,8 +167,8 @@ class PrintJob {
         fileName: (json['file_name'] ?? '').toString(),
         message: (json['message'] ?? '').toString(),
         createdBy: (json['created_by'] ?? '').toString(),
-        createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
-        completedAt: DateTime.tryParse((json['completed_at'] ?? '').toString()),
+        createdAt: parseServerDateTime(json['created_at']),
+        completedAt: parseServerDateTime(json['completed_at']),
       );
 }
 

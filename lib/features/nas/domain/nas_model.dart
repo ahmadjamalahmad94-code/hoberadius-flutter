@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 /// NAS Device model — mirrors the server-side `NasDevice` DTO.
 ///
 /// `secret` is **write-only**: present on create/update bodies but never
@@ -147,7 +149,8 @@ class NasDevice {
     String? tags,
     String? pendingSecret,
     String? pendingApiPassword,
-  }) => NasDevice(
+  }) =>
+      NasDevice(
         id: id ?? this.id,
         name: name ?? this.name,
         address: address ?? this.address,
@@ -184,7 +187,7 @@ class NasDevice {
   static DateTime? _dt(Object? v) {
     if (v == null) return null;
     try {
-      return DateTime.parse(v.toString().replaceAll('Z', ''));
+      return parseServerDateTime(v);
     } catch (_) {
       return null;
     }
@@ -211,9 +214,13 @@ class NasTestResult {
   factory NasTestResult.fromJson(Map<String, dynamic> j) => NasTestResult(
         ok: j['ok'] == true || j['status'] == 'reachable',
         status: (j['status'] ?? 'unknown').toString(),
-        ms: (j['ms'] is int) ? j['ms'] as int : (int.tryParse('${j['ms']}') ?? 0),
+        ms: (j['ms'] is int)
+            ? j['ms'] as int
+            : (int.tryParse('${j['ms']}') ?? 0),
         message: (j['message'] ?? '').toString(),
         ip: (j['ip'] ?? '').toString(),
-        port: (j['port'] is int) ? j['port'] as int : (int.tryParse('${j['port']}') ?? 0),
+        port: (j['port'] is int)
+            ? j['port'] as int
+            : (int.tryParse('${j['port']}') ?? 0),
       );
 }

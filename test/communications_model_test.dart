@@ -53,7 +53,10 @@ void main() {
     expect(home.deliveries.single.channelLabel, 'رسالة جوال');
     expect(home.deliveries.single.statusLabel, 'في الطابور');
     expect(home.deliveries.single.recipientLabel, 'المشتركين #44');
-    expect(home.deliveries.single.createdAtLabel, '2026-05-31 12:30');
+    expect(
+      home.deliveries.single.createdAtLabel,
+      _localLabel(DateTime.utc(2026, 5, 31, 12, 30)),
+    );
   });
 
   test('campaign and audience labels are Arabic friendly', () {
@@ -178,4 +181,12 @@ void main() {
     expect(saved.events.single.enabled, isFalse);
     expect(saved.message, contains('تم حفظ'));
   });
+}
+
+/// «yyyy-MM-dd HH:mm» of a UTC instant in the device's local time — labels
+/// show local time (the API sends UTC).
+String _localLabel(DateTime utc) {
+  final l = utc.toLocal();
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
 }

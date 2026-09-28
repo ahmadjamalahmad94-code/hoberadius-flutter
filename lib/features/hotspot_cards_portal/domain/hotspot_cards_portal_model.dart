@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class HotspotPortalUser {
   const HotspotPortalUser({
     required this.id,
@@ -277,5 +279,5 @@ bool _bool(Object? value) {
 DateTime? _date(Object? value) {
   final text = _string(value);
   if (text.isEmpty) return null;
-  return DateTime.tryParse(text)?.toUtc();
+  return parseServerDateTime(text);
 }

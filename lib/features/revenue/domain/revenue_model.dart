@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class RevenuePage {
   const RevenuePage({required this.items, required this.count});
 
@@ -211,5 +213,5 @@ double _moneyField(
 DateTime? _date(Object? value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceAll('Z', ''));
+  return parseServerDateTime(text);
 }

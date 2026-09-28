@@ -11,6 +11,7 @@ import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../application/notifications_providers.dart';
 import '../domain/notification_presentation.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 final _kindFilterProvider =
     StateProvider.autoDispose<NotificationKind?>((_) => null);
@@ -562,7 +563,7 @@ class _KindFilter extends StatelessWidget {
 /// Arabic relative time for an ISO timestamp; falls back to the raw date.
 String notificationTimeAgo(String iso) {
   if (iso.trim().isEmpty) return '';
-  final dt = DateTime.tryParse(iso.replaceAll('Z', ''));
+  final dt = parseServerDateTime(iso);
   if (dt == null) return iso;
   final diff = DateTime.now().difference(dt);
   if (diff.inSeconds < 60) return 'الآن';

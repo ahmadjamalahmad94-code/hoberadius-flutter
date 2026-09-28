@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 /// Plan (Profile) model — mirrors `AccessPlan` on the server.
 ///
 /// The DTO has 60+ fields; this model exposes the subset that mobile/desktop
@@ -323,14 +325,15 @@ class Plan {
   static List<String> _strList(Object? v) {
     if (v == null) return const [];
     if (v is List) return v.map((e) => e.toString()).toList();
-    if (v is String && v.isNotEmpty) return v.split(',').map((e) => e.trim()).toList();
+    if (v is String && v.isNotEmpty)
+      return v.split(',').map((e) => e.trim()).toList();
     return const [];
   }
 
   static DateTime? _dt(Object? v) {
     if (v == null) return null;
     try {
-      return DateTime.parse(v.toString().replaceAll('Z', ''));
+      return parseServerDateTime(v);
     } catch (_) {
       return null;
     }
@@ -405,7 +408,8 @@ class Plan {
     String? offerHoursFrom,
     String? offerHoursTo,
     Map<String, dynamic>? metadata,
-  }) => Plan(
+  }) =>
+      Plan(
         id: id ?? this.id,
         name: name ?? this.name,
         code: code ?? this.code,
@@ -444,7 +448,8 @@ class Plan {
         burstUpKbps: burstUpKbps ?? this.burstUpKbps,
         burstThresholdKbps: burstThresholdKbps ?? this.burstThresholdKbps,
         burstTimeSec: burstTimeSec ?? this.burstTimeSec,
-        nightlyUnlimitedEnabled: nightlyUnlimitedEnabled ?? this.nightlyUnlimitedEnabled,
+        nightlyUnlimitedEnabled:
+            nightlyUnlimitedEnabled ?? this.nightlyUnlimitedEnabled,
         concurrentSessions: concurrentSessions ?? this.concurrentSessions,
         addressPool: addressPool ?? this.addressPool,
         framedPool: framedPool ?? this.framedPool,

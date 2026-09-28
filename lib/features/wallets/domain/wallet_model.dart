@@ -1,4 +1,5 @@
 import '../../../core/format/currency.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 class WalletPage {
   const WalletPage({required this.items, required this.count});
@@ -284,5 +285,5 @@ String _moneyString(Object? value) {
 DateTime? _date(Object? value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceAll('Z', ''));
+  return parseServerDateTime(text);
 }

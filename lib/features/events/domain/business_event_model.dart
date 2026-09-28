@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class BusinessEventsPage {
   const BusinessEventsPage({required this.items, required this.count});
 
@@ -243,7 +245,7 @@ int _int(Object? value) {
 DateTime? _date(Object? value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceFirst('Z', ''));
+  return parseServerDateTime(text);
 }
 
 bool _containsArabic(String value) {

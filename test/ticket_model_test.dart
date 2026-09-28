@@ -151,7 +151,16 @@ void main() {
     expect(result.trialDays, 5);
     expect(
       result.trialMessage,
-      'تم فتح التجربة لمدة 5 يوم حتى 2026-06-05 12:00',
+      'تم فتح التجربة لمدة 5 يوم حتى '
+      '${_localLabel(DateTime.utc(2026, 6, 5, 12))}',
     );
   });
+}
+
+/// «yyyy-MM-dd HH:mm» of a UTC instant in the device's local time — labels
+/// show local time (the API sends UTC).
+String _localLabel(DateTime utc) {
+  final l = utc.toLocal();
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
 }

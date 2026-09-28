@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class InvoicePage {
   const InvoicePage({
     required this.items,
@@ -283,5 +285,5 @@ double _double(Object? value) {
 DateTime? _date(Object? value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceAll('Z', ''));
+  return parseServerDateTime(text);
 }

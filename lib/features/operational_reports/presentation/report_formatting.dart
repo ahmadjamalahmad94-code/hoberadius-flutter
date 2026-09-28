@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart';
 
 import '../domain/operational_report_catalog.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 /// Renders a single report cell value according to its column [kind], giving
 /// each bespoke report human-friendly dates, byte counters, durations, and
@@ -29,9 +30,9 @@ String formatReportCell(ReportColumn column, Object? value) {
 
 String _formatDate(Object? value) {
   final text = value.toString();
-  final parsed = DateTime.tryParse(text);
+  final parsed = parseServerDateTime(text);
   if (parsed == null) return text;
-  return DateFormat('yyyy-MM-dd HH:mm').format(parsed.toLocal());
+  return DateFormat('yyyy-MM-dd HH:mm').format(parsed);
 }
 
 String _formatBytes(Object? value) {
@@ -83,5 +84,5 @@ DateTime? reportRowDate(OperationalReportDef def, Map<String, dynamic> row) {
   if (key == null) return null;
   final raw = row[key]?.toString();
   if (raw == null || raw.isEmpty) return null;
-  return DateTime.tryParse(raw);
+  return parseServerDateTime(raw);
 }

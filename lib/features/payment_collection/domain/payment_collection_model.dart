@@ -1,4 +1,5 @@
 import '../../../core/format/currency.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 class PaymentRequestPage {
   const PaymentRequestPage({required this.items, required this.count});
@@ -673,5 +674,5 @@ String _paymentStatusLabel(String status) {
 DateTime? _date(Object? value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceFirst('Z', ''));
+  return parseServerDateTime(text);
 }
