@@ -16,7 +16,7 @@ import '../../../shared/widgets/status_pill.dart';
 import '../../../core/format/currency.dart';
 import '../../admin_control/application/admin_control_providers.dart';
 import '../../subscribers/domain/subscriber_actions_model.dart'
-    show parseLocalizedNumber;
+    show kPaymentMethods, parseLocalizedNumber;
 import '../data/accounting_repository.dart';
 import '../domain/accounting_model.dart';
 
@@ -821,7 +821,8 @@ Future<_SettlementDraft?> _settlementDialog(
 ) {
   // Default = what is still owed (partial settles leave the rest open).
   final amount = TextEditingController(text: _money(loan.outstanding));
-  final method = TextEditingController(text: 'manual');
+  // A list with Arabic labels (the raw «manual» used to be typed/shown).
+  var method = 'manual';
   final notes = TextEditingController();
 
   return showDialog<_SettlementDraft>(
@@ -846,9 +847,15 @@ Future<_SettlementDraft?> _settlementDialog(
               ),
             ),
             const SizedBox(height: AppTokens.s8),
-            TextField(
-              controller: method,
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: method,
               decoration: const InputDecoration(labelText: 'طريقة التسوية'),
+              items: [
+                for (final (v, label) in kPaymentMethods)
+                  DropdownMenuItem(value: v, child: Text(label)),
+              ],
+              onChanged: (v) => method = v ?? 'manual',
             ),
             const SizedBox(height: AppTokens.s8),
             TextField(
@@ -882,8 +889,7 @@ Future<_SettlementDraft?> _settlementDialog(
               context,
               _SettlementDraft(
                 amount: free ? 0 : parsedAmount,
-                method:
-                    method.text.trim().isEmpty ? 'manual' : method.text.trim(),
+                method: method,
                 notes: notes.text.trim(),
               ),
             );
