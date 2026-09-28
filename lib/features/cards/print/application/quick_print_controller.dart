@@ -29,6 +29,7 @@ class QuickPrintState {
     this.previewError = '',
     this.saving = false,
     this.dirty = false,
+    this.elements,
   });
 
   final bool loading;
@@ -53,6 +54,9 @@ class QuickPrintState {
   /// Unsaved design changes (the sheet is remembered on print, not a design).
   final bool dirty;
 
+  /// Real element places (mm) for the current design — sliders + drag.
+  final CardElements? elements;
+
   QuickPrintState copyWith({
     bool? loading,
     String? error,
@@ -69,6 +73,7 @@ class QuickPrintState {
     String? previewError,
     bool? saving,
     bool? dirty,
+    CardElements? elements,
   }) =>
       QuickPrintState(
         loading: loading ?? this.loading,
@@ -86,6 +91,7 @@ class QuickPrintState {
         previewError: previewError ?? this.previewError,
         saving: saving ?? this.saving,
         dirty: dirty ?? this.dirty,
+        elements: elements ?? this.elements,
       );
 }
 
@@ -170,6 +176,26 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     refreshPreview(immediate: true);
   }
 
+  /// Place an element at (x, y) mm — from a slider or a drag. Both
+  /// coordinates become explicit (the web drag writes both too).
+  void moveElement(String name, double x, double y) {
+    double r(double v) => double.parse(v.clamp(0.5, 200).toStringAsFixed(1));
+    updateForm((f) => switch (name) {
+          'username' => f.copyWith(usernameX: r(x), usernameY: r(y)),
+          'password' => f.copyWith(passwordX: r(x), passwordY: r(y)),
+          _ => f.copyWith(qrX: r(x), qrY: r(y)),
+        },);
+  }
+
+  /// Back to the automatic place.
+  void resetElement(String name) {
+    updateForm((f) => switch (name) {
+          'username' => f.copyWith(usernameX: 0, usernameY: 0),
+          'password' => f.copyWith(passwordX: 0, passwordY: 0),
+          _ => f.copyWith(qrX: 0, qrY: 0),
+        },);
+  }
+
   /// A picked image goes once through the web's optimizer; the optimized
   /// bitmap is what the previews and the save carry from then on.
   Future<String?> setImage(Uint8List bytes, String name, String mime) async {
@@ -204,8 +230,18 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     state = state.copyWith(previewBusy: true, previewError: '');
     try {
       final card = state.mode == PreviewMode.card;
+      final fields = state.form.toFields(passwordShown: !state.noPassword);
+      final elementsFuture = _repo
+          .elements(
+            form: fields,
+            templateId: state.templateId,
+            batchId: batchId,
+            cancel: cancel,
+          )
+          .then<CardElements?>((e) => e)
+          .catchError((_) => null);
       final pdf = await _repo.preview(
-        form: state.form.toFields(passwordShown: !state.noPassword),
+        form: fields,
         templateId: state.templateId,
         batchId: batchId,
         printSettings: state.sheet.toSettings(),
@@ -220,8 +256,13 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
         dpi: card ? 300 : 120,
       ).first;
       final png = await raster.toPng();
+      final elements = await elementsFuture;
       if (seq != _seq || !mounted) return;
-      state = state.copyWith(previewPng: png, previewBusy: false);
+      state = state.copyWith(
+        previewPng: png,
+        previewBusy: false,
+        elements: elements,
+      );
     } on DioException catch (e) {
       if (CancelToken.isCancel(e) || seq != _seq || !mounted) return;
       state = state.copyWith(previewBusy: false, previewError: _message(e));

@@ -78,6 +78,27 @@ class QuickPrintRepository {
     return Uint8List.fromList(res.data ?? const []);
   }
 
+  /// Where username / password / QR really sit (mm from the card's top-left
+  /// — the anchor `*_x`/`*_y` use), for the sliders and the drag.
+  Future<CardElements> elements({
+    required Map<String, String> form,
+    int? templateId,
+    int? batchId,
+    CancelToken? cancel,
+  }) async {
+    final res = await _api.dio.post<Map<String, dynamic>>(
+      '/api/v1/print-templates/quick-elements',
+      data: {
+        if (templateId != null && templateId > 0) 'template_id': templateId,
+        'form': form,
+        if (batchId != null) 'batch_id': batchId,
+      },
+      cancelToken: cancel,
+    );
+    final d = res.data?['data'];
+    return CardElements.fromJson(d is Map ? _stringKeys(d) : const {});
+  }
+
   Future<Map<String, dynamic>> quickSave({
     required Map<String, String> form,
     int? templateId,
@@ -137,6 +158,49 @@ class QuickPrintRepository {
 
   static Map<String, dynamic> _stringKeys(Map m) =>
       m.map((k, v) => MapEntry('$k', v));
+}
+
+/// Card size (mm, oriented like the preview) + element boxes (mm).
+class CardElements {
+  const CardElements({
+    required this.widthMm,
+    required this.heightMm,
+    required this.boxes,
+  });
+
+  final double widthMm;
+  final double heightMm;
+
+  /// `username` / `password` / `qr` → (x, y, w, h) in mm.
+  final Map<String, ElementBox> boxes;
+
+  factory CardElements.fromJson(Map<String, dynamic> j) {
+    double n(Object? v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+    final card = j['card'] is Map ? j['card'] as Map : const {};
+    final els = j['elements'] is Map ? j['elements'] as Map : const {};
+    return CardElements(
+      widthMm: n(card['width_mm']),
+      heightMm: n(card['height_mm']),
+      boxes: {
+        for (final e in els.entries)
+          if (e.value is Map)
+            '${e.key}': ElementBox(
+              n((e.value as Map)['x']),
+              n((e.value as Map)['y']),
+              n((e.value as Map)['w']),
+              n((e.value as Map)['h']),
+            ),
+      },
+    );
+  }
+}
+
+class ElementBox {
+  const ElementBox(this.x, this.y, this.w, this.h);
+  final double x;
+  final double y;
+  final double w;
+  final double h;
 }
 
 class PrintExportJob {

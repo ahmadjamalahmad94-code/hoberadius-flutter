@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
 import '../application/quick_print_controller.dart';
-import '../domain/quick_print_form.dart';
+import '../data/quick_print_repository.dart';
 import 'print_job_flow.dart';
 
 /// «طباعة الكروت» — the web «منشئ كروت PDF» in the app.
@@ -390,19 +391,27 @@ class _FloatingPreview extends ConsumerWidget {
                         Icons.image_outlined,
                         color: AppTokens.textMuted,
                       )
-                    : AnimatedOpacity(
-                        duration: const Duration(milliseconds: 150),
-                        opacity: st.previewBusy ? 0.6 : 1,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(card ? 8 : 2),
-                          child: Image.memory(
-                            png,
-                            fit: BoxFit.contain,
-                            gaplessPlayback: true,
-                            filterQuality: FilterQuality.medium,
+                    : card
+                        ? _DraggableCard(
+                            st: st,
+                            ctl: ref.read(
+                              quickPrintControllerProvider(batchId).notifier,
+                            ),
+                            maxHeight: maxH - 16,
+                          )
+                        : AnimatedOpacity(
+                            duration: const Duration(milliseconds: 150),
+                            opacity: st.previewBusy ? 0.6 : 1,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(card ? 8 : 2),
+                              child: Image.memory(
+                                png,
+                                fit: BoxFit.contain,
+                                gaplessPlayback: true,
+                                filterQuality: FilterQuality.medium,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
               ),
             ],
           ),
@@ -464,7 +473,9 @@ class _PreviewCard extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                if (png != null)
+                if (png != null && card)
+                  _DraggableCard(st: st, ctl: ctl, maxHeight: maxH - 24),
+                if (png != null && !card)
                   AnimatedOpacity(
                     duration: const Duration(milliseconds: 150),
                     opacity: st.previewBusy ? 0.55 : 1,
@@ -924,7 +935,7 @@ class _Swatch extends StatelessWidget {
   }
 }
 
-// ─── 4. element positions (advanced, collapsed) ──────────────────────
+// ─── 4. element positions: sliders from the REAL place + drag ─────────
 
 class _PositionsCard extends StatelessWidget {
   const _PositionsCard({required this.st, required this.ctl});
@@ -934,65 +945,39 @@ class _PositionsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final f = st.form;
-    Widget pair(
-      String label,
-      double x,
-      double y,
-      QuickPrintForm Function(QuickPrintForm, double, double) set,
-    ) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: AppTokens.s8),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 74,
-              child: Text(
-                label,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-            Expanded(
-              child: _Stepper(
-                caption: 'أفقي',
-                value: x,
-                onChanged: (v) => ctl.updateForm((q) => set(q, v, y)),
-              ),
-            ),
-            const SizedBox(width: AppTokens.s8),
-            Expanded(
-              child: _Stepper(
-                caption: 'رأسي',
-                value: y,
-                onChanged: (v) => ctl.updateForm((q) => set(q, x, v)),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return _Section(
       icon: Icons.open_with,
       title: 'أماكن العناصر',
-      subtitle: 'بالمليمتر — 0 = تلقائي',
+      subtitle: 'اسحب العنصر بإصبعك على المعاينة، أو حرّك الشريط',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          pair(
-            'المستخدم',
-            f.usernameX,
-            f.usernameY,
-            (q, x, y) => q.copyWith(usernameX: x, usernameY: y),
+          _ElementSliders(
+            st: st,
+            ctl: ctl,
+            name: 'username',
+            label: 'اسم المستخدم',
+            x: f.usernameX,
+            y: f.usernameY,
           ),
           if (!st.noPassword)
-            pair(
-              'كلمة المرور',
-              f.passwordX,
-              f.passwordY,
-              (q, x, y) => q.copyWith(passwordX: x, passwordY: y),
+            _ElementSliders(
+              st: st,
+              ctl: ctl,
+              name: 'password',
+              label: 'كلمة المرور',
+              x: f.passwordX,
+              y: f.passwordY,
             ),
           if (f.showQr) ...[
-            pair('QR', f.qrX, f.qrY, (q, x, y) => q.copyWith(qrX: x, qrY: y)),
+            _ElementSliders(
+              st: st,
+              ctl: ctl,
+              name: 'qr',
+              label: 'QR',
+              x: f.qrX,
+              y: f.qrY,
+            ),
             _SliderRow(
               label: 'حجم الباركود',
               value: f.qrSizePct,
@@ -1009,59 +994,98 @@ class _PositionsCard extends StatelessWidget {
   }
 }
 
-class _Stepper extends StatelessWidget {
-  const _Stepper({
-    required this.caption,
-    required this.value,
-    required this.onChanged,
+class _ElementSliders extends StatelessWidget {
+  const _ElementSliders({
+    required this.st,
+    required this.ctl,
+    required this.name,
+    required this.label,
+    required this.x,
+    required this.y,
   });
-  final String caption;
-  final double value;
-  final ValueChanged<double> onChanged;
+  final QuickPrintState st;
+  final QuickPrintController ctl;
+  final String name;
+  final String label;
+
+  /// Saved values; 0 = automatic.
+  final double x;
+  final double y;
 
   @override
   Widget build(BuildContext context) {
-    void step(double d) =>
-        onChanged(double.parse((value + d).clamp(0, 110).toStringAsFixed(1)));
+    final els = st.elements;
+    final box = els?.boxes[name];
+    final auto = x == 0 && y == 0;
+    // Start from where the element really is (automatic place included).
+    final effX = x > 0 ? x : (box?.x ?? 0.5);
+    final effY = y > 0 ? y : (box?.y ?? 0.5);
+    final cardW = els?.widthMm ?? st.form.cardWidthMm;
+    final cardH = els?.heightMm ?? st.form.cardHeightMm;
+    final maxX = (cardW - (box?.w ?? 4)).clamp(1.0, 200.0);
+    final maxY = (cardH - (box?.h ?? 4)).clamp(1.0, 200.0);
+    int div(double max) => ((max - 0.5) * 2).round().clamp(1, 800);
     return Container(
-      height: 44,
+      margin: const EdgeInsets.only(bottom: AppTokens.s8),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
       decoration: BoxDecoration(
-        border: Border.all(color: AppTokens.borderStrong),
-        borderRadius: BorderRadius.circular(12),
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTokens.border),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _StepBtn(icon: Icons.add, onTap: () => step(0.5)),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    value == 0 ? 'تلقائي' : _trim(value),
-                    maxLines: 1,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      height: 1.15,
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              if (auto)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppTokens.brandSoft,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: const Text(
+                    'تلقائي',
+                    style: TextStyle(
+                      color: AppTokens.brandInk,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
                     ),
                   ),
+                )
+              else
+                TextButton.icon(
+                  onPressed: () => ctl.resetElement(name),
+                  icon: const Icon(Icons.restart_alt, size: 18),
+                  label: const Text('تلقائي'),
                 ),
-                Text(
-                  caption,
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    color: AppTokens.textMuted,
-                    height: 1.1,
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
-          _StepBtn(
-            icon: Icons.remove,
-            onTap: value <= 0 ? null : () => step(-0.5),
+          _SliderRow(
+            label: 'أفقي',
+            value: effX,
+            min: 0.5,
+            max: maxX,
+            divisions: div(maxX),
+            display: '${_trim(effX)} ملم',
+            onChanged: (v) => ctl.moveElement(name, v, effY),
+          ),
+          _SliderRow(
+            label: 'رأسي',
+            value: effY,
+            min: 0.5,
+            max: maxY,
+            divisions: div(maxY),
+            display: '${_trim(effY)} ملم',
+            onChanged: (v) => ctl.moveElement(name, effX, v),
           ),
         ],
       ),
@@ -1069,25 +1093,184 @@ class _Stepper extends StatelessWidget {
   }
 }
 
-class _StepBtn extends StatelessWidget {
-  const _StepBtn({required this.icon, required this.onTap});
-  final IconData icon;
-  final VoidCallback? onTap;
+/// The card preview with its username / password / QR draggable by finger.
+/// The image is the server's card PDF (card-sized page), so mm ↔ px is a
+/// single scale; a drop writes the same mm anchor the web designer writes.
+class _DraggableCard extends StatefulWidget {
+  const _DraggableCard({
+    required this.st,
+    required this.ctl,
+    required this.maxHeight,
+  });
+  final QuickPrintState st;
+  final QuickPrintController ctl;
+  final double maxHeight;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: SizedBox(
-          width: 30,
-          height: 44,
-          child: Icon(
-            icon,
-            size: 18,
-            color: onTap == null ? AppTokens.textMuted : AppTokens.brand,
+  State<_DraggableCard> createState() => _DraggableCardState();
+}
+
+class _DraggableCardState extends State<_DraggableCard> {
+  String? _active;
+  Offset _drag = Offset.zero; // px while dragging
+  final Map<String, Offset> _dropped = {}; // mm, until the server catches up
+
+  @override
+  void didUpdateWidget(covariant _DraggableCard old) {
+    super.didUpdateWidget(old);
+    if (!identical(old.st.elements, widget.st.elements)) _dropped.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final st = widget.st;
+    final png = st.previewPng;
+    final els = st.elements;
+    if (png == null) return const SizedBox.shrink();
+    final wMm = els?.widthMm ?? st.form.cardWidthMm;
+    final hMm = els?.heightMm ?? st.form.cardHeightMm;
+    final aspect = wMm / hMm;
+    final names = [
+      'username',
+      if (!st.noPassword) 'password',
+      if (st.form.showQr) 'qr',
+    ];
+    return LayoutBuilder(
+      builder: (context, c) {
+        var w = c.maxWidth;
+        var h = w / aspect;
+        if (h > widget.maxHeight) {
+          h = widget.maxHeight;
+          w = h * aspect;
+        }
+        final k = w / wMm; // px per mm
+        return Center(
+          child: SizedBox(
+            width: w,
+            height: h,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity: st.previewBusy ? 0.6 : 1,
+                        child: Image.memory(
+                          png,
+                          fit: BoxFit.fill,
+                          gaplessPlayback: true,
+                          filterQuality: FilterQuality.medium,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (els != null)
+                  for (final name in names)
+                    if (els.boxes[name] != null)
+                      _handle(name, els.boxes[name]!, k, wMm, hMm),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _handle(
+    String name,
+    ElementBox box,
+    double k,
+    double wMm,
+    double hMm,
+  ) {
+    final base = _dropped[name] ?? Offset(box.x, box.y);
+    final active = _active == name;
+    var left = base.dx * k + (active ? _drag.dx : 0);
+    var top = base.dy * k + (active ? _drag.dy : 0);
+    left = left.clamp(0.0, (wMm - box.w) * k);
+    top = top.clamp(0.0, (hMm - box.h) * k);
+    return Positioned(
+      left: left,
+      top: top,
+      width: box.w * k,
+      height: box.h * k,
+      child: RawGestureDetector(
+        // Grab the touch at once so the page scroll doesn't steal the drag.
+        gestures: {
+          ImmediateMultiDragGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<
+                  ImmediateMultiDragGestureRecognizer>(
+            ImmediateMultiDragGestureRecognizer.new,
+            (r) => r.onStart = (_) {
+              setState(() {
+                _active = name;
+                _drag = Offset.zero;
+              });
+              return _ElementDrag(
+                onUpdate: (d) => setState(() => _drag += d),
+                onEnd: () {
+                  // Read the drag NOW (the closure was built before it).
+                  final xMm =
+                      ((base.dx * k + _drag.dx) / k).clamp(0.5, wMm - box.w);
+                  final yMm =
+                      ((base.dy * k + _drag.dy) / k).clamp(0.5, hMm - box.h);
+                  setState(() {
+                    _dropped[name] = Offset(xMm, yMm);
+                    _active = null;
+                    _drag = Offset.zero;
+                  });
+                  widget.ctl.moveElement(name, xMm, yMm);
+                },
+              );
+            },
+          ),
+        },
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: active
+                ? AppTokens.brand.withValues(alpha: 0.18)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: active
+                  ? AppTokens.brand
+                  : Colors.white.withValues(alpha: 0.9),
+              width: active ? 2 : 1.2,
+            ),
           ),
         ),
-      );
+      ),
+    );
+  }
+}
+
+class _ElementDrag extends Drag {
+  _ElementDrag({required this.onUpdate, required this.onEnd});
+  final ValueChanged<Offset> onUpdate;
+  final VoidCallback onEnd;
+
+  @override
+  void update(DragUpdateDetails details) => onUpdate(details.delta);
+
+  @override
+  void end(DragEndDetails details) => onEnd();
+
+  @override
+  void cancel() => onEnd();
 }
 
 // ─── 5. sheet layout ─────────────────────────────────────────────────
@@ -1248,12 +1431,23 @@ class _SliderRow extends StatelessWidget {
             ),
           ],
         ),
-        Slider(
-          value: value.clamp(min, max),
-          min: min,
-          max: max,
-          divisions: divisions,
-          onChanged: onChanged,
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 5,
+            activeTrackColor: AppTokens.brand,
+            inactiveTrackColor: AppTokens.brandSoft2,
+            thumbColor: AppTokens.brand,
+            overlayColor: AppTokens.brand.withValues(alpha: 0.12),
+            // No tick dots: dozens of steps turn the track into a dotted line.
+            tickMarkShape: SliderTickMarkShape.noTickMark,
+          ),
+          child: Slider(
+            value: value.clamp(min, max),
+            min: min,
+            max: max,
+            divisions: divisions,
+            onChanged: onChanged,
+          ),
         ),
       ],
     );

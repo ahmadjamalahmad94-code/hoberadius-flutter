@@ -159,8 +159,11 @@ class QuickPrintForm {
   }
 
   /// A new card image (web JS 496-516): image mode, stretched.
-  QuickPrintForm withImage(String dataUrl, String name,
-          {bool optimized = false,}) =>
+  QuickPrintForm withImage(
+    String dataUrl,
+    String name, {
+    bool optimized = false,
+  }) =>
       copyWith(
         backgroundDataUrl: dataUrl,
         backgroundName: name,
