@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 import 'subscriber_model.dart';
 
 /// What the signed-in admin may do to one subscriber — the same rules as the
@@ -387,12 +389,7 @@ double? parseLocalizedNumber(String raw) {
 }
 
 /// UTC ISO-8601 with a trailing «Z», no fractions: 2026-09-28T21:00:00Z.
-String toUtcIso(DateTime t) {
-  final u = t.toUtc();
-  String two(int v) => v.toString().padLeft(2, '0');
-  return '${u.year.toString().padLeft(4, '0')}-${two(u.month)}-${two(u.day)}'
-      'T${two(u.hour)}:${two(u.minute)}:${two(u.second)}Z';
-}
+String toUtcIso(DateTime t) => toServerUtcIso(t);
 
 /// Body of POST /accounts/<u>/extend.
 Map<String, dynamic> extendPayload({
@@ -618,19 +615,13 @@ String fillMessageTemplate(
 
 // ── Rename ────────────────────────────────────────────────────────────────
 
-final _usernamePattern = RegExp(r'^[A-Za-z0-9._@\-]+$');
-
+/// Rename rule — the same format check as the create form
+/// ([validateSubscriberUsernameFormat]) plus «not the current name».
 String? validateNewUsername(String value, {required String current}) {
   final v = value.trim();
   if (v.isEmpty) return 'اكتب اسم المستخدم الجديد.';
   if (v == current) return 'الاسم الجديد مطابق للحالي.';
-  if (v.contains(' ')) return 'اسم المستخدم بدون مسافات.';
-  if (v.length < 3) return 'اسم المستخدم 3 أحرف على الأقل.';
-  if (v.length > 64) return 'اسم المستخدم 64 حرفًا على الأكثر.';
-  if (!_usernamePattern.hasMatch(v)) {
-    return 'أحرف لاتينية وأرقام و . _ - @ فقط.';
-  }
-  return null;
+  return validateSubscriberUsernameFormat(v);
 }
 
 // ── Arabic durations (web arDays/arHours/arMinutes/arDuration) ─────────────
@@ -691,17 +682,7 @@ String formatMoney(double v, String currency) {
 // ── helpers ───────────────────────────────────────────────────────────────
 
 /// Server datetimes are UTC with or without «Z»; returned in local time.
-DateTime? parseServerUtc(Object? v) {
-  if (v == null) return null;
-  final raw = v.toString().trim();
-  if (raw.isEmpty) return null;
-  final d = DateTime.tryParse(raw);
-  if (d == null) return null;
-  final utc = d.isUtc
-      ? d
-      : DateTime.utc(d.year, d.month, d.day, d.hour, d.minute, d.second);
-  return utc.toLocal();
-}
+DateTime? parseServerUtc(Object? v) => parseServerDateTime(v);
 
 int? _intOrNull(Object? v) {
   if (v == null) return null;

@@ -10,6 +10,7 @@ import '../../../../shared/widgets/status_pill.dart';
 import '../../../plans/domain/plan_model.dart';
 import '../../data/subscriber_actions_repository.dart';
 import '../../domain/subscriber_actions_model.dart';
+import '../../domain/subscriber_model.dart';
 import 'action_dialog_kit.dart';
 import 'plan_picker.dart';
 
@@ -1592,6 +1593,8 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
 
   @override
   Widget build(BuildContext context) {
+    final invalid =
+        _pw.text.isEmpty ? null : validateNewSubscriberPassword(_pw.text);
     return ActionDialogFrame(
       icon: Icons.password_outlined,
       tone: PillTone.blue,
@@ -1601,7 +1604,7 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
       error: error,
       confirmLabel: 'تعيين',
       confirmIcon: Icons.check,
-      onConfirm: _pw.text.isEmpty ? null : _submit,
+      onConfirm: _pw.text.isEmpty || invalid != null ? null : _submit,
       children: [
         FormFieldRow(
           label: 'كلمة المرور الجديدة',
@@ -1626,6 +1629,7 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
             onChanged: (_) => setState(() {}),
           ),
         ),
+        if (invalid != null) ActionNote(text: invalid, tone: PillTone.red),
       ],
     );
   }

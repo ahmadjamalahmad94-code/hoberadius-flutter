@@ -7,6 +7,7 @@ import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../application/subscriber_form_controller.dart';
 import '../application/subscriber_form_mapper.dart';
+import '../domain/subscriber_model.dart';
 import 'widgets/subscriber_action_menu.dart';
 import 'widgets/subscriber_form_sections.dart';
 
@@ -46,64 +47,11 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   bool _equalShareDownload = false;
   bool _equalShareUpload = false;
 
-  static const _controllerKeys = [
-    'username',
-    'password',
-    'full_name',
-    'mobile',
-    'email',
-    'beneficiary_ref',
-    'remark',
-    'mac_lock',
-    'static_ip',
-    'plan_id',
-    'custom_price',
-    'balance',
-    'group',
-    'pool',
-    'father_name',
-    'national_id',
-    'nationality',
-    'country',
-    'address',
-    'city',
-    'district',
-    'state',
-    'zip',
-    'coordinates',
-    'payment_method',
-    'payment_reference',
-    'download_speed_kbps',
-    'upload_speed_kbps',
-    'combined_quota_mb',
-    'download_quota_mb',
-    'upload_quota_mb',
-    'total_connection_time_min',
-    'daily_connection_time_min',
-    'vlan_id',
-    'device_count',
-    'allowed_macs',
-    'device_connection_file',
-    'pppoe_username',
-    'pppoe_password',
-    'pppoe_ip',
-    'mt_profile',
-    'mt_rate_limit',
-    'mt_ip_pool',
-    'mt_comment',
-    'dns1',
-    'dns2',
-    'simultaneous_use',
-    'session_timeout',
-    'idle_timeout',
-    'called_station_id',
-    'allowed_hours',
-    'notify_email',
-    'notify_mobile',
-    'subscription_days',
-    'notes',
-    'tags',
-  ];
+  /// The row exactly as loaded into the form: the save sends only what the
+  /// operator changed relative to it (never the whole stale row).
+  Subscriber? _original;
+
+  static const _controllerKeys = kSubscriberFormControllerKeys;
 
   @override
   void initState() {
@@ -163,6 +111,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         .read(subscriberFormActionProvider.notifier)
         .load(widget.username!);
     if (!mounted || result.subscriber == null) return;
+    _original = result.subscriber;
     applySubscriberToForm(result.subscriber!, _c);
     final sel = selectionsFromSubscriber(result.subscriber!);
     setState(() {
@@ -193,9 +142,18 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final subscriber = buildSubscriberFromForm(_c, _selections);
-    final err = await ref
-        .read(subscriberFormActionProvider.notifier)
-        .submit(subscriber, isEdit: widget.isEdit);
+    final notifier = ref.read(subscriberFormActionProvider.notifier);
+    final String? err;
+    if (widget.isEdit) {
+      final original = _original;
+      if (original == null) return; // still loading — nothing to compare to
+      err = await notifier.submitChanges(
+        widget.username!,
+        subscriber.copyWith(username: original.username).toPatchDiff(original),
+      );
+    } else {
+      err = await notifier.submit(subscriber, isEdit: false);
+    }
     if (!mounted || err != null) return;
     context.goNamed('subscribers');
   }
@@ -305,6 +263,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
           const SizedBox(height: AppTokens.s12),
           SubscriberManagementSection(
             controllers: _c,
+            isEdit: widget.isEdit,
             managerId: _managerId,
             onManagerChanged: (v) => setState(() => _managerId = v),
           ),
