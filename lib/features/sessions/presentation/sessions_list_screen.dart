@@ -5,7 +5,9 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/auto_height_grid.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/status_pill.dart';
@@ -221,8 +223,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
       children: [
         PageHeader(
           title: 'المتصلون الآن',
-          subtitle:
-              'الجلسات الحيّة: طرد، تثبيت MAC/IP، وسرعة مؤقتة.',
+          subtitle: 'الجلسات الحيّة: طرد، تثبيت MAC/IP، وسرعة مؤقتة.',
           inlineActions: true,
           actions: [
             const _LivePulseChip(),
@@ -267,7 +268,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               label: const Text('إعادة المحاولة'),
             ),
           ),
-          data: (items) {
+          data: (loaded) {
+            final items = loaded.items;
             if (items.isEmpty) {
               return EmptyState(
                 icon: Icons.signal_wifi_off_outlined,
@@ -279,7 +281,11 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _SummaryStrip(items: items),
+                _SummaryStrip(
+                  items: items,
+                  total: loaded.list.total,
+                  typeCounts: loaded.typeCounts,
+                ),
                 const SizedBox(height: AppTokens.s12),
                 for (final session in items)
                   Padding(
@@ -300,6 +306,16 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
                           : null,
                     ),
                   ),
+                LoadMoreFooter(
+                  hasMore: loaded.list.hasMore,
+                  loading: loaded.list.loadingMore,
+                  error: loaded.list.loadMoreError,
+                  shown: items.length,
+                  total: loaded.list.total,
+                  onLoadMore: () => ref
+                      .read(onlineSessionsProvider(_query).notifier)
+                      .loadMore(),
+                ),
               ],
             );
           },
@@ -462,29 +478,33 @@ class _FiltersCard extends StatelessWidget {
 }
 
 class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip({required this.items});
+  const _SummaryStrip({required this.items, this.total, this.typeCounts});
 
   final List<OnlineSession> items;
 
+  /// Server counters of the WHOLE result (not only the loaded pages).
+  final int? total;
+  final Map<String, int>? typeCounts;
+
   @override
   Widget build(BuildContext context) {
-    final subscribers = items.where((item) => item.isSubscriber).length;
-    final cards = items.where((item) => item.isCard).length;
+    final subscribers = typeCounts?['subscriber'] ??
+        items.where((item) => item.isSubscriber).length;
+    final cards =
+        typeCounts?['card'] ?? items.where((item) => item.isCard).length;
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 640 ? 3 : 2;
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: columns,
-          childAspectRatio: constraints.maxWidth < 420 ? 2.2 : 2.8,
-          mainAxisSpacing: AppTokens.s8,
-          crossAxisSpacing: AppTokens.s8,
+        // Content-sized tiles: a fixed aspect ratio clipped the value by
+        // 33–51 px at 360×640.
+        return AutoHeightGrid(
+          columns: columns,
+          spacing: AppTokens.s8,
           children: [
             _SummaryTile(
               icon: Icons.wifi_tethering,
               label: 'كل المتصلين',
-              value: '${items.length}',
+              value: '${total ?? items.length}',
             ),
             _SummaryTile(
               icon: Icons.person_outline,

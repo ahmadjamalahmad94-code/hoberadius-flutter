@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
 import '../../core/ota/ota_dialogs.dart';
+import '../../core/router/app_page_transitions.dart';
 import '../../core/router/nav_history.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/hub_toast.dart';
@@ -691,7 +692,7 @@ class _ContentAreaState extends State<_ContentArea> {
                   constraints: const BoxConstraints(
                     maxWidth: AppTokens.contentMaxWidth,
                   ),
-                  child: widget.child,
+                  child: ShellContentScope(child: widget.child),
                 ),
               ),
             ),

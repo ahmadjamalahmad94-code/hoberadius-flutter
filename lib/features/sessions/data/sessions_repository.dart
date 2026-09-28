@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/paging.dart';
 import '../domain/session_model.dart';
 
 enum OnlineSessionKind { all, subscribers, cards }
@@ -52,16 +53,52 @@ class SessionsRepository {
   Future<List<OnlineSession>> listOnline({
     OnlineSessionKind kind = OnlineSessionKind.all,
     String search = '',
+  }) async =>
+      (await listOnlinePage(kind: kind, search: search)).items;
+
+  /// One page of `/sessions/online`. Updated servers page the WHOLE open
+  /// set (limit/offset → total, has_more, types); older ones return up to
+  /// 500 rows and ignore offset — the controller then stops on a page that
+  /// brings nothing new.
+  Future<OnlineSessionsPage> listOnlinePage({
+    OnlineSessionKind kind = OnlineSessionKind.all,
+    String search = '',
+    int limit = 100,
+    int offset = 0,
   }) async {
     final res = await _api.get(
       '/api/v1/sessions/online',
-      query: OnlineSessionsQuery(kind: kind, search: search).toApiQuery(),
+      query: {
+        ...OnlineSessionsQuery(kind: kind, search: search).toApiQuery(),
+        'limit': '$limit',
+        'offset': '$offset',
+      },
     );
-    final items = (res['data']?['items'] ?? const []) as List;
-    return items
-        .whereType<Map<String, dynamic>>()
-        .map(OnlineSession.fromJson)
+    final data = res['data'] is Map
+        ? Map<String, dynamic>.from(res['data'] as Map)
+        : const <String, dynamic>{};
+    final raw = (data['items'] ?? const []) as List;
+    final items = raw
+        .whereType<Map>()
+        .map((m) => OnlineSession.fromJson(Map<String, dynamic>.from(m)))
         .toList();
+    final info = readPageInfo(
+      data,
+      requestedLimit: limit,
+      offset: offset,
+      itemCount: raw.length,
+    );
+    final types = data['types'] is Map
+        ? (data['types'] as Map).map(
+            (k, v) => MapEntry(k.toString(), v is num ? v.toInt() : 0),
+          )
+        : null;
+    return OnlineSessionsPage(
+      items: items,
+      total: info.total,
+      hasMore: info.hasMore,
+      typeCounts: types,
+    );
   }
 
   Map<String, String> _sessionBody({
@@ -159,17 +196,114 @@ class SessionsRepository {
   }
 }
 
+class OnlineSessionsPage {
+  const OnlineSessionsPage({
+    required this.items,
+    required this.hasMore,
+    this.total,
+    this.typeCounts,
+  });
+
+  final List<OnlineSession> items;
+  final bool hasMore;
+
+  /// Every matching open session on the server (null on older servers).
+  final int? total;
+
+  /// `types` counters of the whole filtered result ({subscriber, card}).
+  final Map<String, int>? typeCounts;
+}
+
+/// Loaded online sessions + the server's whole-result counters.
+class OnlineSessionsState {
+  const OnlineSessionsState({
+    required this.list,
+    this.typeCounts,
+  });
+
+  final PagedList<OnlineSession> list;
+  final Map<String, int>? typeCounts;
+
+  List<OnlineSession> get items => list.items;
+}
+
+/// Infinite-scroll controller for «المتصلون الآن». The list was capped at
+/// the first 500 open sessions; updated servers page the whole set.
+class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
+    OnlineSessionsState, OnlineSessionsQuery> {
+  static const pageSize = 100;
+
+  static String _key(OnlineSession s) => '${s.username}|${s.sessionId}';
+
+  @override
+  Future<OnlineSessionsState> build(OnlineSessionsQuery arg) async {
+    final page = await ref.watch(sessionsRepositoryProvider).listOnlinePage(
+          kind: arg.kind,
+          search: arg.search,
+          limit: pageSize,
+        );
+    return OnlineSessionsState(
+      list: PagedList<OnlineSession>(
+        items: page.items,
+        hasMore: page.hasMore && page.items.isNotEmpty,
+        total: page.total,
+        nextOffset: page.items.length,
+      ),
+      typeCounts: page.typeCounts,
+    );
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || !current.list.hasMore || current.list.loadingMore) {
+      return;
+    }
+    state = AsyncData(
+      OnlineSessionsState(
+        list: current.list.copyWith(loadingMore: true, loadMoreError: null),
+        typeCounts: current.typeCounts,
+      ),
+    );
+    try {
+      final page = await ref.read(sessionsRepositoryProvider).listOnlinePage(
+            kind: arg.kind,
+            search: arg.search,
+            limit: pageSize,
+            offset: current.list.nextOffset,
+          );
+      final (merged, added) =
+          mergeUniqueBy(current.list.items, page.items, _key);
+      state = AsyncData(
+        OnlineSessionsState(
+          list: current.list.copyWith(
+            items: merged,
+            hasMore: page.hasMore && added > 0,
+            total: page.total ?? current.list.total,
+            nextOffset: current.list.nextOffset + page.items.length,
+            loadingMore: false,
+          ),
+          typeCounts: page.typeCounts ?? current.typeCounts,
+        ),
+      );
+    } catch (e) {
+      state = AsyncData(
+        OnlineSessionsState(
+          list: current.list.copyWith(loadingMore: false, loadMoreError: e),
+          typeCounts: current.typeCounts,
+        ),
+      );
+    }
+  }
+}
+
 final sessionsRepositoryProvider = Provider<SessionsRepository>((ref) {
   return SessionsRepository(ref.watch(apiClientProvider));
 });
 
-final onlineSessionsProvider = FutureProvider.autoDispose
-    .family<List<OnlineSession>, OnlineSessionsQuery>((ref, query) {
-  return ref.watch(sessionsRepositoryProvider).listOnline(
-        kind: query.kind,
-        search: query.search,
-      );
-});
+final onlineSessionsProvider = AsyncNotifierProvider.autoDispose
+    .family<OnlineSessionsController, OnlineSessionsState, OnlineSessionsQuery>(
+  OnlineSessionsController.new,
+);
 
 final accountingHistoryProvider =
     FutureProvider.autoDispose<List<AccountingSessionHistory>>((ref) {

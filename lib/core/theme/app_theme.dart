@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../router/app_page_transitions.dart';
 import 'dark_tokens.dart';
 import 'tokens.dart';
 
@@ -18,6 +19,8 @@ class AppTheme {
       displayColor: AppTokens.textPrimary,
     );
     return base.copyWith(
+      pageTransitionsTheme:
+          shellSafePageTransitionsTheme(base.pageTransitionsTheme),
       colorScheme: const ColorScheme.light(
         primary: AppTokens.brand,
         onPrimary: Colors.white,
@@ -377,6 +380,8 @@ class AppTheme {
       displayColor: DarkTokens.textPrimary,
     );
     return base.copyWith(
+      pageTransitionsTheme:
+          shellSafePageTransitionsTheme(base.pageTransitionsTheme),
       colorScheme: const ColorScheme.dark(
         primary: DarkTokens.brand,
         onPrimary: Colors.white,
