@@ -8,6 +8,7 @@ import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
 import '../application/quick_print_controller.dart';
 import '../data/quick_print_repository.dart';
+import '../domain/auto_sizes.dart';
 import 'print_job_flow.dart';
 
 /// «طباعة الكروت» — the web «منشئ كروت PDF» in the app.
@@ -761,28 +762,26 @@ class _CredentialsCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SliderRow(
+          _AutoSliderRow(
             label: 'حجم خط اسم المستخدم',
-            value: f.usernameFontSize,
-            min: 0,
-            max: 36,
-            divisions: 72,
-            display: f.usernameFontSize == 0
-                ? 'تلقائي'
-                : '${_trim(f.usernameFontSize)} pt',
+            saved: f.usernameFontSize,
+            auto: autoFontPt(st.elements?.boxes['username']),
+            min: kMinFontPt,
+            max: kMaxFontPt,
+            step: 0.5,
+            unit: 'pt',
             onChanged: (v) =>
                 ctl.updateForm((x) => x.copyWith(usernameFontSize: v)),
           ),
           if (!st.noPassword)
-            _SliderRow(
+            _AutoSliderRow(
               label: 'حجم خط كلمة المرور',
-              value: f.passwordFontSize,
-              min: 0,
-              max: 36,
-              divisions: 72,
-              display: f.passwordFontSize == 0
-                  ? 'تلقائي'
-                  : '${_trim(f.passwordFontSize)} pt',
+              saved: f.passwordFontSize,
+              auto: autoFontPt(st.elements?.boxes['password']),
+              min: kMinFontPt,
+              max: kMaxFontPt,
+              step: 0.5,
+              unit: 'pt',
               onChanged: (v) =>
                   ctl.updateForm((x) => x.copyWith(passwordFontSize: v)),
             ),
@@ -978,13 +977,14 @@ class _PositionsCard extends StatelessWidget {
               x: f.qrX,
               y: f.qrY,
             ),
-            _SliderRow(
+            _AutoSliderRow(
               label: 'حجم الباركود',
-              value: f.qrSizePct,
-              min: 0,
-              max: 48,
-              divisions: 96,
-              display: f.qrSizePct == 0 ? 'تلقائي' : '${_trim(f.qrSizePct)}٪',
+              saved: f.qrSizePct,
+              auto: autoQrPct(st.elements),
+              min: kMinQrPct,
+              max: kMaxQrPct,
+              step: 0.5,
+              unit: '٪',
               onChanged: (v) => ctl.updateForm((q) => q.copyWith(qrSizePct: v)),
             ),
           ],
@@ -1383,6 +1383,67 @@ class _SheetCard extends StatelessWidget {
 }
 
 // ─── bits ────────────────────────────────────────────────────────────
+
+/// A size slider whose 0 means «automatic». While automatic it starts from
+/// the size the server really draws (read off the element boxes), not from
+/// zero — so nudging it changes the size a little instead of jumping.
+class _AutoSliderRow extends StatelessWidget {
+  const _AutoSliderRow({
+    required this.label,
+    required this.saved,
+    required this.auto,
+    required this.min,
+    required this.max,
+    required this.step,
+    required this.unit,
+    required this.onChanged,
+  });
+  final String label;
+
+  /// Stored value; 0 = automatic.
+  final double saved;
+
+  /// The automatic size as drawn, or null until the preview is measured.
+  final double? auto;
+  final double min;
+  final double max;
+  final double step;
+  final String unit;
+
+  /// Gets the new value; 0 resets to automatic.
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isAuto = saved <= 0;
+    final eff = (isAuto ? (auto ?? min) : saved).clamp(min, max).toDouble();
+    final shown = isAuto && auto == null ? '' : '${_trim(eff)} $unit';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SliderRow(
+          label: label,
+          value: eff,
+          min: min,
+          max: max,
+          divisions: ((max - min) / step).round(),
+          display:
+              isAuto ? (shown.isEmpty ? 'تلقائي' : 'تلقائي · $shown') : shown,
+          onChanged: onChanged,
+        ),
+        if (!isAuto)
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton.icon(
+              onPressed: () => onChanged(0),
+              icon: const Icon(Icons.restart_alt, size: 18),
+              label: const Text('رجوع للتلقائي'),
+            ),
+          ),
+      ],
+    );
+  }
+}
 
 class _SliderRow extends StatelessWidget {
   const _SliderRow({
