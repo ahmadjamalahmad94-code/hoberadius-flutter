@@ -19,7 +19,7 @@ class _CountingRepo implements NotificationsRepository {
     listCalls++;
     return NotificationsPage(
       items: [
-        AppNotification.fromJson({'id': 1, 'is_read': false})
+        AppNotification.fromJson({'id': 1, 'is_read': false}),
       ],
       unreadCount: 1,
       limit: limit,

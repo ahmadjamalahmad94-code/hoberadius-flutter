@@ -172,6 +172,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             title: widget.isEdit ? 'تعديل مشترك' : 'مشترك جديد',
             leading: IconButton(
               onPressed: () => context.goNamed('subscribers'),
+              tooltip: 'رجوع',
               icon: const Icon(Icons.arrow_back),
             ),
             // Title + «حفظ» (and the ⋮ menu on edit) share ONE row — the save

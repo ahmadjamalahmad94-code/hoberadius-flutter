@@ -146,6 +146,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
             children: [
               IconButton(
                 onPressed: () => context.goNamed('roles'),
+                tooltip: 'رجوع',
                 icon: const Icon(Icons.arrow_back),
               ),
               Expanded(

@@ -19,6 +19,16 @@ class FormFieldRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Accessibility: the visible label is drawn beside/above the field, so it
+    // was never linked to it (inputs had an empty aria-label on the web and
+    // TalkBack read «edit box»). The field gets the label as its own
+    // semantics node; the drawn caption is excluded to avoid reading twice.
+    final labelled = Semantics(
+      container: true,
+      label: required ? '$label (مطلوب)' : label,
+      hint: hint,
+      child: child,
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: AppTokens.s12),
       child: LayoutBuilder(
@@ -29,16 +39,21 @@ class FormFieldRow extends StatelessWidget {
                   width: 180,
                   child: Padding(
                     padding: const EdgeInsets.only(top: AppTokens.s12),
-                    child: _Label(label: label, required: required, hint: hint),
+                    child: ExcludeSemantics(
+                      child:
+                          _Label(label: label, required: required, hint: hint),
+                    ),
                   ),
                 )
               : Padding(
                   padding: const EdgeInsets.only(bottom: AppTokens.s4),
-                  child: _Label(
-                    label: label,
-                    required: required,
-                    hint: hint,
-                    inline: true,
+                  child: ExcludeSemantics(
+                    child: _Label(
+                      label: label,
+                      required: required,
+                      hint: hint,
+                      inline: true,
+                    ),
                   ),
                 );
           if (wide) {
@@ -47,13 +62,13 @@ class FormFieldRow extends StatelessWidget {
               children: [
                 labelW,
                 const SizedBox(width: AppTokens.s16),
-                Expanded(child: child),
+                Expanded(child: labelled),
               ],
             );
           }
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [labelW, child],
+            children: [labelW, labelled],
           );
         },
       ),

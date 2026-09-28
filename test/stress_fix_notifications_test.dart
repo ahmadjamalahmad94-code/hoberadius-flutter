@@ -87,7 +87,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
-          apiClientProvider.overrideWithValue(fakeApiClient(adapter))
+          apiClientProvider.overrideWithValue(fakeApiClient(adapter)),
         ],
         child: const MaterialApp(
           home: Directionality(

@@ -204,6 +204,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             inlineActions: true,
             leading: IconButton(
               onPressed: () => context.goNamed('plans'),
+              tooltip: 'رجوع',
               icon: const Icon(Icons.arrow_back),
             ),
             actions: [
