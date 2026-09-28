@@ -73,8 +73,7 @@ class NotificationCenterController extends AsyncNotifier<NotificationsPage> {
   Future<void> markAllRead() async {
     final current = state.valueOrNull;
     if (current == null) return;
-    final updated =
-        current.items.map((n) => n.copyWith(isRead: true)).toList();
+    final updated = current.items.map((n) => n.copyWith(isRead: true)).toList();
     state = AsyncData(_withItems(current, updated, unreadCount: 0));
     try {
       await ref.read(notificationsRepositoryProvider).markAllRead();

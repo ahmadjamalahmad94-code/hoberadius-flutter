@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/ota/ota_banner_card.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -38,6 +39,8 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: AppTokens.s12),
+        // «يوجد تحديث جديد» — visible here even if the pop-up was dismissed.
+        const OtaBannerCard(),
         async.when(
           loading: () => const Padding(
             padding: EdgeInsets.all(AppTokens.s40),

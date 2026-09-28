@@ -3,13 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/ota/ota_banner_card.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../application/notifications_providers.dart';
-import '../domain/notification_model.dart';
+import '../domain/notification_presentation.dart';
+
+final _kindFilterProvider =
+    StateProvider.autoDispose<NotificationKind?>((_) => null);
 
 /// Notification center — the in-app mirror of the web bell/center. Lists the
 /// tenant's notifications with read-state, deep-links to the target, mark-as-
@@ -41,6 +45,9 @@ class NotificationCenterScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: AppTokens.s12),
+        // App updates live here too (they come as a push, not from the
+        // server's notification list).
+        const OtaBannerCard(),
         ActionBar(
           items: [
             ActionItem(
@@ -69,18 +76,51 @@ class NotificationCenterScreen extends ConsumerWidget {
                 subtitle: 'ستظهر هنا تنبيهات الاشتراكات والخدمات والنظام.',
               );
             }
+            final groups = groupNotifications(page.items);
+            final counts = <NotificationKind, int>{};
+            for (final g in groups) {
+              final k = classifyNotification(g.latest);
+              counts[k] = (counts[k] ?? 0) + 1;
+            }
+            final filter = ref.watch(_kindFilterProvider);
+            final shown = filter == null
+                ? groups
+                : groups
+                    .where((g) => classifyNotification(g.latest) == filter)
+                    .toList();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (counts.length > 1) ...[
+                  _KindFilter(
+                    counts: counts,
+                    selected: filter,
+                    onSelect: (k) =>
+                        ref.read(_kindFilterProvider.notifier).state = k,
+                  ),
+                  const SizedBox(height: AppTokens.s12),
+                ],
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: page.items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 6),
-                  itemBuilder: (context, i) => _NotificationTile(
-                    notification: page.items[i],
-                    onTap: () => _open(context, ref, page.items[i]),
-                  ),
+                  itemCount: shown.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) {
+                    final g = shown[i];
+                    final link = g.latest.link.trim();
+                    final canOpen =
+                        link.startsWith('/') && _isKnownAppPath(link);
+                    return _NotificationTile(
+                      group: g,
+                      onRead: () => _markGroupRead(ref, g),
+                      onOpen: canOpen
+                          ? () {
+                              _markGroupRead(ref, g);
+                              context.go(link);
+                            }
+                          : null,
+                    );
+                  },
                 ),
                 if (page.hasMore) ...[
                   const SizedBox(height: AppTokens.s12),
@@ -100,20 +140,10 @@ class NotificationCenterScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _open(
-    BuildContext context,
-    WidgetRef ref,
-    AppNotification n,
-  ) async {
-    if (!n.isRead) {
-      await ref.read(notificationCenterProvider.notifier).markRead(n.id);
-    }
-    if (!context.mounted) return;
-    // Deep-link to the target if it's an in-app path. Unknown links are
-    // ignored (the web center has links the app may not route).
-    final link = n.link.trim();
-    if (link.startsWith('/') && _isKnownAppPath(link)) {
-      context.go(link);
+  Future<void> _markGroupRead(WidgetRef ref, NotificationGroup g) async {
+    final notifier = ref.read(notificationCenterProvider.notifier);
+    for (final id in g.ids) {
+      await notifier.markRead(id);
     }
   }
 }
@@ -150,14 +180,20 @@ bool _isKnownAppPath(String link) {
   return false;
 }
 
-/// Compact notification row: unread dot + tone icon + one-line title with
-/// the time at the far edge + the body folded to two lines (its emoji lines
-/// joined). Tapping opens the target (and marks it read); a notification
-/// without an in-app target expands to show its full body instead.
+/// One notification (or a group of identical ones): a coloured strip and icon
+/// per kind, a kind label, a bold title, one plain headline, then the
+/// «label: value» facts each on its own line — instead of every body line
+/// glued into one run-on string. Tap to expand (list items / extra lines);
+/// «فتح» goes to the target when the app has that page.
 class _NotificationTile extends StatefulWidget {
-  const _NotificationTile({required this.notification, required this.onTap});
-  final AppNotification notification;
-  final VoidCallback onTap;
+  const _NotificationTile({
+    required this.group,
+    required this.onOpen,
+    required this.onRead,
+  });
+  final NotificationGroup group;
+  final VoidCallback? onOpen;
+  final VoidCallback onRead;
 
   @override
   State<_NotificationTile> createState() => _NotificationTileState();
@@ -168,116 +204,263 @@ class _NotificationTileState extends State<_NotificationTile> {
 
   @override
   Widget build(BuildContext context) {
-    final notification = widget.notification;
-    final sev = _severityStyle(notification.severity);
-    final unread = !notification.isRead;
-    final body = notification.body.trim();
-    final folded = body
-        .split(RegExp(r'\s*\n+\s*'))
-        .where((line) => line.trim().isNotEmpty)
-        .join('  ·  ');
+    final g = widget.group;
+    final n = g.latest;
+    final kind = classifyNotification(n);
+    final style = kindStyle(kind);
+    final parsed = parseNotificationBody(n.body, title: n.title);
+    final unread = g.anyUnread;
+    final text = Theme.of(context).textTheme;
+    final facts = _expanded ? parsed.facts : parsed.facts.take(2).toList();
+    final hasMore = parsed.facts.length > 2 ||
+        parsed.bullets.isNotEmpty ||
+        parsed.notes.isNotEmpty;
+
     return Material(
-      color: unread ? AppTokens.brandSoft : AppTokens.card,
-      borderRadius: BorderRadius.circular(AppTokens.r12),
+      color: unread ? Colors.white : const Color(0xFFFBFBFD),
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
-        borderRadius: BorderRadius.circular(AppTokens.r12),
         onTap: () {
-          setState(() => _expanded = !_expanded);
-          widget.onTap();
+          if (unread) widget.onRead();
+          if (hasMore) setState(() => _expanded = !_expanded);
         },
         child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppTokens.s8 + 2,
-            vertical: AppTokens.s8,
-          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppTokens.r12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: unread ? AppTokens.brandLine : AppTokens.border,
+              color: unread
+                  ? style.color.withValues(alpha: 0.35)
+                  : AppTokens.border,
             ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 30,
-                height: 30,
-                decoration: BoxDecoration(
-                  color: sev.$2,
-                  borderRadius: BorderRadius.circular(AppTokens.r8),
-                ),
-                alignment: Alignment.center,
-                child: Icon(sev.$1, size: 17, color: sev.$3),
-              ),
-              const SizedBox(width: AppTokens.s8 + 2),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Kind colour strip (start side).
+                Container(width: 5, color: style.color),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        if (unread)
+                        Row(
+                          children: [
+                            Container(
+                              width: 34,
+                              height: 34,
+                              decoration: BoxDecoration(
+                                color: style.soft,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                style.icon,
+                                size: 19,
+                                color: style.color,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      _Pill(
+                                        label: style.label,
+                                        fg: style.color,
+                                        bg: style.soft,
+                                      ),
+                                      if (g.count > 1) ...[
+                                        const SizedBox(width: 6),
+                                        _Pill(
+                                          label: 'تكرّر ${g.count} مرات',
+                                          fg: AppTokens.textSecondary,
+                                          bg: const Color(0xFFF1F5F9),
+                                        ),
+                                      ],
+                                      const Spacer(),
+                                      Text(
+                                        notificationTimeAgo(n.createdAt),
+                                        style: text.labelSmall?.copyWith(
+                                          color: AppTokens.textMuted,
+                                        ),
+                                      ),
+                                      if (unread) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          width: 8,
+                                          height: 8,
+                                          decoration: BoxDecoration(
+                                            color: style.color,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    n.title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: text.titleSmall?.copyWith(
+                                      fontWeight: unread
+                                          ? FontWeight.w800
+                                          : FontWeight.w700,
+                                      color: AppTokens.sidebarBg,
+                                      height: 1.25,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (parsed.headline.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            parsed.headline,
+                            maxLines: _expanded ? null : 2,
+                            overflow: _expanded ? null : TextOverflow.ellipsis,
+                            style: text.bodyMedium?.copyWith(
+                              color: AppTokens.textSecondary,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                        if (facts.isNotEmpty) ...[
+                          const SizedBox(height: 8),
                           Container(
-                            width: 7,
-                            height: 7,
-                            margin: const EdgeInsetsDirectional.only(
-                              end: 6,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
                             ),
-                            decoration: const BoxDecoration(
-                              color: AppTokens.brand,
-                              shape: BoxShape.circle,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              children: [
+                                for (final (label, value) in facts)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 2,
+                                    ),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        SizedBox(
+                                          width: 92,
+                                          child: Text(
+                                            label,
+                                            style: text.bodySmall?.copyWith(
+                                              color: AppTokens.textMuted,
+                                            ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          child: Text(
+                                            value,
+                                            style: text.bodySmall?.copyWith(
+                                              color: AppTokens.sidebarBg,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                             ),
                           ),
-                        Expanded(
-                          child: Text(
-                            notification.title.isEmpty
-                                ? '(بدون عنوان)'
-                                : notification.title,
-                            maxLines: _expanded ? 3 : 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontWeight:
-                                  unread ? FontWeight.w900 : FontWeight.w700,
-                              color: AppTokens.sidebarBg,
-                              fontSize: 13.5,
+                        ],
+                        if (_expanded && parsed.bullets.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          for (final b in parsed.bullets)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 3),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 7),
+                                    child: Container(
+                                      width: 5,
+                                      height: 5,
+                                      decoration: BoxDecoration(
+                                        color: style.color,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      b,
+                                      style: text.bodySmall?.copyWith(
+                                        color: AppTokens.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(width: AppTokens.s8),
-                        Text(
-                          notificationTimeAgo(notification.createdAt),
-                          style: const TextStyle(
-                            color: AppTokens.textMuted,
-                            fontSize: 11,
-                          ),
-                        ),
-                        if (notification.hasLink) ...[
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.open_in_new,
-                            size: 12,
-                            color: AppTokens.textMuted,
+                        ],
+                        if (_expanded)
+                          for (final line in parsed.notes)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                line,
+                                style: text.bodySmall?.copyWith(
+                                  color: AppTokens.textSecondary,
+                                ),
+                              ),
+                            ),
+                        if (hasMore || widget.onOpen != null) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              if (hasMore)
+                                Text(
+                                  _expanded ? 'عرض أقل' : 'التفاصيل',
+                                  style: text.labelMedium?.copyWith(
+                                    color: style.color,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              if (hasMore)
+                                Icon(
+                                  _expanded
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  size: 18,
+                                  color: style.color,
+                                ),
+                              const Spacer(),
+                              if (widget.onOpen != null)
+                                TextButton.icon(
+                                  onPressed: widget.onOpen,
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    foregroundColor: style.color,
+                                  ),
+                                  icon: const Icon(Icons.open_in_new, size: 16),
+                                  label: const Text('فتح'),
+                                ),
+                            ],
                           ),
                         ],
                       ],
                     ),
-                    if (body.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        _expanded ? body : folded,
-                        maxLines: _expanded ? null : 2,
-                        overflow: _expanded ? null : TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: AppTokens.textSecondary,
-                          fontSize: 12.5,
-                          height: 1.35,
-                        ),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -285,25 +468,94 @@ class _NotificationTileState extends State<_NotificationTile> {
   }
 }
 
-/// (icon, bg, fg) per severity.
-(IconData, Color, Color) _severityStyle(String severity) {
-  switch (severity.trim().toLowerCase()) {
-    case 'critical':
-      return (Icons.error_outline, AppTokens.redSoft, AppTokens.redInk);
-    case 'warning':
-      return (
-        Icons.warning_amber_outlined,
-        const Color(0xFFFEF3C7),
-        const Color(0xFF92670B)
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label, required this.fg, required this.bg});
+  final String label;
+  final Color fg;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: fg,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       );
-    case 'success':
-      return (
-        Icons.check_circle_outline,
-        AppTokens.greenSoft,
-        AppTokens.greenInk
+}
+
+/// Kind filter chips with counts; «الكل» first.
+class _KindFilter extends StatelessWidget {
+  const _KindFilter({
+    required this.counts,
+    required this.selected,
+    required this.onSelect,
+  });
+  final Map<NotificationKind, int> counts;
+  final NotificationKind? selected;
+  final ValueChanged<NotificationKind?> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = counts.values.fold<int>(0, (a, b) => a + b);
+    Widget chip(String label, int n, Color color, bool on, VoidCallback tap) {
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(end: 8),
+        child: Material(
+          color: on ? color : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(999),
+            side: BorderSide(color: on ? color : AppTokens.borderStrong),
+          ),
+          child: InkWell(
+            customBorder: const StadiumBorder(),
+            onTap: tap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              child: Text(
+                '$label  $n',
+                style: TextStyle(
+                  color: on ? Colors.white : AppTokens.textSecondary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ),
+        ),
       );
-    default:
-      return (Icons.info_outline, AppTokens.brandSoft2, AppTokens.brandInk);
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          chip(
+            'الكل',
+            total,
+            AppTokens.brand,
+            selected == null,
+            () => onSelect(null),
+          ),
+          for (final e in counts.entries)
+            chip(
+              kindStyle(e.key).label,
+              e.value,
+              kindStyle(e.key).color,
+              selected == e.key,
+              () => onSelect(e.key),
+            ),
+        ],
+      ),
+    );
   }
 }
 

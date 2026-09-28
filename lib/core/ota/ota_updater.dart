@@ -132,6 +132,14 @@ class OtaController extends StateNotifier<OtaState> {
     }
   }
 
+  /// Open the update pop-up again (from the dashboard / notifications bar
+  /// after «لاحقًا»).
+  void reopen() {
+    // Two emissions so the host's listener fires even if not snoozed.
+    state = state.copyWith(snoozed: true);
+    state = state.copyWith(snoozed: false);
+  }
+
   /// «لاحقًا» / close: hide the dialog; the patch (if downloaded) still
   /// applies on the next cold start.
   void later() => state = state.copyWith(snoozed: true);
