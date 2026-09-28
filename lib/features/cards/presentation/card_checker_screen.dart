@@ -39,11 +39,12 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
     Future<dynamic> Function(CardsRepository repo) call, {
     required String success,
   }) async {
-    final outcome =
-        await ref.read(cardCheckerControllerProvider.notifier).runAction(
-              (repo) async => await call(repo) as dynamic,
-              success: success,
-            );
+    final outcome = await ref
+        .read(cardCheckerControllerProvider.notifier)
+        .runAction(
+          (repo) async => await call(repo) as dynamic,
+          success: success,
+        );
     if (!mounted) return;
     final message = outcome.error ?? outcome.success;
     if (message != null) {
@@ -66,8 +67,9 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
           actions: [
             IconButton(
               tooltip: 'تحديث',
-              onPressed:
-                  state.loading || _query.text.trim().isEmpty ? null : _search,
+              onPressed: state.loading || _query.text.trim().isEmpty
+                  ? null
+                  : _search,
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],

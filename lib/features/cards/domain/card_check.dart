@@ -86,8 +86,9 @@ class CardCheckResult {
       startedAt: cardParseDate(json['started_at']),
       expiresAt: cardParseDate(json['expires_at']),
       remainingSeconds: cardParseInt(json['remaining_seconds']),
-      batch:
-          batch is Map<String, dynamic> ? CardCheckBatch.fromJson(batch) : null,
+      batch: batch is Map<String, dynamic>
+          ? CardCheckBatch.fromJson(batch)
+          : null,
       profile: profile is Map<String, dynamic>
           ? CardCheckProfile.fromJson(profile)
           : null,

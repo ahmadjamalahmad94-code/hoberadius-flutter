@@ -185,7 +185,8 @@ class CardBatch {
         randomGenerationEnabled: j.containsKey('random_generation_enabled')
             ? cardParseBool(j['random_generation_enabled'])
             : true,
-        startsWithOrEndsWith: (j['starts_with_or_ends_with'] ?? '').toString(),
+        startsWithOrEndsWith:
+            (j['starts_with_or_ends_with'] ?? '').toString(),
         prefixOrSuffixValue: (j['prefix_or_suffix_value'] ?? '').toString(),
         timeValue: cardParseInt(j['time_value']) ?? 0,
         timeUnit: (j['time_unit'] ?? 'days').toString(),
@@ -248,3 +249,4 @@ class CardBatch {
         retentionExpiresAt: cardParseDate(j['retention_expires_at']),
       );
 }
+

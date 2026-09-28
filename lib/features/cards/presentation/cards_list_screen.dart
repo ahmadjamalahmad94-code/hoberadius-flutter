@@ -155,11 +155,13 @@ class CardsListScreen extends ConsumerWidget {
       );
       if (confirm != true) return;
     }
-    final result = await ref.read(cardsListControllerProvider).runBulk(action);
+    final result =
+        await ref.read(cardsListControllerProvider).runBulk(action);
     if (!context.mounted) return;
     final text = result.error ?? result.message;
     if (text != null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(text)));
     }
   }
 }

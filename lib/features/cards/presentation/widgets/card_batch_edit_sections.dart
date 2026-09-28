@@ -105,10 +105,9 @@ class CardBatchMoneySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget num(TextEditingController c, String label) => FormFieldRow(
-          label: label,
-          child:
-              TextFormField(controller: c, keyboardType: TextInputType.number),
-        );
+      label: label,
+      child: TextFormField(controller: c, keyboardType: TextInputType.number),
+    );
     return CollapsibleSection(
       storageKey: 'batch.edit.money',
       icon: Icons.sell_outlined,

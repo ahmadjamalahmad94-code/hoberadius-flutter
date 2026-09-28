@@ -68,14 +68,16 @@ class CardCheckerOperations extends StatelessWidget {
           ActionItem(
             icon: Icons.restart_alt,
             label: 'تصفير الاستخدام',
-            onPressed:
-                enabled && card.operations.canResetUsage ? onResetUsage : null,
+            onPressed: enabled && card.operations.canResetUsage
+                ? onResetUsage
+                : null,
           ),
           ActionItem(
             icon: Icons.power_settings_new,
             label: 'طرد الجلسة',
-            onPressed:
-                enabled && card.operations.canDisconnect ? onDisconnect : null,
+            onPressed: enabled && card.operations.canDisconnect
+                ? onDisconnect
+                : null,
           ),
           ActionItem(
             icon: Icons.delete_forever,
