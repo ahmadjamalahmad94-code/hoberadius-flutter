@@ -10,10 +10,13 @@
 library;
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Matches the web `_DEFAULTS["billing.currency"]` fallback used by
-/// `default_currency()` when the setting is unreadable.
-const String kDefaultCurrency = 'JOD';
+/// Matches the server's `default_currency()` fallback (`ILS` when the
+/// tenant never set `billing.currency`). It was `JOD`, which is what the
+/// loading/blank state showed on ILS tenants. The effective code normally
+/// comes from the server (`system.currency` of /api/admin/me or settings).
+const String kDefaultCurrency = 'ILS';
 
 /// The settings key that holds the tenant currency (web `billing.currency`).
 const String kCurrencySettingKey = 'billing.currency';
@@ -85,3 +88,43 @@ String _group(String fixed) {
   final dec = parts.length > 1 ? '.${parts[1]}' : '';
   return '${neg ? '-' : ''}$b$dec';
 }
+
+/// One currency's share of a report total (`by_currency[]`, updated
+/// servers). There is no FX rate: a mixed-currency tenant gets one number
+/// per currency instead of a meaningless sum.
+class CurrencyAmount {
+  const CurrencyAmount(this.currency, this.amount);
+  final String currency;
+  final double amount;
+}
+
+/// Reads `by_currency` rows, taking the first present of [fields].
+List<CurrencyAmount> parseByCurrency(
+  Object? raw, {
+  List<String> fields = const ['total', 'total_amount', 'outstanding'],
+}) {
+  if (raw is! List) return const [];
+  final out = <CurrencyAmount>[];
+  for (final row in raw.whereType<Map>()) {
+    Object? v;
+    for (final f in fields) {
+      if (row[f] != null) {
+        v = row[f];
+        break;
+      }
+    }
+    final n = v is num ? v.toDouble() : double.tryParse('${v ?? ''}');
+    if (n == null) continue;
+    out.add(CurrencyAmount('${row['currency'] ?? ''}'.toUpperCase(), n));
+  }
+  return out;
+}
+
+/// «1,200 ILS · 30 USD» for a mixed-currency total.
+String formatByCurrency(List<CurrencyAmount> parts) =>
+    parts.map((p) => formatWithCurrency(p.amount, p.currency)).join(' · ');
+
+/// `system.currency` from /api/admin/me (or the login answer), written by
+/// the auth controller at session restore — available before the settings
+/// page loads. Empty on older servers / signed out.
+final sessionCurrencyProvider = StateProvider<String>((ref) => '');

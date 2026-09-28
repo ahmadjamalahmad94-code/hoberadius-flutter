@@ -8,11 +8,11 @@ import 'package:hoberadius_app/features/admin_control/domain/admin_control_model
 
 void main() {
   group('normalizeCurrency', () {
-    test('blank/null falls back to JOD (matches default_currency())', () {
-      expect(normalizeCurrency(null), 'JOD');
-      expect(normalizeCurrency(''), 'JOD');
-      expect(normalizeCurrency('   '), 'JOD');
-      expect(kDefaultCurrency, 'JOD');
+    test('blank/null falls back to ILS (matches default_currency())', () {
+      expect(normalizeCurrency(null), 'ILS');
+      expect(normalizeCurrency(''), 'ILS');
+      expect(normalizeCurrency('   '), 'ILS');
+      expect(kDefaultCurrency, 'ILS');
     });
 
     test('upper-cases and trims like the server', () {
@@ -25,15 +25,16 @@ void main() {
     SettingsSnapshot snapshotWith(Map<String, String> settings) =>
         SettingsSnapshot(items: const [], settings: settings);
 
-    test('falls back to JOD while settings are loading', () {
+    test('falls back to ILS while settings are loading', () {
       final container = ProviderContainer(
         overrides: [
           // Never-completing future keeps the provider in loading state.
-          settingsProvider.overrideWith((ref) => Completer<SettingsSnapshot>().future),
+          settingsProvider
+              .overrideWith((ref) => Completer<SettingsSnapshot>().future),
         ],
       );
       addTearDown(container.dispose);
-      expect(container.read(tenantCurrencyProvider), 'JOD');
+      expect(container.read(tenantCurrencyProvider), 'ILS');
     });
 
     test('reads billing.currency from settings (normalised)', () async {
@@ -75,7 +76,7 @@ void main() {
       expect(egp.read(tenantCurrencyProvider), 'EGP');
     });
 
-    test('absent billing.currency key resolves to JOD', () async {
+    test('absent billing.currency key resolves to ILS', () async {
       final container = ProviderContainer(
         overrides: [
           settingsProvider.overrideWith(
@@ -85,7 +86,7 @@ void main() {
       );
       addTearDown(container.dispose);
       await container.read(settingsProvider.future);
-      expect(container.read(tenantCurrencyProvider), 'JOD');
+      expect(container.read(tenantCurrencyProvider), 'ILS');
     });
   });
 }

@@ -4,6 +4,7 @@ import '../../features/notifications/push/push_service.dart';
 import '../api/api_client.dart';
 import '../api/api_endpoint_storage.dart';
 import '../api/api_exception.dart';
+import '../format/currency.dart';
 import 'security_key_storage.dart';
 import 'token_storage.dart';
 
@@ -43,7 +44,12 @@ class AuthState {
     this.serverBaseUrl,
     this.loading = false,
     this.error,
+    this.systemCurrency = '',
   });
+
+  /// `data.system.currency` of /api/admin/me or the login answer — the
+  /// tenant's effective currency (empty on older servers).
+  final String systemCurrency;
 
   final String? token;
   final AuthAdmin? admin;
@@ -65,6 +71,7 @@ class AuthState {
     String? error,
     bool clear = false,
     bool clearError = false,
+    String? systemCurrency,
   }) =>
       clear
           ? const AuthState()
@@ -76,7 +83,15 @@ class AuthState {
               serverBaseUrl: serverBaseUrl ?? this.serverBaseUrl,
               loading: loading ?? this.loading,
               error: clearError ? null : (error ?? this.error),
+              systemCurrency: systemCurrency ?? this.systemCurrency,
             );
+}
+
+/// `system.currency` of an /api/admin/me or login payload ('' if absent).
+String systemCurrencyOf(Map<String, dynamic> data) {
+  final system = data['system'];
+  if (system is! Map) return '';
+  return '${system['currency'] ?? ''}'.trim().toUpperCase();
 }
 
 class AuthController extends StateNotifier<AuthState> {
@@ -107,6 +122,12 @@ class AuthController extends StateNotifier<AuthState> {
 
   final Ref _ref;
 
+  void _publishCurrency(String code) {
+    try {
+      _ref.read(sessionCurrencyProvider.notifier).state = code;
+    } catch (_) {/* container disposed */}
+  }
+
   Future<void> _restore() async {
     final stored = await _ref.read(tokenStorageProvider).read();
     final serverBaseUrl =
@@ -133,7 +154,9 @@ class AuthController extends StateNotifier<AuthState> {
             .map((e) => e.toString())
             .toList(),
         serverBaseUrl: serverBaseUrl,
+        systemCurrency: systemCurrencyOf(d),
       );
+      _publishCurrency(state.systemCurrency);
     } on ApiException {
       await _ref.read(tokenStorageProvider).clear();
       state = AuthState(serverBaseUrl: serverBaseUrl);
@@ -190,7 +213,9 @@ class AuthController extends StateNotifier<AuthState> {
             .map((e) => e.toString())
             .toList(),
         serverBaseUrl: baseUrl,
+        systemCurrency: systemCurrencyOf(d),
       );
+      _publishCurrency(state.systemCurrency);
     } on ApiException catch (e) {
       state = AuthState(serverBaseUrl: baseUrl, error: e.message);
     } catch (_) {

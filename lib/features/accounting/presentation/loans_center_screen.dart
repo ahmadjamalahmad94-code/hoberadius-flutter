@@ -319,7 +319,15 @@ class _LoansSummary extends StatelessWidget {
           totals?.openCount ?? open.length,
           tone: PillTone.amber,
         ),
-        CountItem.text('الدين المفتوح', _money(debt), tone: PillTone.red),
+        CountItem.text(
+          'الدين المفتوح',
+          // mixed currencies: one number per currency, never a sum
+          (totals?.mixedCurrency ?? false) &&
+                  totals!.outstandingByCurrency.isNotEmpty
+              ? formatByCurrency(totals!.outstandingByCurrency)
+              : _money(debt),
+          tone: PillTone.red,
+        ),
         CountItem.text(
           'مدة مفتوحة',
           _shortDuration(minutes),

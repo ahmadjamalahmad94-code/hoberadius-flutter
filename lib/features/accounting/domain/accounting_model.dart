@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 class PaymentTransaction {
@@ -127,6 +128,8 @@ class LoanTotals {
     this.openCount = 0,
     this.totalAmount = 0,
     this.outstanding = 0,
+    this.outstandingByCurrency = const [],
+    this.mixedCurrency = false,
   });
 
   final int count;
@@ -134,11 +137,20 @@ class LoanTotals {
   final num totalAmount;
   final num outstanding;
 
+  /// `by_currency[].outstanding` — one number per currency (no FX rate).
+  final List<CurrencyAmount> outstandingByCurrency;
+  final bool mixedCurrency;
+
   factory LoanTotals.fromJson(Map<String, dynamic> j) => LoanTotals(
         count: _int(j['count']) ?? 0,
         openCount: _int(j['open_count']) ?? 0,
         totalAmount: _num(j['total_amount']) ?? 0,
         outstanding: _num(j['outstanding']) ?? 0,
+        outstandingByCurrency: parseByCurrency(
+          j['by_currency'],
+          fields: const ['outstanding'],
+        ),
+        mixedCurrency: j['mixed_currency'] == true,
       );
 }
 

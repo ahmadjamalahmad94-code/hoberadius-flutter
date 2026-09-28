@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 class RevenuePage {
@@ -5,7 +6,13 @@ class RevenuePage {
     required this.items,
     required this.count,
     this.serverCollected,
+    this.collectedByCurrency = const [],
+    this.mixedCurrency = false,
   });
+
+  /// `totals.by_currency` (updated servers): payments per currency.
+  final List<CurrencyAmount> collectedByCurrency;
+  final bool mixedCurrency;
 
   final List<RevenueRecord> items;
   final int count;
@@ -20,6 +27,9 @@ class RevenuePage {
     final totals = data['totals'];
     final collected = totals is Map ? totals['collected'] : null;
     return RevenuePage(
+      collectedByCurrency:
+          totals is Map ? parseByCurrency(totals['by_currency']) : const [],
+      mixedCurrency: totals is Map && totals['mixed_currency'] == true,
       serverCollected: collected is num
           ? collected.toDouble()
           : double.tryParse('${collected ?? ''}'),

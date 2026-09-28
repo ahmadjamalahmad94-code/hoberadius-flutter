@@ -22,14 +22,30 @@ class SettingItem {
 }
 
 class SettingsSnapshot {
-  const SettingsSnapshot({required this.items, required this.settings});
+  const SettingsSnapshot({
+    required this.items,
+    required this.settings,
+    this.systemCurrency = '',
+    this.currencySymbol = '',
+    this.currencyName = '',
+  });
 
   final List<SettingItem> items;
   final Map<String, String> settings;
 
+  /// `system.currency` — the EFFECTIVE tenant currency (updated servers);
+  /// empty on older servers (then `billing.currency` is used).
+  final String systemCurrency;
+  final String currencySymbol;
+  final String currencyName;
+
   factory SettingsSnapshot.fromJson(Map<String, dynamic> json) {
     final raw = json['items'];
+    final system = _map(json['system']);
     return SettingsSnapshot(
+      systemCurrency: _string(system['currency']).trim().toUpperCase(),
+      currencySymbol: _string(system['currency_symbol']),
+      currencyName: _string(system['currency_name']),
       items: raw is List
           ? raw
               .whereType<Map>()

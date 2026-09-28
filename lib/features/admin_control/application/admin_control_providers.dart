@@ -12,10 +12,16 @@ final settingsProvider = FutureProvider.autoDispose<SettingsSnapshot>((ref) {
 /// `billing.currency`). Resolves to [kDefaultCurrency] while settings load or
 /// if the key is absent, so money always renders with a sensible code.
 final tenantCurrencyProvider = Provider.autoDispose<String>((ref) {
+  // 1) /api/admin/me `system.currency` (known right after session restore)
+  final fromSession = ref.watch(sessionCurrencyProvider);
   final async = ref.watch(settingsProvider);
   return async.maybeWhen(
-    data: (snapshot) =>
-        normalizeCurrency(snapshot.settings[kCurrencySettingKey]),
-    orElse: () => kDefaultCurrency,
+    // 2) settings `system.currency`, 3) settings `billing.currency`
+    data: (snapshot) => snapshot.systemCurrency.isNotEmpty
+        ? snapshot.systemCurrency
+        : (fromSession.isNotEmpty
+            ? fromSession
+            : normalizeCurrency(snapshot.settings[kCurrencySettingKey])),
+    orElse: () => fromSession.isNotEmpty ? fromSession : kDefaultCurrency,
   );
 });

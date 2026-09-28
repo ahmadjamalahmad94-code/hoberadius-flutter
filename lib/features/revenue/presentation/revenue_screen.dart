@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/format/currency.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -98,9 +99,16 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
                   )
                 else ...[
                   _RevenueStatsGrid(
-                    summary: RevenueSummary.fromItems(filtered),
+                    // Unfiltered: the server's totals of ALL payments (not
+                    // only the loaded rows), split per currency if mixed.
+                    summary: _sourceType.isEmpty
+                        ? page.summary
+                        : RevenueSummary.fromItems(filtered),
                     visibleCount: filtered.length,
                     totalCount: page.count,
+                    byCurrency: _sourceType.isEmpty && page.mixedCurrency
+                        ? page.collectedByCurrency
+                        : const [],
                   ),
                   const SizedBox(height: AppTokens.s12),
                   LayoutBuilder(
@@ -201,9 +209,13 @@ class _RevenueStatsGrid extends StatelessWidget {
     required this.summary,
     required this.visibleCount,
     required this.totalCount,
+    this.byCurrency = const [],
   });
 
   final RevenueSummary summary;
+
+  /// Non-empty when the tenant mixes currencies (shown instead of a sum).
+  final List<CurrencyAmount> byCurrency;
   final int visibleCount;
   final int totalCount;
 
@@ -216,7 +228,9 @@ class _RevenueStatsGrid extends StatelessWidget {
           items: [
             CountItem.text(
               'إجمالي المحصل',
-              _money(summary.totalCollected),
+              byCurrency.length > 1
+                  ? formatByCurrency(byCurrency)
+                  : _money(summary.totalCollected),
               tone: PillTone.green,
             ),
             CountItem.text(
