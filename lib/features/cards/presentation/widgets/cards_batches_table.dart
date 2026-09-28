@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/format/currency.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/hub_layout.dart';
@@ -152,7 +153,10 @@ class _BatchCard extends StatelessWidget {
               const SizedBox(width: AppTokens.s8),
               _MetaChip(
                 icon: Icons.payments_outlined,
-                text: formatMoney(batch.estimatedValue),
+                text: formatMoney(
+                  batch.estimatedValue,
+                  TenantCurrencyScope.of(context),
+                ),
               ),
             ],
           ),

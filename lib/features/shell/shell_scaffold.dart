@@ -4,12 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/format/currency.dart';
 import '../../core/ota/ota_dialogs.dart';
 import '../../core/router/app_page_transitions.dart';
 import '../../core/router/nav_history.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/hub_toast.dart';
 import '../../shared/widgets/responsive_layout.dart';
+import '../admin_control/application/admin_control_providers.dart';
 import '../notifications/presentation/notification_bell.dart';
 import '../notifications/push/desktop_notifier.dart';
 import '../notifications/push/desktop_toast_bridge.dart';
@@ -692,7 +694,13 @@ class _ContentAreaState extends State<_ContentArea> {
                   constraints: const BoxConstraints(
                     maxWidth: AppTokens.contentMaxWidth,
                   ),
-                  child: ShellContentScope(child: widget.child),
+                  child: Consumer(
+                    builder: (context, ref, child) => TenantCurrencyScope(
+                      code: ref.watch(tenantCurrencyProvider),
+                      child: child!,
+                    ),
+                    child: ShellContentScope(child: widget.child),
+                  ),
                 ),
               ),
             ),

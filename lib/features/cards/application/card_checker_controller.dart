@@ -27,9 +27,8 @@ class CardCheckerState {
         loading: loading ?? this.loading,
         actionLoading: actionLoading ?? this.actionLoading,
         error: identical(error, _none) ? this.error : error as String?,
-        result: identical(result, _none)
-            ? this.result
-            : result as CardCheckResult?,
+        result:
+            identical(result, _none) ? this.result : result as CardCheckResult?,
       );
 
   static const _none = Object();
@@ -58,8 +57,7 @@ class CardCheckerController extends Notifier<CardCheckerState> {
     }
     state = state.copyWith(loading: true, error: null);
     try {
-      final card =
-          await ref.read(cardsRepositoryProvider).checkCard(trimmed);
+      final card = await ref.read(cardsRepositoryProvider).checkCard(trimmed);
       state = state.copyWith(result: card);
       return null;
     } catch (e) {

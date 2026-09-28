@@ -126,9 +126,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
       _error = null;
     });
     try {
-      final updated = await ref
-          .read(cardsRepositoryProvider)
-          .updateBatch(
+      final updated = await ref.read(cardsRepositoryProvider).updateBatch(
             widget.batchId,
             UpdateBatchRequest(
               planId: int.parse(_plan.text.trim()),
@@ -151,8 +149,8 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
               prefixOrSuffixValue: _affixMode == 'suffix'
                   ? _suffix.text.trim()
                   : _affixMode == 'prefix'
-                  ? _prefix.text.trim()
-                  : '',
+                      ? _prefix.text.trim()
+                      : '',
               timeValue: int.tryParse(_timeVal.text.trim()) ?? 0,
               timeUnit: _timeUnit,
               deviceCount: int.tryParse(_devices.text.trim()) ?? 1,

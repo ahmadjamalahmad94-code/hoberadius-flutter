@@ -1,5 +1,6 @@
 // ignore_for_file: require_trailing_commas, deprecated_member_use
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
@@ -7,6 +8,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/core/api/idempotency.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/theme/app_palette.dart';
@@ -51,6 +53,12 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   String? _error;
   GenerateResult? _result;
 
+  /// One Idempotency-Key per «توليد» submission; the same request sent again
+  /// (retry after «الخادم مشغول» / a lost answer) returns the same batch.
+  final _idem = IdempotencyKeeper();
+
+  bool get _noPassword => _passwordType == 'none';
+
   @override
   void dispose() {
     for (final c in [
@@ -72,18 +80,49 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     super.dispose();
   }
 
+  Future<bool> _confirmLargeBatch(int count) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('توليد عدد كبير من الكروت؟'),
+        content: Text(
+          'سيتم توليد $count بطاقة في دفعة واحدة. قد يستغرق ذلك وقتًا '
+          'ويضغط الخادم. هل أنت متأكد؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('نعم، ولّد'),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
   Future<void> _submit() async {
+    if (_loading) return;
     if (!_formKey.currentState!.validate()) return;
+    final count = int.parse(_count.text.trim());
+    if (count > kConfirmCardsAbove && !await _confirmLargeBatch(count)) return;
+    if (!mounted) return;
+    final affix = normalizeCardAffix(_prefix.text);
     final req = GenerateBatchRequest(
       planId: int.parse(_plan.text.trim()),
-      count: int.parse(_count.text.trim()),
+      count: count,
       packageName: _packageName.text.trim(),
-      usernamePrefix: _prefix.text.trim(),
+      usernamePrefix: affix,
       startsWithOrEndsWith: _affixMode == 'none' ? '' : _affixMode,
-      prefixOrSuffixValue: _affixMode == 'none' ? '' : _prefix.text.trim(),
+      prefixOrSuffixValue: _affixMode == 'none' ? '' : affix,
       usernameLength: int.tryParse(_ulen.text) ?? 8,
       passwordLength: int.tryParse(_plen.text) ?? 6,
-      passwordGenerationType: _passwordType,
+      passwordGenerationType: _noPassword ? 'digits' : _passwordType,
+      loginWithoutPassword: _noPassword,
       timeValue: int.tryParse(_timeVal.text) ?? 0,
       timeUnit: _timeUnit,
       deviceCount: _devices,
@@ -99,11 +138,18 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       _result = null;
     });
     try {
-      final r = await ref.read(cardsRepositoryProvider).generate(req);
+      final r = await ref.read(cardsRepositoryProvider).generate(
+            req,
+            idempotencyKey: _idem.keyFor('cards/generate', req.toBody()),
+          );
+      _idem.reset();
+      if (!mounted) return;
       setState(() => _result = r);
       ref.invalidate(batchesListProvider);
     } catch (e) {
-      setState(() => _error = visibleErrorMessage(e));
+      // 422 (cap / too few digit combinations: the server names the max),
+      // 503 busy (retry keeps the same key) — the server's Arabic text.
+      if (mounted) setState(() => _error = visibleErrorWithRetryHint(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -118,7 +164,8 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
         [c.username, c.password, c.expireAt?.toIso8601String() ?? ''],
     ];
     final csv = const ListToCsvConverter().convert(rows);
-    final bytes = Uint8List.fromList(csv.codeUnits);
+    // UTF-8 with BOM (codeUnits truncated every non-Latin character).
+    final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(csv)]);
     await FileSaver.instance.saveFile(
       name: 'cards_${r.batch.batchCode}',
       bytes: bytes,
@@ -188,17 +235,12 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   second: FormFieldRow(
                     label: 'العدد',
                     required: true,
-                    hint: '1 فأكثر',
+                    hint: '1 – $kMaxCardsPerBatch',
                     child: TextFormField(
                       controller: _count,
                       keyboardType: TextInputType.number,
-                      validator: (v) {
-                        final n = int.tryParse(v?.trim() ?? '');
-                        if (n == null || n < 1) {
-                          return 'أدخل عددًا صحيحًا (1 فأكثر)';
-                        }
-                        return null;
-                      },
+                      validator: (v) =>
+                          validateCardCount(int.tryParse(v?.trim() ?? '')),
                     ),
                   ),
                 ),
@@ -247,6 +289,9 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                     child: TextFormField(
                       controller: _prefix,
                       decoration: const InputDecoration(hintText: 'مثال: qa-'),
+                      validator: (v) => _affixMode == 'none'
+                          ? null
+                          : validateCardAffix(v ?? ''),
                     ),
                   ),
                 ),
@@ -260,13 +305,22 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
             icon: Icons.password,
             title: 'إعدادات كلمة المرور',
             child: FormFieldPair(
-              first: _num(_plen, 'الطول'),
+              first: _noPassword
+                  ? const FormFieldRow(
+                      label: 'الطول',
+                      child: Text('—'),
+                    )
+                  : _num(_plen, 'الطول'),
               second: FormFieldRow(
                 label: 'مستوى التعقيد',
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
                   value: _passwordType,
                   items: const [
+                    DropdownMenuItem(
+                      value: 'none',
+                      child: Text('بدون كلمة مرور (رقم فقط)'),
+                    ),
                     DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),
                     DropdownMenuItem(value: 'weak', child: Text('ضعيف')),
                     DropdownMenuItem(value: 'medium', child: Text('متوسط')),

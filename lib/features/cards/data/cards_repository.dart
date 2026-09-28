@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/idempotency.dart';
 import '../domain/card_model.dart';
 
 class GenerateResult {
@@ -16,8 +17,17 @@ class CardsRepository {
   CardsRepository(this._api);
   final ApiClient _api;
 
-  Future<GenerateResult> generate(GenerateBatchRequest req) async {
-    final res = await _api.post('/api/v1/cards/generate', body: req.toBody());
+  /// [idempotencyKey]: one per «توليد» submission (reused on retry): the
+  /// server returns the same batch instead of generating it twice.
+  Future<GenerateResult> generate(
+    GenerateBatchRequest req, {
+    String? idempotencyKey,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/cards/generate',
+      body: req.toBody(),
+      headers: idempotencyHeaders(idempotencyKey),
+    );
     final d = (res['data'] ?? res) as Map<String, dynamic>;
     final batchJson = d['batch'] as Map<String, dynamic>? ?? {};
     final cardsJson = (d['cards'] as List?) ?? const [];
@@ -186,6 +196,40 @@ class CardsRepository {
         .whereType<Map<String, dynamic>>()
         .map(CardItem.fromJson)
         .toList();
+  }
+
+  /// EVERY card of a batch (the list endpoint caps a page): pages of
+  /// [pageSize] until a short page; a page that brings nothing new ends it
+  /// (servers that ignore offset). The «تصدير ملف» used to write 500 of
+  /// 1,000,000 cards.
+  Future<List<CardItem>> allCardsOfBatch(
+    int batchId, {
+    bool? used,
+    bool? revoked,
+    int pageSize = 2000,
+    int maxPages = 200,
+  }) async {
+    final out = <CardItem>[];
+    final seen = <String>{};
+    for (var page = 0; page < maxPages; page++) {
+      final chunk = await cardsOfBatch(
+        batchId,
+        used: used,
+        revoked: revoked,
+        limit: pageSize,
+        offset: page * pageSize,
+      );
+      var added = 0;
+      for (final c in chunk) {
+        final key = c.id != null ? 'id:${c.id}' : 'u:${c.username}';
+        if (seen.add(key)) {
+          out.add(c);
+          added++;
+        }
+      }
+      if (chunk.length < pageSize || added == 0) break;
+    }
+    return out;
   }
 
   Future<RechargeBatchesPage> listRechargeBatches({

@@ -9,6 +9,8 @@
 /// reach Riverpod.
 library;
 
+import 'package:flutter/widgets.dart';
+
 /// Matches the web `_DEFAULTS["billing.currency"]` fallback used by
 /// `default_currency()` when the setting is unreadable.
 const String kDefaultCurrency = 'JOD';
@@ -35,4 +37,49 @@ String normalizeCurrency(String? value) {
   final trimmed = value?.trim() ?? '';
   if (trimmed.isEmpty) return kDefaultCurrency;
   return trimmed.toUpperCase();
+}
+
+/// The tenant currency for widgets that are not Riverpod consumers (cards
+/// totals, recharge cards…). The shell provides it from
+/// `tenantCurrencyProvider`; outside the shell (tests) it is empty. Replaces
+/// the «₪» that was hardcoded whatever the tenant's currency.
+class TenantCurrencyScope extends InheritedWidget {
+  const TenantCurrencyScope({
+    super.key,
+    required this.code,
+    required super.child,
+  });
+
+  final String code;
+
+  static String of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TenantCurrencyScope>()?.code ??
+      '';
+
+  @override
+  bool updateShouldNotify(TenantCurrencyScope oldWidget) =>
+      oldWidget.code != code;
+}
+
+/// «1,234.5 JOD» — amount + the tenant currency code (none when unknown).
+String formatWithCurrency(num value, String currency) {
+  final v = value.toDouble();
+  final fixed =
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  final grouped = _group(fixed);
+  return currency.isEmpty ? grouped : '$grouped $currency';
+}
+
+String _group(String fixed) {
+  final neg = fixed.startsWith('-');
+  final body = neg ? fixed.substring(1) : fixed;
+  final parts = body.split('.');
+  final intPart = parts.first;
+  final b = StringBuffer();
+  for (var i = 0; i < intPart.length; i++) {
+    if (i > 0 && (intPart.length - i) % 3 == 0) b.write(',');
+    b.write(intPart[i]);
+  }
+  final dec = parts.length > 1 ? '.${parts[1]}' : '';
+  return '${neg ? '-' : ''}$b$dec';
 }

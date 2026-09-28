@@ -1,4 +1,50 @@
 /// Request DTOs for card-batch create / update endpoints.
+library;
+
+/// Most cards one generation may create — the server's hard cap
+/// (`CARDS_HARD_MAX_PER_BATCH`); 1,000,000 used to be accepted and loaded
+/// the server for minutes.
+const int kMaxCardsPerBatch = 10000;
+
+/// Above this many cards the form asks for confirmation first.
+const int kConfirmCardsAbove = 1000;
+
+/// Arabic error for a card count, or null.
+String? validateCardCount(int? n) {
+  if (n == null || n < 1) return 'أدخل عددًا صحيحًا (1 فأكثر)';
+  if (n > kMaxCardsPerBatch) {
+    return 'الحدّ الأعلى $kMaxCardsPerBatch بطاقة في الدفعة الواحدة.';
+  }
+  return null;
+}
+
+/// Username prefix/suffix as the server stores it: spaces removed,
+/// Arabic-Indic digits → Latin, lower-case.
+String normalizeCardAffix(String raw) {
+  const arabic = '٠١٢٣٤٥٦٧٨٩';
+  const persian = '۰۱۲۳۴۵۶۷۸۹';
+  final b = StringBuffer();
+  for (final ch in raw.split('')) {
+    if (ch.trim().isEmpty) continue;
+    final a = arabic.indexOf(ch);
+    final f = persian.indexOf(ch);
+    b.write(a >= 0 ? '$a' : (f >= 0 ? '$f' : ch));
+  }
+  return b.toString().toLowerCase();
+}
+
+/// The server rule for a card prefix/suffix: Latin letters, digits and
+/// «_ - . @», at most 16 characters.
+String? validateCardAffix(String raw) {
+  final v = normalizeCardAffix(raw);
+  if (v.isEmpty) return null;
+  if (v.length > 16) return 'البادئة/اللاحقة 16 حرفًا على الأكثر.';
+  if (!RegExp(r'^[a-z0-9_.@-]+$').hasMatch(v)) {
+    return 'أحرف لاتينية وأرقام و _ - . @ فقط.';
+  }
+  return null;
+}
+
 class GenerateBatchRequest {
   GenerateBatchRequest({
     required this.planId,
@@ -19,8 +65,11 @@ class GenerateBatchRequest {
     this.totalQuotaMb = 0,
     this.serviceName = '',
     this.notes = '',
+    this.loginWithoutPassword = false,
   });
 
+  /// «رقم فقط»: cards log in with the number alone (no password).
+  final bool loginWithoutPassword;
   final int planId;
   final int count;
   final String packageName;
@@ -51,7 +100,8 @@ class GenerateBatchRequest {
         if (prefixOrSuffixValue.isNotEmpty)
           'prefix_or_suffix_value': prefixOrSuffixValue,
         'username_length': usernameLength,
-        'password_length': passwordLength,
+        'password_length': loginWithoutPassword ? 0 : passwordLength,
+        if (loginWithoutPassword) 'login_without_password': true,
         'password_generation_type': passwordGenerationType,
         'time_value': timeValue,
         'time_unit': timeUnit,

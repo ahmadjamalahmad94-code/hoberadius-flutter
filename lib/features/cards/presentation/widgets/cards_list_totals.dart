@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/currency.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/auto_height_grid.dart';
@@ -12,6 +13,7 @@ class CardsListTotals extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cur = TenantCurrencyScope.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final cols = constraints.maxWidth >= 980
@@ -41,20 +43,20 @@ class CardsListTotals extends StatelessWidget {
               icon: Icons.today_outlined,
               label: 'بطاقات اليوم',
               value: '${totals.usedToday}',
-              footnote: formatMoney(totals.valueToday),
+              footnote: formatMoney(totals.valueToday, cur),
             ),
             _StatCard(
               compact: compact,
               icon: Icons.calendar_month_outlined,
               label: 'بطاقات الشهر',
               value: '${totals.usedMonth}',
-              footnote: formatMoney(totals.valueMonth),
+              footnote: formatMoney(totals.valueMonth, cur),
             ),
             _StatCard(
               compact: compact,
               icon: Icons.payments_outlined,
               label: 'قيمة تقديرية',
-              value: formatMoney(totals.configuredValue),
+              value: formatMoney(totals.configuredValue, cur),
               footnote: 'ليست تقريرًا ماليًا',
             ),
           ],
