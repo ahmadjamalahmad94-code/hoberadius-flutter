@@ -253,7 +253,9 @@ void main() {
       throwsA(
         isA<ApiException>()
             .having((e) => e.code, 'code', 'rate_limited')
-            .having((e) => e.message, 'message', contains('طلبات كثيرة')),
+            // The server's own Arabic reason (e.g. the login lockout «أعد
+            // المحاولة بعد N دقيقة») is shown as sent.
+            .having((e) => e.message, 'message', 'تجاوزت الحد'),
       ),
     );
     expect(adapter.calls, 3);
