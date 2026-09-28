@@ -672,6 +672,37 @@ String coverageText(double credited, double price, int planMinutes) {
   return arDuration(total);
 }
 
+/// The payment dialog's live hint. What is deducted for loans/debt can never
+/// exceed what was paid (a 10 payment against a 13.33 debt deducts 10, not
+/// 13.33 — the server settles partially up to the cash); the rest buys time.
+String paymentCoverageHint({
+  required double amount,
+  required double settledLoans,
+  required double debt,
+  required double effectivePrice,
+  required int planMinutes,
+  required String currency,
+}) {
+  if (!(amount > 0)) return 'أدخل المبلغ لعرض المدّة التي يُضيفها للحساب.';
+  final wanted =
+      (settledLoans > 0 ? settledLoans : 0.0) + (debt > 0 ? debt : 0.0);
+  final cut = wanted > amount ? amount : wanted;
+  final timeAmount = amount - cut;
+  final cover = coverageText(timeAmount, effectivePrice, planMinutes);
+  final timeMsg = timeAmount <= 0
+      ? 'لا يبقى مبلغ لتمديد الانتهاء.'
+      : effectivePrice <= 0
+          ? 'المدّة تُحسب على الخادم حسب سعر العرض.'
+          : 'يُطبَّق على الحساب ويُمدِّد الانتهاء بـ ≈ '
+              '${cover.isEmpty ? arDuration(0) : cover}.';
+  if (cut <= 0) return timeMsg;
+  final partial = wanted > amount
+      ? ' (من أصل ${formatMoney(wanted, currency)} مستحقّة)'
+      : '';
+  return 'سيُخصم ${formatMoney(cut, currency)}$partial لتسوية سلف/دين؛ '
+      'والباقي ${formatMoney(timeAmount, currency)} ← $timeMsg';
+}
+
 String formatMoney(double v, String currency) {
   final fixed =
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);

@@ -65,7 +65,12 @@ class ActionDialogFrame extends StatelessWidget {
     this.error,
     this.danger = false,
     this.cancelLabel = 'إلغاء',
+    this.retryable = false,
   });
+
+  /// The last failure can simply be retried (server busy/unreachable): the
+  /// confirm button turns into «إعادة المحاولة».
+  final bool retryable;
 
   final IconData icon;
   final PillTone tone;
@@ -196,9 +201,14 @@ class ActionDialogFrame extends StatelessWidget {
                                   color: Colors.white,
                                 ),
                               )
-                            : Icon(confirmIcon ?? Icons.check, size: 18),
+                            : Icon(
+                                retryable
+                                    ? Icons.refresh
+                                    : (confirmIcon ?? Icons.check),
+                                size: 18,
+                              ),
                         label: Text(
-                          confirmLabel,
+                          retryable ? 'إعادة المحاولة' : confirmLabel,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

@@ -7,6 +7,10 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
 import '../../../core/api/idempotency.dart';
 import '../../../core/api/paging.dart';
+import '../../../core/format/money_limits.dart';
+
+export '../../../core/format/money_limits.dart'
+    show kMaxMoneyAmount, validateMoneyAmount;
 import '../domain/accounting_model.dart';
 
 /// The UI slug of each financial report → the `report_type` the snapshot
@@ -28,22 +32,6 @@ const kReportSnapshotTypes = <String, String>{
 String reportSnapshotType(String slug) =>
     kReportSnapshotTypes[slug] ??
     slug.replaceAll('/', '_').replaceAll('-', '_');
-
-/// Hard ceiling for any single money amount typed in the app (the server
-/// rejects non-finite / absurd values too; 1e6 used to push an expiry to the
-/// year 2711 and 1e9 answered 500).
-const double kMaxMoneyAmount = 1000000;
-
-/// Arabic validation of a typed money amount: positive, finite, ≤ [max].
-String? validateMoneyAmount(num? value, {double max = kMaxMoneyAmount}) {
-  if (value == null || !value.isFinite || value <= 0) {
-    return 'أدخل مبلغًا صحيحًا أكبر من صفر.';
-  }
-  if (value > max) {
-    return 'المبلغ كبير جدًا — الحدّ الأعلى ${max.toStringAsFixed(0)}.';
-  }
-  return null;
-}
 
 class AccountingRepository {
   AccountingRepository(this._api);

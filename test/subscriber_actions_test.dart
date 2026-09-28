@@ -38,9 +38,11 @@ class _FakeRepo implements SubscriberActionsRepository {
   @override
   Future<Map<String, dynamic>> extend(
     String username,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    String? idempotencyKey,
+  }) async {
     calls['extend'] = payload;
+    calls['extend_key'] = idempotencyKey;
     return {'new_expire_at': '2026-10-11T21:00:00Z'};
   }
 
@@ -454,6 +456,8 @@ void main() {
     expect(sent['minutes'], 3 * 1440);
     expect(sent['charge_mode'], 'debt');
     expect(sent['amount'], 3.0);
+    // money actions carry an Idempotency-Key
+    expect(repo.calls['extend_key'], isA<String>());
     expect(outcome?.message, contains('ينتهي'));
     expect(tester.takeException(), isNull);
   });
