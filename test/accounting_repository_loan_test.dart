@@ -95,7 +95,6 @@ void main() {
       reason: 'دين تمديد',
       priceFromDays: true,
       applyToRadius: false,
-      dryRun: true,
     );
 
     expect(adapter.method, 'POST');
@@ -109,7 +108,9 @@ void main() {
       'reason': 'دين تمديد',
       'price_from_days': true,
       'apply_to_radius': false,
-      'dry_run': true,
+      // A loan call is always real: previews are computed on the phone
+      // (older servers stored a loan even for dry_run).
+      'dry_run': false,
     });
     expect(loan.username, 'ali');
     expect(loan.amount, 15);

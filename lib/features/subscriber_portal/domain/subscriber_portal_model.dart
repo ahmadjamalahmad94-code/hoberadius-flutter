@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class SubscriberPortalCapabilities {
   const SubscriberPortalCapabilities({
     required this.dashboard,
@@ -85,8 +87,7 @@ class SubscriberPortalLoginResult {
     return SubscriberPortalLoginResult(
       token: _string(json['token']),
       expiresIn: _int(json['expires_in']),
-      subscriber:
-          SubscriberPortalSubscriber.fromJson(_map(json['subscriber'])),
+      subscriber: SubscriberPortalSubscriber.fromJson(_map(json['subscriber'])),
       capabilities:
           SubscriberPortalCapabilities.fromJson(_map(json['capabilities'])),
     );
@@ -104,8 +105,7 @@ class SubscriberPortalProfile {
 
   factory SubscriberPortalProfile.fromJson(Map<String, dynamic> json) {
     return SubscriberPortalProfile(
-      subscriber:
-          SubscriberPortalSubscriber.fromJson(_map(json['subscriber'])),
+      subscriber: SubscriberPortalSubscriber.fromJson(_map(json['subscriber'])),
       capabilities:
           SubscriberPortalCapabilities.fromJson(_map(json['capabilities'])),
     );
@@ -147,8 +147,7 @@ class SubscriberPortalDashboard {
 
   factory SubscriberPortalDashboard.fromJson(Map<String, dynamic> json) {
     return SubscriberPortalDashboard(
-      subscriber:
-          SubscriberPortalSubscriber.fromJson(_map(json['subscriber'])),
+      subscriber: SubscriberPortalSubscriber.fromJson(_map(json['subscriber'])),
       plan: SubscriberPortalPlan.fromJson(_map(json['plan'])),
       subscription:
           SubscriberPortalSubscription.fromJson(_map(json['subscription'])),
@@ -189,7 +188,8 @@ class SubscriberPortalPlan {
 
   String get priceLabel {
     if (price <= 0) return 'السعر غير محدد';
-    final amount = price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2);
+    final amount =
+        price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2);
     return currency.isEmpty ? amount : '$amount $currency';
   }
 
@@ -238,8 +238,9 @@ class SubscriberPortalSubscription {
     return SubscriberPortalSubscription(
       status: _string(json['status']),
       expireAt: _date(json['expire_at']),
-      remainingDays:
-          json.containsKey('remaining_days') ? _int(json['remaining_days']) : null,
+      remainingDays: json.containsKey('remaining_days')
+          ? _int(json['remaining_days'])
+          : null,
       expiredViewAllowed: _bool(json['expired_view_allowed']),
     );
   }
@@ -282,7 +283,9 @@ class SubscriberPortalWallet {
   final String currency;
 
   String get balanceLabel {
-    if (balance.isNotEmpty) return currency.isEmpty ? balance : '$balance $currency';
+    if (balance.isNotEmpty) {
+      return currency.isEmpty ? balance : '$balance $currency';
+    }
     final amount = (balanceMinor / 100).toStringAsFixed(2);
     return currency.isEmpty ? amount : '$amount $currency';
   }
@@ -455,7 +458,7 @@ bool _bool(Object? value) {
 DateTime? _date(Object? value) {
   final text = _string(value);
   if (text.isEmpty) return null;
-  return DateTime.tryParse(text)?.toUtc();
+  return parseServerDateTime(text);
 }
 
 String _statusLabel(String value) {

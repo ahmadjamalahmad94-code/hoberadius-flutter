@@ -9,17 +9,20 @@ class NotificationsRepository {
 
   final ApiClient _api;
 
+  /// [beforeId] (keyset, updated servers) wins over [offset]; both are
+  /// never sent together (the server would apply both and skip rows).
   Future<NotificationsPage> list({
     bool unreadOnly = false,
     int limit = 30,
     int offset = 0,
+    int? beforeId,
   }) async {
     final res = await _api.get(
       '/api/v1/notifications',
       query: {
         if (unreadOnly) 'unread_only': 'true',
         'limit': limit,
-        'offset': offset,
+        if (beforeId != null) 'before_id': beforeId else 'offset': offset,
       },
     );
     final data = res['data'];

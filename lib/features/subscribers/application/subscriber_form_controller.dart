@@ -86,6 +86,27 @@ class SubscriberFormActionController
     }
   }
 
+  /// Edit-form save: PATCHes only [changes] (already diffed against the row
+  /// that was loaded). An empty diff is a successful no-op.
+  Future<String?> submitChanges(
+    String username,
+    Map<String, dynamic> changes,
+  ) async {
+    _set(state.copyWith(loading: true, error: null));
+    try {
+      await ref
+          .read(subscribersRepositoryProvider)
+          .updateChanged(username, changes);
+      return null;
+    } catch (e) {
+      final message = visibleErrorMessage(e);
+      _set(state.copyWith(error: message));
+      return message;
+    } finally {
+      _set(state.copyWith(loading: false));
+    }
+  }
+
   Future<String?> toggle(String username, {required bool enable}) async {
     _set(state.copyWith(loading: true, error: null));
     try {

@@ -1,8 +1,10 @@
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -183,23 +185,20 @@ class _FinancialReportsScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // One scrollable row of report types instead of a ragged
-              // wrap of nine chips.
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final entry in _reports.entries) ...[
-                      if (entry.key != _reports.keys.first)
-                        const SizedBox(width: AppTokens.s8),
-                      ChoiceChip(
-                        label: Text(entry.value),
-                        selected: _slug == entry.key,
-                        onSelected: (_) => setState(() => _slug = entry.key),
-                      ),
-                    ],
-                  ],
-                ),
+              // All report chips visible (wrapped): in a scrolling row the
+              // selected chip could sit off-screen (A13 L4).
+              Wrap(
+                spacing: AppTokens.s8,
+                runSpacing: AppTokens.s8,
+                children: [
+                  for (final entry in _reports.entries)
+                    ChoiceChip(
+                      label: Text(entry.value),
+                      selected: _slug == entry.key,
+                      visualDensity: VisualDensity.compact,
+                      onSelected: (_) => setState(() => _slug = entry.key),
+                    ),
+                ],
               ),
               const SizedBox(height: AppTokens.s12),
               ActionBar(
@@ -269,32 +268,64 @@ class _FinancialReportsScreenState
               ..sort(_compareColumns);
             return AppCard(
               padding: EdgeInsets.zero,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: AppTokens.s20,
-                  headingTextStyle:
-                      Theme.of(context).textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: AppTokens.sidebarBg,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // The table is wider than a phone: say so (the «الإجمالي»
+                  // column was clipped with no hint).
+                  if (columns.length > 3)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.swipe_left_outlined,
+                            size: 16,
+                            color: AppTokens.textMuted,
                           ),
-                  columns: columns
-                      .map((column) => DataColumn(label: Text(_label(column))))
-                      .toList(),
-                  rows: rows
-                      .map(
-                        (row) => DataRow(
-                          cells: columns
-                              .map(
-                                (column) => DataCell(
-                                  Text(_cell(row[column])),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      )
-                      .toList(),
-                ),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'اسحب الجدول أفقيًا لرؤية كل الأعمدة.',
+                              style: TextStyle(
+                                color: AppTokens.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columnSpacing: AppTokens.s20,
+                      headingTextStyle:
+                          Theme.of(context).textTheme.labelLarge?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: AppTokens.sidebarBg,
+                              ),
+                      columns: columns
+                          .map(
+                            (column) => DataColumn(label: Text(_label(column))),
+                          )
+                          .toList(),
+                      rows: rows
+                          .map(
+                            (row) => DataRow(
+                              cells: columns
+                                  .map(
+                                    (column) => DataCell(
+                                      Text(_cell(row[column])),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
+                ],
               ),
             );
           },
@@ -388,7 +419,15 @@ class _SnapshotStrip extends StatelessWidget {
 
 String _cell(Object? value) {
   if (value == null || value.toString().isEmpty) return '—';
-  return value.toString();
+  // Amounts: grouped, 2 decimals, no float noise (117.58999999999999).
+  if (value is double) {
+    if (!value.isFinite) return '—';
+    return NumberFormat('#,##0.##').format(value);
+  }
+  if (value is int && value.abs() >= 10000) {
+    return NumberFormat('#,##0').format(value);
+  }
+  return rawTokenLabel(value.toString());
 }
 
 const _columnLabels = {

@@ -176,3 +176,86 @@ int _asInt(Object? value) {
   if (value is num) return value.toInt();
   return int.tryParse((value ?? '').toString()) ?? 0;
 }
+
+/// One account of a general-adjustments run/preview.
+class AdjustmentItem {
+  const AdjustmentItem({
+    required this.username,
+    required this.ok,
+    this.status = '',
+    this.message = '',
+    this.newExpireAt = '',
+  });
+
+  final String username;
+  final bool ok;
+
+  /// ok | not_found | no_change (preview) …
+  final String status;
+
+  /// `error` (Arabic, real run) or `note`.
+  final String message;
+  final String newExpireAt;
+
+  factory AdjustmentItem.fromJson(Map<String, dynamic> j) => AdjustmentItem(
+        username: (j['username'] ?? '').toString(),
+        ok: j['ok'] == true,
+        status: (j['status'] ?? '').toString(),
+        message: (j['error'] ?? j['note'] ?? '').toString(),
+        newExpireAt: (j['new_expire_at'] ?? '').toString(),
+      );
+
+  String get statusLabel => switch (status) {
+        'ok' => ok ? 'سينجح' : 'نجح',
+        'not_found' => 'غير موجود',
+        'no_change' => 'بلا تغيير',
+        _ => ok ? 'نجح' : 'فشل',
+      };
+}
+
+/// `/tools/general-adjustments` answer. Updated servers send a real preview
+/// for `dry_run` (targets, not_found, would_succeed, would_fail, items[]);
+/// older servers only the flat counters, kept in [raw].
+class AdjustmentsReport {
+  const AdjustmentsReport({
+    required this.dryRun,
+    this.targets,
+    this.notFound = const [],
+    this.wouldSucceed,
+    this.wouldFail,
+    this.items = const [],
+    this.raw = const {},
+  });
+
+  final bool dryRun;
+  final int? targets;
+  final List<String> notFound;
+  final int? wouldSucceed;
+  final int? wouldFail;
+  final List<AdjustmentItem> items;
+  final Map<String, dynamic> raw;
+
+  bool get hasDetails => items.isNotEmpty || targets != null;
+
+  factory AdjustmentsReport.fromJson(Map<String, dynamic> j) {
+    int? n(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}');
+    final nf = j['not_found'];
+    final items = j['items'];
+    return AdjustmentsReport(
+      dryRun: j['dry_run'] == true,
+      targets: n(
+        j['targets'] is List ? (j['targets'] as List).length : j['targets'],
+      ),
+      notFound: nf is List ? nf.map((e) => '$e').toList() : const [],
+      wouldSucceed: n(j['would_succeed']),
+      wouldFail: n(j['would_fail']),
+      items: items is List
+          ? items
+              .whereType<Map>()
+              .map((m) => AdjustmentItem.fromJson(Map<String, dynamic>.from(m)))
+              .toList()
+          : const [],
+      raw: j,
+    );
+  }
+}

@@ -798,8 +798,25 @@ class _CredentialsCard extends StatelessWidget {
             icon: Icons.sell_outlined,
             label: 'إظهار السعر',
             value: f.showPrice,
-            onChanged: (v) => ctl.updateForm((x) => x.copyWith(showPrice: v)),
+            onChanged: ctl.setShowPrice,
           ),
+          if (f.showPrice)
+            Padding(
+              padding: const EdgeInsets.only(bottom: AppTokens.s8),
+              child: TextFormField(
+                key: ValueKey('price-text-${f.priceText.isEmpty}'),
+                initialValue: f.priceText,
+                decoration: InputDecoration(
+                  labelText: 'نص السعر على الكرت',
+                  hintText: ctl.batchPriceText.isEmpty
+                      ? 'مثال: 5 شيكل'
+                      : ctl.batchPriceText,
+                  helperText:
+                      f.priceText.isEmpty ? 'فارغ = لا يُطبع سعر.' : null,
+                ),
+                onChanged: ctl.setPriceText,
+              ),
+            ),
           HubSwitchRow(
             dense: true,
             icon: Icons.format_color_fill,

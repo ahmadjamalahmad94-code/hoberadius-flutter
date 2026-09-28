@@ -28,9 +28,13 @@ class CurrencyField extends StatelessWidget {
         helperMaxLines: 2,
         suffixIcon: const Icon(Icons.lock_outline, size: 16),
       ),
+      // One line (it wrapped over three lines in narrow dialog columns).
       child: Text(
         '${currencyLabel(currency)} ($currency)',
         textDirection: TextDirection.rtl,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        softWrap: false,
       ),
     );
   }

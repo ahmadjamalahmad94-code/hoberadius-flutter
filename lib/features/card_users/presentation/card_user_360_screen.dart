@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/features/subscribers/domain/subscriber_actions_model.dart'
+    show parseLocalizedNumber;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -299,9 +302,8 @@ class _PurchasePanelState extends ConsumerState<_PurchasePanel> {
                       icon: Icons.shopping_cart_checkout_outlined,
                       label: 'تنفيذ الشراء',
                       primary: true,
-                      onPressed: _busy || _selectedId == null
-                          ? null
-                          : _purchase,
+                      onPressed:
+                          _busy || _selectedId == null ? null : _purchase,
                     ),
                   ],
                 ),
@@ -344,9 +346,8 @@ class _CardsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return AppCard(
       title: 'الكروت المملوكة',
-      padding: cards.isEmpty
-          ? const EdgeInsets.all(AppTokens.s12)
-          : EdgeInsets.zero,
+      padding:
+          cards.isEmpty ? const EdgeInsets.all(AppTokens.s12) : EdgeInsets.zero,
       child: cards.isEmpty
           ? const EmptyState(
               icon: Icons.credit_card_off_outlined,
@@ -378,8 +379,8 @@ class _OwnedCardRow extends StatelessWidget {
     final tone = card.revoked
         ? PillTone.red
         : card.used
-        ? PillTone.brand
-        : PillTone.blue;
+            ? PillTone.brand
+            : PillTone.blue;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTokens.s12,
@@ -497,13 +498,24 @@ Future<void> _showRechargeDialog(
 ) async {
   final amount = TextEditingController();
   var busy = false;
+  String? error;
   await showDialog<void>(
     context: context,
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
-          if ((num.tryParse(amount.text.trim()) ?? 0) <= 0) return;
-          setState(() => busy = true);
+          // «-3» used to be stripped to «3» and credited: the minus is kept
+          // and refused here with a message.
+          final problem =
+              validateMoneyAmount(parseLocalizedNumber(amount.text));
+          if (problem != null) {
+            setState(() => error = problem);
+            return;
+          }
+          setState(() {
+            busy = true;
+            error = null;
+          });
           try {
             await ref
                 .read(cardUsersRepositoryProvider)
@@ -525,11 +537,17 @@ Future<void> _showRechargeDialog(
           title: const Text('شحن محفظة مستخدم الكروت'),
           content: TextField(
             controller: amount,
-            keyboardType: TextInputType.number,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+              signed: true,
+            ),
             inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+              FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩.,٫-]')),
             ],
-            decoration: const InputDecoration(labelText: 'المبلغ'),
+            decoration: InputDecoration(
+              labelText: 'المبلغ',
+              errorText: error,
+            ),
           ),
           actions: [
             TextButton(

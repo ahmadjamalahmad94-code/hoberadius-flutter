@@ -59,6 +59,7 @@ class StoreAdminRepository {
     String accountNumber = '',
     String instructions = '',
     int sortOrder = 0,
+    bool active = true,
   }) async {
     final res = await _api.post(
       '/api/v1/store/admin/payment-methods',
@@ -69,9 +70,25 @@ class StoreAdminRepository {
         'account_number': accountNumber,
         'instructions': instructions,
         'sort_order': sortOrder,
+        'active': active ? 1 : 0,
       },
     );
-    return PaymentMethod.fromJson(_obj(_data(res), 'payment_method'));
+    final created = PaymentMethod.fromJson(_obj(_data(res), 'payment_method'));
+    // The create endpoint ignores `active` (always saved active): a wallet
+    // created «غير مفعّلة» is switched off right after with an update.
+    if (!active && created.active && created.id > 0) {
+      return updatePaymentMethod(
+        created.id,
+        method: method,
+        label: label,
+        accountName: accountName,
+        accountNumber: accountNumber,
+        instructions: instructions,
+        sortOrder: sortOrder,
+        active: false,
+      );
+    }
+    return created;
   }
 
   Future<PaymentMethod> updatePaymentMethod(

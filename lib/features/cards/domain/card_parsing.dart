@@ -6,6 +6,8 @@
 /// re-export them, but intended for in-feature use only.
 library;
 
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 int? cardParseInt(Object? value) {
   if (value == null) return null;
   if (value is int) return value;
@@ -31,7 +33,7 @@ DateTime? cardParseDate(Object? value) {
   final text = value.toString();
   if (text.isEmpty) return null;
   try {
-    return DateTime.parse(text.replaceAll('Z', ''));
+    return parseServerDateTime(text);
   } catch (_) {
     return null;
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/currency.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -171,7 +172,7 @@ class _RechargeCardsScreenState extends ConsumerState<RechargeCardsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'تم توليد ${result.insertedCount} كرت شحن بقيمة إجمالية ${_money(result.totalValue)}.',
+            'تم توليد ${result.insertedCount} كرت شحن بقيمة إجمالية ${_money(result.totalValue, TenantCurrencyScope.of(context))}.',
           ),
         ),
       );
@@ -401,7 +402,10 @@ class _RechargeSummary extends StatelessWidget {
       children: [
         _MetricCard(label: 'الحزم', value: '${page.total}'),
         _MetricCard(label: 'الكروت في الصفحة', value: '$cards'),
-        _MetricCard(label: 'قيمة الصفحة', value: _money(value)),
+        _MetricCard(
+          label: 'قيمة الصفحة',
+          value: _money(value, TenantCurrencyScope.of(context)),
+        ),
       ],
     );
   }
@@ -452,7 +456,10 @@ class _RechargeBatchRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final denominations = batch.denominations
-        .map((item) => '${_money(item.value)} × ${item.count}')
+        .map(
+          (item) =>
+              '${_money(item.value, TenantCurrencyScope.of(context))} × ${item.count}',
+        )
         .join('، ');
     return Material(
       color: Colors.transparent,
@@ -503,7 +510,13 @@ class _RechargeBatchRow extends StatelessWidget {
                 children: [
                   _TinyStat('الكروت', '${batch.count}'),
                   _TinyStat('المتبقي', '${batch.remainingCount}'),
-                  _TinyStat('القيمة', _money(batch.totalValue)),
+                  _TinyStat(
+                    'القيمة',
+                    _money(
+                      batch.totalValue,
+                      TenantCurrencyScope.of(context),
+                    ),
+                  ),
                   IconButton(
                     onPressed: onDelete,
                     icon: const Icon(Icons.delete_outline),
@@ -595,7 +608,13 @@ class _RechargeDetailDialog extends StatelessWidget {
                 runSpacing: AppTokens.s8,
                 children: [
                   _TinyStat('عدد الكروت', '${detail.totalCards}'),
-                  _TinyStat('قيمة الحزمة', _money(detail.batch.totalValue)),
+                  _TinyStat(
+                    'قيمة الحزمة',
+                    _money(
+                      detail.batch.totalValue,
+                      TenantCurrencyScope.of(context),
+                    ),
+                  ),
                   _TinyStat('المستخدم', '${detail.batch.usedCount}'),
                 ],
               ),
@@ -610,7 +629,7 @@ class _RechargeDetailDialog extends StatelessWidget {
                   title: Text(card.username),
                   subtitle: Text('كلمة المرور: ${card.password}'),
                   trailing: Text(
-                    _money(card.walletValue),
+                    _money(card.walletValue, TenantCurrencyScope.of(context)),
                     style: const TextStyle(fontWeight: FontWeight.w900),
                   ),
                 ),
@@ -722,8 +741,9 @@ class _RechargePagination extends ConsumerWidget {
   }
 }
 
-String _money(num value) {
+/// Amount + the tenant currency (was a hardcoded «₪»).
+String _money(num value, [String currency = '']) {
   final text =
       value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
-  return '$text ₪';
+  return currency.isEmpty ? text : '$text $currency';
 }

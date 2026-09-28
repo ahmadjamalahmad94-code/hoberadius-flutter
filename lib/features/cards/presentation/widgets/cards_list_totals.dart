@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/currency.dart';
 import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/tokens.dart';
+import '../../../../shared/widgets/auto_height_grid.dart';
 import '../../application/cards_list_providers.dart';
 import '../../domain/card_model.dart';
 
@@ -11,6 +13,7 @@ class CardsListTotals extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cur = TenantCurrencyScope.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final cols = constraints.maxWidth >= 980
@@ -18,36 +21,42 @@ class CardsListTotals extends StatelessWidget {
             : constraints.maxWidth >= 640
                 ? 3
                 : 2;
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: cols,
-          crossAxisSpacing: AppTokens.s12,
-          mainAxisSpacing: AppTokens.s12,
-          childAspectRatio: constraints.maxWidth < 520 ? 2.05 : 2.8,
+        // Tile width decides the compact (stacked) layout; the tile height
+        // then follows its content (the fixed aspect ratio overflowed the
+        // stacked tiles by 33–51 px at 360×640).
+        final tileWidth =
+            (constraints.maxWidth - AppTokens.s12 * (cols - 1)) / cols;
+        final compact = tileWidth - 28 < 145;
+        return AutoHeightGrid(
+          columns: cols,
+          spacing: AppTokens.s12,
           children: [
             _StatCard(
+              compact: compact,
               icon: Icons.inventory_2_outlined,
               label: 'الحزم المعروضة',
               value: '${totals.batchCount}',
               primary: true,
             ),
             _StatCard(
+              compact: compact,
               icon: Icons.today_outlined,
               label: 'بطاقات اليوم',
               value: '${totals.usedToday}',
-              footnote: formatMoney(totals.valueToday),
+              footnote: formatMoney(totals.valueToday, cur),
             ),
             _StatCard(
+              compact: compact,
               icon: Icons.calendar_month_outlined,
               label: 'بطاقات الشهر',
               value: '${totals.usedMonth}',
-              footnote: formatMoney(totals.valueMonth),
+              footnote: formatMoney(totals.valueMonth, cur),
             ),
             _StatCard(
+              compact: compact,
               icon: Icons.payments_outlined,
               label: 'قيمة تقديرية',
-              value: formatMoney(totals.configuredValue),
+              value: formatMoney(totals.configuredValue, cur),
               footnote: 'ليست تقريرًا ماليًا',
             ),
           ],
@@ -64,7 +73,10 @@ class _StatCard extends StatelessWidget {
     required this.value,
     this.footnote = '',
     this.primary = false,
+    this.compact = false,
   });
+
+  final bool compact;
 
   final IconData icon;
   final String label;
@@ -95,14 +107,12 @@ class _StatCard extends StatelessWidget {
               ]
             : p.shCard,
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 145;
+      child: Builder(
+        builder: (context) {
           final iconWidget = CircleAvatar(
             radius: compact ? 18 : 20,
-            backgroundColor: primary
-                ? Colors.white.withValues(alpha: 0.18)
-                : p.brandSoft,
+            backgroundColor:
+                primary ? Colors.white.withValues(alpha: 0.18) : p.brandSoft,
             child: Icon(
               icon,
               color: primary ? Colors.white : p.brand,

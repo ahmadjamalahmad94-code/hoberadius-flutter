@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/router/pop_on_route_change.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:printing/printing.dart';
@@ -49,17 +52,21 @@ Future<void> runPrintFlow(
       ),
       poll: repo.job,
       download: repo.download,
+      cancel: repo.cancelJob,
     ),
   );
   if (result == null) return;
   await navigator.push(
     MaterialPageRoute<void>(
-      builder: (_) => PrintPdfScreen(
-        bytes: result.bytes,
-        fileName: result.fileName.isEmpty
-            ? 'cards-batch-$batchId.pdf'
-            : result.fileName,
-        title: 'كروت ${st.batchCode}',
+      // Closes itself when the browser «back» changes the route underneath.
+      builder: (_) => PopOnRouteChange(
+        child: PrintPdfScreen(
+          bytes: result.bytes,
+          fileName: result.fileName.isEmpty
+              ? 'cards-batch-$batchId.pdf'
+              : result.fileName,
+          title: 'كروت ${st.batchCode}',
+        ),
       ),
     ),
   );
@@ -76,10 +83,15 @@ class _PrintJobDialog extends StatefulWidget {
     required this.start,
     required this.poll,
     required this.download,
+    this.cancel,
   });
   final Future<PrintExportJob> Function() start;
   final Future<PrintExportJob> Function(int id) poll;
   final Future<Uint8List> Function(int id) download;
+
+  /// «إلغاء» while the job is queued/running (a stuck export used to leave
+  /// no way out: the dialog cannot be dismissed).
+  final Future<void> Function(int id)? cancel;
 
   @override
   State<_PrintJobDialog> createState() => _PrintJobDialogState();
@@ -117,8 +129,16 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
       setState(() => _job = job);
       _schedule(job.id);
     } catch (e) {
-      if (!_closed) setState(() => _error = '$e');
+      if (!_closed) setState(() => _error = visibleErrorWithRetryHint(e));
     }
+  }
+
+  Future<void> _cancelJob() async {
+    final id = _job?.id;
+    _closed = true;
+    _timer?.cancel();
+    if (id != null && widget.cancel != null) await widget.cancel!(id);
+    if (mounted) Navigator.of(context).pop();
   }
 
   void _schedule(int id) {
@@ -237,6 +257,14 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
                       ),
                   ],
                 ),
+                if (widget.cancel != null && !_downloading) ...[
+                  const SizedBox(height: AppTokens.s12),
+                  OutlinedButton.icon(
+                    onPressed: _cancelJob,
+                    icon: const Icon(Icons.close, size: 18),
+                    label: const Text('إلغاء الطباعة'),
+                  ),
+                ],
               ],
               if (failed) ...[
                 const SizedBox(height: AppTokens.s20),
@@ -319,7 +347,9 @@ class _PrintPdfScreenState extends State<PrintPdfScreen> {
         setState(() => _pages.add(png));
       }
     } catch (e) {
-      if (mounted) setState(() => _error = 'تعذّر عرض الملف: $e');
+      if (mounted) {
+        setState(() => _error = 'تعذّر عرض الملف: ${visibleErrorMessage(e)}');
+      }
     } finally {
       if (mounted) setState(() => _rendering = false);
     }
@@ -333,18 +363,40 @@ class _PrintPdfScreenState extends State<PrintPdfScreen> {
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // The system «save as» picker: the operator chooses the folder.
-      final path = await FileSaver.instance.saveAs(
-        name: _baseName,
-        bytes: widget.bytes,
-        ext: 'pdf',
-        mimeType: MimeType.pdf,
-      );
-      if (path != null && path.isNotEmpty) {
-        messenger.showSnackBar(const SnackBar(content: Text('تم حفظ الملف')));
+      if (kIsWeb) {
+        // The web build has no «save as» picker (UnimplementedError): a
+        // plain browser download instead.
+        await FileSaver.instance.saveFile(
+          name: _baseName,
+          bytes: widget.bytes,
+          ext: 'pdf',
+          mimeType: MimeType.pdf,
+        );
+        messenger.showSnackBar(
+          const SnackBar(content: Text('تم تنزيل الملف')),
+        );
+      } else {
+        // The system «save as» picker: the operator chooses the folder.
+        final path = await FileSaver.instance.saveAs(
+          name: _baseName,
+          bytes: widget.bytes,
+          ext: 'pdf',
+          mimeType: MimeType.pdf,
+        );
+        if (path != null && path.isNotEmpty) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('تم حفظ الملف')),
+          );
+        }
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('تعذّر الحفظ: $e')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'تعذّر الحفظ: ${visibleErrorMessage(e, fallback: 'جرّب «مشاركة» لحفظ الملف.')}',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -532,13 +584,23 @@ class _PdfAction extends StatelessWidget {
             onPressed: busy ? null : onTap,
             style: style,
             icon: iconW,
-            label: Text(label),
+            label: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.fade,
+            ),
           )
         : OutlinedButton.icon(
             onPressed: busy ? null : onTap,
             style: style,
             icon: iconW,
-            label: Text(label),
+            label: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.fade,
+            ),
           );
   }
 }

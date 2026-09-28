@@ -84,7 +84,8 @@ PillTone batchStatusTone(String status) => switch (status) {
       _ => toneForStatus(status),
     };
 
-String formatMoney(num value) {
+/// Amount + the tenant currency (was a hardcoded «₪»).
+String formatMoney(num value, [String currency = '']) {
   final formatted = NumberFormat('#,##0.##').format(value);
-  return '$formatted ₪';
+  return currency.isEmpty ? formatted : '$formatted $currency';
 }

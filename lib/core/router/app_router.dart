@@ -164,7 +164,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':username',
                 name: 'subscriber-edit',
+                // Keyed by username: a URL that changes only the username
+                // must build a fresh page, never reuse the previous
+                // subscriber's state (inputs, loaded row, loans).
                 builder: (ctx, st) => SubscriberFormScreen(
+                  key: ValueKey(
+                    'subscriber-edit:${st.pathParameters['username']}',
+                  ),
                   username: st.pathParameters['username'],
                 ),
               ),
@@ -172,6 +178,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: ':username/360',
                 name: 'subscriber-360',
                 builder: (ctx, st) => Subscriber360Screen(
+                  key: ValueKey(
+                    'subscriber-360:${st.pathParameters['username']}',
+                  ),
                   username: st.pathParameters['username'] ?? '',
                 ),
               ),
@@ -179,6 +188,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 path: ':username/finance',
                 name: 'subscriber-finance',
                 builder: (ctx, st) => SubscriberFinanceScreen(
+                  key: ValueKey(
+                    'subscriber-finance:${st.pathParameters['username']}',
+                  ),
                   username: st.pathParameters['username'] ?? '',
                 ),
               ),
@@ -470,7 +482,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':slug',
                 name: 'operational-report-detail',
+                // Keyed by slug: the search typed in one report no longer
+                // carries into the next one (A13 L7).
                 builder: (ctx, st) => OperationalReportDetailScreen(
+                  key: ValueKey('report:${st.pathParameters['slug']}'),
                   slug: st.pathParameters['slug'] ?? '',
                 ),
               ),

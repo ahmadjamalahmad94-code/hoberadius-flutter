@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class RecycleBinItem {
   const RecycleBinItem({
     required this.entityType,
@@ -33,13 +35,12 @@ class RecycleBinItem {
       id: _asInt(json['id']),
       label: (json['label'] ?? '').toString(),
       status: (json['status'] ?? '').toString(),
-      deletedAt: DateTime.tryParse((json['deleted_at'] ?? '').toString()),
+      deletedAt: parseServerDateTime(json['deleted_at']),
       deletedBy: (json['deleted_by'] ?? '').toString(),
       deleteReason: (json['delete_reason'] ?? '').toString(),
       archiveSource: (json['archive_source'] ?? '').toString(),
       archivePolicyId: _asNullableInt(json['archive_policy_id']),
-      retentionExpiresAt:
-          DateTime.tryParse((json['retention_expires_at'] ?? '').toString()),
+      retentionExpiresAt: parseServerDateTime(json['retention_expires_at']),
       restoreAllowed: _asBool(json['restore_allowed'], fallback: true),
       retentionExpired: _asBool(json['retention_expired']),
     );

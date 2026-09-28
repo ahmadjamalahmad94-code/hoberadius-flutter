@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class LifecyclePolicy {
   const LifecyclePolicy({
     this.id = 0,
@@ -238,7 +240,7 @@ bool _bool(Object? value) =>
 DateTime? _date(Object? value) {
   if (value == null || value.toString().isEmpty) return null;
   try {
-    return DateTime.parse(value.toString().replaceAll('Z', ''));
+    return parseServerDateTime(value);
   } catch (_) {
     return null;
   }

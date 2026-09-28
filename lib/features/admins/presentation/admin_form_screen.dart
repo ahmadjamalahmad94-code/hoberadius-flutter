@@ -184,6 +184,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
             title: widget.isEdit ? 'تعديل مدير' : 'مدير جديد',
             leading: IconButton(
               onPressed: () => context.goNamed('admins'),
+              tooltip: 'رجوع',
               icon: const Icon(Icons.arrow_back),
             ),
             actions: [

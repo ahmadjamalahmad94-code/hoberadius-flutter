@@ -1,15 +1,19 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/api/paging.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../provider_grants/application/provider_grants_provider.dart';
@@ -23,16 +27,93 @@ import 'widgets/subscriber_actions_sheet.dart';
 /// the dashboard «expiring_soon» counter.
 const kExpiringSoonFilter = 'expiring_3d';
 
-final subscribersListProvider = FutureProvider.autoDispose
-    .family<List<Subscriber>, String?>((ref, status) async {
-  final repo = ref.watch(subscribersRepositoryProvider);
-  if (status != kExpiringSoonFilter) return repo.list(status: status);
-  // Ask the server to filter (newer backends honour expiring_within_days)
-  // and guard client-side with the same rule, so older servers that ignore
-  // the param still show only the right rows.
-  final items = await repo.list(status: 'enabled', expiringWithinDays: 3);
-  return filterExpiringSoon(items, DateTime.now());
-});
+/// What the list asks the server for: a status chip + the search box.
+class SubscribersQuery {
+  const SubscribersQuery({this.status, this.search = ''});
+
+  final String? status;
+  final String search;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SubscribersQuery &&
+      other.status == status &&
+      other.search == search;
+
+  @override
+  int get hashCode => Object.hash(status, search);
+}
+
+/// Server-side search + paging (infinite scroll). The list used to fetch the
+/// newest 100 rows once and search/filter them on the phone, so older
+/// subscribers were unreachable and the «منتهي»/«ينتهي خلال ٣ أيام» chips
+/// were capped at 100.
+class SubscribersListController extends AutoDisposeFamilyAsyncNotifier<
+    PagedList<Subscriber>, SubscribersQuery> {
+  static const pageSize = 50;
+
+  @override
+  Future<PagedList<Subscriber>> build(SubscribersQuery arg) async {
+    ref.watch(subscribersRepositoryProvider);
+    final (items, page) = await _fetch(0);
+    return PagedList<Subscriber>(
+      items: items,
+      hasMore: page.hasMore && page.rawCount > 0,
+      total: page.total,
+      nextOffset: page.rawCount,
+    );
+  }
+
+  bool get _expiring => arg.status == kExpiringSoonFilter;
+
+  Future<(List<Subscriber>, SubscribersPage)> _fetch(int offset) async {
+    final repo = ref.read(subscribersRepositoryProvider);
+    final page = await repo.listPage(
+      status: _expiring ? 'enabled' : arg.status,
+      // Newer backends filter the window themselves; the client-side guard
+      // below keeps older servers (param ignored) showing only the right rows.
+      expiringWithinDays: _expiring ? 3 : null,
+      search: arg.search,
+      limit: pageSize,
+      offset: offset,
+    );
+    final items =
+        _expiring ? filterExpiringSoon(page.items, DateTime.now()) : page.items;
+    return (items, page);
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || !current.hasMore || current.loadingMore) return;
+    state = AsyncData(current.copyWith(loadingMore: true, loadMoreError: null));
+    try {
+      final (items, page) = await _fetch(current.nextOffset);
+      final (merged, added) =
+          mergeUniqueBy(current.items, items, (s) => s.username);
+      // A page that brings nothing new (older server ignoring offset) ends
+      // the paging instead of looping forever.
+      final progressed = page.rawCount > 0 && (added > 0 || _expiring);
+      state = AsyncData(
+        current.copyWith(
+          items: merged,
+          hasMore: page.hasMore && progressed,
+          total: page.total ?? current.total,
+          nextOffset: current.nextOffset + page.rawCount,
+          loadingMore: false,
+        ),
+      );
+    } catch (e) {
+      state = AsyncData(
+        current.copyWith(loadingMore: false, loadMoreError: e),
+      );
+    }
+  }
+}
+
+final subscribersListProvider = AsyncNotifierProvider.autoDispose
+    .family<SubscribersListController, PagedList<Subscriber>, SubscribersQuery>(
+  SubscribersListController.new,
+);
 
 /// Subscribers whose expiry is after [now] and within the next 3 days — the
 /// same window as the dashboard «ينتهي خلال ٣ أيام» counter.
@@ -72,7 +153,26 @@ class SubscribersListScreen extends ConsumerStatefulWidget {
 class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
   late String? _status = widget.initialStatus;
   String _query = '';
+  Timer? _debounce;
   _Density _density = _Density.comfortable;
+
+  SubscribersQuery get _listQuery =>
+      SubscribersQuery(status: _status, search: _query);
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      final next = value.trim();
+      if (next != _query) setState(() => _query = next);
+    });
+  }
 
   @override
   void didUpdateWidget(covariant SubscribersListScreen oldWidget) {
@@ -86,7 +186,7 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final async = ref.watch(subscribersListProvider(_status));
+    final async = ref.watch(subscribersListProvider(_listQuery));
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -138,12 +238,17 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
             children: [
               TextField(
                 decoration: const InputDecoration(
-                  hintText: 'بحث بالاسم أو رقم الجوال…',
+                  labelText: 'بحث',
+                  hintText: 'بحث بالاسم أو اسم المستخدم أو الجوال…',
                   prefixIcon: Icon(Icons.search),
                   isDense: true,
                 ),
-                onChanged: (v) =>
-                    setState(() => _query = v.trim().toLowerCase()),
+                textInputAction: TextInputAction.search,
+                onChanged: _onSearchChanged,
+                onSubmitted: (v) {
+                  _debounce?.cancel();
+                  setState(() => _query = v.trim());
+                },
               ),
               const SizedBox(height: AppTokens.s12),
               _StatusChips(
@@ -164,20 +269,39 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
             title: 'تعذّر جلب القائمة',
             subtitle: visibleErrorMessage(e),
           ),
-          data: (items) {
-            final filtered = items.where((s) {
-              if (_query.isEmpty) return true;
-              return s.username.toLowerCase().contains(_query) ||
-                  s.fullName.toLowerCase().contains(_query) ||
-                  s.mobile.contains(_query);
-            }).toList();
-            if (filtered.isEmpty) {
+          data: (page) {
+            if (page.items.isEmpty && !page.hasMore) {
               return const EmptyState(
                 icon: Icons.person_off_outlined,
                 title: 'لا توجد نتائج',
               );
             }
-            return _Table(items: filtered, density: _density);
+            final ctrl = ref.read(subscribersListProvider(_listQuery).notifier);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (page.total != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppTokens.s8),
+                    child: Text(
+                      'النتائج: ${page.total}',
+                      style: AppTypography.caption.copyWith(
+                        color: AppTokens.textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                _Table(items: page.items, density: _density),
+                LoadMoreFooter(
+                  hasMore: page.hasMore,
+                  loading: page.loadingMore,
+                  error: page.loadMoreError,
+                  shown: page.items.length,
+                  total: page.total,
+                  onLoadMore: ctrl.loadMore,
+                ),
+              ],
+            );
           },
         ),
       ],
@@ -201,29 +325,28 @@ class _StatusChips extends StatelessWidget {
       ('suspended', 'موقوف'),
       ('banned', 'محظور'),
     ];
-    // One horizontal row (scrolls) instead of ragged wrapped rows; a dot in
-    // each status's own colour ties the filter to the badges in the list.
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final (code, label) in options) ...[
-            ChoiceChip(
-              avatar: code == null
-                  ? null
-                  : _ToneDot(
-                      tone: code == kExpiringSoonFilter
-                          ? PillTone.amber
-                          : toneForStatus(code),
-                    ),
-              label: Text(label),
-              selected: value == code,
-              onSelected: (_) => onChanged(code),
-            ),
-            const SizedBox(width: AppTokens.s8),
-          ],
-        ],
-      ),
+    // All seven chips stay visible (they wrap onto a second row on phones);
+    // the old single scrolling row hid 4 of 7 off-screen with no hint. A dot
+    // in each status's own colour ties the filter to the badges in the list.
+    return Wrap(
+      spacing: AppTokens.s8,
+      runSpacing: AppTokens.s8,
+      children: [
+        for (final (code, label) in options)
+          ChoiceChip(
+            avatar: code == null
+                ? null
+                : _ToneDot(
+                    tone: code == kExpiringSoonFilter
+                        ? PillTone.amber
+                        : toneForStatus(code),
+                  ),
+            label: Text(label),
+            selected: value == code,
+            visualDensity: VisualDensity.compact,
+            onSelected: (_) => onChanged(code),
+          ),
+      ],
     );
   }
 }

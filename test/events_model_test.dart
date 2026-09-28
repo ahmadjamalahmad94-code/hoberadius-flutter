@@ -33,7 +33,10 @@ void main() {
     expect(event.actorLabel, 'مدير #7');
     expect(event.targetLabel, 'مشترك #44');
     expect(event.messageLabel, 'تمت مراجعة طلب العميل');
-    expect(event.createdAtLabel, '2026-05-31 14:15');
+    expect(
+      event.createdAtLabel,
+      _localLabel(DateTime.utc(2026, 5, 31, 14, 15)),
+    );
   });
 
   test('business summary parses compact counters', () {
@@ -71,4 +74,12 @@ void main() {
     expect(event.categoryLabel, 'المالية');
     expect(event.severityLabel, 'معلومة');
   });
+}
+
+/// «yyyy-MM-dd HH:mm» of a UTC instant in the device's local time — labels
+/// show local time (the API sends UTC).
+String _localLabel(DateTime utc) {
+  final l = utc.toLocal();
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${l.year}-${two(l.month)}-${two(l.day)} ${two(l.hour)}:${two(l.minute)}';
 }

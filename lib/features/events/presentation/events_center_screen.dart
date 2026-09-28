@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/format/input_rules.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
@@ -9,6 +11,7 @@ import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../application/events_providers.dart';
 import '../data/events_repository.dart';
 import '../domain/business_event_model.dart';
@@ -231,14 +234,25 @@ class _EventsList extends ConsumerWidget {
           title: 'الأحداث الأخيرة',
           icon: Icons.event_note_outlined,
           padding: EdgeInsets.zero,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: page.items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              return _EventTile(event: page.items[index]);
-            },
+          child: Column(
+            children: [
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: page.items.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  return _EventTile(event: page.items[index]);
+                },
+              ),
+              LoadMoreFooter(
+                hasMore: page.hasMore,
+                loading: false,
+                shown: page.items.length,
+                onLoadMore: () =>
+                    ref.read(businessEventsProvider.notifier).loadMore(),
+              ),
+            ],
           ),
         );
       },
@@ -465,6 +479,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                         labelText: 'رقم المنفذ',
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                 ],
@@ -499,6 +514,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                         labelText: 'رقم العنصر',
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                 ],
@@ -538,6 +554,12 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
     final message = _message.text.trim();
     if (message.isEmpty) {
       _snack(context, 'أدخل وصفًا واضحًا للحدث');
+      return;
+    }
+    final idProblem =
+        validateOptionalId(_actorId.text) ?? validateOptionalId(_targetId.text);
+    if (idProblem != null) {
+      _snack(context, idProblem);
       return;
     }
     setState(() => _saving = true);

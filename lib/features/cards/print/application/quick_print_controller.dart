@@ -103,6 +103,9 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
 
   final QuickPrintRepository _repo;
   final int batchId;
+
+  /// The batch's card price («5 ILS»), offered as the price text.
+  String batchPriceText = '';
   Timer? _debounce;
   CancelToken? _inflight;
   int _seq = 0;
@@ -124,6 +127,7 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
         if (l is Map && l['is_default'] == true) tpl = t;
       }
       tpl ??= templates.isEmpty ? null : templates.first;
+      tpl = await _repo.fullTemplate(tpl);
       state = state.copyWith(
         loading: false,
         templates: templates,
@@ -138,17 +142,22 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
         noPassword: batch['login_without_password'] == true ||
             batch['login_without_password'] == 1,
       );
+      batchPriceText = batchPriceLabel(batch);
       refreshPreview(immediate: true);
     } catch (e) {
       state = state.copyWith(loading: false, error: _message(e));
     }
   }
 
-  void selectTemplate(int id) {
+  Future<void> selectTemplate(int id) async {
     Map<String, dynamic>? tpl;
     for (final t in state.templates) {
       if (_id(t) == id) tpl = t;
     }
+    // Light template list (updated servers): fetch the full row so the
+    // stored background image/design come with it.
+    tpl = await _repo.fullTemplate(tpl);
+    if (!mounted) return;
     state = state.copyWith(
       templateId: tpl == null ? 0 : id,
       form: QuickPrintForm.fromTemplate(
@@ -165,9 +174,30 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     refreshPreview();
   }
 
+  /// «إظهار السعر»: switching it on with no price text fills the batch's
+  /// card price, so something is actually printed.
+  void setShowPrice(bool on) {
+    updateForm((f) {
+      var next = f.copyWith(showPrice: on);
+      if (on && next.priceText.isEmpty && batchPriceText.isNotEmpty) {
+        next = next.withPriceText(batchPriceText);
+      }
+      return next;
+    });
+  }
+
+  void setPriceText(String text) => updateForm((f) => f.withPriceText(text));
+
+  /// Page-layout controls only change the «الصفحة» preview: switch to it so
+  /// the change is visible (they looked like they did nothing on «الكرت»).
   void updateSheet(QuickSheet Function(QuickSheet s) edit) {
     state = state.copyWith(sheet: edit(state.sheet));
-    if (state.mode == PreviewMode.page) refreshPreview();
+    if (state.mode == PreviewMode.page) {
+      refreshPreview();
+    } else {
+      state = state.copyWith(mode: PreviewMode.page);
+      refreshPreview(immediate: true);
+    }
   }
 
   void setMode(PreviewMode mode) {
@@ -179,21 +209,30 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
   /// Place an element at (x, y) mm — from a slider or a drag. Both
   /// coordinates become explicit (the web drag writes both too).
   void moveElement(String name, double x, double y) {
-    double r(double v) => double.parse(v.clamp(0.5, 200).toStringAsFixed(1));
-    updateForm((f) => switch (name) {
-          'username' => f.copyWith(usernameX: r(x), usernameY: r(y)),
-          'password' => f.copyWith(passwordX: r(x), passwordY: r(y)),
-          _ => f.copyWith(qrX: r(x), qrY: r(y)),
-        },);
+    // Kept inside the card (elements could be dragged off it — A13 L5).
+    final f0 = state.form;
+    final maxX = (f0.cardWidthMm - 1).clamp(1.0, 200.0);
+    final maxY = (f0.cardHeightMm - 1).clamp(1.0, 200.0);
+    double r(double v, double max) =>
+        double.parse(v.clamp(0.5, max).toStringAsFixed(1));
+    updateForm(
+      (f) => switch (name) {
+        'username' => f.copyWith(usernameX: r(x, maxX), usernameY: r(y, maxY)),
+        'password' => f.copyWith(passwordX: r(x, maxX), passwordY: r(y, maxY)),
+        _ => f.copyWith(qrX: r(x, maxX), qrY: r(y, maxY)),
+      },
+    );
   }
 
   /// Back to the automatic place.
   void resetElement(String name) {
-    updateForm((f) => switch (name) {
-          'username' => f.copyWith(usernameX: 0, usernameY: 0),
-          'password' => f.copyWith(passwordX: 0, passwordY: 0),
-          _ => f.copyWith(qrX: 0, qrY: 0),
-        },);
+    updateForm(
+      (f) => switch (name) {
+        'username' => f.copyWith(usernameX: 0, usernameY: 0),
+        'password' => f.copyWith(passwordX: 0, passwordY: 0),
+        _ => f.copyWith(qrX: 0, qrY: 0),
+      },
+    );
   }
 
   /// A picked image goes once through the web's optimizer; the optimized
@@ -354,3 +393,15 @@ final quickPrintControllerProvider = StateNotifierProvider.autoDispose
   (ref, batchId) =>
       QuickPrintController(ref.watch(quickPrintRepositoryProvider), batchId),
 );
+
+/// «5 ILS» from a batch row (`price_per_card` + `currency`), '' when free.
+String batchPriceLabel(Map<String, dynamic> batch) {
+  final raw = batch['price_per_card'] ?? batch['card_price'] ?? batch['price'];
+  final n = raw is num ? raw : num.tryParse('${raw ?? ''}');
+  if (n == null || n <= 0) return '';
+  final v = n.toDouble();
+  final text =
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  final cur = '${batch['currency'] ?? ''}'.trim();
+  return cur.isEmpty ? text : '$text $cur';
+}

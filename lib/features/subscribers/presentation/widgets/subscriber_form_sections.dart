@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
@@ -7,6 +8,7 @@ import '../../../../shared/widgets/hub_time_picker_circular.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../../../shared/widgets/wheel_picker_fields.dart';
 import '../../../admins/data/admins_repository.dart';
+import '../../domain/subscriber_model.dart';
 import 'expire_picker.dart';
 import 'plan_picker.dart';
 
@@ -58,7 +60,16 @@ class SubscriberCoreSection extends StatelessWidget {
       child: TextFormField(
         controller: controllers['username'],
         enabled: !isEdit,
-        validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
+        inputFormatters: [
+          LengthLimitingTextInputFormatter(kSubscriberUsernameMax),
+        ],
+        // Same rule as the rename dialog and the server: Latin letters,
+        // digits and . _ - @ only — no spaces/Arabic/emoji/«/».
+        validator: (v) => isEdit
+            ? null
+            : ((v == null || v.trim().isEmpty)
+                ? 'مطلوب'
+                : validateNewSubscriberUsername(v)),
       ),
     );
     final fullName = FormFieldRow(
@@ -83,7 +94,12 @@ class SubscriberCoreSection extends StatelessWidget {
                 child: TextFormField(
                   controller: controllers['password'],
                   obscureText: true,
-                  validator: (v) => (v == null || v.isEmpty) ? 'مطلوب' : null,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(kSubscriberPasswordMax),
+                  ],
+                  validator: (v) => (v == null || v.isEmpty)
+                      ? 'مطلوب'
+                      : validateNewSubscriberPassword(v),
                 ),
               ),
             ),
@@ -369,9 +385,14 @@ class SubscriberManagementSection extends ConsumerWidget {
     required this.controllers,
     required this.managerId,
     required this.onManagerChanged,
+    this.isEdit = false,
   });
 
   final Map<String, TextEditingController> controllers;
+
+  /// Edit mode shows the balance read-only: money changes go through the
+  /// «إضافة رصيد» / «تسجيل دفعة» actions (with a ledger row), never a PATCH.
+  final bool isEdit;
   final int? managerId;
   final ValueChanged<int?> onManagerChanged;
 
@@ -432,8 +453,17 @@ class SubscriberManagementSection extends ConsumerWidget {
           ),
           FormFieldRow(
             label: 'الرصيد',
-            hint: 'رصيد الحساب الحالي',
-            child: _NumField(controller: controllers['balance']!),
+            hint: isEdit
+                ? 'للقراءة فقط — عدّله من إجراء «إضافة رصيد»'
+                : 'رصيد الحساب الحالي',
+            child: isEdit
+                ? TextFormField(
+                    controller: controllers['balance'],
+                    readOnly: true,
+                    enabled: false,
+                    decoration: const InputDecoration(hintText: '0'),
+                  )
+                : _NumField(controller: controllers['balance']!),
           ),
         ],
       ),

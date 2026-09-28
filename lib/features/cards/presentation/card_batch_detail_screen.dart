@@ -1,5 +1,6 @@
 // ignore_for_file: require_trailing_commas
 
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
@@ -122,7 +123,12 @@ class CardBatchDetailScreen extends ConsumerWidget {
               onPressed: cardsAsync.maybeWhen(
                 data: (cards) => cards.isEmpty
                     ? null
-                    : () => _exportCsv(batchAsync.valueOrNull, cards),
+                    : () => _exportCsv(
+                          context,
+                          ref,
+                          batchAsync.valueOrNull,
+                          ref.read(_cardFilterProvider),
+                        ),
                 orElse: () => null,
               ),
             ),
@@ -172,7 +178,34 @@ class CardBatchDetailScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _exportCsv(CardBatch? batch, List<CardItem> cards) async {
+  /// Exports EVERY card of the batch for the current filter (paged through
+  /// the API), not only the first page shown on screen.
+  Future<void> _exportCsv(
+    BuildContext context,
+    WidgetRef ref,
+    CardBatch? batch,
+    _CardFilter filter,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(
+      const SnackBar(content: Text('جارٍ تجهيز ملف كل بطاقات الدفعة…')),
+    );
+    final repo = ref.read(cardsRepositoryProvider);
+    final List<CardItem> cards;
+    try {
+      cards = await switch (filter) {
+        _CardFilter.all => repo.allCardsOfBatch(batchId),
+        _CardFilter.available =>
+          repo.allCardsOfBatch(batchId, used: false, revoked: false),
+        _CardFilter.used => repo.allCardsOfBatch(batchId, used: true),
+        _CardFilter.revoked => repo.allCardsOfBatch(batchId, revoked: true),
+      };
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(visibleErrorWithRetryHint(e))),
+      );
+      return;
+    }
     final rows = <List<dynamic>>[
       ['username', 'password', 'used', 'revoked', 'expire_at', 'first_used_at'],
       for (final c in cards)
@@ -187,7 +220,7 @@ class CardBatchDetailScreen extends ConsumerWidget {
     ];
     final csv = const ListToCsvConverter().convert(rows);
     // BOM so Excel reads Arabic + UTF-8 cleanly.
-    final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ...csv.codeUnits]);
+    final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(csv)]);
     final name = batch?.batchCode.isNotEmpty == true
         ? 'cards_${batch!.batchCode}'
         : 'cards_batch_$batchId';
@@ -496,6 +529,18 @@ class _CardsTable extends ConsumerWidget {
                         fontSize: 12,
                       ),
                     ),
+                    if (c.lockedMac.isNotEmpty || c.usedByMac.isNotEmpty)
+                      Text(
+                        c.lockedMac.isNotEmpty
+                            ? 'مقفلة على MAC: ${c.lockedMac}'
+                            : 'استُخدمت من MAC: ${c.usedByMac}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppTokens.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
                   ],
                 ),
               ),

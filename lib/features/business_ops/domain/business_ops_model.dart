@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 /// Business OS console models — finance ledger corrections, pricing snapshots,
 /// and the operator summary. Mirrors the `/api/v1/business/*`, `/finance/*`,
 /// and `/pricing/*` contracts (admin-authed via `require_api_token`).
@@ -88,7 +90,7 @@ class BusinessLedgerEntry {
       debitAccount: _string(j['debit_account']),
       creditAccount: _string(j['credit_account']),
       amount: _money(j['amount']),
-      currency: _string(j['currency'], fallback: 'JOD'),
+      currency: _string(j['currency']),
       actorType: _string(j['actor_type']),
       actorId: _int(j['actor_id']),
       targetType: _string(j['target_type']),
@@ -140,7 +142,7 @@ class PriceSnapshot {
       wholesalePrice: _money(j['wholesale_price']),
       effectivePrice: _money(j['effective_price']),
       discountAmount: _money(j['discount_amount']),
-      currency: _string(j['currency'], fallback: 'JOD'),
+      currency: _string(j['currency']),
       capturedAt: _date(j['captured_at']),
       capturedByType: _string(j['captured_by_type']),
       capturedById: _int(j['captured_by_id']),
@@ -188,5 +190,5 @@ int? _int(Object? value) {
 DateTime? _date(Object? value) {
   final text = value?.toString();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text);
+  return parseServerDateTime(text);
 }

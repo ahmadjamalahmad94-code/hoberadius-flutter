@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
@@ -83,6 +84,11 @@ class ApiClient {
         validateStatus: (_) => true,
       ),
     );
+    // One bad ledger row with Infinity/NaN made whole lists invalid JSON
+    // (distributors, profit-loss…) and the app blamed the network. Decode
+    // tolerantly (non-finite → null) — see [decodeJsonTolerant].
+    _dio.transformer = BackgroundTransformer()
+      ..jsonDecodeCallback = decodeJsonTolerant;
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -117,6 +123,14 @@ class ApiClient {
 
   Dio get dio => _dio;
 
+  /// Called when an authenticated request answers 401 (token revoked after
+  /// a password change on another device, admin disabled, expired session).
+  /// The auth controller signs the user out and shows the server's message
+  /// instead of leaving every screen in an error loop.
+  void Function(ApiException error)? onUnauthorized;
+
+  static const _loginPath = '/api/admin/login';
+
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
@@ -129,25 +143,45 @@ class ApiClient {
     return pending.whenComplete(() => _inFlightGets.remove(key));
   }
 
-  Future<Map<String, dynamic>> post(String path, {Object? body}) =>
-      _send('POST', path, body: body);
+  /// [headers] carries per-request extras such as `Idempotency-Key` (money
+  /// actions); servers that do not know a header simply ignore it.
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('POST', path, body: body, headers: headers);
 
-  Future<Map<String, dynamic>> put(String path, {Object? body}) =>
-      _send('PUT', path, body: body);
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('PUT', path, body: body, headers: headers);
 
-  Future<Map<String, dynamic>> patch(String path, {Object? body}) =>
-      _send('PATCH', path, body: body);
+  Future<Map<String, dynamic>> patch(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('PATCH', path, body: body, headers: headers);
 
-  Future<Map<String, dynamic>> delete(String path, {Object? body}) =>
-      _send('DELETE', path, body: body);
+  Future<Map<String, dynamic>> delete(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('DELETE', path, body: body, headers: headers);
 
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
     Map<String, dynamic>? query,
     Object? body,
+    Map<String, String>? headers,
   }) async {
     final idempotent = _isIdempotent(method);
+    final isLogin = path == _loginPath;
     var attempt = 0;
     while (true) {
       attempt += 1;
@@ -161,7 +195,10 @@ class ApiClient {
           path,
           queryParameters: query,
           data: body,
-          options: Options(method: method),
+          options: Options(
+            method: method,
+            headers: headers == null || headers.isEmpty ? null : headers,
+          ),
         );
       } on DioException catch (e) {
         dioErr = e;
@@ -169,6 +206,15 @@ class ApiClient {
         _semaphore.release();
       }
 
+      // ── A response that is not valid JSON (not a network failure) ──
+      if (dioErr != null && dioErr.error is FormatException) {
+        throw ApiException(
+          code: 'bad_response',
+          message: 'وصل ردّ غير صالح من الخادم (بيانات تالفة). '
+              'أعد المحاولة أو أبلغ الدعم الفني.',
+          status: dioErr.response?.statusCode,
+        );
+      }
       // ── Transport-level failure (no HTTP response): network / timeout ──
       if (dioErr != null) {
         if (idempotent && canRetry && _isRetryableDio(dioErr)) {
@@ -184,8 +230,10 @@ class ApiClient {
 
       final status = res!.statusCode ?? 200;
 
-      // ── 429: honour Retry-After (capped), else backoff ──
-      if (status == 429 && canRetry) {
+      // ── 429: honour Retry-After (capped), else backoff. Never for the
+      // login: a 429 there is the lockout after repeated wrong passwords and
+      // must be shown at once, not retried for minutes. ──
+      if (status == 429 && canRetry && !isLogin) {
         await Future<void>.delayed(_retryDelayFor429(res, attempt));
         continue;
       }
@@ -196,7 +244,12 @@ class ApiClient {
         continue;
       }
 
-      return _parseResponse(res);
+      try {
+        return _parseResponse(res);
+      } on ApiException catch (e) {
+        if (e.status == 401 && !isLogin) onUnauthorized?.call(e);
+        rethrow;
+      }
     }
   }
 
@@ -267,7 +320,8 @@ class ApiClient {
   /// Exponential backoff with full jitter, capped at [ApiClientConfig.maxBackoff].
   Duration _backoff(int attempt) {
     final exp = _config.baseBackoff.inMilliseconds * pow(2, attempt - 1);
-    final capped = min(exp.toDouble(), _config.maxBackoff.inMilliseconds.toDouble());
+    final capped =
+        min(exp.toDouble(), _config.maxBackoff.inMilliseconds.toDouble());
     final jittered = capped * (0.5 + _random.nextDouble() * 0.5);
     return Duration(milliseconds: jittered.round());
   }
@@ -335,16 +389,27 @@ class ApiClient {
   String _apiErrorMessage(String code, String rawMessage) {
     final normalized = code.trim().toLowerCase();
     return switch (normalized) {
-      'rate_limited' =>
-        'تم إرسال طلبات كثيرة بسرعة. انتظر قليلًا ثم حاول مرة أخرى.',
+      'rate_limited' ||
+      'too_many_attempts' ||
+      'login_locked' =>
+        _containsArabic(rawMessage)
+            ? rawMessage.trim()
+            : 'تم إرسال طلبات كثيرة بسرعة. انتظر قليلًا ثم حاول مرة أخرى.',
       'server_unavailable' =>
         'الخادم غير متاح حاليًا (صيانة أو ضغط مؤقت). حاول بعد قليل.',
       'not_implemented' => 'هذه الميزة غير مفعّلة على الخادم الحالي.',
-      'forbidden' || 'permission_denied' => 'لا تملك صلاحية تنفيذ هذا الإجراء.',
+      // The server's own Arabic reason (e.g. «لا تملك صلاحية تعديل
+      // المشتركين») is more useful than the generic line.
+      'forbidden' || 'permission_denied' => _containsArabic(rawMessage)
+          ? rawMessage.trim()
+          : 'لا تملك صلاحية تنفيذ هذا الإجراء.',
       'unauthorized' ||
       'invalid_token' ||
+      'token_revoked' ||
       'token_expired' =>
-        'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول مرة أخرى.',
+        _containsArabic(rawMessage)
+            ? rawMessage.trim()
+            : 'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول مرة أخرى.',
       'validation_error' ||
       'bad_request' =>
         _safeVisibleMessage(rawMessage, 'تأكد من البيانات المدخلة.'),
@@ -369,6 +434,21 @@ class ApiClient {
     }
     if (lower.contains('not found')) {
       return 'العنصر المطلوب غير موجود.';
+    }
+    // Older servers answer field validation in English
+    // («credit_limit must be >= 0», «name is required»): say WHICH field
+    // instead of one generic line for everything.
+    final field = RegExp(
+      r'^([a-z][a-z0-9_]*) (must|is required|should|cannot|is invalid|invalid)',
+    ).firstMatch(lower);
+    if (field != null) {
+      final required = lower.contains('required');
+      return required
+          ? 'الحقل «${field.group(1)}» مطلوب.'
+          : 'قيمة الحقل «${field.group(1)}» غير صحيحة.';
+    }
+    if (lower.contains('already exists') || lower.contains('duplicate')) {
+      return 'القيمة مستخدمة مسبقًا (مكرّرة). غيّر الاسم أو المعرّف.';
     }
     if (lower.contains('timeout')) {
       return 'انتهت مهلة الطلب. حاول مرة أخرى.';
@@ -422,6 +502,21 @@ class _Semaphore {
     } else if (_current > 0) {
       _current -= 1;
     }
+  }
+}
+
+/// `jsonDecode` that survives the non-standard `Infinity` / `-Infinity` /
+/// `NaN` tokens Python's json module emits for non-finite floats: they are
+/// read as `null` (the row still shows, the bad value is blank).
+Object? decodeJsonTolerant(String source) {
+  try {
+    return jsonDecode(source);
+  } on FormatException {
+    final cleaned = source.replaceAllMapped(
+      RegExp(r'([:\[,]\s*)-?(?:Infinity|NaN)(?=\s*[,\]}])'),
+      (m) => '${m.group(1)}null',
+    );
+    return jsonDecode(cleaned);
   }
 }
 

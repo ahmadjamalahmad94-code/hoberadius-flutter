@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/idempotency.dart';
 import '../domain/card_model.dart';
 
 class GenerateResult {
@@ -16,8 +17,17 @@ class CardsRepository {
   CardsRepository(this._api);
   final ApiClient _api;
 
-  Future<GenerateResult> generate(GenerateBatchRequest req) async {
-    final res = await _api.post('/api/v1/cards/generate', body: req.toBody());
+  /// [idempotencyKey]: one per «توليد» submission (reused on retry): the
+  /// server returns the same batch instead of generating it twice.
+  Future<GenerateResult> generate(
+    GenerateBatchRequest req, {
+    String? idempotencyKey,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/cards/generate',
+      body: req.toBody(),
+      headers: idempotencyHeaders(idempotencyKey),
+    );
     final d = (res['data'] ?? res) as Map<String, dynamic>;
     final batchJson = d['batch'] as Map<String, dynamic>? ?? {};
     final cardsJson = (d['cards'] as List?) ?? const [];
@@ -48,6 +58,7 @@ class CardsRepository {
 
   Future<CardBatchOperationsPage> listBatchOperations({
     String query = '',
+    String code = '',
     String status = '',
     int? planId,
     String manager = '',
@@ -59,6 +70,8 @@ class CardsRepository {
       '/api/v1/cards/batches',
       query: {
         if (query.trim().isNotEmpty) 'q': query.trim(),
+        // exact batch-code lookup (updated servers; old ones ignore it)
+        if (code.trim().isNotEmpty) 'code': code.trim(),
         if (status.isNotEmpty) 'status': status,
         if (planId != null) 'plan_id': planId,
         if (manager.trim().isNotEmpty) 'manager': manager.trim(),
@@ -188,6 +201,40 @@ class CardsRepository {
         .toList();
   }
 
+  /// EVERY card of a batch (the list endpoint caps a page): pages of
+  /// [pageSize] until a short page; a page that brings nothing new ends it
+  /// (servers that ignore offset). The «تصدير ملف» used to write 500 of
+  /// 1,000,000 cards.
+  Future<List<CardItem>> allCardsOfBatch(
+    int batchId, {
+    bool? used,
+    bool? revoked,
+    int pageSize = 2000,
+    int maxPages = 200,
+  }) async {
+    final out = <CardItem>[];
+    final seen = <String>{};
+    for (var page = 0; page < maxPages; page++) {
+      final chunk = await cardsOfBatch(
+        batchId,
+        used: used,
+        revoked: revoked,
+        limit: pageSize,
+        offset: page * pageSize,
+      );
+      var added = 0;
+      for (final c in chunk) {
+        final key = c.id != null ? 'id:${c.id}' : 'u:${c.username}';
+        if (seen.add(key)) {
+          out.add(c);
+          added++;
+        }
+      }
+      if (chunk.length < pageSize || added == 0) break;
+    }
+    return out;
+  }
+
   Future<RechargeBatchesPage> listRechargeBatches({
     int page = 1,
     int perPage = 25,
@@ -227,8 +274,14 @@ class CardsRepository {
 
   Future<void> revoke(int cardId) => _api.post('/api/v1/cards/$cardId/revoke');
 
+  /// The checker matches the card USERNAME only on updated servers. A card
+  /// id is asked explicitly: «#123» or «id:123» → `card_id=123` (plus
+  /// `query=123`, which older servers matched as username-or-id).
   Future<CardCheckResult> checkCard(String query) async {
-    final res = await _api.get('/api/v1/cards/check', query: {'query': query});
+    final res = await _api.get(
+      '/api/v1/cards/check',
+      query: cardCheckQueryParams(query),
+    );
     final data = (res['data'] ?? res) as Map<String, dynamic>;
     final card = data['card'] as Map<String, dynamic>? ?? {};
     return CardCheckResult.fromJson(card);
@@ -272,6 +325,18 @@ class CardsRepository {
     final card = data['card'] as Map<String, dynamic>? ?? {};
     return CardCheckResult.fromJson(card);
   }
+}
+
+/// Query parameters of `GET /cards/check` for what the operator typed.
+Map<String, String> cardCheckQueryParams(String input) {
+  final text = input.trim();
+  final byId =
+      RegExp(r'^(?:#|id:)\s*(\d+)$', caseSensitive: false).firstMatch(text);
+  if (byId != null) {
+    final id = byId.group(1)!;
+    return {'card_id': id, 'query': id};
+  }
+  return {'query': text};
 }
 
 final cardsRepositoryProvider = Provider<CardsRepository>((ref) {

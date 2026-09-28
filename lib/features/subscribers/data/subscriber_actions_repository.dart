@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/api_exception.dart';
+import '../../../core/api/idempotency.dart';
+import '../../../core/api/visible_error_message.dart';
 import '../domain/subscriber_actions_model.dart';
 
 /// Shown when the server answers 404/405 on one of the new action endpoints:
@@ -15,9 +17,14 @@ class SubscriberActionError implements Exception {
     this.message, {
     this.notUpdated = false,
     this.forbidden = false,
+    this.retryable = false,
   });
 
   final String message;
+
+  /// Busy/unreachable server (503 «الخادم مشغول», timeouts): the dialog
+  /// offers «إعادة المحاولة» and resends with the SAME Idempotency-Key.
+  final bool retryable;
 
   /// The server has no such endpoint (old build).
   final bool notUpdated;
@@ -60,6 +67,7 @@ SubscriberActionError mapActionError(Object error, {String what = ''}) {
   final msg = error.message.trim();
   return SubscriberActionError(
     msg.isEmpty ? 'تعذّر تنفيذ الإجراء. حاول مرة أخرى.' : msg,
+    retryable: isRetryableError(error),
   );
 }
 
@@ -97,9 +105,16 @@ class SubscriberActionsRepository {
     String path,
     Object body, {
     String what = '',
+    String? idempotencyKey,
   }) async {
     try {
-      return _data(await _api.post('${_base(username)}/$path', body: body));
+      return _data(
+        await _api.post(
+          '${_base(username)}/$path',
+          body: body,
+          headers: idempotencyHeaders(idempotencyKey),
+        ),
+      );
     } catch (e) {
       throw mapActionError(e, what: what);
     }
@@ -114,22 +129,35 @@ class SubscriberActionsRepository {
     }
   }
 
+  // Money actions carry an Idempotency-Key (one per dialog submission,
+  // reused on «إعادة المحاولة»): a double tap or a retry after a lost answer
+  // never records the money twice on updated servers.
+
   Future<Map<String, dynamic>> extend(
     String username,
-    Map<String, dynamic> payload,
-  ) =>
-      _post(username, 'extend', payload, what: 'إضافة الوقت');
+    Map<String, dynamic> payload, {
+    String? idempotencyKey,
+  }) =>
+      _post(
+        username,
+        'extend',
+        payload,
+        what: 'إضافة الوقت',
+        idempotencyKey: idempotencyKey,
+      );
 
   Future<Map<String, dynamic>> changePlan(
     String username, {
     required int planId,
     required String policy,
+    String? idempotencyKey,
   }) =>
       _post(
         username,
         'change-plan',
         {'plan_id': planId, 'policy': policy},
         what: 'تغيير العرض',
+        idempotencyKey: idempotencyKey,
       );
 
   Future<Map<String, dynamic>> quotaTopup(
@@ -139,6 +167,7 @@ class SubscriberActionsRepository {
     required ChargeMode charge,
     double amount = 0,
     String notes = '',
+    String? idempotencyKey,
   }) =>
       _post(
         username,
@@ -149,6 +178,7 @@ class SubscriberActionsRepository {
           ...chargePayload(charge, amount, notes),
         },
         what: 'إضافة الكوتة',
+        idempotencyKey: idempotencyKey,
       );
 
   Future<Map<String, dynamic>> quotaResetDaily(
@@ -156,25 +186,35 @@ class SubscriberActionsRepository {
     required ChargeMode charge,
     double amount = 0,
     String notes = '',
+    String? idempotencyKey,
   }) =>
       _post(
         username,
         'quota/reset-daily',
         chargePayload(charge, amount, notes),
         what: 'استعادة الكوتة',
+        idempotencyKey: idempotencyKey,
       );
 
   Future<Map<String, dynamic>> payment(
     String username,
-    Map<String, dynamic> payload,
-  ) =>
-      _post(username, 'payment', payload, what: 'تسجيل الدفعات');
+    Map<String, dynamic> payload, {
+    String? idempotencyKey,
+  }) =>
+      _post(
+        username,
+        'payment',
+        payload,
+        what: 'تسجيل الدفعات',
+        idempotencyKey: idempotencyKey,
+      );
 
   Future<Map<String, dynamic>> balance(
     String username, {
     required double amount,
     String notes = '',
     Map<int, LoanChoice> choices = const {},
+    String? idempotencyKey,
   }) =>
       _post(
         username,
@@ -185,13 +225,21 @@ class SubscriberActionsRepository {
           'loan_actions': loanActionsPayload(choices),
         },
         what: 'إضافة الرصيد',
+        idempotencyKey: idempotencyKey,
       );
 
   Future<Map<String, dynamic>> loan(
     String username,
-    Map<String, dynamic> payload,
-  ) =>
-      _post(username, 'loan', payload, what: 'منح السلف');
+    Map<String, dynamic> payload, {
+    String? idempotencyKey,
+  }) =>
+      _post(
+        username,
+        'loan',
+        payload,
+        what: 'منح السلف',
+        idempotencyKey: idempotencyKey,
+      );
 
   Future<Map<String, dynamic>> message(
     String username, {

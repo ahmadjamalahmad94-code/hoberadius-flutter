@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../../core/format/server_time.dart';
+import '../../../../core/l10n/arabic_labels.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -67,10 +69,12 @@ class ToolsRadiusLogPanel extends ConsumerWidget {
                         ),
                         DataCell(
                           Text(
-                            item.reason.isEmpty ? item.reply : item.reason,
+                            rawTokenLabel(
+                              item.reason.isEmpty ? item.reply : item.reason,
+                            ),
                           ),
                         ),
-                        DataCell(Text(item.authdate)),
+                        DataCell(Text(_localStamp(item.authdate))),
                       ],
                     ),
                   )
@@ -81,4 +85,12 @@ class ToolsRadiusLogPanel extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// RADIUS log time (UTC ISO) as local «yyyy-MM-dd HH:mm».
+String _localStamp(String raw) {
+  final t = parseServerDateTime(raw);
+  if (t == null) return raw;
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${t.year}-${two(t.month)}-${two(t.day)} ${two(t.hour)}:${two(t.minute)}';
 }

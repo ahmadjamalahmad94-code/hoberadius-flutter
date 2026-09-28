@@ -1,13 +1,38 @@
+import 'package:hoberadius_app/core/format/currency.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class RevenuePage {
-  const RevenuePage({required this.items, required this.count});
+  const RevenuePage({
+    required this.items,
+    required this.count,
+    this.serverCollected,
+    this.collectedByCurrency = const [],
+    this.mixedCurrency = false,
+  });
+
+  /// `totals.by_currency` (updated servers): payments per currency.
+  final List<CurrencyAmount> collectedByCurrency;
+  final bool mixedCurrency;
 
   final List<RevenueRecord> items;
   final int count;
 
+  /// `totals.collected` of the updated server: net subscriber payments of
+  /// the whole ledger (not only the loaded rows).
+  final double? serverCollected;
+
   factory RevenuePage.fromJson(Map<String, dynamic> json) {
     final data = _data(json);
     final rawItems = data['items'];
+    final totals = data['totals'];
+    final collected = totals is Map ? totals['collected'] : null;
     return RevenuePage(
+      collectedByCurrency:
+          totals is Map ? parseByCurrency(totals['by_currency']) : const [],
+      mixedCurrency: totals is Map && totals['mixed_currency'] == true,
+      serverCollected: collected is num
+          ? collected.toDouble()
+          : double.tryParse('${collected ?? ''}'),
       items: rawItems is List
           ? rawItems
               .whereType<Map>()
@@ -19,7 +44,15 @@ class RevenuePage {
   }
 
   RevenueSummary get summary {
-    return RevenueSummary.fromItems(items);
+    final fromRows = RevenueSummary.fromItems(items);
+    final server = serverCollected;
+    if (server == null) return fromRows;
+    // Server total covers ALL subscriber payments; other sources (card
+    // batches…) are added from the loaded rows.
+    final others = items
+        .where((i) => i.sourceType != 'subscriber_payment')
+        .fold<double>(0, (sum, i) => sum + i.collectedAmount);
+    return fromRows.withCollected(server + others);
   }
 }
 
@@ -52,6 +85,15 @@ class RevenueSummary {
       postedCount: items.where((item) => item.status == 'posted').length,
     );
   }
+
+  RevenueSummary withCollected(double collected) => RevenueSummary(
+        totalCollected: collected,
+        totalWholesaleCost: totalWholesaleCost,
+        totalNetProfit: totalNetProfit,
+        totalCompanyShare: totalCompanyShare,
+        totalDistributorShare: totalDistributorShare,
+        postedCount: postedCount,
+      );
 }
 
 class RevenueRecord {
@@ -112,7 +154,7 @@ class RevenueRecord {
       companyShare: _moneyField(json, 'company_share'),
       distributorShare: _moneyField(json, 'distributor_share'),
       managerShare: _moneyField(json, 'manager_share'),
-      currency: _string(json['currency'], fallback: 'JOD'),
+      currency: _string(json['currency']),
       status: _string(json['status'], fallback: 'pending'),
       metadata: _map(json['metadata']),
       createdAt: _date(json['created_at']),
@@ -211,5 +253,5 @@ double _moneyField(
 DateTime? _date(Object? value) {
   final text = value?.toString().trim();
   if (text == null || text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceAll('Z', ''));
+  return parseServerDateTime(text);
 }

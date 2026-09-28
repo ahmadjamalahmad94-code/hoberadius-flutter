@@ -52,9 +52,12 @@ void main() {
     expect(find.textContaining('JOD'), findsNothing);
   });
 
-  testWidgets('absent currency setting falls back to JOD, never ILS',
+  // The server's default_currency() is ILS for a tenant that never set
+  // billing.currency; the app used to show JOD there.
+  testWidgets('absent currency setting falls back to ILS (server default)',
       (tester) async {
     await _pump(tester, {});
-    expect(find.textContaining('JOD'), findsOneWidget);
+    expect(find.textContaining('ILS'), findsOneWidget);
+    expect(find.textContaining('JOD'), findsNothing);
   });
 }

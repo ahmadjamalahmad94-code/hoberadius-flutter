@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 /// Subscriber model — mirrors the server-side `Subscriber` DTO and the
 /// `/api/v1/accounts` `_EDITABLE` whitelist (see `app/api/v1/accounts.py`).
 ///
@@ -111,6 +113,7 @@ class Subscriber {
     this.firstLoginAt,
     this.createdAt,
     this.updatedAt,
+    this.rawMetadata = const <String, dynamic>{},
   });
 
   final int? id;
@@ -214,6 +217,11 @@ class Subscriber {
   final DateTime? firstLoginAt;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+
+  /// The server's full `metadata` object as loaded. `metadata` is replaced
+  /// as a whole by PATCH, so a partial save merges the form's sections into
+  /// this instead of dropping keys the app does not edit.
+  final Map<String, dynamic> rawMetadata;
 
   /// Helper for forms — split/join the CSV.
   List<String> get workingDays => workingDaysCsv.isEmpty
@@ -323,6 +331,7 @@ class Subscriber {
       firstLoginAt: _parseDt(j['first_login_at']),
       createdAt: _parseDt(j['created_at']),
       updatedAt: _parseDt(j['updated_at']),
+      rawMetadata: meta,
     );
   }
 
@@ -393,6 +402,101 @@ class Subscriber {
   }
 
   Map<String, dynamic> toCreateBody() => _flat(true);
+
+  /// Fields never written by the edit form: money moves through the balance
+  /// / payment actions (with a ledger row), the password through «إعادة كلمة
+  /// المرور».
+  static const _neverPatched = {'balance', 'password', 'username'};
+
+  /// Network fields whose «empty» is NULL on the server, not "".
+  static const _nullWhenEmpty = {'mac_lock', 'static_ip'};
+
+  /// PATCH body with ONLY the fields that differ from [original] (the row as
+  /// loaded into the form). Saving an untouched form after another action
+  /// (extend, payment, balance) no longer writes the stale expiry/balance
+  /// back; `balance` is never sent; an emptied mac_lock/static_ip becomes
+  /// null; `metadata` travels only when one of its sections changed, merged
+  /// into the server's full metadata.
+  Map<String, dynamic> toPatchDiff(Subscriber original) {
+    final now = _flat(false);
+    final before = original._flat(false);
+    final out = <String, dynamic>{};
+    final keys = {...now.keys, ...before.keys}
+      ..remove('metadata')
+      ..removeAll(_neverPatched);
+    for (final k in keys) {
+      final a = before[k];
+      final b = now[k];
+      if (_sameValue(k, a, b)) continue;
+      if (_nullWhenEmpty.contains(k) && (b == null || b == '')) {
+        out[k] = null;
+      } else if (b == null && k == 'plan_id') {
+        out[k] = null;
+      } else if (b == null && k == 'manager_id') {
+        out[k] = 0;
+      } else if (b == null && k == 'expire_at') {
+        out[k] = null;
+      } else if (b != null) {
+        out[k] = b;
+      }
+    }
+    final metaNow = _metadata();
+    final metaBefore = original._metadata();
+    if (!_deepEquals(metaNow, metaBefore)) {
+      out['metadata'] = _deepMerge(original.rawMetadata, metaNow);
+    }
+    return out;
+  }
+
+  static bool _sameValue(String key, Object? a, Object? b) {
+    if (a is num && b is num) {
+      final tolerance = key == 'custom_price' ? 0.005 : 1e-9;
+      return (a - b).abs() < tolerance;
+    }
+    if (_nullWhenEmpty.contains(key)) {
+      return (a ?? '').toString() == (b ?? '').toString();
+    }
+    return _deepEquals(a, b);
+  }
+
+  static bool _deepEquals(Object? a, Object? b) {
+    if (a is Map && b is Map) {
+      if (a.length != b.length) return false;
+      for (final k in a.keys) {
+        if (!b.containsKey(k) || !_deepEquals(a[k], b[k])) return false;
+      }
+      return true;
+    }
+    if (a is List && b is List) {
+      if (a.length != b.length) return false;
+      for (var i = 0; i < a.length; i++) {
+        if (!_deepEquals(a[i], b[i])) return false;
+      }
+      return true;
+    }
+    if (a is num && b is num) return a == b;
+    return a == b;
+  }
+
+  static Map<String, dynamic> _deepMerge(
+    Map<String, dynamic> base,
+    Map<String, dynamic> over,
+  ) {
+    final out = <String, dynamic>{...base};
+    over.forEach((k, v) {
+      final prev = out[k];
+      if (v is Map && prev is Map) {
+        out[k] = _deepMerge(
+          Map<String, dynamic>.from(prev),
+          Map<String, dynamic>.from(v),
+        );
+      } else {
+        out[k] = v;
+      }
+    });
+    return out;
+  }
+
   Map<String, dynamic> toPatchBody() => _flat(false);
 
   Map<String, dynamic> _metadata() => {
@@ -432,29 +536,7 @@ class Subscriber {
   /// read 20:59 UTC as 20:59 LOCAL — and `toJson` then converted that back
   /// to UTC, so every save from the edit form cut the expiry by the UTC
   /// offset (3 h in Palestine).
-  static DateTime? _parseDt(Object? v) {
-    if (v == null) return null;
-    final raw = v.toString().trim();
-    if (raw.isEmpty) return null;
-    try {
-      final d = DateTime.parse(raw);
-      final utc = d.isUtc
-          ? d
-          : DateTime.utc(
-              d.year,
-              d.month,
-              d.day,
-              d.hour,
-              d.minute,
-              d.second,
-              d.millisecond,
-              d.microsecond,
-            );
-      return utc.toLocal();
-    } catch (_) {
-      return null;
-    }
-  }
+  static DateTime? _parseDt(Object? v) => parseServerDateTime(v);
 
   static int? _int(Object? v) =>
       v == null ? null : (v is int ? v : int.tryParse(v.toString()));
@@ -636,4 +718,55 @@ class Subscriber {
         notes: notes ?? this.notes,
         tags: tags ?? this.tags,
       );
+}
+
+// ── Username / password rules (create form = rename dialog = server) ─────────
+
+/// The server's rule for a subscriber login name (`^[A-Za-z0-9._@-]{1,64}$`,
+/// the same check the rename endpoint always had): Latin letters, digits and
+/// «. _ - @», no spaces, no Arabic/emoji, no «/» (it made the account
+/// unreachable by URL). The app also asks for at least 3 characters, like the
+/// rename dialog.
+final RegExp kSubscriberUsernamePattern = RegExp(r'^[A-Za-z0-9._@\-]+$');
+const int kSubscriberUsernameMin = 3;
+const int kSubscriberUsernameMax = 64;
+
+/// Minimum subscriber password length — the same minimum the web applies to
+/// card-user / marketplace passwords (4). A one-character password was
+/// accepted before.
+const int kSubscriberPasswordMin = 4;
+const int kSubscriberPasswordMax = 64;
+
+/// Arabic error for an invalid login name, or `null` when it is fine.
+String? validateSubscriberUsernameFormat(String value) {
+  final v = value.trim();
+  if (v.isEmpty) return 'اسم المستخدم مطلوب.';
+  if (v.contains(RegExp(r'\s'))) return 'اسم المستخدم بدون مسافات.';
+  if (v.length < kSubscriberUsernameMin) {
+    return 'اسم المستخدم $kSubscriberUsernameMin أحرف على الأقل.';
+  }
+  if (v.length > kSubscriberUsernameMax) {
+    return 'اسم المستخدم $kSubscriberUsernameMax حرفًا على الأكثر.';
+  }
+  if (!kSubscriberUsernamePattern.hasMatch(v)) {
+    return 'أحرف لاتينية وأرقام و . _ - @ فقط.';
+  }
+  return null;
+}
+
+/// Username of a NEW subscriber (create form).
+String? validateNewSubscriberUsername(String value) =>
+    validateSubscriberUsernameFormat(value);
+
+/// Password of a new subscriber / a password reset.
+String? validateNewSubscriberPassword(String value) {
+  if (value.isEmpty) return 'كلمة المرور مطلوبة.';
+  if (value.trim().isEmpty) return 'كلمة المرور لا تكون مسافات فقط.';
+  if (value.length < kSubscriberPasswordMin) {
+    return 'كلمة المرور $kSubscriberPasswordMin أحرف على الأقل.';
+  }
+  if (value.length > kSubscriberPasswordMax) {
+    return 'كلمة المرور $kSubscriberPasswordMax حرفًا على الأكثر.';
+  }
+  return null;
 }

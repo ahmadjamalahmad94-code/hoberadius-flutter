@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/currency.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
@@ -193,7 +194,7 @@ class _DistributorCard extends StatelessWidget {
                 children: [
                   StatusPill(
                     text: 'دين ${distributor.debtBalance.toStringAsFixed(2)}'
-                        ' · حد ${distributor.creditLimit.toStringAsFixed(2)}',
+                        ' · حد ${formatWithCurrency(distributor.creditLimit, '')}',
                     tone: distributor.debtBalance > 0
                         ? PillTone.amber
                         : PillTone.neutral,

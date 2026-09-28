@@ -10,6 +10,9 @@ import '../../../../shared/widgets/status_pill.dart';
 import '../../../plans/domain/plan_model.dart';
 import '../../data/subscriber_actions_repository.dart';
 import '../../domain/subscriber_actions_model.dart';
+import '../../domain/subscriber_model.dart';
+import '../../../../core/api/idempotency.dart';
+import '../../../../core/format/money_limits.dart';
 import 'action_dialog_kit.dart';
 import 'plan_picker.dart';
 
@@ -59,8 +62,16 @@ mixin _ActionRunner<T extends ConsumerStatefulWidget> on ConsumerState<T> {
   bool busy = false;
   String? error;
 
+  /// The last failure was «server busy/unreachable» → offer a retry.
+  bool retryable = false;
+  final IdempotencyKeeper _idem = IdempotencyKeeper();
+
   SubscriberActionsRepository get repo =>
       ref.read(subscriberActionsRepositoryProvider);
+
+  /// Idempotency-Key for this submission: the same body sent again (a retry)
+  /// reuses it; a changed body is a new submission.
+  String idemKey(String endpoint, Object body) => _idem.keyFor(endpoint, body);
 
   Future<void> run(Future<ActionOutcome> Function() task) async {
     FocusScope.of(context).unfocus();
@@ -70,13 +81,16 @@ mixin _ActionRunner<T extends ConsumerStatefulWidget> on ConsumerState<T> {
     });
     try {
       final outcome = await task();
+      _idem.reset();
       if (!mounted) return;
       Navigator.of(context).pop(outcome);
     } catch (e) {
       if (!mounted) return;
+      final mapped = mapActionError(e);
       setState(() {
         busy = false;
-        error = mapActionError(e).message;
+        retryable = mapped.retryable;
+        error = mapped.message;
       });
     }
   }
@@ -209,6 +223,13 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
     if (_mode == ExtendMode.duration && _minutes <= 0) {
       return 'أدخل مدّة أكبر من صفر.';
     }
+    if (_minutes > kMaxActionMinutes) {
+      return 'المدّة كبيرة جدًا — الحدّ الأعلى 10 سنوات.';
+    }
+    if (_charge != ChargeMode.free && _price > kMaxMoneyAmount) {
+      return 'قيمة الوقت كبيرة جدًا — الحدّ الأعلى '
+          '${kMaxMoneyAmount.toStringAsFixed(0)}.';
+    }
     return null;
   }
 
@@ -253,16 +274,18 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
           final res = await repo.extendTimeLegacy(c.username, _minutes);
           return ActionOutcome(_doneMessage(res['new_expire_at']));
         }
+        final payload = extendPayload(
+          mode: _mode,
+          minutes: _minutes,
+          expireAt: _exact,
+          charge: _charge,
+          amount: _price,
+          notes: _notes.text,
+        );
         final res = await repo.extend(
           c.username,
-          extendPayload(
-            mode: _mode,
-            minutes: _minutes,
-            expireAt: _exact,
-            charge: _charge,
-            amount: _price,
-            notes: _notes.text,
-          ),
+          payload,
+          idempotencyKey: idemKey('extend', payload),
         );
         return ActionOutcome(_doneMessage(res['new_expire_at']));
       });
@@ -284,6 +307,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
       subtitle: c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'إضافة',
       confirmIcon: Icons.add,
       onConfirm: _invalid == null ? _submit : null,
@@ -446,8 +470,9 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
 
   String? get _invalid {
     if (_quotaMb <= 0) return 'أدخل حجم الكوتة.';
-    if (_charge != ChargeMode.free && _amount <= 0) {
-      return 'أدخل المبلغ للإضافة المدفوعة.';
+    if (_charge != ChargeMode.free) {
+      if (_amount <= 0) return 'أدخل المبلغ للإضافة المدفوعة.';
+      return validateMoneyAmount(_amount);
     }
     return null;
   }
@@ -460,6 +485,13 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
           charge: _charge,
           amount: _amount,
           notes: _notes.text,
+          idempotencyKey: idemKey('quota/topup', {
+            'q': _quotaMb,
+            't': _target,
+            'c': _charge.wire,
+            'a': _amount,
+            'n': _notes.text.trim(),
+          }),
         );
         return ActionOutcome('تمت إضافة ${_fmtMb(_quotaMb)} لـ ${c.username}');
       });
@@ -473,6 +505,7 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
       subtitle: c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'إضافة',
       confirmIcon: Icons.add,
       onConfirm: _invalid == null ? _submit : null,
@@ -600,13 +633,19 @@ class _QuotaResetDialogState extends ConsumerState<QuotaResetDialog>
           charge: _charge,
           amount: _amount,
           notes: _notes.text,
+          idempotencyKey: idemKey('quota/reset-daily', {
+            'c': _charge.wire,
+            'a': _amount,
+            'n': _notes.text.trim(),
+          }),
         );
         return ActionOutcome('استُعيدت الكوتة اليومية لـ ${c.username}');
       });
 
   @override
   Widget build(BuildContext context) {
-    final invalid = _charge != ChargeMode.free && _amount <= 0;
+    final invalid =
+        _charge != ChargeMode.free && validateMoneyAmount(_amount) != null;
     return ActionDialogFrame(
       icon: Icons.restart_alt,
       tone: PillTone.blue,
@@ -614,6 +653,7 @@ class _QuotaResetDialogState extends ConsumerState<QuotaResetDialog>
       subtitle: c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'استعادة',
       confirmIcon: Icons.restart_alt,
       onConfirm: invalid ? null : _submit,
@@ -722,38 +762,27 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
 
   double get _amount => parseLocalizedNumber(_money.text) ?? 0;
 
-  String get _coverage {
-    final settled = settledTotal(c.openLoans, _choices);
-    final debtCut = _settleBalance ? c.debt : 0.0;
-    final timeAmount = (_amount - settled - debtCut).clamp(0, double.infinity);
-    if (_amount <= 0 || c.effectivePrice <= 0) {
-      return 'أدخل المبلغ لعرض المدّة التي يُضيفها للحساب.';
-    }
-    final cover = coverageText(
-      timeAmount.toDouble(),
-      c.effectivePrice,
-      c.planMinutes,
-    );
-    var msg = 'يُطبَّق على الحساب ويُمدِّد الانتهاء بـ ≈ '
-        '${cover.isEmpty ? arDuration(0) : cover}.';
-    final cut = settled + debtCut;
-    if (cut > 0) {
-      msg = 'سيُخصم ${formatMoney(cut, c.currency)} لتسوية سلف/دين؛ والباقي '
-          '${formatMoney(timeAmount.toDouble(), c.currency)} ← $msg';
-    }
-    return msg;
-  }
+  String get _coverage => paymentCoverageHint(
+        amount: _amount,
+        settledLoans: settledTotal(c.openLoans, _choices),
+        debt: _settleBalance ? c.debt : 0.0,
+        effectivePrice: c.effectivePrice,
+        planMinutes: c.planMinutes,
+        currency: c.currency,
+      );
 
   Future<void> _submit() => run(() async {
+        final payload = paymentPayload(
+          amount: _amount,
+          method: _method,
+          notes: _notes.text,
+          choices: _choices,
+          settleBalance: c.debt > 0 && _settleBalance,
+        );
         await repo.payment(
           c.username,
-          paymentPayload(
-            amount: _amount,
-            method: _method,
-            notes: _notes.text,
-            choices: _choices,
-            settleBalance: c.debt > 0 && _settleBalance,
-          ),
+          payload,
+          idempotencyKey: idemKey('payment', payload),
         );
         return ActionOutcome(
           'تم تسجيل دفعة ${formatMoney(_amount, c.currency)} لـ ${c.username}',
@@ -763,7 +792,9 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final invalid = _amount < 0.01;
+    final amountError =
+        _money.text.trim().isEmpty ? null : validateMoneyAmount(_amount);
+    final invalid = _amount < 0.01 || amountError != null;
     return ActionDialogFrame(
       icon: Icons.payments_outlined,
       tone: PillTone.green,
@@ -771,6 +802,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
       subtitle: c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'تسجيل',
       confirmIcon: Icons.add,
       onConfirm: invalid ? null : _submit,
@@ -857,7 +889,11 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
           ),
           _gap(AppTokens.s8),
         ],
-        ActionNote(text: _coverage, tone: PillTone.blue),
+        if (amountError != null) ...[
+          ActionNote(text: amountError, tone: PillTone.red),
+          _gap(AppTokens.s8),
+        ] else
+          ActionNote(text: _coverage, tone: PillTone.blue),
         _gap(AppTokens.s8),
       ],
     );
@@ -996,9 +1032,12 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
   }
 
   Future<void> _submit() => run(() async {
+        final payload =
+            loanPayload(type: _type, days: _d, hours: _h, reason: _reason.text);
         final res = await repo.loan(
           c.username,
-          loanPayload(type: _type, days: _d, hours: _h, reason: _reason.text),
+          payload,
+          idempotencyKey: idemKey('loan', payload),
         );
         if (res['pending_approval'] == true) {
           return const ActionOutcome(
@@ -1027,6 +1066,7 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
       subtitle: c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'إضافة',
       confirmIcon: Icons.add,
       onConfirm: invalid == null ? _submit : null,
@@ -1139,7 +1179,13 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
   }
 
   Future<void> _submit() => run(() async {
-        await repo.changePlan(c.username, planId: _next!.id!, policy: _policy);
+        await repo.changePlan(
+          c.username,
+          planId: _next!.id!,
+          policy: _policy,
+          idempotencyKey:
+              idemKey('change-plan', {'p': _next!.id, 'x': _policy}),
+        );
         return ActionOutcome('تم تغيير العرض إلى ${_next!.name}');
       });
 
@@ -1154,6 +1200,7 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
       subtitle: c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'تغيير العرض',
       confirmIcon: Icons.check,
       onConfirm: _next?.id == null ? null : _submit,
@@ -1348,6 +1395,7 @@ class _MessageDialogState extends ConsumerState<MessageDialog>
       subtitle: c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'إرسال',
       confirmIcon: Icons.send,
       onConfirm: noChannel || _text.text.trim().isEmpty ? null : _submit,
@@ -1533,6 +1581,7 @@ class _RenameDialogState extends ConsumerState<RenameDialog>
       subtitle: widget.c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'حفظ الاسم',
       confirmIcon: Icons.check,
       onConfirm: invalid == null ? _submit : null,
@@ -1592,6 +1641,8 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
 
   @override
   Widget build(BuildContext context) {
+    final invalid =
+        _pw.text.isEmpty ? null : validateNewSubscriberPassword(_pw.text);
     return ActionDialogFrame(
       icon: Icons.password_outlined,
       tone: PillTone.blue,
@@ -1599,9 +1650,10 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
       subtitle: widget.c.username,
       busy: busy,
       error: error,
+      retryable: retryable,
       confirmLabel: 'تعيين',
       confirmIcon: Icons.check,
-      onConfirm: _pw.text.isEmpty ? null : _submit,
+      onConfirm: _pw.text.isEmpty || invalid != null ? null : _submit,
       children: [
         FormFieldRow(
           label: 'كلمة المرور الجديدة',
@@ -1626,6 +1678,7 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
             onChanged: (_) => setState(() {}),
           ),
         ),
+        if (invalid != null) ActionNote(text: invalid, tone: PillTone.red),
       ],
     );
   }

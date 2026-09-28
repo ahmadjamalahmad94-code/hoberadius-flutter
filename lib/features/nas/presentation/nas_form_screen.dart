@@ -259,6 +259,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
             inlineActions: true,
             leading: IconButton(
               onPressed: () => context.goNamed('nas'),
+              tooltip: 'رجوع',
               icon: const Icon(Icons.arrow_back),
             ),
             actions: [

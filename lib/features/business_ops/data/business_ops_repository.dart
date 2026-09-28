@@ -43,7 +43,7 @@ class BusinessOpsRepository {
     required String debitAccount,
     required String creditAccount,
     required num amount,
-    String currency = 'JOD',
+    String? currency,
     String targetType = '',
     int? targetId,
     String referenceType = '',
@@ -56,7 +56,7 @@ class BusinessOpsRepository {
         'debit_account': debitAccount,
         'credit_account': creditAccount,
         'amount': amount,
-        'currency': currency,
+        if (currency != null && currency.isNotEmpty) 'currency': currency,
         if (targetType.trim().isNotEmpty) 'target_type': targetType.trim(),
         if (targetId != null) 'target_id': targetId,
         if (referenceType.trim().isNotEmpty)
@@ -94,7 +94,7 @@ class BusinessOpsRepository {
     required num wholesalePrice,
     num? effectivePrice,
     num discountAmount = 0,
-    String currency = 'JOD',
+    String? currency,
   }) async {
     final res = await _api.post(
       '/api/v1/pricing/snapshots',
@@ -106,7 +106,7 @@ class BusinessOpsRepository {
         'wholesale_price': wholesalePrice,
         if (effectivePrice != null) 'effective_price': effectivePrice,
         'discount_amount': discountAmount,
-        'currency': currency,
+        if (currency != null && currency.isNotEmpty) 'currency': currency,
         'metadata': {'source': 'flutter'},
       },
     );

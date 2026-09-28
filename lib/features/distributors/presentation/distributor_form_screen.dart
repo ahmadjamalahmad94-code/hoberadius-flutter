@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/format/input_rules.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -80,6 +81,7 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
       controller: _email,
       keyboardType: TextInputType.emailAddress,
       decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+      validator: validateOptionalEmail,
     );
     final statusField = DropdownButtonFormField<String>(
       isExpanded: true,
@@ -96,6 +98,16 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
       controller: _creditLimit,
       keyboardType: TextInputType.number,
       decoration: const InputDecoration(labelText: 'حد الائتمان'),
+      validator: (v) {
+        final t = (v ?? '').trim();
+        if (t.isEmpty) return null;
+        final n = num.tryParse(t.replaceAll(',', '.'));
+        if (n == null || !n.isFinite || n < 0) {
+          return 'حد الائتمان رقم صفر أو أكثر.';
+        }
+        if (n > 1000000000) return 'حد الائتمان كبير جدًا.';
+        return null;
+      },
     );
     const creditHint = Text(
       'حد الائتمان قيمة مرجعية للتحكم المالي، وليست فاتورة كاملة.',
@@ -173,6 +185,9 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
 
     return Form(
       key: _formKey,
+      // Errors re-check while typing: «اكتب اسم الدخول» no longer stays
+      // after the field is filled.
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

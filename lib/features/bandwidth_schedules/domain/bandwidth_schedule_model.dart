@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class BandwidthSchedule {
   const BandwidthSchedule({
     required this.id,
@@ -55,7 +57,7 @@ class BandwidthSchedule {
       restoreMode: (json['restore_mode'] ?? 'profile_default').toString(),
       enabled: _asBool(json['enabled']),
       notes: (json['notes'] ?? '').toString(),
-      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
+      createdAt: parseServerDateTime(json['created_at']),
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class Admin {
   Admin({
     this.id,
@@ -65,7 +67,7 @@ class Admin {
   static DateTime? _dt(Object? v) {
     if (v == null) return null;
     try {
-      return DateTime.parse(v.toString().replaceAll('Z', ''));
+      return parseServerDateTime(v);
     } catch (_) {
       return null;
     }
@@ -84,7 +86,8 @@ class Admin {
     bool? enabled,
     String? avatarUrl,
     String? tags,
-  }) => Admin(
+  }) =>
+      Admin(
         id: id ?? this.id,
         username: username ?? this.username,
         fullName: fullName ?? this.fullName,
@@ -150,7 +153,8 @@ class Role {
     List<String>? permissions,
     bool? isSystem,
     String? color,
-  }) => Role(
+  }) =>
+      Role(
         id: id ?? this.id,
         name: name ?? this.name,
         displayName: displayName ?? this.displayName,
@@ -187,7 +191,8 @@ class PermissionCatalog {
   final List<String> items;
   final List<PermissionGroup> groups;
 
-  factory PermissionCatalog.fromJson(Map<String, dynamic> j) => PermissionCatalog(
+  factory PermissionCatalog.fromJson(Map<String, dynamic> j) =>
+      PermissionCatalog(
         items: ((j['items'] as List?) ?? const [])
             .map((e) => e.toString())
             .toList(),

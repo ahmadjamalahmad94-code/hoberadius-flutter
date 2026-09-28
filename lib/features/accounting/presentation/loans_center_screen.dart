@@ -2,14 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/api/idempotency.dart';
+import '../../../core/api/paging.dart';
 import '../../../core/api/visible_error_message.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/hub_switch_row.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../../core/format/currency.dart';
+import '../../admin_control/application/admin_control_providers.dart';
+import '../../subscribers/domain/subscriber_actions_model.dart'
+    show kPaymentMethods, parseLocalizedNumber;
 import '../data/accounting_repository.dart';
 import '../domain/accounting_model.dart';
 
@@ -20,10 +27,83 @@ const _statusOptions = [
   (value: 'voided', label: 'ملغاة'),
 ];
 
-final _loansProvider =
-    FutureProvider.autoDispose.family<List<LoanEntry>, String>((ref, status) {
-  return ref.watch(accountingRepositoryProvider).listLoans(status: status);
-});
+/// Loans center list: server paging (limit/offset + «تحميل المزيد») and the
+/// server's totals for the WHOLE filter. The summary used to add up only the
+/// first 100 loans on the phone (13,166 shown vs 184,770 real).
+class LoansCenterState {
+  const LoansCenterState({required this.list, this.totals});
+
+  final PagedList<LoanEntry> list;
+  final LoanTotals? totals;
+
+  LoansCenterState copyWith({PagedList<LoanEntry>? list, LoanTotals? totals}) =>
+      LoansCenterState(list: list ?? this.list, totals: totals ?? this.totals);
+}
+
+class LoansCenterController
+    extends AutoDisposeFamilyAsyncNotifier<LoansCenterState, String> {
+  static const pageSize = 100;
+
+  @override
+  Future<LoansCenterState> build(String arg) async {
+    final page = await ref
+        .watch(accountingRepositoryProvider)
+        .listLoansPage(status: arg, limit: pageSize);
+    return LoansCenterState(
+      list: PagedList<LoanEntry>(
+        items: page.items,
+        hasMore: page.hasMore && page.items.isNotEmpty,
+        total: page.totalCount,
+        nextOffset: page.items.length,
+      ),
+      totals: page.totals,
+    );
+  }
+
+  Future<void> loadMore() async {
+    final current = state.valueOrNull;
+    if (current == null || !current.list.hasMore || current.list.loadingMore) {
+      return;
+    }
+    state = AsyncData(
+      current.copyWith(
+        list: current.list.copyWith(loadingMore: true, loadMoreError: null),
+      ),
+    );
+    try {
+      final page = await ref.read(accountingRepositoryProvider).listLoansPage(
+            status: arg,
+            limit: pageSize,
+            offset: current.list.nextOffset,
+          );
+      final (merged, added) =
+          mergeUniqueBy(current.list.items, page.items, (l) => l.id);
+      state = AsyncData(
+        LoansCenterState(
+          list: current.list.copyWith(
+            items: merged,
+            hasMore: page.hasMore && added > 0,
+            total: page.totalCount ?? current.list.total,
+            nextOffset: current.list.nextOffset + page.items.length,
+            loadingMore: false,
+          ),
+          totals: page.totals ?? current.totals,
+        ),
+      );
+    } catch (e) {
+      state = AsyncData(
+        current.copyWith(
+          list: current.list.copyWith(loadingMore: false, loadMoreError: e),
+        ),
+      );
+    }
+  }
+}
+
+final _loansProvider = AsyncNotifierProvider.autoDispose
+    .family<LoansCenterController, LoansCenterState, String>(
+  LoansCenterController.new,
+);
 
 class LoansCenterScreen extends ConsumerStatefulWidget {
   const LoansCenterScreen({super.key});
@@ -34,6 +114,8 @@ class LoansCenterScreen extends ConsumerStatefulWidget {
 
 class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
   String _status = 'open';
+  final _createKeys = IdempotencyKeeper();
+  final _settleKeys = IdempotencyKeeper();
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +182,8 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
             title: 'تعذر تحميل السلف والديون',
             subtitle: visibleErrorMessage(error),
           ),
-          data: (items) {
+          data: (loaded) {
+            final items = loaded.list.items;
             if (items.isEmpty) {
               return EmptyState(
                 icon: Icons.handshake_outlined,
@@ -113,7 +196,7 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _LoansSummary(items: items),
+                _LoansSummary(items: items, totals: loaded.totals),
                 const SizedBox(height: AppTokens.s12),
                 LayoutBuilder(
                   builder: (context, constraints) {
@@ -130,6 +213,15 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
                     return _LoansTable(items: items, onSettle: _settleLoan);
                   },
                 ),
+                LoadMoreFooter(
+                  hasMore: loaded.list.hasMore,
+                  loading: loaded.list.loadingMore,
+                  error: loaded.list.loadMoreError,
+                  shown: items.length,
+                  total: loaded.list.total,
+                  onLoadMore: () =>
+                      ref.read(_loansProvider(_status).notifier).loadMore(),
+                ),
               ],
             );
           },
@@ -143,68 +235,99 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
   }
 
   Future<void> _createLoan() async {
-    final draft = await _loanDialog(context);
-    if (draft == null) return;
-    try {
-      final loan = await ref.read(accountingRepositoryProvider).createLoan(
-            username: draft.username,
-            days: draft.days,
-            hours: draft.hours,
-            amount: draft.amount,
-            currency: draft.currency,
-            reason: draft.reason,
-            priceFromDays: draft.priceFromDays,
-            applyToRadius: draft.applyToRadius,
-            dryRun: draft.dryRun,
-          );
-      _refresh();
-      if (!mounted) return;
-      _snack(
-        context,
-        'تم تسجيل ${loan.amount > 0 ? 'الدين' : 'السلفة'} للمشترك ${loan.username}',
-      );
-    } catch (error) {
-      if (mounted) _snack(context, visibleErrorMessage(error));
-    }
+    final currency = ref.read(tenantCurrencyProvider);
+    final created = await _loanDialog(
+      context,
+      currency: currency,
+      // Runs INSIDE the dialog: an error keeps it open with every input
+      // (it used to close and lose them behind a generic snackbar).
+      submit: (draft) async {
+        final key = _createKeys.keyFor('loan', draft.fingerprint);
+        final loan = await ref.read(accountingRepositoryProvider).createLoan(
+              username: draft.username,
+              days: draft.days,
+              hours: draft.hours,
+              amount: draft.amount,
+              currency: draft.currency,
+              reason: draft.reason,
+              priceFromDays: draft.priceFromDays,
+              applyToRadius: draft.applyToRadius,
+              idempotencyKey: key,
+            );
+        _createKeys.reset();
+        return loan;
+      },
+    );
+    if (created == null) return;
+    _refresh();
+    if (!mounted) return;
+    _snack(
+      context,
+      'تم تسجيل ${created.amount > 0 ? 'الدين' : 'السلفة'} للمشترك ${created.username}',
+    );
   }
 
   Future<void> _settleLoan(LoanEntry loan) async {
     final settlement = await _settlementDialog(context, loan);
     if (settlement == null) return;
+    final key = _settleKeys.keyFor('settle', {
+      'id': loan.id,
+      'a': settlement.amount,
+      'm': settlement.method,
+      'n': settlement.notes,
+    });
     try {
       await ref.read(accountingRepositoryProvider).settleLoan(
             loanId: loan.id,
             amount: settlement.amount,
-            currency: settlement.currency,
             method: settlement.method,
             notes: settlement.notes,
+            idempotencyKey: key,
           );
+      _settleKeys.reset();
       _refresh();
       if (!mounted) return;
       _snack(context, 'تمت تسوية السلفة رقم ${loan.id}');
     } catch (error) {
-      if (mounted) _snack(context, visibleErrorMessage(error));
+      if (mounted) _snack(context, visibleErrorWithRetryHint(error));
     }
   }
 }
 
 class _LoansSummary extends StatelessWidget {
-  const _LoansSummary({required this.items});
+  const _LoansSummary({required this.items, this.totals});
 
   final List<LoanEntry> items;
+
+  /// Server totals of the whole filter; null on older servers (then the
+  /// loaded rows are summed, as before).
+  final LoanTotals? totals;
 
   @override
   Widget build(BuildContext context) {
     final open = items.where((item) => item.status == 'open').toList();
-    final debt = open.fold<num>(0, (sum, item) => sum + item.amount);
+    final debt = totals?.outstanding ??
+        open.fold<num>(0, (sum, item) => sum + item.outstanding);
     final minutes =
         open.fold<int>(0, (sum, item) => sum + item.durationMinutes);
     return CountGrid(
       columns: 4,
       items: [
-        CountItem('عدد السجلات', items.length),
-        CountItem('مفتوحة', open.length, tone: PillTone.amber),
-        CountItem.text('الدين المفتوح', _money(debt), tone: PillTone.red),
+        CountItem('عدد السجلات', totals?.count ?? items.length),
+        CountItem(
+          'مفتوحة',
+          totals?.openCount ?? open.length,
+          tone: PillTone.amber,
+        ),
+        CountItem.text(
+          'الدين المفتوح',
+          // mixed currencies: one number per currency, never a sum
+          (totals?.mixedCurrency ?? false) &&
+                  totals!.outstandingByCurrency.isNotEmpty
+              ? formatByCurrency(totals!.outstandingByCurrency)
+              : _money(debt),
+          tone: PillTone.red,
+        ),
         CountItem.text(
           'مدة مفتوحة',
           _shortDuration(minutes),
@@ -253,7 +376,7 @@ class _LoansTable extends StatelessWidget {
                     ),
                   ),
                   DataCell(Text(_duration(loan.durationMinutes))),
-                  DataCell(Text('${_money(loan.amount)} ${loan.currency}')),
+                  DataCell(Text(_loanAmountLabel(loan))),
                   DataCell(
                     StatusPill(
                       text: loan.statusLabel,
@@ -359,7 +482,7 @@ class _LoanCard extends StatelessWidget {
               InfoItem(
                 icon: Icons.payments_outlined,
                 label: 'المبلغ',
-                value: '${_money(loan.amount)} ${loan.currency}',
+                value: _loanAmountLabel(loan),
               ),
               InfoItem(
                 icon: Icons.verified_outlined,
@@ -425,34 +548,56 @@ class _LoanDraft {
   final bool priceFromDays;
   final bool applyToRadius;
   final bool dryRun;
+
+  /// Same draft submitted again (a retry) → same Idempotency-Key.
+  Map<String, Object> get fingerprint => {
+        'c': currency,
+        'u': username,
+        'd': days,
+        'h': hours,
+        'a': amount,
+        'r': reason,
+        'p': priceFromDays,
+        'x': applyToRadius,
+      };
 }
 
 class _SettlementDraft {
   const _SettlementDraft({
     required this.amount,
-    required this.currency,
     required this.method,
     required this.notes,
   });
 
   final num amount;
-  final String currency;
   final String method;
   final String notes;
 }
 
-Future<_LoanDraft?> _loanDialog(BuildContext context) async {
+Future<LoanEntry?> _loanDialog(
+  BuildContext context, {
+  required String currency,
+  required Future<LoanEntry> Function(_LoanDraft draft) submit,
+}) async {
   final username = TextEditingController();
   final days = TextEditingController(text: '0');
   final hours = TextEditingController(text: '2');
   final amount = TextEditingController(text: '0');
-  final currency = TextEditingController(text: 'JOD');
   final reason = TextEditingController();
   var priceFromDays = false;
   var applyToRadius = false;
   var dryRun = true;
+  // Supported codes (web settings list), the system currency first/default.
+  var chosenCurrency = currency.isEmpty ? kDefaultCurrency : currency;
+  final currencies = {
+    chosenCurrency,
+    ...kSupportedCurrencies,
+  }.toList();
+  String? error;
+  String? preview;
+  var busy = false;
 
-  return showDialog<_LoanDraft>(
+  return showDialog<LoanEntry>(
     context: context,
     useRootNavigator: true,
     builder: (context) => StatefulBuilder(
@@ -509,11 +654,23 @@ Future<_LoanDraft?> _loanDialog(BuildContext context) async {
                       ),
                     ),
                     const SizedBox(width: AppTokens.s8),
+                    // A list of the supported codes, the system currency by
+                    // default (free text saved «ST13 LOA» as a currency).
                     SizedBox(
-                      width: 120,
-                      child: TextField(
-                        controller: currency,
+                      width: 110,
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: chosenCurrency,
                         decoration: const InputDecoration(labelText: 'العملة'),
+                        items: [
+                          for (final c in currencies)
+                            DropdownMenuItem(value: c, child: Text(c)),
+                        ],
+                        onChanged: busy
+                            ? null
+                            : (v) => setState(
+                                  () => chosenCurrency = v ?? chosenCurrency,
+                                ),
                       ),
                     ),
                   ],
@@ -543,11 +700,30 @@ Future<_LoanDraft?> _loanDialog(BuildContext context) async {
                 HubSwitchRow(
                   dense: true,
                   value: dryRun,
-                  onChanged: applyToRadius
-                      ? (value) => setState(() => dryRun = value)
-                      : null,
-                  label: 'تجربة آمنة بدون تطبيق نهائي',
+                  onChanged: (value) => setState(() => dryRun = value),
+                  label: 'تجربة آمنة (معاينة فقط)',
+                  subtitle: 'تعرض ما سيُسجَّل دون تسجيل أي سلفة أو دين.',
                 ),
+                if (preview != null) ...[
+                  const SizedBox(height: AppTokens.s8),
+                  Text(
+                    preview!,
+                    style: const TextStyle(
+                      color: AppTokens.blueInk,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (error != null) ...[
+                  const SizedBox(height: AppTokens.s8),
+                  Text(
+                    error!,
+                    style: const TextStyle(
+                      color: AppTokens.red,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -558,34 +734,66 @@ Future<_LoanDraft?> _loanDialog(BuildContext context) async {
             child: const Text('إلغاء'),
           ),
           FilledButton(
-            onPressed: () {
-              final user = username.text.trim();
-              final parsedDays = int.tryParse(days.text.trim()) ?? 0;
-              final parsedHours = int.tryParse(hours.text.trim()) ?? 0;
-              final parsedAmount =
-                  num.tryParse(amount.text.trim().replaceAll(',', '.')) ?? 0;
-              if (user.isEmpty || (parsedDays <= 0 && parsedHours <= 0)) {
-                _snack(context, 'أدخل اسم المشترك ومدة السلفة أو الدين');
-                return;
-              }
-              Navigator.pop(
-                context,
-                _LoanDraft(
-                  username: user,
-                  days: parsedDays,
-                  hours: parsedHours,
-                  amount: parsedAmount,
-                  currency: currency.text.trim().isEmpty
-                      ? 'JOD'
-                      : currency.text.trim().toUpperCase(),
-                  reason: reason.text.trim(),
-                  priceFromDays: priceFromDays,
-                  applyToRadius: applyToRadius,
-                  dryRun: applyToRadius ? dryRun : true,
-                ),
-              );
-            },
-            child: const Text('تسجيل'),
+            onPressed: busy
+                ? null
+                : () async {
+                    final user = username.text.trim();
+                    final parsedDays = int.tryParse(days.text.trim()) ?? 0;
+                    final parsedHours = int.tryParse(hours.text.trim()) ?? 0;
+                    final parsedAmount = parseLocalizedNumber(amount.text) ?? 0;
+                    String? problem;
+                    if (user.isEmpty || (parsedDays <= 0 && parsedHours <= 0)) {
+                      problem = 'أدخل اسم المشترك ومدة السلفة أو الدين.';
+                    } else if (parsedDays < 0 || parsedHours < 0) {
+                      problem = 'المدّة لا تكون سالبة.';
+                    } else if (parsedAmount < 0 ||
+                        parsedAmount > kMaxMoneyAmount) {
+                      problem =
+                          'المبلغ بين 0 و ${kMaxMoneyAmount.toStringAsFixed(0)}.';
+                    }
+                    if (problem != null) {
+                      setState(() {
+                        error = problem;
+                        preview = null;
+                      });
+                      return;
+                    }
+                    final draft = _LoanDraft(
+                      username: user,
+                      days: parsedDays,
+                      hours: parsedHours,
+                      amount: parsedAmount,
+                      currency: chosenCurrency,
+                      reason: reason.text.trim(),
+                      priceFromDays: priceFromDays,
+                      applyToRadius: applyToRadius,
+                      dryRun: dryRun,
+                    );
+                    if (dryRun) {
+                      // «تجربة آمنة»: local only — the loans endpoint
+                      // recorded a real loan for dry_run on older servers.
+                      setState(() {
+                        error = null;
+                        preview = _loanCenterPreviewText(draft, chosenCurrency);
+                      });
+                      return;
+                    }
+                    setState(() {
+                      busy = true;
+                      error = null;
+                    });
+                    try {
+                      final loan = await submit(draft);
+                      if (context.mounted) Navigator.pop(context, loan);
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      setState(() {
+                        busy = false;
+                        error = visibleErrorWithRetryHint(e);
+                      });
+                    }
+                  },
+            child: Text(dryRun ? 'معاينة' : 'تسجيل'),
           ),
         ],
       ),
@@ -593,13 +801,36 @@ Future<_LoanDraft?> _loanDialog(BuildContext context) async {
   );
 }
 
+/// Local text of the loans-center «تجربة آمنة» — nothing is sent.
+String _loanCenterPreviewText(_LoanDraft d, String currency) {
+  final span = [
+    if (d.days > 0) '${d.days} يوم',
+    if (d.hours > 0) '${d.hours} ساعة',
+  ].join(' و ');
+  final value = d.priceFromDays
+      ? 'دين محسوب من سعر الباقة'
+      : d.amount > 0
+          ? 'دين ${_money(d.amount)} ${currency.isEmpty ? '' : currency}'.trim()
+          : 'سلفة مجانية';
+  return 'معاينة فقط — لم يُسجَّل شيء: $span لـ ${d.username} ($value).';
+}
+
+String _loanAmountLabel(LoanEntry loan) {
+  final base = '${_money(loan.amount)} ${loan.currency}'.trim();
+  if (loan.isOpen && loan.outstanding > 0 && loan.outstanding < loan.amount) {
+    return '$base (المتبقّي ${_money(loan.outstanding)})';
+  }
+  return base;
+}
+
 Future<_SettlementDraft?> _settlementDialog(
   BuildContext context,
   LoanEntry loan,
 ) {
-  final amount = TextEditingController(text: loan.amount.toString());
-  final currency = TextEditingController(text: loan.currency);
-  final method = TextEditingController(text: 'manual');
+  // Default = what is still owed (partial settles leave the rest open).
+  final amount = TextEditingController(text: _money(loan.outstanding));
+  // A list with Arabic labels (the raw «manual» used to be typed/shown).
+  var method = 'manual';
   final notes = TextEditingController();
 
   return showDialog<_SettlementDraft>(
@@ -616,17 +847,23 @@ Future<_SettlementDraft?> _settlementDialog(
               controller: amount,
               keyboardType:
                   const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'المبلغ المستلم'),
+              decoration: InputDecoration(
+                labelText: loan.currency.isEmpty
+                    ? 'المبلغ المستلم'
+                    : 'المبلغ المستلم (${loan.currency})',
+                helperText: 'المتبقّي: ${_money(loan.outstanding)}',
+              ),
             ),
             const SizedBox(height: AppTokens.s8),
-            TextField(
-              controller: currency,
-              decoration: const InputDecoration(labelText: 'العملة'),
-            ),
-            const SizedBox(height: AppTokens.s8),
-            TextField(
-              controller: method,
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: method,
               decoration: const InputDecoration(labelText: 'طريقة التسوية'),
+              items: [
+                for (final (v, label) in kPaymentMethods)
+                  DropdownMenuItem(value: v, child: Text(label)),
+              ],
+              onChanged: (v) => method = v ?? 'manual',
             ),
             const SizedBox(height: AppTokens.s8),
             TextField(
@@ -643,21 +880,24 @@ Future<_SettlementDraft?> _settlementDialog(
         ),
         FilledButton(
           onPressed: () {
-            final parsedAmount =
-                num.tryParse(amount.text.trim().replaceAll(',', '.')) ?? 0;
-            if (parsedAmount <= 0) {
+            final parsedAmount = parseLocalizedNumber(amount.text) ?? 0;
+            final free = loan.amount <= 0;
+            if (!free && parsedAmount <= 0) {
               _snack(context, 'أدخل مبلغ تسوية صحيح');
+              return;
+            }
+            if (parsedAmount > loan.outstanding + 0.005) {
+              _snack(
+                context,
+                'المبلغ يتجاوز المتبقّي على السلفة (${_money(loan.outstanding)}).',
+              );
               return;
             }
             Navigator.pop(
               context,
               _SettlementDraft(
-                amount: parsedAmount,
-                currency: currency.text.trim().isEmpty
-                    ? loan.currency
-                    : currency.text.trim().toUpperCase(),
-                method:
-                    method.text.trim().isEmpty ? 'manual' : method.text.trim(),
+                amount: free ? 0 : parsedAmount,
+                method: method,
                 notes: notes.text.trim(),
               ),
             );

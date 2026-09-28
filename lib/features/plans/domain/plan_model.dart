@@ -1,3 +1,6 @@
+import 'package:hoberadius_app/core/format/currency.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 /// Plan (Profile) model — mirrors `AccessPlan` on the server.
 ///
 /// The DTO has 60+ fields; this model exposes the subset that mobile/desktop
@@ -62,7 +65,7 @@ class Plan {
     this.price = 0,
     this.priceCard = 0,
     this.priceBulk = 0,
-    this.currency = 'JOD',
+    this.currency = kDefaultCurrency,
     this.planTier = 'Personal',
     this.prepaid = true,
     this.autoRenew = false,
@@ -218,7 +221,7 @@ class Plan {
       price: _num(j['price']) ?? 0,
       priceCard: _num(j['price_card']) ?? 0,
       priceBulk: _num(j['price_bulk']) ?? 0,
-      currency: (j['currency'] ?? 'JOD').toString(),
+      currency: normalizeCurrency(j['currency']?.toString()),
       planTier: (j['plan_tier'] ?? 'Personal').toString(),
       prepaid: j['prepaid'] == true,
       autoRenew: j['auto_renew'] == true,
@@ -323,14 +326,16 @@ class Plan {
   static List<String> _strList(Object? v) {
     if (v == null) return const [];
     if (v is List) return v.map((e) => e.toString()).toList();
-    if (v is String && v.isNotEmpty) return v.split(',').map((e) => e.trim()).toList();
+    if (v is String && v.isNotEmpty) {
+      return v.split(',').map((e) => e.trim()).toList();
+    }
     return const [];
   }
 
   static DateTime? _dt(Object? v) {
     if (v == null) return null;
     try {
-      return DateTime.parse(v.toString().replaceAll('Z', ''));
+      return parseServerDateTime(v);
     } catch (_) {
       return null;
     }
@@ -405,7 +410,8 @@ class Plan {
     String? offerHoursFrom,
     String? offerHoursTo,
     Map<String, dynamic>? metadata,
-  }) => Plan(
+  }) =>
+      Plan(
         id: id ?? this.id,
         name: name ?? this.name,
         code: code ?? this.code,
@@ -444,7 +450,8 @@ class Plan {
         burstUpKbps: burstUpKbps ?? this.burstUpKbps,
         burstThresholdKbps: burstThresholdKbps ?? this.burstThresholdKbps,
         burstTimeSec: burstTimeSec ?? this.burstTimeSec,
-        nightlyUnlimitedEnabled: nightlyUnlimitedEnabled ?? this.nightlyUnlimitedEnabled,
+        nightlyUnlimitedEnabled:
+            nightlyUnlimitedEnabled ?? this.nightlyUnlimitedEnabled,
         concurrentSessions: concurrentSessions ?? this.concurrentSessions,
         addressPool: addressPool ?? this.addressPool,
         framedPool: framedPool ?? this.framedPool,

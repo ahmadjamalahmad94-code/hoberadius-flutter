@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class AuditEvent {
   AuditEvent({
     this.id,
@@ -38,7 +40,7 @@ class AuditEvent {
   static DateTime? _dt(Object? v) {
     if (v == null) return null;
     try {
-      return DateTime.parse(v.toString().replaceAll('Z', ''));
+      return parseServerDateTime(v);
     } catch (_) {
       return null;
     }

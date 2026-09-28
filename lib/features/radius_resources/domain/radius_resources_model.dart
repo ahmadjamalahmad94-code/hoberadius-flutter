@@ -1,4 +1,5 @@
 import '../../../core/l10n/arabic_labels.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 class RadiusResourcesSnapshot {
   const RadiusResourcesSnapshot({
@@ -254,5 +255,5 @@ bool _bool(Object? value, {bool fallback = false}) {
 DateTime? _date(Object? value) {
   final text = value?.toString().trim() ?? '';
   if (text.isEmpty) return null;
-  return DateTime.tryParse(text.replaceAll('Z', ''));
+  return parseServerDateTime(text);
 }

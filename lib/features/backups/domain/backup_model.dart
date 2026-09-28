@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
+
 class BackupStatus {
   const BackupStatus({
     required this.job,
@@ -96,7 +98,7 @@ class BackupJob {
       target: (json['target'] ?? '').toString(),
       lastStatus: (json['last_status'] ?? 'never_run').toString(),
       lastMessage: (json['last_message'] ?? '').toString(),
-      lastRunAt: DateTime.tryParse((json['last_run_at'] ?? '').toString()),
+      lastRunAt: parseServerDateTime(json['last_run_at']),
     );
   }
 }
@@ -122,7 +124,7 @@ class BackupRun {
       status: (json['status'] ?? '').toString(),
       path: (json['path'] ?? '').toString(),
       message: (json['message'] ?? '').toString(),
-      createdAt: DateTime.tryParse((json['created_at'] ?? '').toString()),
+      createdAt: parseServerDateTime(json['created_at']),
     );
   }
 

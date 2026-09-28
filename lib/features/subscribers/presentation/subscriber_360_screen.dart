@@ -33,6 +33,7 @@ class Subscriber360Screen extends ConsumerWidget {
             title: 'ملف المشترك 360',
             leading: IconButton(
               onPressed: () => context.goNamed('subscribers'),
+              tooltip: 'رجوع',
               icon: const Icon(Icons.arrow_back),
             ),
           ),
@@ -42,6 +43,7 @@ class Subscriber360Screen extends ConsumerWidget {
                 title: 'ملف المشترك 360',
                 leading: IconButton(
                   onPressed: () => context.goNamed('subscribers'),
+                  tooltip: 'رجوع',
                   icon: const Icon(Icons.arrow_back),
                 ),
               ),
@@ -75,6 +77,7 @@ class _Subscriber360Content extends ConsumerWidget {
           subtitle: s.fullName.isEmpty ? 'ملف المشترك 360' : s.username,
           leading: IconButton(
             onPressed: () => context.goNamed('subscribers'),
+            tooltip: 'رجوع',
             icon: const Icon(Icons.arrow_back),
           ),
           inlineActions: true,
