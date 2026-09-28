@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/format/input_rules.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -418,9 +419,7 @@ Future<void> _showCreatePackageDialog(
           if (name.text.trim().isEmpty) return;
           setState(() => busy = true);
           try {
-            await ref
-                .read(cardUsersRepositoryProvider)
-                .createPackage(
+            await ref.read(cardUsersRepositoryProvider).createPackage(
                   name: name.text.trim(),
                   planId: int.tryParse(planId.text.trim()),
                   price:
@@ -539,12 +538,18 @@ Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
+          if (busy) return;
           if (name.text.trim().isEmpty) return;
+          final emailProblem = validateOptionalEmail(email.text);
+          if (emailProblem != null) {
+            ScaffoldMessenger.of(dialogContext).showSnackBar(
+              SnackBar(content: Text(emailProblem)),
+            );
+            return;
+          }
           setState(() => busy = true);
           try {
-            await ref
-                .read(cardUsersRepositoryProvider)
-                .createUser(
+            await ref.read(cardUsersRepositoryProvider).createUser(
                   displayName: name.text.trim(),
                   mobile: mobile.text.trim(),
                   email: email.text.trim(),

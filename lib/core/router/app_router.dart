@@ -482,7 +482,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: ':slug',
                 name: 'operational-report-detail',
+                // Keyed by slug: the search typed in one report no longer
+                // carries into the next one (A13 L7).
                 builder: (ctx, st) => OperationalReportDetailScreen(
+                  key: ValueKey('report:${st.pathParameters['slug']}'),
                   slug: st.pathParameters['slug'] ?? '',
                 ),
               ),

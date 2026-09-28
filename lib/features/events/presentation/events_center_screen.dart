@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/format/input_rules.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
@@ -477,6 +479,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                         labelText: 'رقم المنفذ',
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                 ],
@@ -511,6 +514,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                         labelText: 'رقم العنصر',
                       ),
                       keyboardType: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                     ),
                   ),
                 ],
@@ -550,6 +554,12 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
     final message = _message.text.trim();
     if (message.isEmpty) {
       _snack(context, 'أدخل وصفًا واضحًا للحدث');
+      return;
+    }
+    final idProblem =
+        validateOptionalId(_actorId.text) ?? validateOptionalId(_targetId.text);
+    if (idProblem != null) {
+      _snack(context, idProblem);
       return;
     }
     setState(() => _saving = true);

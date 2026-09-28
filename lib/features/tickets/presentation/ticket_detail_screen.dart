@@ -382,6 +382,9 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           Future<void> submit() async {
+            // Same-frame double taps: the button disables only on the next
+            // frame, so the handler itself refuses a second run.
+            if (dialogBusy) return;
             double? paymentAmount;
             if (withPayment) {
               paymentAmount = double.tryParse(
@@ -652,6 +655,9 @@ Future<void> _showReplyDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
+          // Same-frame double taps: the button disables only on the next
+          // frame, so the handler itself refuses a second run.
+          if (busy) return;
           if (body.text.trim().isEmpty) return;
           setState(() => busy = true);
           try {

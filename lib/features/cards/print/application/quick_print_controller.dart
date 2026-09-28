@@ -184,12 +184,17 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
   /// Place an element at (x, y) mm — from a slider or a drag. Both
   /// coordinates become explicit (the web drag writes both too).
   void moveElement(String name, double x, double y) {
-    double r(double v) => double.parse(v.clamp(0.5, 200).toStringAsFixed(1));
+    // Kept inside the card (elements could be dragged off it — A13 L5).
+    final f0 = state.form;
+    final maxX = (f0.cardWidthMm - 1).clamp(1.0, 200.0);
+    final maxY = (f0.cardHeightMm - 1).clamp(1.0, 200.0);
+    double r(double v, double max) =>
+        double.parse(v.clamp(0.5, max).toStringAsFixed(1));
     updateForm(
       (f) => switch (name) {
-        'username' => f.copyWith(usernameX: r(x), usernameY: r(y)),
-        'password' => f.copyWith(passwordX: r(x), passwordY: r(y)),
-        _ => f.copyWith(qrX: r(x), qrY: r(y)),
+        'username' => f.copyWith(usernameX: r(x, maxX), usernameY: r(y, maxY)),
+        'password' => f.copyWith(passwordX: r(x, maxX), passwordY: r(y, maxY)),
+        _ => f.copyWith(qrX: r(x, maxX), qrY: r(y, maxY)),
       },
     );
   }

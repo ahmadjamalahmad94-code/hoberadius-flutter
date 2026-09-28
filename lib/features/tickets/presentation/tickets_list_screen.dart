@@ -392,6 +392,9 @@ Future<void> _showServiceRequestDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
+          // Same-frame double taps: the button disables only on the next
+          // frame, so the handler itself refuses a second run.
+          if (busy) return;
           if (subscriberId == null) {
             ScaffoldMessenger.of(dialogContext).showSnackBar(
               const SnackBar(content: Text('اختر المشترك أولًا')),
@@ -611,6 +614,9 @@ Future<void> _showCreateTicketDialog(
     builder: (dialogContext) => StatefulBuilder(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
+          // Same-frame double taps: the button disables only on the next
+          // frame, so the handler itself refuses a second run.
+          if (busy) return;
           if (subscriberId == null || subject.text.trim().isEmpty) {
             ScaffoldMessenger.of(dialogContext).showSnackBar(
               SnackBar(
