@@ -64,6 +64,8 @@ class TenantCurrencyScope extends InheritedWidget {
 /// «1,234.5 JOD» — amount + the tenant currency code (none when unknown).
 String formatWithCurrency(num value, String currency) {
   final v = value.toDouble();
+  // Absurd legacy values (1e308 credit limits, Infinity) are not amounts.
+  if (!v.isFinite || v.abs() >= 1e15) return '—';
   final fixed =
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
   final grouped = _group(fixed);

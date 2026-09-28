@@ -119,9 +119,8 @@ class _Hero extends StatelessWidget {
           CountItem(
             'رسائل غير مقروءة',
             snapshot.chatUnreadCount,
-            tone: snapshot.chatUnreadCount > 0
-                ? PillTone.red
-                : PillTone.neutral,
+            tone:
+                snapshot.chatUnreadCount > 0 ? PillTone.red : PillTone.neutral,
           ),
           CountItem(
             'محافظ الاستلام',
@@ -728,6 +727,7 @@ class _PaymentMethodDialogState extends ConsumerState<_PaymentMethodDialog> {
           accountNumber: _accountNumber.text.trim(),
           instructions: _instructions.text.trim(),
           sortOrder: sort,
+          active: _active,
         );
       } else {
         await repo.updatePaymentMethod(

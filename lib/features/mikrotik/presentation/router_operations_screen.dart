@@ -2274,13 +2274,8 @@ class _DiagnosticsDialogState extends ConsumerState<_DiagnosticsDialog> {
     }
   }
 
-  String _formatOutput(Map<String, dynamic> data) {
-    final result = data['result'] ?? data['output'] ?? data['rows'] ?? data;
-    if (result is List) {
-      return result.map((e) => e.toString()).join('\n');
-    }
-    return result.toString();
-  }
+  String _formatOutput(Map<String, dynamic> data) =>
+      formatRouterDiagnostics(data);
 
   @override
   Widget build(BuildContext context) {
@@ -2297,7 +2292,8 @@ class _DiagnosticsDialogState extends ConsumerState<_DiagnosticsDialog> {
               selected: {_tool},
               segments: const [
                 ButtonSegment(value: 'ping', label: Text('Ping')),
-                ButtonSegment(value: 'traceroute', label: Text('Traceroute')),
+                // Short label: «Traceroute» broke mid-word at 360 px.
+                ButtonSegment(value: 'traceroute', label: Text('مسار')),
                 ButtonSegment(value: 'dns', label: Text('DNS')),
               ],
               onSelectionChanged: (s) => setState(() => _tool = s.first),
@@ -2446,7 +2442,9 @@ class _HealthDialogState extends ConsumerState<_HealthDialog> {
                         ),
                         if ((s['level'] ?? s['severity']) != null)
                           StatusPill(
-                            text: (s['level'] ?? s['severity']).toString(),
+                            text: riskLevelLabel(
+                              (s['level'] ?? s['severity']).toString(),
+                            ),
                             tone: PillTone.amber,
                           ),
                       ],
@@ -2465,4 +2463,51 @@ class _HealthDialogState extends ConsumerState<_HealthDialog> {
       ],
     );
   }
+}
+
+/// Arabic level of a router risk signal (was the raw «ok/warn/critical»).
+String riskLevelLabel(String level) => switch (level.trim().toLowerCase()) {
+      'ok' || 'info' => 'سليم',
+      'warn' || 'warning' => 'تحذير',
+      'critical' || 'error' || 'high' => 'حرج',
+      'medium' => 'متوسط',
+      'low' => 'منخفض',
+      _ => level,
+    };
+
+/// Human text for a ping / traceroute / DNS answer instead of a raw Dart
+/// map («{cached: false, count: 4, data: null, …}»).
+String formatRouterDiagnostics(Map<String, dynamic> data) {
+  if (data['ok'] == false) {
+    final err = data['error'];
+    final msg = err is Map ? err['message'] : err;
+    final text = (msg ?? data['message'] ?? '').toString().trim();
+    return text.isEmpty
+        ? 'فشل التشخيص — لم يردّ الراوتر.'
+        : 'فشل التشخيص: $text';
+  }
+  final result =
+      data['result'] ?? data['output'] ?? data['rows'] ?? data['data'];
+  final lines = <String>[];
+  final addr = data['dialed_address'] ?? data['address'];
+  if (addr != null && '$addr'.isNotEmpty) lines.add('الهدف: $addr');
+  String row(Object? e) {
+    if (e is Map) {
+      return e.entries
+          .where((kv) => kv.value != null && '${kv.value}'.isNotEmpty)
+          .map((kv) => '${kv.key}: ${kv.value}')
+          .join('  ·  ');
+    }
+    return '$e';
+  }
+
+  if (result is List) {
+    lines.addAll(result.map(row));
+  } else if (result is Map) {
+    lines.add(row(result));
+  } else if (result != null && '$result'.isNotEmpty) {
+    lines.add('$result');
+  }
+  if (lines.isEmpty) return 'لا نتائج من الراوتر.';
+  return lines.join('\n');
 }

@@ -373,6 +373,24 @@ int mobileNavIndexForLocation(String location) {
   return 0;
 }
 
+/// Title of the mobile app bar: the bottom tab when the location belongs
+/// to one, else the navigation item that owns the path, else the tab.
+String mobileTitleForLocation(String location, int tabIndex) {
+  if (navPathMatches(location, '/notifications')) return 'الإشعارات';
+  if (location == '/' ||
+      (tabIndex > 0 &&
+          tabIndex < mobileNavDestinations.length - 1 &&
+          navPathMatches(location, mobileNavDestinations[tabIndex].path))) {
+    return mobileNavDestinations[tabIndex].label;
+  }
+  for (final item in appNavigationItems) {
+    if (item.path != '/' && navPathMatches(location, item.path)) {
+      return item.label;
+    }
+  }
+  return mobileNavDestinations[tabIndex].label;
+}
+
 AppNavItem? navItemByRouteName(String routeName) {
   for (final item in appNavigationItems) {
     if (item.routeName == routeName) return item;

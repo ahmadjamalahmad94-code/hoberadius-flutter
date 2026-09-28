@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/api/paging.dart';
 import '../domain/business_event_model.dart';
 
 class EventsRepository {
@@ -8,10 +9,13 @@ class EventsRepository {
 
   final ApiClient _api;
 
+  /// [beforeId]: keyset cursor (`next_before_id` of the previous page) on
+  /// updated servers; older servers ignore it and cap at `limit`.
   Future<BusinessEventsPage> list({
     String category = '',
     String severity = '',
     int limit = 100,
+    int? beforeId,
   }) async {
     final res = await _api.get(
       '/api/v1/events',
@@ -19,9 +23,39 @@ class EventsRepository {
         if (category.isNotEmpty) 'category': category,
         if (severity.isNotEmpty) 'severity': severity,
         'limit': limit,
+        if (beforeId != null) 'before_id': beforeId,
       },
     );
     return BusinessEventsPage.fromJson(res);
+  }
+
+  /// The next page after [current] (by `next_before_id`, else the lowest
+  /// id loaded), merged without duplicates. Returns [current] unchanged
+  /// with hasMore=false when the server brings nothing new.
+  Future<BusinessEventsPage> loadMore(
+    BusinessEventsPage current, {
+    String category = '',
+    String severity = '',
+    int limit = 100,
+  }) async {
+    final cursor = current.nextBeforeId ??
+        (current.items.isEmpty
+            ? null
+            : current.items.map((e) => e.id).reduce((a, b) => a < b ? a : b));
+    if (cursor == null) return current.copyWith(hasMore: false);
+    final next = await list(
+      category: category,
+      severity: severity,
+      limit: limit,
+      beforeId: cursor,
+    );
+    final (merged, added) =
+        mergeUniqueBy(current.items, next.items, (e) => e.id);
+    return current.copyWith(
+      items: merged,
+      hasMore: next.hasMore && added > 0,
+      nextBeforeId: next.nextBeforeId,
+    );
   }
 
   Future<BusinessSummary> summary() async {

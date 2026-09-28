@@ -18,11 +18,15 @@ class CommunicationsRepository {
     return MessageTemplatePage.fromJson(res);
   }
 
+  /// Updated servers answer 409 when a template with the same key exists
+  /// (it used to be overwritten silently); [overwrite] replaces it on
+  /// purpose after the operator confirmed.
   Future<MessageTemplate> createTemplate({
     required String title,
     required String channel,
     required String subject,
     required String body,
+    bool overwrite = false,
   }) async {
     final res = await _api.post(
       '/api/v1/communications/templates',
@@ -32,6 +36,7 @@ class CommunicationsRepository {
         'channel': channel,
         'subject': subject,
         'body': body,
+        if (overwrite) 'overwrite': true,
       },
     );
     return MessageTemplate.fromJson(_nested(res, 'template'));

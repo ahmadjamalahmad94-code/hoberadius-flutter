@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:printing/printing.dart';
@@ -319,7 +321,9 @@ class _PrintPdfScreenState extends State<PrintPdfScreen> {
         setState(() => _pages.add(png));
       }
     } catch (e) {
-      if (mounted) setState(() => _error = 'تعذّر عرض الملف: $e');
+      if (mounted) {
+        setState(() => _error = 'تعذّر عرض الملف: ${visibleErrorMessage(e)}');
+      }
     } finally {
       if (mounted) setState(() => _rendering = false);
     }
@@ -333,18 +337,40 @@ class _PrintPdfScreenState extends State<PrintPdfScreen> {
     setState(() => _saving = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
-      // The system «save as» picker: the operator chooses the folder.
-      final path = await FileSaver.instance.saveAs(
-        name: _baseName,
-        bytes: widget.bytes,
-        ext: 'pdf',
-        mimeType: MimeType.pdf,
-      );
-      if (path != null && path.isNotEmpty) {
-        messenger.showSnackBar(const SnackBar(content: Text('تم حفظ الملف')));
+      if (kIsWeb) {
+        // The web build has no «save as» picker (UnimplementedError): a
+        // plain browser download instead.
+        await FileSaver.instance.saveFile(
+          name: _baseName,
+          bytes: widget.bytes,
+          ext: 'pdf',
+          mimeType: MimeType.pdf,
+        );
+        messenger.showSnackBar(
+          const SnackBar(content: Text('تم تنزيل الملف')),
+        );
+      } else {
+        // The system «save as» picker: the operator chooses the folder.
+        final path = await FileSaver.instance.saveAs(
+          name: _baseName,
+          bytes: widget.bytes,
+          ext: 'pdf',
+          mimeType: MimeType.pdf,
+        );
+        if (path != null && path.isNotEmpty) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('تم حفظ الملف')),
+          );
+        }
       }
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('تعذّر الحفظ: $e')));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'تعذّر الحفظ: ${visibleErrorMessage(e, fallback: 'جرّب «مشاركة» لحفظ الملف.')}',
+          ),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -532,13 +558,23 @@ class _PdfAction extends StatelessWidget {
             onPressed: busy ? null : onTap,
             style: style,
             icon: iconW,
-            label: Text(label),
+            label: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.fade,
+            ),
           )
         : OutlinedButton.icon(
             onPressed: busy ? null : onTap,
             style: style,
             icon: iconW,
-            label: Text(label),
+            label: Text(
+              label,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.fade,
+            ),
           );
   }
 }

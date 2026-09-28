@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
@@ -1701,12 +1702,46 @@ class _TemplateDialogState extends ConsumerState<_TemplateDialog> {
     }
     setState(() => _saving = true);
     try {
-      await ref.read(communicationsRepositoryProvider).createTemplate(
-            title: title,
-            channel: _channel,
-            subject: _subject.text.trim(),
-            body: body,
-          );
+      final repo = ref.read(communicationsRepositoryProvider);
+      try {
+        await repo.createTemplate(
+          title: title,
+          channel: _channel,
+          subject: _subject.text.trim(),
+          body: body,
+        );
+      } on ApiException catch (e) {
+        if (e.status != 409 || !mounted) rethrow;
+        // Same key exists: replace only when the operator says so.
+        final replace = await showDialog<bool>(
+          context: context,
+          useRootNavigator: true,
+          builder: (ctx) => AlertDialog(
+            title: const Text('قالب بنفس الاسم موجود'),
+            content: Text(
+              '${visibleErrorMessage(e)}\nهل تريد استبدال القالب الموجود؟',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('إلغاء'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('استبدال'),
+              ),
+            ],
+          ),
+        );
+        if (replace != true) return;
+        await repo.createTemplate(
+          title: title,
+          channel: _channel,
+          subject: _subject.text.trim(),
+          body: body,
+          overwrite: true,
+        );
+      }
       _refresh(ref);
       if (!mounted) return;
       Navigator.of(context).pop();

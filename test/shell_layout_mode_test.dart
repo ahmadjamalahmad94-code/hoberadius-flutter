@@ -8,6 +8,7 @@ import 'package:hoberadius_app/core/api/api_endpoint_storage.dart';
 import 'package:hoberadius_app/core/auth/auth_controller.dart';
 import 'package:hoberadius_app/core/auth/security_key_storage.dart';
 import 'package:hoberadius_app/core/auth/token_storage.dart';
+import 'package:hoberadius_app/features/admin_control/application/admin_control_providers.dart';
 import 'package:hoberadius_app/features/notifications/application/notifications_providers.dart';
 import 'package:hoberadius_app/features/notifications/push/desktop_toast_bridge.dart';
 import 'package:hoberadius_app/features/notifications/push/push_service.dart';
@@ -93,6 +94,8 @@ Future<void> _pumpShell(WidgetTester tester, Size size) async {
         // Same for the e-cards usage probe: treat as in use so every section
         // renders, without a live API call.
         eCardsInUseProvider.overrideWith((ref) async => true),
+        // The shell provides the tenant currency (settings fetch) — stubbed.
+        tenantCurrencyProvider.overrideWithValue('ILS'),
       ],
       child: MaterialApp.router(routerConfig: router),
     ),

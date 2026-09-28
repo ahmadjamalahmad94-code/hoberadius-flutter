@@ -1,18 +1,46 @@
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 class BusinessEventsPage {
-  const BusinessEventsPage({required this.items, required this.count});
+  const BusinessEventsPage({
+    required this.items,
+    required this.count,
+    this.hasMore = false,
+    this.nextBeforeId,
+  });
 
   final List<BusinessEvent> items;
   final int count;
+
+  /// Updated servers page events by `before_id` (exact `has_more`); the
+  /// screen used to stop at 100.
+  final bool hasMore;
+  final int? nextBeforeId;
 
   factory BusinessEventsPage.fromJson(Map<String, dynamic> json) {
     final data = _data(json);
     final items = _list(data['items'])
         .map((item) => BusinessEvent.fromJson(_map(item)))
         .toList();
-    return BusinessEventsPage(items: items, count: _int(data['count']));
+    final next = data['next_before_id'];
+    return BusinessEventsPage(
+      items: items,
+      count: _int(data['count']),
+      hasMore: data['has_more'] == true,
+      nextBeforeId: next == null ? null : _int(next),
+    );
   }
+
+  BusinessEventsPage copyWith({
+    List<BusinessEvent>? items,
+    bool? hasMore,
+    int? nextBeforeId,
+  }) =>
+      BusinessEventsPage(
+        items: items ?? this.items,
+        count: items?.length ?? count,
+        hasMore: hasMore ?? this.hasMore,
+        nextBeforeId: nextBeforeId ?? this.nextBeforeId,
+      );
 }
 
 class BusinessEvent {

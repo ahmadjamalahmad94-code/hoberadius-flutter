@@ -9,6 +9,7 @@ import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../application/events_providers.dart';
 import '../data/events_repository.dart';
 import '../domain/business_event_model.dart';
@@ -231,14 +232,25 @@ class _EventsList extends ConsumerWidget {
           title: 'الأحداث الأخيرة',
           icon: Icons.event_note_outlined,
           padding: EdgeInsets.zero,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: page.items.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (context, index) {
-              return _EventTile(event: page.items[index]);
-            },
+          child: Column(
+            children: [
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: page.items.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  return _EventTile(event: page.items[index]);
+                },
+              ),
+              LoadMoreFooter(
+                hasMore: page.hasMore,
+                loading: false,
+                shown: page.items.length,
+                onLoadMore: () =>
+                    ref.read(businessEventsProvider.notifier).loadMore(),
+              ),
+            ],
           ),
         );
       },

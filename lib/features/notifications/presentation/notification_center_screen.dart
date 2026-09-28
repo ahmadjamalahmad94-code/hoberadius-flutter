@@ -11,6 +11,8 @@ import '../../../shared/widgets/page_header.dart';
 import '../application/notifications_providers.dart';
 import '../domain/notification_presentation.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
+import 'package:hoberadius_app/features/subscribers/domain/subscriber_actions_model.dart'
+    show arDays, arHours, arMinutes;
 
 final _kindFilterProvider =
     StateProvider.autoDispose<NotificationKind?>((_) => null);
@@ -305,7 +307,11 @@ class _NotificationTileState extends State<_NotificationTile> {
                                       if (g.count > 1) ...[
                                         const SizedBox(width: 6),
                                         _Pill(
-                                          label: 'تكرّر ${g.count} مرات',
+                                          label: g.count == 2
+                                              ? 'تكرّر مرتين'
+                                              : g.count <= 10
+                                                  ? 'تكرّر ${g.count} مرات'
+                                                  : 'تكرّر ${g.count} مرة',
                                           fg: AppTokens.textSecondary,
                                           bg: const Color(0xFFF1F5F9),
                                         ),
@@ -595,9 +601,10 @@ String notificationTimeAgo(String iso) {
   if (dt == null) return iso;
   final diff = DateTime.now().difference(dt);
   if (diff.inSeconds < 60) return 'الآن';
-  if (diff.inMinutes < 60) return 'منذ ${diff.inMinutes} دقيقة';
-  if (diff.inHours < 24) return 'منذ ${diff.inHours} ساعة';
-  if (diff.inDays < 30) return 'منذ ${diff.inDays} يوم';
+  // Arabic number agreement («منذ 3 ساعات», not «منذ 3 ساعة»).
+  if (diff.inMinutes < 60) return 'منذ ${arMinutes(diff.inMinutes)}';
+  if (diff.inHours < 24) return 'منذ ${arHours(diff.inHours)}';
+  if (diff.inDays < 30) return 'منذ ${arDays(diff.inDays)}';
   final months = diff.inDays ~/ 30;
   if (months < 12) return 'منذ $months شهر';
   return 'منذ ${diff.inDays ~/ 365} سنة';

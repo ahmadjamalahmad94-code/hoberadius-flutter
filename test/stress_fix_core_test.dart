@@ -68,7 +68,7 @@ void main() {
       final created =
           DateTime.now().toUtc().subtract(const Duration(minutes: 5));
       final iso = created.toIso8601String().replaceAll('Z', '');
-      expect(notificationTimeAgo(iso), 'منذ 5 دقيقة');
+      expect(notificationTimeAgo(iso), 'منذ 5 دقائق');
     });
   });
 

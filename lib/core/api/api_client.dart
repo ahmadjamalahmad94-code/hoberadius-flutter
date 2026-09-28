@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:dio/dio.dart';
@@ -83,6 +84,11 @@ class ApiClient {
         validateStatus: (_) => true,
       ),
     );
+    // One bad ledger row with Infinity/NaN made whole lists invalid JSON
+    // (distributors, profit-loss…) and the app blamed the network. Decode
+    // tolerantly (non-finite → null) — see [decodeJsonTolerant].
+    _dio.transformer = BackgroundTransformer()
+      ..jsonDecodeCallback = decodeJsonTolerant;
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
@@ -200,6 +206,15 @@ class ApiClient {
         _semaphore.release();
       }
 
+      // ── A response that is not valid JSON (not a network failure) ──
+      if (dioErr != null && dioErr.error is FormatException) {
+        throw ApiException(
+          code: 'bad_response',
+          message: 'وصل ردّ غير صالح من الخادم (بيانات تالفة). '
+              'أعد المحاولة أو أبلغ الدعم الفني.',
+          status: dioErr.response?.statusCode,
+        );
+      }
       // ── Transport-level failure (no HTTP response): network / timeout ──
       if (dioErr != null) {
         if (idempotent && canRetry && _isRetryableDio(dioErr)) {
@@ -487,6 +502,21 @@ class _Semaphore {
     } else if (_current > 0) {
       _current -= 1;
     }
+  }
+}
+
+/// `jsonDecode` that survives the non-standard `Infinity` / `-Infinity` /
+/// `NaN` tokens Python's json module emits for non-finite floats: they are
+/// read as `null` (the row still shows, the bad value is blank).
+Object? decodeJsonTolerant(String source) {
+  try {
+    return jsonDecode(source);
+  } on FormatException {
+    final cleaned = source.replaceAllMapped(
+      RegExp(r'([:\[,]\s*)-?(?:Infinity|NaN)(?=\s*[,\]}])'),
+      (m) => '${m.group(1)}null',
+    );
+    return jsonDecode(cleaned);
   }
 }
 

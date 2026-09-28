@@ -1,5 +1,6 @@
 import 'package:intl/intl.dart';
 
+import '../../../core/l10n/arabic_labels.dart';
 import '../domain/operational_report_catalog.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
@@ -24,7 +25,8 @@ String formatReportCell(ReportColumn column, Object? value) {
       return _formatAmount(value);
     case ReportColumnKind.status:
     case ReportColumnKind.text:
-      return value.toString();
+      // raw API tokens (posted/credit/settlement…) in Arabic
+      return rawTokenLabel(value.toString());
   }
 }
 
@@ -65,10 +67,12 @@ String _formatBool(Object? value) {
   return truthy.contains(text) ? 'نعم' : 'لا';
 }
 
+/// Thousands separators, at most 2 decimals — no float noise
+/// (117.58999999999999) and no 13-digit blobs.
 String _formatAmount(Object? value) {
   final parsed = num.tryParse(value.toString());
-  if (parsed == null) return value.toString();
-  return parsed.toStringAsFixed(2);
+  if (parsed == null || !parsed.isFinite) return value.toString();
+  return NumberFormat('#,##0.00').format(parsed);
 }
 
 int _toInt(Object? value) {

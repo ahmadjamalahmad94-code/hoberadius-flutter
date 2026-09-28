@@ -118,7 +118,9 @@ class _Mobile extends ConsumerWidget {
     final location = GoRouterState.of(context).matchedLocation;
     final idx = _indexOfRoute(location);
     return Scaffold(
-      appBar: _MobileAppBar(title: mobileNavDestinations[idx].label),
+      // A page outside the bottom tabs (e.g. /notifications) used to show
+      // the first tab's title «لوحة التحكم».
+      appBar: _MobileAppBar(title: mobileTitleForLocation(location, idx)),
       body: SafeArea(
         child: _ContentArea(
           padding: const EdgeInsets.all(AppTokens.s12),
