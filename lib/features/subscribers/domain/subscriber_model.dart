@@ -427,10 +427,30 @@ class Subscriber {
         },
       };
 
+  /// Server datetimes are UTC (with or without a trailing «Z»). Read them as
+  /// UTC and show them in the phone's local time. Dropping the «Z» used to
+  /// read 20:59 UTC as 20:59 LOCAL — and `toJson` then converted that back
+  /// to UTC, so every save from the edit form cut the expiry by the UTC
+  /// offset (3 h in Palestine).
   static DateTime? _parseDt(Object? v) {
     if (v == null) return null;
+    final raw = v.toString().trim();
+    if (raw.isEmpty) return null;
     try {
-      return DateTime.parse(v.toString().replaceAll('Z', ''));
+      final d = DateTime.parse(raw);
+      final utc = d.isUtc
+          ? d
+          : DateTime.utc(
+              d.year,
+              d.month,
+              d.day,
+              d.hour,
+              d.minute,
+              d.second,
+              d.millisecond,
+              d.microsecond,
+            );
+      return utc.toLocal();
     } catch (_) {
       return null;
     }

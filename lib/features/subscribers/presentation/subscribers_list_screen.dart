@@ -177,10 +177,7 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
                 title: 'لا توجد نتائج',
               );
             }
-            return AppCard(
-              padding: EdgeInsets.zero,
-              child: _Table(items: filtered, density: _density),
-            );
+            return _Table(items: filtered, density: _density);
           },
         ),
       ],
@@ -402,7 +399,8 @@ class _Table extends ConsumerWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: items.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
+      // Owner: separate subscribers clearly — each one its own card.
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (ctx, i) {
         final s = items[i];
         final status = effectiveSubscriberStatus(s, now);
@@ -426,124 +424,126 @@ class _Table extends ConsumerWidget {
               'subscriber-finance',
               pathParameters: {'username': s.username},
             );
-        return Dismissible(
-          key: ValueKey('sub:${s.username}'),
-          direction: DismissDirection.endToStart,
-          confirmDismiss: (_) async {
-            openFinance();
-            return false;
-          },
-          background: Container(
-            alignment: AlignmentDirectional.centerStart,
-            padding: const EdgeInsetsDirectional.only(start: 24),
-            color: p.brandSoft,
-            child: Icon(
-              Icons.account_balance_wallet_outlined,
-              color: p.brandInk,
-            ),
-          ),
-          child: InkWell(
-            onTap: open360,
-            onLongPress: () => _showActions(ctx, ref, s),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppTokens.s12,
-                vertical: compact ? AppTokens.s8 : AppTokens.s12,
+        return _RowCard(
+          child: Dismissible(
+            key: ValueKey('sub:${s.username}'),
+            direction: DismissDirection.endToStart,
+            confirmDismiss: (_) async {
+              openFinance();
+              return false;
+            },
+            background: Container(
+              alignment: AlignmentDirectional.centerStart,
+              padding: const EdgeInsetsDirectional.only(start: 24),
+              color: p.brandSoft,
+              child: Icon(
+                Icons.account_balance_wallet_outlined,
+                color: p.brandInk,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: compact ? 16 : 20,
-                        backgroundColor: p.brandSoft,
-                        child: Icon(
-                          Icons.person,
-                          color: p.brand,
-                          size: compact ? 18 : 22,
+            ),
+            child: InkWell(
+              onTap: open360,
+              onLongPress: () => _showActions(ctx, ref, s),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppTokens.s12,
+                  vertical: compact ? AppTokens.s8 : AppTokens.s12,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: compact ? 16 : 20,
+                          backgroundColor: p.brandSoft,
+                          child: Icon(
+                            Icons.person,
+                            color: p.brand,
+                            size: compact ? 18 : 22,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: AppTokens.s12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              s.fullName.isEmpty ? s.username : s.fullName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.labelLarge.copyWith(
-                                color: p.textPrimary,
-                                fontWeight: FontWeight.w800,
+                        const SizedBox(width: AppTokens.s12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.fullName.isEmpty ? s.username : s.fullName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.labelLarge.copyWith(
+                                  color: p.textPrimary,
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
-                            ),
-                            Text(
-                              [
-                                s.username,
-                                if (s.mobile.isNotEmpty) s.mobile,
-                              ].join(' · '),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: AppTypography.caption
-                                  .copyWith(color: p.textMuted),
-                            ),
-                          ],
+                              Text(
+                                [
+                                  s.username,
+                                  if (s.mobile.isNotEmpty) s.mobile,
+                                ].join(' · '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: AppTypography.caption
+                                    .copyWith(color: p.textMuted),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: AppTokens.s8),
-                      StatusPill(
-                        text: label,
-                        tone: toneForStatus(status),
-                        dot: true,
-                      ),
-                      if (compact)
-                        IconButton(
-                          tooltip: 'إجراءات',
-                          visualDensity: VisualDensity.compact,
-                          icon: const Icon(Icons.more_vert),
-                          onPressed: () => _showActions(ctx, ref, s),
+                        const SizedBox(width: AppTokens.s8),
+                        StatusPill(
+                          text: label,
+                          tone: toneForStatus(status),
+                          dot: true,
                         ),
-                    ],
-                  ),
-                  if (exp != null)
-                    Padding(
-                      padding: EdgeInsetsDirectional.only(
-                        start: compact ? 44 : 52,
-                        top: 2,
-                      ),
-                      child: Text(
-                        '${daysLeft! <= 0 ? 'انتهى' : 'ينتهي'}: ${df.format(exp)}',
-                        style: AppTypography.caption.copyWith(
-                          color: expFg,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  if (!compact) ...[
-                    const SizedBox(height: AppTokens.s12),
-                    ActionBar(
-                      items: [
-                        ActionItem(
-                          icon: Icons.dashboard_customize_outlined,
-                          label: 'الملف',
-                          primary: true,
-                          onPressed: open360,
-                        ),
-                        ActionItem(
-                          icon: Icons.account_balance_wallet_outlined,
-                          label: 'المالية',
-                          onPressed: openFinance,
-                        ),
-                        ActionItem(
-                          icon: Icons.tune,
-                          label: 'إجراءات',
-                          onPressed: () => _showActions(ctx, ref, s),
-                        ),
+                        if (compact)
+                          IconButton(
+                            tooltip: 'إجراءات',
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.more_vert),
+                            onPressed: () => _showActions(ctx, ref, s),
+                          ),
                       ],
                     ),
+                    if (exp != null)
+                      Padding(
+                        padding: EdgeInsetsDirectional.only(
+                          start: compact ? 44 : 52,
+                          top: 2,
+                        ),
+                        child: Text(
+                          '${daysLeft! <= 0 ? 'انتهى' : 'ينتهي'}: ${df.format(exp)}',
+                          style: AppTypography.caption.copyWith(
+                            color: expFg,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    if (!compact) ...[
+                      const SizedBox(height: AppTokens.s12),
+                      ActionBar(
+                        items: [
+                          ActionItem(
+                            icon: Icons.dashboard_customize_outlined,
+                            label: 'الملف',
+                            primary: true,
+                            onPressed: open360,
+                          ),
+                          ActionItem(
+                            icon: Icons.account_balance_wallet_outlined,
+                            label: 'المالية',
+                            onPressed: openFinance,
+                          ),
+                          ActionItem(
+                            icon: Icons.tune,
+                            label: 'إجراءات',
+                            onPressed: () => _showActions(ctx, ref, s),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -613,6 +613,35 @@ class _SheetAction extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One subscriber = one white card (rounded, border, soft shadow) — clear
+/// separation instead of a hairline between rows.
+class _RowCard extends StatelessWidget {
+  const _RowCard({required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTokens.borderStrong),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0F1E1B4B),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Material(color: Colors.transparent, child: child),
       ),
     );
   }
