@@ -66,7 +66,12 @@ class GenerateBatchRequest {
     this.serviceName = '',
     this.notes = '',
     this.loginWithoutPassword = false,
+    this.includeBatchNumber = false,
   });
+
+  /// «تضمين رقم الحزمة»: the batch id (digits) after the prefix, inside the
+  /// total username length (web generator semantics).
+  final bool includeBatchNumber;
 
   /// «رقم فقط»: cards log in with the number alone (no password).
   final bool loginWithoutPassword;
@@ -102,6 +107,7 @@ class GenerateBatchRequest {
         'username_length': usernameLength,
         'password_length': loginWithoutPassword ? 0 : passwordLength,
         if (loginWithoutPassword) 'login_without_password': true,
+        if (includeBatchNumber) 'include_batch_number': true,
         'password_generation_type': passwordGenerationType,
         'time_value': timeValue,
         'time_unit': timeUnit,

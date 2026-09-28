@@ -18,6 +18,7 @@ import '../../../shared/widgets/form_field_row.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
+import '../domain/username_preview.dart';
 import '../application/cards_list_providers.dart';
 import 'widgets/cards_form_header.dart';
 
@@ -39,14 +40,21 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   final _totalQuota = TextEditingController(text: '0');
   final _serviceName = TextEditingController();
   final _prefix = TextEditingController();
+  final _suffix = TextEditingController();
   final _ulen = TextEditingController(text: '8');
   final _plen = TextEditingController(text: '6');
   final _timeVal = TextEditingController(text: '1');
   final _notes = TextEditingController();
 
-  String _passwordType = 'medium';
+  // «أرقام فقط» by default, like the web generator (شبكة المحترف request):
+  // numeric cards are easier to print and type.
+  String _passwordType = 'digits';
   String _timeUnit = 'days';
-  String _affixMode = 'none';
+  bool _includeBatchNumber = false;
+
+  /// Estimated id of the batch about to be created (latest id + 1), for the
+  /// «تضمين رقم الحزمة» preview; null until known.
+  int? _nextBatchId;
   int _devices = 1;
 
   bool _loading = false;
@@ -60,6 +68,30 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   bool get _noPassword => _passwordType == 'none';
 
   @override
+  void initState() {
+    super.initState();
+    for (final c in [_prefix, _suffix, _ulen, _count]) {
+      c.addListener(_refreshPreview);
+    }
+  }
+
+  void _refreshPreview() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadNextBatchId() async {
+    if (_nextBatchId != null) return;
+    try {
+      final rows =
+          await ref.read(cardsRepositoryProvider).listBatches(limit: 5);
+      final maxId = rows.fold<int>(0, (m, b) => (b.id ?? 0) > m ? b.id! : m);
+      if (mounted) setState(() => _nextBatchId = maxId + 1);
+    } catch (_) {
+      // Preview only — the server applies the real batch number.
+    }
+  }
+
+  @override
   void dispose() {
     for (final c in [
       _packageName,
@@ -70,6 +102,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       _totalQuota,
       _serviceName,
       _prefix,
+      _suffix,
       _ulen,
       _plen,
       _timeVal,
@@ -111,14 +144,13 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     final count = int.parse(_count.text.trim());
     if (count > kConfirmCardsAbove && !await _confirmLargeBatch(count)) return;
     if (!mounted) return;
-    final affix = normalizeCardAffix(_prefix.text);
     final req = GenerateBatchRequest(
       planId: int.parse(_plan.text.trim()),
       count: count,
       packageName: _packageName.text.trim(),
-      usernamePrefix: affix,
-      startsWithOrEndsWith: _affixMode == 'none' ? '' : _affixMode,
-      prefixOrSuffixValue: _affixMode == 'none' ? '' : affix,
+      usernamePrefix: normalizeCardAffix(_prefix.text),
+      usernameSuffix: normalizeCardAffix(_suffix.text),
+      includeBatchNumber: _includeBatchNumber,
       usernameLength: int.tryParse(_ulen.text) ?? 8,
       passwordLength: int.tryParse(_plen.text) ?? 6,
       passwordGenerationType: _noPassword ? 'digits' : _passwordType,
@@ -271,31 +303,57 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
               children: [
                 FormFieldPair(
                   first: FormFieldRow(
-                    label: 'موضع البادئة/اللاحقة',
-                    child: DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      value: _affixMode,
-                      items: const [
-                        DropdownMenuItem(value: 'none', child: Text('بدون')),
-                        DropdownMenuItem(value: 'prefix', child: Text('بادئة')),
-                        DropdownMenuItem(value: 'suffix', child: Text('لاحقة')),
-                      ],
-                      onChanged: (v) =>
-                          setState(() => _affixMode = v ?? 'none'),
+                    label: 'بادئة اسم المستخدم — اختياري',
+                    child: TextFormField(
+                      controller: _prefix,
+                      maxLength: 12,
+                      textDirection: TextDirection.ltr,
+                      decoration: const InputDecoration(
+                        hintText: 'مثال: 25',
+                        counterText: '',
+                      ),
+                      validator: (v) => validateCardAffix(v ?? ''),
                     ),
                   ),
                   second: FormFieldRow(
-                    label: 'القيمة',
+                    label: 'لاحقة اسم المستخدم — اختياري',
                     child: TextFormField(
-                      controller: _prefix,
-                      decoration: const InputDecoration(hintText: 'مثال: qa-'),
-                      validator: (v) => _affixMode == 'none'
-                          ? null
-                          : validateCardAffix(v ?? ''),
+                      controller: _suffix,
+                      maxLength: 12,
+                      textDirection: TextDirection.ltr,
+                      decoration: const InputDecoration(
+                        hintText: 'مثال: 99',
+                        counterText: '',
+                      ),
+                      validator: (v) => validateCardAffix(v ?? ''),
                     ),
                   ),
                 ),
-                _num(_ulen, 'طول الاسم'),
+                _num(_ulen, 'طول الاسم (كامل مع البادئة واللاحقة)'),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('تضمين رقم الحزمة'),
+                  subtitle: const Text(
+                    'يضيف رقم الحزمة بعد البادئة وقبل الأرقام العشوائيّة، '
+                    'ضمن الطول الكلّيّ.',
+                  ),
+                  value: _includeBatchNumber,
+                  onChanged: (v) {
+                    setState(() => _includeBatchNumber = v);
+                    if (v) _loadNextBatchId();
+                  },
+                ),
+                _UsernamePreviewCard(
+                  preview: UsernamePreview.of(
+                    prefix: _prefix.text,
+                    suffix: _suffix.text,
+                    totalLength: int.tryParse(_ulen.text.trim()),
+                    batchNumber:
+                        _includeBatchNumber ? '${_nextBatchId ?? ''}' : '',
+                    count: int.tryParse(_count.text.trim()) ?? 0,
+                  ),
+                  batchEstimated: _includeBatchNumber,
+                ),
               ],
             ),
           ),
@@ -317,17 +375,23 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   isExpanded: true,
                   value: _passwordType,
                   items: const [
+                    DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),
+                    DropdownMenuItem(
+                      value: 'medium',
+                      child: Text('متوسط (حروف وأرقام)'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'strong',
+                      child: Text('قوي (حروف كبيرة وصغيرة وأرقام)'),
+                    ),
+                    DropdownMenuItem(value: 'weak', child: Text('حروف فقط')),
                     DropdownMenuItem(
                       value: 'none',
                       child: Text('بدون كلمة مرور (رقم فقط)'),
                     ),
-                    DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),
-                    DropdownMenuItem(value: 'weak', child: Text('ضعيف')),
-                    DropdownMenuItem(value: 'medium', child: Text('متوسط')),
-                    DropdownMenuItem(value: 'strong', child: Text('قوي')),
                   ],
                   onChanged: (v) =>
-                      setState(() => _passwordType = v ?? 'medium'),
+                      setState(() => _passwordType = v ?? 'digits'),
                 ),
               ),
             ),
@@ -467,6 +531,117 @@ class _BatchResult extends ConsumerWidget {
               );
             },
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// «معاينة اسم المستخدم»: prefix | batch no. | generated | suffix in
+/// distinct colours, like the web generator.
+class _UsernamePreviewCard extends StatelessWidget {
+  const _UsernamePreviewCard({
+    required this.preview,
+    required this.batchEstimated,
+  });
+  final UsernamePreview preview;
+  final bool batchEstimated;
+
+  static const _pre = Color(0xFF7C3AED);
+  static const _bn = Color(0xFFD97706);
+  static const _gen = Color(0xFF0F766E);
+  static const _suf = Color(0xFFDB2777);
+
+  @override
+  Widget build(BuildContext context) {
+    final p = preview;
+    Widget legend(Color c, String t) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: c, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 4),
+            Text(t, style: const TextStyle(fontSize: 12)),
+          ],
+        );
+    return Container(
+      margin: const EdgeInsets.only(top: AppTokens.s8),
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: AppTokens.surfaceMuted,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTokens.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'معاينة اسم المستخدم',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text.rich(
+                TextSpan(
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: p.prefix,
+                      style: const TextStyle(color: _pre),
+                    ),
+                    TextSpan(
+                      text: p.batchNumber,
+                      style: const TextStyle(color: _bn),
+                    ),
+                    TextSpan(
+                      text: p.generated,
+                      style: const TextStyle(color: _gen),
+                    ),
+                    TextSpan(
+                      text: p.suffix,
+                      style: const TextStyle(color: _suf),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 12,
+            runSpacing: 4,
+            children: [
+              legend(_pre, 'البادئة'),
+              if (p.batchNumber.isNotEmpty)
+                legend(
+                  _bn,
+                  batchEstimated ? 'رقم الحزمة (المتوقَّع)' : 'رقم الحزمة',
+                ),
+              legend(_gen, 'الجزء المولَّد (${p.generatedLength} أرقام)'),
+              legend(_suf, 'اللاحقة'),
+            ],
+          ),
+          if (p.warning != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              p.warning!,
+              style: const TextStyle(
+                color: AppTokens.amberInk,
+                fontSize: 12.5,
+              ),
+            ),
+          ],
         ],
       ),
     );
