@@ -11,6 +11,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/ota/ota_updater.dart';
 import '../../../core/platform/platform_capabilities.dart';
 import '../../../firebase_options.dart';
 import 'push_service.dart';
@@ -72,9 +73,8 @@ class FcmPushService implements PushService {
 
     // Permission: iOS prompt + Android 13+ POST_NOTIFICATIONS.
     await messaging.requestPermission();
-    final androidPlugin =
-        _local.resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = _local.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.requestNotificationsPermission();
     await androidPlugin?.createNotificationChannel(_androidChannel);
 
@@ -88,8 +88,23 @@ class FcmPushService implements PushService {
     if (token != null) await _registerToken(ref, token);
     messaging.onTokenRefresh.listen((t) => _registerToken(ref, t));
 
+    // (1b) app-update announcements: CI pushes to this topic after publishing
+    //      an OTA patch. Every install subscribes, whatever server it uses.
+    try {
+      await messaging.subscribeToTopic(kAppUpdatesTopic);
+    } catch (_) {/* best-effort */}
+    final initial = await messaging.getInitialMessage();
+    if (initial != null && isAppUpdatePush(initial.data)) {
+      ref.read(otaControllerProvider.notifier).check(force: true);
+    }
+
     // (2) foreground messages → shared center + an OS notification.
     FirebaseMessaging.onMessage.listen((m) async {
+      // Update push while the app is open → the update pop-up, not a toast.
+      if (isAppUpdatePush(m.data)) {
+        ref.read(otaControllerProvider.notifier).check(force: true);
+        return;
+      }
       await handleIncomingPush(ref, _toPushMessage(m));
       final n = m.notification;
       if (n != null) {
@@ -112,6 +127,10 @@ class FcmPushService implements PushService {
 
     // (3) tap-to-open from a background notification → refresh the center.
     FirebaseMessaging.onMessageOpenedApp.listen((m) {
+      if (isAppUpdatePush(m.data)) {
+        ref.read(otaControllerProvider.notifier).check(force: true);
+        return;
+      }
       handleIncomingPush(ref, _toPushMessage(m));
       // Navigation is handled by the shell (DesktopNotifier.onOpen-style wiring
       // is desktop; on mobile the user lands on the app and sees the badge).

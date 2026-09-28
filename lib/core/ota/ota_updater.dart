@@ -2,74 +2,141 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shorebird_code_push/shorebird_code_push.dart';
 
-/// Over-the-air (Shorebird) update state for the shell banner.
+/// Over-the-air (Shorebird) update flow, surfaced as pop-up dialogs
+/// (see `ota_dialogs.dart`):
 ///
-/// Shorebird itself downloads patches in the background on launch and boots
-/// from them on the *next* launch. This layer only makes that visible: it
-/// asks once per session whether a newer patch exists, downloads it if so,
-/// and tells the UI «تحديث جاهز — أعد فتح التطبيق». In a plain `flutter build`
-/// (web, tests, a non-Shorebird APK) the updater reports `isAvailable == false`
-/// and everything here is a no-op.
-enum OtaPhase { idle, checking, downloading, restartRequired, upToDate, failed }
+///   check → [available] «يوجد تحديث جديد» تثبيت / لاحقًا
+///         → تثبيت → [downloading] progress dialog
+///         → [readyToRestart] «إعادة التشغيل» → the app restarts on the patch.
+///
+/// Nothing downloads without the operator's «تثبيت». A patch that was already
+/// downloaded earlier (e.g. by Shorebird itself) goes straight to
+/// [OtaPhase.readyToRestart]. Checks run on launch, on resume (throttled) and
+/// when an «app_update» push arrives. In a plain `flutter build` (web, tests,
+/// a non-Shorebird APK) the updater is unavailable and all of this is a no-op.
+/// FCM topic every install subscribes to; `.github/workflows/shorebird.yml`
+/// pushes to it after publishing a patch.
+const kAppUpdatesTopic = 'app-updates';
+
+/// An update announcement carries `data.type == 'app_update'`.
+bool isAppUpdatePush(Map<String, dynamic> data) =>
+    (data['type'] ?? '').toString() == 'app_update';
+
+enum OtaPhase {
+  idle,
+  checking,
+  available,
+  downloading,
+  readyToRestart,
+  upToDate,
+  failed,
+}
 
 class OtaState {
   const OtaState({
     this.phase = OtaPhase.idle,
     this.currentPatch,
     this.error = '',
+    this.snoozed = false,
   });
   final OtaPhase phase;
   final int? currentPatch;
   final String error;
 
-  OtaState copyWith({OtaPhase? phase, int? currentPatch, String? error}) =>
+  /// «لاحقًا» pressed: don't pop the dialog again this session unless a push
+  /// or an explicit check asks for it.
+  final bool snoozed;
+
+  OtaState copyWith({
+    OtaPhase? phase,
+    int? currentPatch,
+    String? error,
+    bool? snoozed,
+  }) =>
       OtaState(
         phase: phase ?? this.phase,
         currentPatch: currentPatch ?? this.currentPatch,
         error: error ?? this.error,
+        snoozed: snoozed ?? this.snoozed,
       );
 }
 
 class OtaController extends StateNotifier<OtaState> {
-  OtaController({ShorebirdUpdater? updater})
+  OtaController({ShorebirdUpdater? updater, bool? enabled})
       : _updater = updater ?? ShorebirdUpdater(),
+        _enabled = enabled ?? !kIsWeb,
         super(const OtaState());
 
   final ShorebirdUpdater _updater;
-  bool _ran = false;
+  final bool _enabled;
+  DateTime? _lastCheck;
+  bool _busy = false;
 
-  bool get isAvailable => _updater.isAvailable;
+  bool get isAvailable => _enabled && _updater.isAvailable;
 
-  /// Check once per app session. Safe to call from a post-frame callback.
-  Future<void> checkOnce() async {
-    if (_ran || kIsWeb || !_updater.isAvailable) return;
-    _ran = true;
+  /// Look for a new patch. [force] ignores the resume throttle and a previous
+  /// «لاحقًا» (used when an update push arrives).
+  Future<void> check({bool force = false}) async {
+    if (!isAvailable || _busy) return;
+    final phase = state.phase;
+    if (phase == OtaPhase.downloading) return;
+    if (phase == OtaPhase.readyToRestart) {
+      // Already downloaded: just re-show the restart prompt when forced.
+      if (force) state = state.copyWith(snoozed: false);
+      return;
+    }
+    final now = DateTime.now();
+    if (!force &&
+        _lastCheck != null &&
+        now.difference(_lastCheck!) < const Duration(minutes: 10)) {
+      return;
+    }
+    _lastCheck = now;
+    _busy = true;
     try {
       final current = await _updater.readCurrentPatch();
       state = state.copyWith(
         phase: OtaPhase.checking,
         currentPatch: current?.number,
+        snoozed: force ? false : state.snoozed,
       );
       final status = await _updater.checkForUpdate();
-      switch (status) {
-        case UpdateStatus.outdated:
-          state = state.copyWith(phase: OtaPhase.downloading);
-          await _updater.update();
-          state = state.copyWith(phase: OtaPhase.restartRequired);
-        case UpdateStatus.restartRequired:
-          state = state.copyWith(phase: OtaPhase.restartRequired);
-        case UpdateStatus.upToDate:
-        case UpdateStatus.unavailable:
-          state = state.copyWith(phase: OtaPhase.upToDate);
-      }
-    } on UpdateException catch (e) {
-      state = state.copyWith(phase: OtaPhase.failed, error: e.message);
+      state = switch (status) {
+        UpdateStatus.outdated => state.copyWith(phase: OtaPhase.available),
+        UpdateStatus.restartRequired =>
+          state.copyWith(phase: OtaPhase.readyToRestart),
+        UpdateStatus.upToDate ||
+        UpdateStatus.unavailable =>
+          state.copyWith(phase: OtaPhase.upToDate),
+      };
     } catch (e) {
-      state = state.copyWith(phase: OtaPhase.failed, error: e.toString());
+      // A failed background check stays silent (no dialog for «no network»).
+      state = state.copyWith(phase: OtaPhase.idle, error: _message(e));
+    } finally {
+      _busy = false;
     }
   }
 
-  void dismiss() => state = state.copyWith(phase: OtaPhase.idle);
+  /// «تثبيت»: download the patch; the dialog shows progress, then restart.
+  Future<void> install() async {
+    if (!isAvailable || _busy) return;
+    _busy = true;
+    state = state.copyWith(phase: OtaPhase.downloading, error: '');
+    try {
+      await _updater.update();
+      state = state.copyWith(phase: OtaPhase.readyToRestart, snoozed: false);
+    } catch (e) {
+      state = state.copyWith(phase: OtaPhase.failed, error: _message(e));
+    } finally {
+      _busy = false;
+    }
+  }
+
+  /// «لاحقًا» / close: hide the dialog; the patch (if downloaded) still
+  /// applies on the next cold start.
+  void later() => state = state.copyWith(snoozed: true);
+
+  String _message(Object e) => e is UpdateException ? e.message : '$e';
 }
 
 final otaControllerProvider =

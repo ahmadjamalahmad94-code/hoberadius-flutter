@@ -10,7 +10,8 @@ name: shorebird
 #
 # Native changes (new plugin with native code, Gradle/manifest changes,
 # Flutter upgrade) need a new release; Shorebird refuses to patch them unless
-# --allow-native-diffs is passed, which we deliberately do not do.
+# --allow-native-diffs is passed (input allow_native_diffs, off by default;
+# only for a Dart side that tolerates the missing native code).
 #
 # Needs the repository secret SHOREBIRD_TOKEN (Shorebird console → Account →
 # API Keys). The Android scaffold steps mirror build.yml so the patch is built
@@ -31,6 +32,16 @@ on:
         default: stable
         type: choice
         options: [stable, staging]
+      allow_native_diffs:
+        description: "patch only: accept native diffs vs the release (Dart side must tolerate the missing native code)"
+        required: false
+        default: false
+        type: boolean
+      notify:
+        description: "patch only: push «يوجد تحديث جديد» to every install (FCM topic app-updates)"
+        required: false
+        default: true
+        type: boolean
 
 env:
   SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
@@ -135,7 +146,22 @@ jobs:
         run: |
           VER=$(grep -E '^version:' pubspec.yaml | awk '{print $2}')
           echo "patching release $VER on track ${{ inputs.track }}"
-          shorebird patch android --release-version="$VER" --track="${{ inputs.track }}" --no-confirm -- --no-tree-shake-icons
+          EXTRA=""
+          if [ "${{ inputs.allow_native_diffs }}" = "true" ]; then EXTRA="--allow-native-diffs"; fi
+          shorebird patch android --release-version="$VER" --track="${{ inputs.track }}" --no-confirm $EXTRA -- --no-tree-shake-icons
+
+      # Announce the patch: FCM push to the «app-updates» topic that every
+      # install subscribes to (lib/features/notifications/push). Tapping it (or
+      # receiving it with the app open) shows the in-app update pop-up.
+      # Needs the secret FIREBASE_SERVICE_ACCOUNT_JSON; skipped quietly without it.
+      - name: Push «update available» to all installs
+        if: inputs.mode == 'patch' && inputs.notify && inputs.track == 'stable'
+        env:
+          FIREBASE_SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$FIREBASE_SA" ]; then echo "no FIREBASE_SERVICE_ACCOUNT_JSON secret — skipping push"; exit 0; fi
+          pip install --quiet google-auth requests
+          python tool/push_app_update.py
 
       - name: Collect APK
         if: inputs.mode == 'release'

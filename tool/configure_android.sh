@@ -127,4 +127,48 @@ if [ -f "$MF" ]; then
   fi
 fi
 
+# 5) In-app restart channel (OTA) ---------------------------------------------
+#    Shorebird patches load only when the process starts. The update pop-up's
+#    «إعادة التشغيل» calls MethodChannel "hoberadius/app_restart"; this replaces
+#    the scaffolded MainActivity (keeping its package) with one that answers it
+#    by relaunching the launcher activity in a fresh process. Installs built
+#    before this existed answer MissingPluginException and the Dart side falls
+#    back to closing the app. See lib/core/ota/app_restart.dart.
+MA="$(find "$ROOT/android/app/src/main" -name MainActivity.kt | head -1)"
+if [ -n "$MA" ]; then
+  PKG="$(grep -m1 -E '^package ' "$MA" | sed -E 's/^package //')"
+  cat > "$MA" <<KOTLIN
+package $PKG
+
+import android.content.Intent
+import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+
+class MainActivity : FlutterActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "hoberadius/app_restart")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "supported" -> result.success(true)
+                    "restart" -> {
+                        result.success(null)
+                        val launch = packageManager.getLaunchIntentForPackage(packageName)
+                        if (launch?.component != null) {
+                            startActivity(Intent.makeRestartActivityTask(launch.component))
+                        }
+                        Runtime.getRuntime().exit(0)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+}
+KOTLIN
+  echo "✓ MainActivity: app_restart channel ($PKG)"
+else
+  echo "::warning:: MainActivity.kt not found — in-app restart falls back to close"
+fi
+
 echo "✓ configure_android.sh complete"

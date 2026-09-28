@@ -4,8 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
-import '../../core/ota/ota_banner.dart';
-import '../../core/ota/ota_updater.dart';
+import '../../core/ota/ota_dialogs.dart';
 import '../../core/router/nav_history.dart';
 import '../../core/theme/tokens.dart';
 import '../../shared/widgets/hub_toast.dart';
@@ -51,8 +50,6 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(navHistoryProvider).record(location);
-      // OTA (Shorebird) — no-op on web / non-Shorebird builds.
-      ref.read(otaControllerProvider.notifier).checkOnce();
     });
 
     final width = MediaQuery.sizeOf(context).width;
@@ -68,12 +65,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
         if (didPop) return;
         _handleBack();
       },
-      child: Column(
-        children: [
-          const OtaBanner(),
-          Expanded(child: shell),
-        ],
-      ),
+      // OTA (Shorebird) update pop-ups — no-op on web / non-Shorebird builds.
+      child: OtaDialogHost(child: shell),
     );
   }
 
@@ -484,9 +477,8 @@ class _SidebarSectionBlock extends StatelessWidget {
                       collapsed: false,
                       compact: true,
                       onTap: () => context.goNamed(gated.item.routeName),
-                      trailing: gated.requiresUpgrade
-                          ? const _UpgradeBadge()
-                          : null,
+                      trailing:
+                          gated.requiresUpgrade ? const _UpgradeBadge() : null,
                     ),
                 ],
               ),
