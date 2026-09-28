@@ -10,6 +10,7 @@ import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_360_model.dart';
+import 'widgets/subscriber_actions_sheet.dart';
 
 final subscriber360Provider =
     FutureProvider.autoDispose.family<Subscriber360, String>((ref, username) {
@@ -88,7 +89,6 @@ class _Subscriber360Content extends ConsumerWidget {
         ),
         const SizedBox(height: AppTokens.s12),
         ActionBar(
-          maxPerRow: 2,
           items: [
             ActionItem(
               icon: Icons.edit_outlined,
@@ -105,6 +105,23 @@ class _Subscriber360Content extends ConsumerWidget {
               onPressed: () => context.goNamed(
                 'subscriber-finance',
                 pathParameters: {'username': s.username},
+              ),
+            ),
+            ActionItem(
+              icon: Icons.tune,
+              label: 'إجراءات',
+              onPressed: () => showSubscriberActionsSheet(
+                context,
+                ref,
+                subscriber: s,
+                planName: data.planName,
+                onChanged: () =>
+                    ref.invalidate(subscriber360Provider(s.username)),
+                onRenamed: (name) => context.goNamed(
+                  'subscriber-360',
+                  pathParameters: {'username': name},
+                ),
+                onArchived: () => context.goNamed('subscribers'),
               ),
             ),
           ],

@@ -1,90 +1,43 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../core/theme/tokens.dart';
+import '../../domain/subscriber_model.dart';
+import 'subscriber_actions_sheet.dart';
 
-/// Popup menu shown on the edit screen for disable / extend / reset /
-/// delete actions. Each callback may be `null` to render the entry as
-/// disabled (while the form is mid-action).
-class SubscriberActionMenu extends StatelessWidget {
+/// ⋮ button of the edit screen: opens the same grouped actions sheet as the
+/// list («تفعيل» / «إدارية») for the subscriber being edited.
+class SubscriberActionMenu extends ConsumerWidget {
   const SubscriberActionMenu({
     super.key,
-    required this.isDisabled,
-    required this.onToggle,
-    required this.onExtend,
-    required this.onResetPw,
-    required this.onDelete,
+    required this.subscriber,
+    this.enabled = true,
+    this.onChanged,
+    this.onRenamed,
+    this.onArchived,
   });
 
-  final bool isDisabled;
-  final VoidCallback? onToggle;
-  final VoidCallback? onExtend;
-  final VoidCallback? onResetPw;
-  final VoidCallback? onDelete;
+  /// Current state of the subscriber (read when the button is pressed).
+  final Subscriber Function() subscriber;
+  final bool enabled;
+  final VoidCallback? onChanged;
+  final ValueChanged<String>? onRenamed;
+  final VoidCallback? onArchived;
 
   @override
-  Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
       tooltip: 'إجراءات',
       icon: const Icon(Icons.more_vert),
-      onSelected: (v) {
-        switch (v) {
-          case 'toggle':
-            onToggle?.call();
-          case 'extend':
-            onExtend?.call();
-          case 'reset':
-            onResetPw?.call();
-          case 'delete':
-            onDelete?.call();
-        }
-      },
-      itemBuilder: (ctx) => [
-        PopupMenuItem(
-          value: 'toggle',
-          child: Row(
-            children: [
-              Icon(
-                isDisabled ? Icons.check_circle_outline : Icons.block,
-                size: 18,
-                color: isDisabled ? AppTokens.green : AppTokens.amber,
+      onPressed: !enabled
+          ? null
+          : () => showSubscriberActionsSheet(
+                context,
+                ref,
+                subscriber: subscriber(),
+                onChanged: onChanged,
+                onRenamed: onRenamed,
+                onArchived: onArchived,
               ),
-              const SizedBox(width: 8),
-              Text(isDisabled ? 'تفعيل' : 'تعطيل'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'extend',
-          child: Row(
-            children: [
-              Icon(Icons.more_time_outlined, size: 18, color: AppTokens.green),
-              SizedBox(width: 8),
-              Text('تمديد الوقت'),
-            ],
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'reset',
-          child: Row(
-            children: [
-              Icon(Icons.password_outlined, size: 18, color: AppTokens.blue),
-              SizedBox(width: 8),
-              Text('إعادة كلمة المرور'),
-            ],
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete_outline, size: 18, color: AppTokens.red),
-              SizedBox(width: 8),
-              Text('حذف', style: TextStyle(color: AppTokens.red)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
