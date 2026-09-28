@@ -129,23 +129,42 @@ class ApiClient {
     return pending.whenComplete(() => _inFlightGets.remove(key));
   }
 
-  Future<Map<String, dynamic>> post(String path, {Object? body}) =>
-      _send('POST', path, body: body);
+  /// [headers] carries per-request extras such as `Idempotency-Key` (money
+  /// actions); servers that do not know a header simply ignore it.
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('POST', path, body: body, headers: headers);
 
-  Future<Map<String, dynamic>> put(String path, {Object? body}) =>
-      _send('PUT', path, body: body);
+  Future<Map<String, dynamic>> put(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('PUT', path, body: body, headers: headers);
 
-  Future<Map<String, dynamic>> patch(String path, {Object? body}) =>
-      _send('PATCH', path, body: body);
+  Future<Map<String, dynamic>> patch(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('PATCH', path, body: body, headers: headers);
 
-  Future<Map<String, dynamic>> delete(String path, {Object? body}) =>
-      _send('DELETE', path, body: body);
+  Future<Map<String, dynamic>> delete(
+    String path, {
+    Object? body,
+    Map<String, String>? headers,
+  }) =>
+      _send('DELETE', path, body: body, headers: headers);
 
   Future<Map<String, dynamic>> _send(
     String method,
     String path, {
     Map<String, dynamic>? query,
     Object? body,
+    Map<String, String>? headers,
   }) async {
     final idempotent = _isIdempotent(method);
     var attempt = 0;
@@ -161,7 +180,10 @@ class ApiClient {
           path,
           queryParameters: query,
           data: body,
-          options: Options(method: method),
+          options: Options(
+            method: method,
+            headers: headers == null || headers.isEmpty ? null : headers,
+          ),
         );
       } on DioException catch (e) {
         dioErr = e;
@@ -267,7 +289,8 @@ class ApiClient {
   /// Exponential backoff with full jitter, capped at [ApiClientConfig.maxBackoff].
   Duration _backoff(int attempt) {
     final exp = _config.baseBackoff.inMilliseconds * pow(2, attempt - 1);
-    final capped = min(exp.toDouble(), _config.maxBackoff.inMilliseconds.toDouble());
+    final capped =
+        min(exp.toDouble(), _config.maxBackoff.inMilliseconds.toDouble());
     final jittered = capped * (0.5 + _random.nextDouble() * 0.5);
     return Duration(milliseconds: jittered.round());
   }

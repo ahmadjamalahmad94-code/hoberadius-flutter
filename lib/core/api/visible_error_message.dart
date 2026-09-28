@@ -1,5 +1,9 @@
 import 'api_exception.dart';
 
+/// The ONE error → Arabic text helper for every screen and dialog: the
+/// server's Arabic message when it sent one (422 validation, 409 conflict,
+/// 503 «الخادم مشغول»…), else a safe Arabic fallback — never an empty box or
+/// raw English/HTML.
 String visibleErrorMessage(
   Object? error, {
   String fallback = 'تعذر تنفيذ الطلب. حاول مرة أخرى.',
@@ -62,4 +66,35 @@ bool _containsArabic(String value) {
         (r >= 0xFB50 && r <= 0xFDFF) ||
         (r >= 0xFE70 && r <= 0xFEFF),
   );
+}
+
+/// `true` when the same request may simply be sent again: the server was busy
+/// or unreachable (503 «الخادم مشغول» with Retry-After, 502/504, timeouts,
+/// connection errors) or a duplicate of this submission is still running
+/// (409 `idempotency_in_progress`). Validation/permission errors are final.
+bool isRetryableError(Object? error) {
+  if (error is! ApiException) return false;
+  const retryCodes = {
+    'server_busy',
+    'server_unavailable',
+    'idempotency_in_progress',
+    'connectionTimeout',
+    'receiveTimeout',
+    'sendTimeout',
+    'connectionError',
+  };
+  if (retryCodes.contains(error.code)) return true;
+  final status = error.status;
+  if (status == 502 || status == 503 || status == 504) return true;
+  final details = error.details;
+  return details is Map && details['retryable'] == true;
+}
+
+/// [visibleErrorMessage] plus a «أعد المحاولة» hint for retryable failures.
+String visibleErrorWithRetryHint(Object? error, {String? fallback}) {
+  final msg = fallback == null
+      ? visibleErrorMessage(error)
+      : visibleErrorMessage(error, fallback: fallback);
+  if (!isRetryableError(error) || msg.contains('أعد المحاولة')) return msg;
+  return '$msg — اضغط «إعادة المحاولة».';
 }
