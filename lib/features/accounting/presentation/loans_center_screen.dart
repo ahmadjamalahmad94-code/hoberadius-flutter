@@ -13,6 +13,7 @@ import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../../core/format/currency.dart';
 import '../../admin_control/application/admin_control_providers.dart';
 import '../../subscribers/domain/subscriber_actions_model.dart'
     show parseLocalizedNumber;
@@ -235,36 +236,35 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
 
   Future<void> _createLoan() async {
     final currency = ref.read(tenantCurrencyProvider);
-    final draft = await _loanDialog(context, currency: currency);
-    if (draft == null) return;
-    if (draft.dryRun) {
-      // «تجربة آمنة»: a local preview only. The loans endpoint recorded a
-      // real loan for dry_run on older servers.
-      if (mounted) _snack(context, _loanCenterPreviewText(draft, currency));
-      return;
-    }
-    final key = _createKeys.keyFor('loan', draft.fingerprint);
-    try {
-      final loan = await ref.read(accountingRepositoryProvider).createLoan(
-            username: draft.username,
-            days: draft.days,
-            hours: draft.hours,
-            amount: draft.amount,
-            reason: draft.reason,
-            priceFromDays: draft.priceFromDays,
-            applyToRadius: draft.applyToRadius,
-            idempotencyKey: key,
-          );
-      _createKeys.reset();
-      _refresh();
-      if (!mounted) return;
-      _snack(
-        context,
-        'تم تسجيل ${loan.amount > 0 ? 'الدين' : 'السلفة'} للمشترك ${loan.username}',
-      );
-    } catch (error) {
-      if (mounted) _snack(context, visibleErrorWithRetryHint(error));
-    }
+    final created = await _loanDialog(
+      context,
+      currency: currency,
+      // Runs INSIDE the dialog: an error keeps it open with every input
+      // (it used to close and lose them behind a generic snackbar).
+      submit: (draft) async {
+        final key = _createKeys.keyFor('loan', draft.fingerprint);
+        final loan = await ref.read(accountingRepositoryProvider).createLoan(
+              username: draft.username,
+              days: draft.days,
+              hours: draft.hours,
+              amount: draft.amount,
+              currency: draft.currency,
+              reason: draft.reason,
+              priceFromDays: draft.priceFromDays,
+              applyToRadius: draft.applyToRadius,
+              idempotencyKey: key,
+            );
+        _createKeys.reset();
+        return loan;
+      },
+    );
+    if (created == null) return;
+    _refresh();
+    if (!mounted) return;
+    _snack(
+      context,
+      'تم تسجيل ${created.amount > 0 ? 'الدين' : 'السلفة'} للمشترك ${created.username}',
+    );
   }
 
   Future<void> _settleLoan(LoanEntry loan) async {
@@ -543,6 +543,7 @@ class _LoanDraft {
 
   /// Same draft submitted again (a retry) → same Idempotency-Key.
   Map<String, Object> get fingerprint => {
+        'c': currency,
         'u': username,
         'd': days,
         'h': hours,
@@ -565,9 +566,10 @@ class _SettlementDraft {
   final String notes;
 }
 
-Future<_LoanDraft?> _loanDialog(
+Future<LoanEntry?> _loanDialog(
   BuildContext context, {
   required String currency,
+  required Future<LoanEntry> Function(_LoanDraft draft) submit,
 }) async {
   final username = TextEditingController();
   final days = TextEditingController(text: '0');
@@ -577,8 +579,17 @@ Future<_LoanDraft?> _loanDialog(
   var priceFromDays = false;
   var applyToRadius = false;
   var dryRun = true;
+  // Supported codes (web settings list), the system currency first/default.
+  var chosenCurrency = currency.isEmpty ? kDefaultCurrency : currency;
+  final currencies = {
+    chosenCurrency,
+    ...kSupportedCurrencies,
+  }.toList();
+  String? error;
+  String? preview;
+  var busy = false;
 
-  return showDialog<_LoanDraft>(
+  return showDialog<LoanEntry>(
     context: context,
     useRootNavigator: true,
     builder: (context) => StatefulBuilder(
@@ -635,13 +646,23 @@ Future<_LoanDraft?> _loanDialog(
                       ),
                     ),
                     const SizedBox(width: AppTokens.s8),
-                    // The server records loans in its system currency; a
-                    // free-text currency field wrote «JOD» on ILS tenants.
+                    // A list of the supported codes, the system currency by
+                    // default (free text saved «ST13 LOA» as a currency).
                     SizedBox(
-                      width: 96,
-                      child: InputDecorator(
+                      width: 110,
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: chosenCurrency,
                         decoration: const InputDecoration(labelText: 'العملة'),
-                        child: Text(currency.isEmpty ? '—' : currency),
+                        items: [
+                          for (final c in currencies)
+                            DropdownMenuItem(value: c, child: Text(c)),
+                        ],
+                        onChanged: busy
+                            ? null
+                            : (v) => setState(
+                                  () => chosenCurrency = v ?? chosenCurrency,
+                                ),
                       ),
                     ),
                   ],
@@ -675,6 +696,26 @@ Future<_LoanDraft?> _loanDialog(
                   label: 'تجربة آمنة (معاينة فقط)',
                   subtitle: 'تعرض ما سيُسجَّل دون تسجيل أي سلفة أو دين.',
                 ),
+                if (preview != null) ...[
+                  const SizedBox(height: AppTokens.s8),
+                  Text(
+                    preview!,
+                    style: const TextStyle(
+                      color: AppTokens.blueInk,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+                if (error != null) ...[
+                  const SizedBox(height: AppTokens.s8),
+                  Text(
+                    error!,
+                    style: const TextStyle(
+                      color: AppTokens.red,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -685,37 +726,65 @@ Future<_LoanDraft?> _loanDialog(
             child: const Text('إلغاء'),
           ),
           FilledButton(
-            onPressed: () {
-              final user = username.text.trim();
-              final parsedDays = int.tryParse(days.text.trim()) ?? 0;
-              final parsedHours = int.tryParse(hours.text.trim()) ?? 0;
-              final parsedAmount = parseLocalizedNumber(amount.text) ?? 0;
-              if (user.isEmpty || (parsedDays <= 0 && parsedHours <= 0)) {
-                _snack(context, 'أدخل اسم المشترك ومدة السلفة أو الدين');
-                return;
-              }
-              if (parsedAmount < 0 || parsedAmount > kMaxMoneyAmount) {
-                _snack(
-                  context,
-                  'المبلغ بين 0 و ${kMaxMoneyAmount.toStringAsFixed(0)}.',
-                );
-                return;
-              }
-              Navigator.pop(
-                context,
-                _LoanDraft(
-                  username: user,
-                  days: parsedDays,
-                  hours: parsedHours,
-                  amount: parsedAmount,
-                  currency: currency,
-                  reason: reason.text.trim(),
-                  priceFromDays: priceFromDays,
-                  applyToRadius: applyToRadius,
-                  dryRun: dryRun,
-                ),
-              );
-            },
+            onPressed: busy
+                ? null
+                : () async {
+                    final user = username.text.trim();
+                    final parsedDays = int.tryParse(days.text.trim()) ?? 0;
+                    final parsedHours = int.tryParse(hours.text.trim()) ?? 0;
+                    final parsedAmount = parseLocalizedNumber(amount.text) ?? 0;
+                    String? problem;
+                    if (user.isEmpty || (parsedDays <= 0 && parsedHours <= 0)) {
+                      problem = 'أدخل اسم المشترك ومدة السلفة أو الدين.';
+                    } else if (parsedDays < 0 || parsedHours < 0) {
+                      problem = 'المدّة لا تكون سالبة.';
+                    } else if (parsedAmount < 0 ||
+                        parsedAmount > kMaxMoneyAmount) {
+                      problem =
+                          'المبلغ بين 0 و ${kMaxMoneyAmount.toStringAsFixed(0)}.';
+                    }
+                    if (problem != null) {
+                      setState(() {
+                        error = problem;
+                        preview = null;
+                      });
+                      return;
+                    }
+                    final draft = _LoanDraft(
+                      username: user,
+                      days: parsedDays,
+                      hours: parsedHours,
+                      amount: parsedAmount,
+                      currency: chosenCurrency,
+                      reason: reason.text.trim(),
+                      priceFromDays: priceFromDays,
+                      applyToRadius: applyToRadius,
+                      dryRun: dryRun,
+                    );
+                    if (dryRun) {
+                      // «تجربة آمنة»: local only — the loans endpoint
+                      // recorded a real loan for dry_run on older servers.
+                      setState(() {
+                        error = null;
+                        preview = _loanCenterPreviewText(draft, chosenCurrency);
+                      });
+                      return;
+                    }
+                    setState(() {
+                      busy = true;
+                      error = null;
+                    });
+                    try {
+                      final loan = await submit(draft);
+                      if (context.mounted) Navigator.pop(context, loan);
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      setState(() {
+                        busy = false;
+                        error = visibleErrorWithRetryHint(e);
+                      });
+                    }
+                  },
             child: Text(dryRun ? 'معاينة' : 'تسجيل'),
           ),
         ],

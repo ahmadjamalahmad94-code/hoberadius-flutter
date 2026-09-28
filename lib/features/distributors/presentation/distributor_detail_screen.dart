@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -10,6 +9,13 @@ import '../../../shared/widgets/form_field_row.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../../core/api/api_exception.dart';
+import '../../../core/api/idempotency.dart';
+import '../../../core/format/currency.dart';
+import '../../../core/format/money_limits.dart';
+import '../../cards/data/cards_repository.dart';
+import '../../subscribers/domain/subscriber_actions_model.dart'
+    show parseLocalizedNumber;
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
 import 'distributors_list_screen.dart';
@@ -189,7 +195,12 @@ class _ActionsState extends ConsumerState<_Actions> {
   final _amount = TextEditingController();
   final _settleNotes = TextEditingController();
   String _direction = 'credit';
+
+  /// «إضافة للرصيد» / «خصم من الدين» — null until the admin picks (the
+  /// default follows the debt: debt > 0 → «خصم من الدين»).
+  String? _applyTo;
   bool _busy = false;
+  final _idem = IdempotencyKeeper();
 
   @override
   void dispose() {
@@ -200,12 +211,19 @@ class _ActionsState extends ConsumerState<_Actions> {
     super.dispose();
   }
 
+  /// Owner rule: default «خصم من الدين» when the distributor owes, else
+  /// «إضافة للرصيد»; an explicit choice wins.
+  String _effectiveApplyTo(DistributorSummary? summary) =>
+      _applyTo ?? ((summary?.debtBalance ?? 0) > 0 ? 'debt' : 'balance');
+
   @override
   Widget build(BuildContext context) {
     const titleStyle = TextStyle(
       fontWeight: FontWeight.w800,
       color: AppTokens.sidebarBg,
     );
+    final summary =
+        ref.watch(distributorSummaryProvider(widget.distributorId)).valueOrNull;
     return Column(
       children: [
         Card(
@@ -219,9 +237,10 @@ class _ActionsState extends ConsumerState<_Actions> {
                 FormFieldPair(
                   first: TextField(
                     controller: _batchId,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: const InputDecoration(labelText: 'رقم الحزمة'),
+                    decoration: const InputDecoration(
+                      labelText: 'رقم أو كود الحزمة',
+                      hintText: 'B-20260928-0052 أو 63',
+                    ),
                   ),
                   second: TextField(
                     controller: _assignNotes,
@@ -230,7 +249,7 @@ class _ActionsState extends ConsumerState<_Actions> {
                 ),
                 const SizedBox(height: AppTokens.s4),
                 const Text(
-                  'استخدم رقم الحزمة الظاهر في شاشة الكروت.',
+                  'اكتب كود الحزمة الظاهر في شاشة الكروت (B-…) أو رقمها.',
                   style: TextStyle(color: AppTokens.textMuted, fontSize: 12),
                 ),
                 const SizedBox(height: AppTokens.s8),
@@ -268,6 +287,14 @@ class _ActionsState extends ConsumerState<_Actions> {
                   ],
                   onChanged: (v) => setState(() => _direction = v ?? 'credit'),
                 ),
+                if (_direction == 'credit') ...[
+                  const SizedBox(height: AppTokens.s8),
+                  _PaymentTarget(
+                    summary: summary,
+                    value: _effectiveApplyTo(summary),
+                    onChanged: (v) => setState(() => _applyTo = v),
+                  ),
+                ],
                 const SizedBox(height: AppTokens.s8),
                 FormFieldPair(
                   first: TextField(
@@ -298,12 +325,22 @@ class _ActionsState extends ConsumerState<_Actions> {
   }
 
   Future<void> _assign() async {
-    final id = int.tryParse(_batchId.text);
-    if (id == null || id <= 0) {
-      _message('اكتب رقم حزمة صحيح');
+    final raw = _batchId.text.trim();
+    if (raw.isEmpty) {
+      _message('اكتب كود الحزمة أو رقمها');
       return;
     }
     await _run(() async {
+      // The operator sees the batch CODE (B-YYYYMMDD-NNNN), not the internal
+      // id the endpoint needs — resolve it through the batches search.
+      final id = await resolveBatchId(ref.read(cardsRepositoryProvider), raw);
+      if (id == null) {
+        throw ApiException(
+          code: 'not_found',
+          message: 'لم يتم العثور على حزمة بالكود أو الرقم «$raw».',
+          status: 404,
+        );
+      }
       await ref.read(distributorsRepositoryProvider).assignBatch(
             widget.distributorId,
             batchId: id,
@@ -316,20 +353,43 @@ class _ActionsState extends ConsumerState<_Actions> {
   }
 
   Future<void> _settle() async {
-    final amount = num.tryParse(_amount.text);
-    if (amount == null || amount <= 0) {
-      _message('اكتب مبلغًا صحيحًا');
+    final amount = parseLocalizedNumber(_amount.text);
+    final problem = validateMoneyAmount(amount);
+    if (problem != null) {
+      _message(problem);
       return;
     }
+    final summary =
+        ref.read(distributorSummaryProvider(widget.distributorId)).valueOrNull;
+    final applyTo = _direction == 'credit' ? _effectiveApplyTo(summary) : null;
+    final debt = summary?.debtBalance ?? 0;
+    if (applyTo == 'debt' && amount! > debt + 0.005) {
+      _message(
+        'المبلغ أكبر من الدين المستحقّ على الموزّع '
+        '(المتبقّي ${formatWithCurrency(debt, '')}). '
+        'اختر «إضافة للرصيد» للزيادة.',
+      );
+      return;
+    }
+    final body = {
+      'a': amount,
+      'd': _direction,
+      't': applyTo,
+      'n': _settleNotes.text.trim(),
+    };
     await _run(() async {
       await ref.read(distributorsRepositoryProvider).settle(
             widget.distributorId,
-            amount: amount,
+            amount: amount!,
             direction: _direction,
+            applyTo: applyTo,
             notes: _settleNotes.text.trim(),
+            idempotencyKey: _idem.keyFor('distributor-settle', body),
           );
+      _idem.reset();
       _amount.clear();
       _settleNotes.clear();
+      setState(() => _applyTo = null);
       _message('تم تسجيل الحركة');
     });
   }
@@ -342,7 +402,7 @@ class _ActionsState extends ConsumerState<_Actions> {
       ref.invalidate(distributorBatchesProvider(widget.distributorId));
       ref.invalidate(distributorsListProvider);
     } catch (e) {
-      _message(visibleErrorMessage(e));
+      _message(visibleErrorWithRetryHint(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -352,6 +412,68 @@ class _ActionsState extends ConsumerState<_Actions> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
+}
+
+/// «إضافة للرصيد» / «خصم من الدين» with the current balance and debt beside
+/// them (owner rule: a payment has ONE effect, chosen here).
+class _PaymentTarget extends StatelessWidget {
+  const _PaymentTarget({
+    required this.summary,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final DistributorSummary? summary;
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final balance = summary?.balance ?? 0;
+    final debt = summary?.debtBalance ?? 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SegmentedButton<String>(
+          segments: [
+            ButtonSegment(
+              value: 'balance',
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+              label: Text('إضافة للرصيد (${formatWithCurrency(balance, '')})'),
+            ),
+            ButtonSegment(
+              value: 'debt',
+              icon: const Icon(Icons.remove_circle_outline),
+              label: Text('خصم من الدين (${formatWithCurrency(debt, '')})'),
+              enabled: debt > 0,
+            ),
+          ],
+          selected: {value},
+          showSelectedIcon: false,
+          onSelectionChanged: (s) => onChanged(s.first),
+        ),
+        const SizedBox(height: AppTokens.s4),
+        Text(
+          value == 'debt'
+              ? 'تُخصم الدفعة من دين الموزّع فقط (لا تتجاوز الدين المتبقّي).'
+              : 'تُضاف الدفعة إلى رصيد الموزّع فقط.',
+          style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
+        ),
+      ],
+    );
+  }
+}
+
+/// A batch CODE («B-20260928-0052») or an internal id → the batch id.
+Future<int?> resolveBatchId(CardsRepository cards, String raw) async {
+  final text = raw.trim();
+  final asId = int.tryParse(text);
+  if (asId != null && asId > 0) return asId;
+  final page = await cards.listBatchOperations(query: text, perPage: 25);
+  for (final b in page.items) {
+    if (b.batchCode.trim().toLowerCase() == text.toLowerCase()) return b.id;
+  }
+  return null;
 }
 
 class _Batches extends StatelessWidget {

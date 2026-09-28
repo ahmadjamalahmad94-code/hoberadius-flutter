@@ -420,6 +420,21 @@ class ApiClient {
     if (lower.contains('not found')) {
       return 'العنصر المطلوب غير موجود.';
     }
+    // Older servers answer field validation in English
+    // («credit_limit must be >= 0», «name is required»): say WHICH field
+    // instead of one generic line for everything.
+    final field = RegExp(
+      r'^([a-z][a-z0-9_]*) (must|is required|should|cannot|is invalid|invalid)',
+    ).firstMatch(lower);
+    if (field != null) {
+      final required = lower.contains('required');
+      return required
+          ? 'الحقل «${field.group(1)}» مطلوب.'
+          : 'قيمة الحقل «${field.group(1)}» غير صحيحة.';
+    }
+    if (lower.contains('already exists') || lower.contains('duplicate')) {
+      return 'القيمة مستخدمة مسبقًا (مكرّرة). غيّر الاسم أو المعرّف.';
+    }
     if (lower.contains('timeout')) {
       return 'انتهت مهلة الطلب. حاول مرة أخرى.';
     }
