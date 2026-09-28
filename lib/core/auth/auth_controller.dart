@@ -81,7 +81,28 @@ class AuthState {
 
 class AuthController extends StateNotifier<AuthState> {
   AuthController(this._ref) : super(const AuthState()) {
+    _ref.listen<ApiClient>(
+      apiClientProvider,
+      (_, client) => client.onUnauthorized = _onUnauthorized,
+      fireImmediately: true,
+    );
     _restore();
+  }
+
+  /// A 401 on any authenticated call: the token is dead (revoked by a
+  /// password change elsewhere, admin disabled, expired). Sign out cleanly —
+  /// the router sends the user to the login screen, which shows why.
+  Future<void> _onUnauthorized(ApiException e) async {
+    if (!state.isAuthenticated || state.loading) return;
+    final serverBaseUrl = state.serverBaseUrl;
+    await _ref.read(tokenStorageProvider).clear();
+    final msg = e.message.trim();
+    state = AuthState(
+      serverBaseUrl: serverBaseUrl,
+      error: msg.isEmpty
+          ? 'انتهت الجلسة. سجّل الدخول مرة أخرى.'
+          : '$msg${msg.contains('سجّل الدخول') ? '' : ' سجّل الدخول مرة أخرى.'}',
+    );
   }
 
   final Ref _ref;

@@ -117,6 +117,14 @@ class ApiClient {
 
   Dio get dio => _dio;
 
+  /// Called when an authenticated request answers 401 (token revoked after
+  /// a password change on another device, admin disabled, expired session).
+  /// The auth controller signs the user out and shows the server's message
+  /// instead of leaving every screen in an error loop.
+  void Function(ApiException error)? onUnauthorized;
+
+  static const _loginPath = '/api/admin/login';
+
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
@@ -167,6 +175,7 @@ class ApiClient {
     Map<String, String>? headers,
   }) async {
     final idempotent = _isIdempotent(method);
+    final isLogin = path == _loginPath;
     var attempt = 0;
     while (true) {
       attempt += 1;
@@ -206,8 +215,10 @@ class ApiClient {
 
       final status = res!.statusCode ?? 200;
 
-      // ── 429: honour Retry-After (capped), else backoff ──
-      if (status == 429 && canRetry) {
+      // ── 429: honour Retry-After (capped), else backoff. Never for the
+      // login: a 429 there is the lockout after repeated wrong passwords and
+      // must be shown at once, not retried for minutes. ──
+      if (status == 429 && canRetry && !isLogin) {
         await Future<void>.delayed(_retryDelayFor429(res, attempt));
         continue;
       }
@@ -218,7 +229,12 @@ class ApiClient {
         continue;
       }
 
-      return _parseResponse(res);
+      try {
+        return _parseResponse(res);
+      } on ApiException catch (e) {
+        if (e.status == 401 && !isLogin) onUnauthorized?.call(e);
+        rethrow;
+      }
     }
   }
 
@@ -358,16 +374,27 @@ class ApiClient {
   String _apiErrorMessage(String code, String rawMessage) {
     final normalized = code.trim().toLowerCase();
     return switch (normalized) {
-      'rate_limited' =>
-        'تم إرسال طلبات كثيرة بسرعة. انتظر قليلًا ثم حاول مرة أخرى.',
+      'rate_limited' ||
+      'too_many_attempts' ||
+      'login_locked' =>
+        _containsArabic(rawMessage)
+            ? rawMessage.trim()
+            : 'تم إرسال طلبات كثيرة بسرعة. انتظر قليلًا ثم حاول مرة أخرى.',
       'server_unavailable' =>
         'الخادم غير متاح حاليًا (صيانة أو ضغط مؤقت). حاول بعد قليل.',
       'not_implemented' => 'هذه الميزة غير مفعّلة على الخادم الحالي.',
-      'forbidden' || 'permission_denied' => 'لا تملك صلاحية تنفيذ هذا الإجراء.',
+      // The server's own Arabic reason (e.g. «لا تملك صلاحية تعديل
+      // المشتركين») is more useful than the generic line.
+      'forbidden' || 'permission_denied' => _containsArabic(rawMessage)
+          ? rawMessage.trim()
+          : 'لا تملك صلاحية تنفيذ هذا الإجراء.',
       'unauthorized' ||
       'invalid_token' ||
+      'token_revoked' ||
       'token_expired' =>
-        'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول مرة أخرى.',
+        _containsArabic(rawMessage)
+            ? rawMessage.trim()
+            : 'انتهت الجلسة أو بيانات الدخول غير صحيحة. سجّل الدخول مرة أخرى.',
       'validation_error' ||
       'bad_request' =>
         _safeVisibleMessage(rawMessage, 'تأكد من البيانات المدخلة.'),
