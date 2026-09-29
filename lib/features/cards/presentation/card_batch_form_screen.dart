@@ -43,7 +43,9 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   final _suffix = TextEditingController();
   final _ulen = TextEditingController(text: '8');
   final _plen = TextEditingController(text: '6');
-  final _timeVal = TextEditingController(text: '1');
+  // 0 = the plan's own validity (web «0 = استخدم صلاحية الباقة»). A default
+  // of «1 day» gave 1-hour-plan cards 24 h (stress re-test R05).
+  final _timeVal = TextEditingController(text: '0');
   final _notes = TextEditingController();
 
   // «أرقام فقط» by default, like the web generator (شبكة المحترف request):
@@ -55,7 +57,8 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   /// Estimated id of the batch about to be created (latest id + 1), for the
   /// «تضمين رقم الحزمة» preview; null until known.
   int? _nextBatchId;
-  int _devices = 1;
+  // 0 = follow the global card setting, like the web generator.
+  int _devices = 0;
 
   bool _loading = false;
   String? _error;
@@ -182,6 +185,9 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       if (!mounted) return;
       setState(() => _result = r);
       ref.invalidate(batchesListProvider);
+      // The next batch number moved on — refresh the preview's estimate.
+      _nextBatchId = null;
+      if (_includeBatchNumber) _loadNextBatchId();
     } catch (e) {
       // 422 (cap / too few digit combinations: the server names the max),
       // 503 busy (retry keeps the same key) — the server's Arabic text.
@@ -408,7 +414,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
             child: Column(
               children: [
                 FormFieldPair(
-                  first: _num(_timeVal, 'القيمة'),
+                  first: _num(_timeVal, 'مدة البطاقة (0 = صلاحية الباقة)'),
                   second: FormFieldRow(
                     label: 'الوحدة',
                     child: DropdownButtonFormField<String>(
@@ -432,13 +438,15 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                     isExpanded: true,
                     value: _devices,
                     items: const [
+                      DropdownMenuItem(
+                          value: 0, child: Text('حسب الإعداد العام')),
                       DropdownMenuItem(value: 1, child: Text('1')),
                       DropdownMenuItem(value: 2, child: Text('2')),
                       DropdownMenuItem(value: 3, child: Text('3')),
                       DropdownMenuItem(value: 5, child: Text('5')),
                       DropdownMenuItem(value: 10, child: Text('10')),
                     ],
-                    onChanged: (v) => setState(() => _devices = v ?? 1),
+                    onChanged: (v) => setState(() => _devices = v ?? 0),
                   ),
                 ),
               ],

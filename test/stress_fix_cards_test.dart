@@ -148,4 +148,44 @@ void main() {
     expect(find.textContaining('10000'), findsWidgets);
     expect(adapter.where('POST', '/cards/generate'), isEmpty);
   });
+
+  testWidgets(
+      'R05: defaults follow the plan (validity 0, devices 0, digits) — '
+      'not «1 day», which gave 1-hour-plan cards 24 h', (tester) async {
+    tester.view.physicalSize = const Size(900, 2400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final adapter = RecordingAdapter(
+      (_) => FakeResponse.ok(
+        {
+          'batch': {'id': 1},
+          'cards': [],
+        },
+        status: 201,
+      ),
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          apiClientProvider.overrideWithValue(fakeApiClient(adapter)),
+        ],
+        child: const MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(child: CardBatchFormScreen()),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final fields = find.byType(TextFormField);
+    await tester.enterText(fields.at(1), '3');
+    await tester.enterText(fields.at(2), '10');
+    await tester.tap(find.text('توليد').first);
+    await tester.pumpAndSettle();
+    final body = adapter.where('POST', '/cards/generate').single.body as Map;
+    expect(body['time_value'], 0);
+    expect(body['device_count'], 0);
+    expect(body['password_generation_type'], 'digits');
+  });
 }
