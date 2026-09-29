@@ -6,7 +6,10 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hoberadius_app/core/api/api_client.dart';
 import 'package:hoberadius_app/core/format/bidi.dart';
+import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/core/format/input_rules.dart';
+import 'package:hoberadius_app/features/nas/presentation/nas_form_screen.dart'
+    show isNasNameConflict;
 import 'package:hoberadius_app/features/card_users/presentation/card_users_screen.dart'
     show marketplacePackageNumberError;
 import 'package:hoberadius_app/features/plans/application/plan_form_mapper.dart';
@@ -522,5 +525,24 @@ void main() {
     expect(err('-5'), contains('السعر'));
     expect(err('5', dur: '1e3'), contains('المدة'));
     expect(err('200000'), contains('100,000'));
+  });
+
+  test('NAS: 409 nas_name_conflict goes under the name field', () {
+    expect(
+      isNasNameConflict(
+        ApiException(
+          code: 'nas_name_conflict',
+          message: 'اسم الراوتر «X» مستخدم لراوتر آخر — اختر اسمًا مختلفًا.',
+          status: 409,
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isNasNameConflict(
+        ApiException(code: 'internal_error', message: 'x', status: 500),
+      ),
+      isFalse,
+    );
   });
 }
