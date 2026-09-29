@@ -15,6 +15,7 @@ import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
 import 'package:hoberadius_app/features/admin_control/application/admin_control_providers.dart';
 import 'package:hoberadius_app/features/backups/domain/backup_model.dart';
 import 'package:hoberadius_app/features/backups/presentation/backups_screen.dart';
+import 'package:hoberadius_app/features/business_ops/domain/business_ops_model.dart';
 import 'package:hoberadius_app/features/business_ops/presentation/business_ops_screen.dart';
 import 'package:hoberadius_app/features/cards/application/cards_list_providers.dart';
 import 'package:hoberadius_app/features/cards/presentation/widgets/cards_list_toolbar.dart';
@@ -24,8 +25,10 @@ import 'package:hoberadius_app/features/distributors/presentation/distributor_de
 import 'package:hoberadius_app/features/events/presentation/events_center_screen.dart';
 import 'package:hoberadius_app/features/mikrotik/presentation/router_operations_screen.dart';
 import 'package:hoberadius_app/features/nas/presentation/nas_list_screen.dart';
+import 'package:hoberadius_app/features/recycle_bin/domain/recycle_bin_model.dart';
 import 'package:hoberadius_app/features/sessions/presentation/sessions_list_screen.dart';
 import 'package:hoberadius_app/features/shell/navigation_schema.dart';
+import 'package:hoberadius_app/features/tickets/domain/ticket_model.dart';
 import 'package:hoberadius_app/features/tickets/presentation/tickets_list_screen.dart';
 import 'package:hoberadius_app/features/wallets/presentation/wallets_screen.dart';
 import 'package:hoberadius_app/shared/widgets/hub_layout.dart';
@@ -776,6 +779,127 @@ void main() {
         adapter.where('POST', '/api/v1/events').single.jsonBody['actor_id'],
         7,
       );
+    });
+  });
+
+  // ── 8) server Arabic *_label fields (FIX2 network contract) ───────────
+  group('server labels win, client mapping is the fallback', () {
+    test('backups: last_status_label / status_label', () {
+      final withLabel = BackupStatus.fromJson({
+        'job': {'last_status': 'never_run', 'last_status_label': 'لم تبدأ'},
+        'recent_runs': [
+          {'status': 'failed', 'status_label': 'فشلت (خادم)'},
+        ],
+      });
+      expect(withLabel.job.statusText, 'لم تبدأ');
+      expect(withLabel.recentRuns.single.statusLabel, 'فشلت (خادم)');
+      final old = BackupStatus.fromJson({
+        'job': {'last_status': 'never_run'},
+        'recent_runs': [
+          {'status': 'failed'},
+        ],
+      });
+      expect(old.job.statusText, 'لم تُشغَّل بعد');
+      expect(old.recentRuns.single.statusLabel, 'فشلت');
+      final blank = BackupStatus.fromJson({
+        'job': {'last_status': 'success', 'last_status_label': '  '},
+      });
+      expect(blank.job.statusText, 'ناجحة');
+    });
+
+    test('tickets: category_label', () {
+      expect(
+        SupportTicket.fromJson(
+          {'category': 'network', 'category_label': 'شبكة'},
+        ).categoryLabel,
+        'شبكة',
+      );
+      expect(
+        SupportTicket.fromJson({'category': 'network'}).categoryLabel,
+        'الشبكة',
+      );
+    });
+
+    test('ledger: debit/credit/target labels', () {
+      final e = BusinessLedgerEntry.fromJson({
+        'id': 1,
+        'debit_account': 'cash',
+        'debit_account_label': 'الصندوق (نقدًا)',
+        'credit_account': 'wallet:manager:3',
+        'credit_account_label': 'محفظة المدير #3',
+        'target_type': 'distributor',
+        'target_id': 1,
+        'target_label': 'موزّع #1',
+      });
+      expect(e.debitAccountLabel, 'الصندوق (نقدًا)');
+      expect(e.creditAccountLabel, 'محفظة المدير #3');
+      expect(e.targetLabel, 'موزّع #1');
+      expect(
+        BusinessLedgerEntry.fromJson({'debit_account': 'cash'})
+            .debitAccountLabel,
+        '',
+      );
+    });
+
+    testWidgets('ledger card shows the server labels', (tester) async {
+      await _pump(
+        tester,
+        const BusinessOpsScreen(),
+        (r) => r.path.contains('/finance/ledger')
+            ? FakeResponse.ok({
+                'items': [
+                  {
+                    'id': 9,
+                    'entry_type': 'payment',
+                    'debit_account': 'cash',
+                    'debit_account_label': 'الصندوق (نقدًا)',
+                    'credit_account': 'wallet:manager:3',
+                    'credit_account_label': 'محفظة المدير #3',
+                    'amount': '25',
+                    'currency': 'ILS',
+                    'target_type': 'distributor',
+                    'target_id': 1,
+                    'target_label': 'الموزّع أحمد',
+                  },
+                ],
+              })
+            : FakeResponse.ok({'items': <dynamic>[]}),
+      );
+      expect(find.text('الصندوق (نقدًا)'), findsOneWidget);
+      expect(find.text('محفظة المدير #3'), findsOneWidget);
+      expect(find.text('الموزّع أحمد'), findsOneWidget);
+      expect(_anyTextContains('wallet:manager'), isFalse);
+    });
+
+    test('deliveries: status_label', () {
+      expect(
+        MessageDelivery.fromJson(
+          {'status': 'skipped', 'status_label': 'تُخطّي'},
+        ).statusLabel,
+        'تُخطّي',
+      );
+      expect(
+        MessageDelivery.fromJson({'status': 'skipped'}).statusLabel,
+        'تم التخطّي',
+      );
+    });
+
+    test('recycle bin: status_label / deleted_by_label', () {
+      final item = RecycleBinItem.fromJson({
+        'status': 'deleted',
+        'status_label': 'محذوف (في السلّة)',
+        'deleted_by': 'api-token:4',
+        'deleted_by_label': 'واجهة API (رمز #4)',
+      });
+      expect(item.statusLabel, 'محذوف (في السلّة)');
+      expect(item.deletedByText, 'واجهة API (رمز #4)');
+      final old = RecycleBinItem.fromJson({
+        'status': 'deleted',
+        'deleted_by': 'admin',
+      });
+      expect(old.statusLabel, 'محذوف');
+      expect(old.deletedByText, 'admin');
+      expect(RecycleBinItem.fromJson({}).deletedByText, 'غير معروف');
     });
   });
 }
