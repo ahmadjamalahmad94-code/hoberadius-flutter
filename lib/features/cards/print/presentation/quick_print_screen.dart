@@ -650,12 +650,11 @@ class _DesignCardState extends State<_DesignCard> {
           const SizedBox(height: AppTokens.s12),
           TextField(
             controller: _name,
-            maxLength: 120,
+            maxLength: kTemplateNameMax,
             decoration: InputDecoration(
               labelText: 'اسم القالب',
               counterText: '',
-              errorText:
-                  st.form.name.trim().isEmpty ? 'اسم القالب مطلوب' : null,
+              errorText: templateNameError(st.form.name),
             ),
             onChanged: (v) => ctl.updateForm((f) => f.copyWith(name: v)),
           ),

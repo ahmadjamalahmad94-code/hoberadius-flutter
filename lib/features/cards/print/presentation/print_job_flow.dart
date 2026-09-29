@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hoberadius_app/core/router/pop_on_route_change.dart';
+import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_saver/file_saver.dart';
@@ -215,8 +216,9 @@ class _PrintJobDialog extends StatefulWidget {
   final Future<Uint8List> Function(int id) download;
 
   /// «إلغاء» while the job is queued/running (a stuck export used to leave
-  /// no way out: the dialog cannot be dismissed).
-  final Future<void> Function(int id)? cancel;
+  /// no way out: the dialog cannot be dismissed). Returns the server's
+  /// reason when it refused (409: the job had already finished).
+  final Future<String?> Function(int id)? cancel;
 
   @override
   State<_PrintJobDialog> createState() => _PrintJobDialogState();
@@ -228,6 +230,9 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
   bool _downloading = false;
   Timer? _timer;
   bool _closed = false;
+
+  /// The server refused «إلغاء» (the job finished meanwhile): its reason.
+  String _notice = '';
 
   @override
   void initState() {
@@ -262,8 +267,17 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
     final id = _job?.id;
     _closed = true;
     _timer?.cancel();
-    if (id != null && widget.cancel != null) await widget.cancel!(id);
-    if (mounted) Navigator.of(context).pop();
+    final refused =
+        id != null && widget.cancel != null ? await widget.cancel!(id) : null;
+    if (!mounted) return;
+    if (refused != null && refused.trim().isNotEmpty && id != null) {
+      // Too late to cancel: say why and keep following the job.
+      _closed = false;
+      setState(() => _notice = refused);
+      _tick(id);
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   void _schedule(int id) {
@@ -276,10 +290,11 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
       final job = await widget.poll(id);
       if (_closed) return;
       setState(() => _job = job);
-      if (job.failed) {
+      if (job.failed || job.cancelled) {
+        final fallback =
+            job.cancelled ? 'أُلغيت مهمة الطباعة.' : 'تعذّر إنشاء الملف.';
         setState(
-          () =>
-              _error = job.message.isEmpty ? 'تعذّر إنشاء الملف.' : job.message,
+          () => _error = job.message.trim().isEmpty ? fallback : job.message,
         );
         return;
       }
@@ -291,6 +306,17 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
       final bytes = await widget.download(id);
       if (_closed || !mounted) return;
       Navigator.of(context).pop(_PrintResult(bytes, job.fileName));
+    } on ApiException catch (e) {
+      if (_closed) return;
+      if (e.status == 409 || e.status == 404) {
+        // Cancelled / failed / unknown job: the server's reason, no retry.
+        setState(() {
+          _downloading = false;
+          _error = visibleErrorMessage(e, fallback: 'تعذّر إنشاء الملف.');
+        });
+        return;
+      }
+      _timer = Timer(const Duration(seconds: 2), () => _tick(id));
     } catch (_) {
       if (!_closed) {
         // A transient network error: keep following the job.
@@ -307,11 +333,13 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
     final failed = _error.isNotEmpty;
     final label = failed
         ? _error
-        : _downloading
-            ? 'تنزيل الملف…'
-            : (job?.stageLabel.isNotEmpty ?? false)
-                ? job!.stageLabel
-                : 'تجهيز ملف الطباعة…';
+        : _notice.isNotEmpty
+            ? _notice
+            : _downloading
+                ? 'تنزيل الملف…'
+                : (job?.stageLabel.isNotEmpty ?? false)
+                    ? job!.stageLabel
+                    : 'تجهيز ملف الطباعة…';
     return PopScope(
       canPop: false,
       child: Dialog(

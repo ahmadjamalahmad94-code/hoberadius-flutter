@@ -141,17 +141,29 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     try {
       final results = await Future.wait([
         _repo.templates(),
-        _repo.lastSettings().catchError((_) => <String, String>{}),
+        _repo
+            .lastSettings()
+            .catchError((_) => const LastPrintSettings(<String, String>{})),
         _repo.batch(batchId),
       ]);
       final templates = results[0] as List<Map<String, dynamic>>;
-      final lps = results[1] as Map<String, String>;
+      final last = results[1] as LastPrintSettings;
+      final lps = last.settings;
       final batch = results[2] as Map<String, dynamic>;
-      // Web: no argument → the default template, else the newest.
+      // Updated servers: THIS admin's last template, else the tenant
+      // default. Older: the default flag in the list, else the newest.
       Map<String, dynamic>? tpl;
-      for (final t in templates) {
-        final l = t['layout_json'];
-        if (l is Map && l['is_default'] == true) tpl = t;
+      for (final want in [last.lastTemplateId, last.defaultTemplateId]) {
+        if (tpl != null || want <= 0) continue;
+        for (final t in templates) {
+          if (_id(t) == want) tpl = t;
+        }
+      }
+      if (tpl == null) {
+        for (final t in templates) {
+          final l = t['layout_json'];
+          if (l is Map && l['is_default'] == true) tpl = t;
+        }
       }
       tpl ??= templates.isEmpty ? null : templates.first;
       tpl = await _repo.fullTemplate(tpl);
@@ -403,7 +415,8 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
       state = state.copyWith(form: state.form.copyWith(name: name.trim()));
     }
     final form = state.form;
-    if (form.name.trim().isEmpty) throw const TemplateNameRequired();
+    final nameError = templateNameError(form.name);
+    if (nameError != null) throw TemplateNameRequired(nameError);
     state = state.copyWith(saving: true);
     try {
       final saved = await _repo.quickSave(
@@ -513,10 +526,24 @@ final quickPrintControllerProvider = StateNotifierProvider.autoDispose
   ),
 );
 
-/// «اسم القالب مطلوب» — nothing is sent (the field shows the same text).
+/// The server's cap on a template name (a 10,004-character name broke the
+/// web quick screen — R06 N4).
+const kTemplateNameMax = 120;
+
+/// The name field's error (the server's own wording), null when valid.
+String? templateNameError(String name) {
+  final v = name.trim();
+  if (v.isEmpty) return 'اسم القالب مطلوب';
+  if (v.length > kTemplateNameMax) {
+    return 'اسم القالب طويل جدًّا — $kTemplateNameMax حرفًا على الأكثر.';
+  }
+  return null;
+}
+
+/// An empty or too long name — nothing is sent (the field shows the text).
 class TemplateNameRequired implements Exception {
-  const TemplateNameRequired();
-  String get message => 'اسم القالب مطلوب';
+  const TemplateNameRequired([this.message = 'اسم القالب مطلوب']);
+  final String message;
   @override
   String toString() => message;
 }

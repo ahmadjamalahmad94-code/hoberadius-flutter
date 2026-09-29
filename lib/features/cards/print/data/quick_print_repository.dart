@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/api_client.dart';
+import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/idempotency.dart';
 
 /// A light-list row whose image lives on the server only.
@@ -64,12 +65,18 @@ class QuickPrintRepository {
     return await template(id) ?? tpl;
   }
 
-  Future<Map<String, String>> lastSettings() async {
+  Future<LastPrintSettings> lastSettings() async {
     final res = await _api.get('/api/v1/print-templates/last-settings');
-    final s = _data(res)['settings'];
-    return s is Map
-        ? {for (final e in s.entries) '${e.key}': '${e.value ?? ''}'}
-        : const {};
+    final d = _data(res);
+    final s = d['settings'];
+    int id(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
+    return LastPrintSettings(
+      s is Map
+          ? {for (final e in s.entries) '${e.key}': '${e.value ?? ''}'}
+          : const {},
+      lastTemplateId: id(d['last_template_id']),
+      defaultTemplateId: id(d['default_template_id']),
+    );
   }
 
   Future<Map<String, dynamic>> batch(int id) async {
@@ -116,7 +123,7 @@ class QuickPrintRepository {
       cancelToken: cancel,
     );
     return PreviewResult(
-      Uint8List.fromList(res.data ?? const []),
+      _bytesOrThrow(res, 'تعذّر تجهيز المعاينة.'),
       CardElements.tryParseHeader(res.headers.value('x-print-elements')),
     );
   }
@@ -187,10 +194,15 @@ class QuickPrintRepository {
 
   /// Stops a queued/running export (updated servers). Older servers have no
   /// cancel endpoint — the error is ignored and the dialog just closes.
-  Future<void> cancelJob(int id) async {
+  /// Returns the server's Arabic reason when it refused (409: the job had
+  /// already finished), else null.
+  Future<String?> cancelJob(int id) async {
     try {
       await _api.post('/api/v1/print-jobs/$id/cancel');
+    } on ApiException catch (e) {
+      if (e.status == 409 && e.message.trim().isNotEmpty) return e.message;
     } catch (_) {}
+    return null;
   }
 
   Future<PrintExportJob> job(int id) async {
@@ -198,12 +210,38 @@ class QuickPrintRepository {
     return PrintExportJob.fromJson(_job(res));
   }
 
+  /// The finished PDF. A cancelled / failed job answers 409 (404 for an
+  /// unknown one) with an Arabic JSON error → [ApiException] with that text
+  /// (the JSON error used to be handed on as if it were the PDF).
   Future<Uint8List> download(int jobId) async {
     final res = await _api.dio.get<List<int>>(
       '/api/v1/print-jobs/$jobId/download',
       options: Options(responseType: ResponseType.bytes),
     );
-    return Uint8List.fromList(res.data ?? const []);
+    return _bytesOrThrow(res, 'تعذّر تنزيل ملف الطباعة.');
+  }
+
+  /// The body of a bytes response, or its JSON error as [ApiException]
+  /// (the API client accepts every status for raw requests).
+  static Uint8List _bytesOrThrow(Response<List<int>> res, String fallback) {
+    final bytes = Uint8List.fromList(res.data ?? const []);
+    final status = res.statusCode ?? 200;
+    if (status < 400) return bytes;
+    var code = 'error';
+    var message = '';
+    try {
+      final j = jsonDecode(utf8.decode(bytes));
+      final err = j is Map ? j['error'] : null;
+      if (err is Map) {
+        code = '${err['code'] ?? code}';
+        message = '${err['message'] ?? ''}'.trim();
+      }
+    } catch (_) {}
+    throw ApiException(
+      code: code,
+      message: message.isEmpty ? fallback : message,
+      status: status,
+    );
   }
 
   Map<String, dynamic> _job(Map<String, dynamic> res) {
@@ -218,6 +256,19 @@ class QuickPrintRepository {
 
   static Map<String, dynamic> _stringKeys(Map m) =>
       m.map((k, v) => MapEntry('$k', v));
+}
+
+/// `GET last-settings`: the sheet settings + (updated servers) the template
+/// THIS admin used last and the tenant default (0 = unknown / old server).
+class LastPrintSettings {
+  const LastPrintSettings(
+    this.settings, {
+    this.lastTemplateId = 0,
+    this.defaultTemplateId = 0,
+  });
+  final Map<String, String> settings;
+  final int lastTemplateId;
+  final int defaultTemplateId;
 }
 
 /// `preview.pdf`: the PDF + (updated servers) the real element places.
@@ -299,6 +350,7 @@ class CardElements {
                 requestedY: req is Map ? opt(req['y']) : null,
                 adjusted: b['adjusted'] == true,
                 sizePct: opt(b['size_pct']),
+                fontPt: opt(b['font_pt']),
               );
             }(),
       },
@@ -323,6 +375,7 @@ class ElementBox {
     this.requestedY,
     this.adjusted = false,
     this.sizePct,
+    this.fontPt,
   });
   final double x;
   final double y;
@@ -339,6 +392,9 @@ class ElementBox {
 
   /// QR only: the drawn size in % of the card width (updated servers).
   final double? sizePct;
+
+  /// Pills only: the value font really drawn, in pt (updated servers).
+  final double? fontPt;
 }
 
 class PrintExportJob {
@@ -365,6 +421,9 @@ class PrintExportJob {
   final String message;
 
   bool get failed => status == 'failed';
+
+  /// Updated servers end a cancelled job `cancelled` (never failed/success).
+  bool get cancelled => status == 'cancelled';
 
   /// The server flips `status` to success a moment before the file is
   /// written — only `download_ready` means the PDF can be fetched.

@@ -11,6 +11,7 @@ import 'package:hoberadius_app/features/accounting/presentation/financial_report
 import 'package:hoberadius_app/features/admin_control/application/admin_control_providers.dart';
 import 'package:hoberadius_app/features/cards/print/application/quick_print_controller.dart';
 import 'package:hoberadius_app/features/cards/print/data/quick_print_repository.dart';
+import 'package:hoberadius_app/features/cards/print/domain/auto_sizes.dart';
 import 'package:hoberadius_app/features/cards/print/presentation/print_job_flow.dart';
 import 'package:hoberadius_app/features/cards/print/presentation/quick_print_screen.dart';
 
@@ -40,6 +41,7 @@ void _parkPrinting() {
 /// The print endpoints of a server; [onSave] answers `quick-save`.
 RecordingAdapter _server({
   Map<String, dynamic> batch = const {'id': 7, 'price_per_card': 5},
+  Map<String, dynamic> lastSettings = const {},
   FakeResponse Function(RecordedRequest r)? onSave,
 }) =>
     RecordingAdapter((r) {
@@ -53,7 +55,10 @@ RecordingAdapter _server({
             });
       }
       if (r.path.endsWith('/last-settings')) {
-        return FakeResponse.ok({'settings': <String, dynamic>{}});
+        return FakeResponse.ok({
+          'settings': <String, dynamic>{},
+          ...lastSettings,
+        });
       }
       if (r.path.endsWith('/print-templates')) {
         return FakeResponse.ok({'items': _templates()});
@@ -535,6 +540,119 @@ void main() {
         ),
         isNull,
       );
+    });
+  });
+
+  group('6 — final print contract (where cheap and old-server safe)', () {
+    test('no QR box when there is no room; the rest still applies', () async {
+      final json = _elementsJson();
+      (json['elements'] as Map).remove('qr');
+      final els = CardElements.fromJson(json);
+      expect(els.boxes.containsKey('qr'), isFalse);
+      final ctl = await _controller(_server());
+      addTearDown(ctl.dispose);
+      ctl.updateForm((f) => f.copyWith(showQr: true));
+      ctl.moveElement('qr', 30, 30);
+      ctl.moveElement('username', 16.1, 20);
+      ctl.applyElements(els, ctl.state.form);
+      expect(ctl.state.form.usernameX, 30.0);
+      expect((ctl.state.form.qrX, ctl.state.form.qrY), (30.0, 30.0));
+      expect(autoQrPct(ctl.state.elements), isNull);
+    });
+
+    test('«تلقائي · X pt» uses the drawn font_pt when sent', () {
+      const box = ElementBox(1, 1, 20, 8);
+      expect(autoFontPt(box), 12.0); // old server: h × 0.52 × 72/25.4
+      expect(autoFontPt(const ElementBox(1, 1, 20, 8, fontPt: 10.35)), 10.5);
+      final parsed = CardElements.fromJson({
+        'card': {'width_mm': 54, 'height_mm': 85.6},
+        'elements': {
+          'username': {'x': 1, 'y': 1, 'w': 20, 'h': 8, 'font_pt': 9.2},
+        },
+      });
+      expect(autoFontPt(parsed.boxes['username']), 9.0);
+      expect(kMaxFontPt, 36);
+    });
+
+    test('a name over 120 characters is refused with the server wording',
+        () async {
+      expect(templateNameError('x' * 120), isNull);
+      expect(
+        templateNameError('x' * 121),
+        'اسم القالب طويل جدًّا — 120 حرفًا على الأكثر.',
+      );
+      final adapter = _server();
+      final ctl = await _controller(adapter);
+      addTearDown(ctl.dispose);
+      ctl.updateForm((f) => f.copyWith(name: 'x' * 121));
+      await expectLater(
+        ctl.save(),
+        throwsA(
+          isA<TemplateNameRequired>().having(
+            (e) => e.message,
+            'message',
+            contains('120'),
+          ),
+        ),
+      );
+      expect(adapter.where('POST', '/quick-save'), isEmpty);
+    });
+
+    test('opens on last_template_id, then default_template_id, then today',
+        () async {
+      Future<int> opened(Map<String, dynamic> last) async {
+        final ctl = await _controller(_server(lastSettings: last));
+        addTearDown(ctl.dispose);
+        return ctl.state.templateId;
+      }
+
+      expect(
+          await opened({'last_template_id': 4, 'default_template_id': 3}), 4);
+      expect(
+          await opened({'last_template_id': 99, 'default_template_id': 4}), 4);
+      // old server: the is_default flag in the list
+      expect(await opened(const {}), 3);
+    });
+
+    test('cancel 409 returns the reason; old server errors are ignored',
+        () async {
+      const reason = 'اكتملت مهمة الطباعة ولا يمكن إلغاؤها.';
+      final repo = QuickPrintRepository(
+        fakeApiClient(
+          RecordingAdapter((_) => FakeResponse.error(409, 'conflict', reason)),
+        ),
+      );
+      expect(await repo.cancelJob(5), reason);
+      final old = QuickPrintRepository(
+        fakeApiClient(
+          RecordingAdapter((_) => FakeResponse.error(405, 'x', 'x')),
+        ),
+      );
+      expect(await old.cancelJob(5), isNull);
+    });
+
+    test('download 409 → the Arabic reason (no endless retry)', () async {
+      final repo = QuickPrintRepository(
+        fakeApiClient(
+          RecordingAdapter(
+            (_) => FakeResponse.error(
+              409,
+              'conflict',
+              'أُلغيت مهمة الطباعة.',
+            ),
+          ),
+        ),
+      );
+      await expectLater(
+        repo.download(5),
+        throwsA(
+          isA<ApiException>()
+              .having((e) => e.status, 'status', 409)
+              .having((e) => e.message, 'message', 'أُلغيت مهمة الطباعة.'),
+        ),
+      );
+      final job = PrintExportJob.fromJson({'id': 5, 'status': 'cancelled'});
+      expect((job.cancelled, job.failed, job.done), (true, false, false));
     });
   });
 }
