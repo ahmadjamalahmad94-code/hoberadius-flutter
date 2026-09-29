@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -891,12 +892,12 @@ class _ChangeSetCard extends StatelessWidget {
                   ),
                 if (item.createdAt.isNotEmpty)
                   StatusPill(
-                    text: 'بدأت: ${item.createdAt}',
+                    text: 'بدأت: ${formatServerTimestamp(item.createdAt)}',
                     tone: PillTone.neutral,
                   ),
                 if (item.finishedAt.isNotEmpty)
                   StatusPill(
-                    text: 'انتهت: ${item.finishedAt}',
+                    text: 'انتهت: ${formatServerTimestamp(item.finishedAt)}',
                     tone: PillTone.neutral,
                   ),
               ],
@@ -910,7 +911,7 @@ class _ChangeSetCard extends StatelessWidget {
                   title: Text('راوتر #${target.routerId}'),
                   subtitle: target.errorMessage.isEmpty
                       ? Text(target.statusLabel)
-                      : Text(target.errorMessage),
+                      : Text(visibleErrorMessage(target.errorMessage)),
                 ),
             ],
             if (onRollback != null) ...[

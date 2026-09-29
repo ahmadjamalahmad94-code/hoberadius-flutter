@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -556,7 +557,7 @@ String _probeDetails(RouterLoopProbe probe) {
     return 'أخذ إيجارًا: $lease من $server';
   }
   if (probe.lastReadingAt.isNotEmpty) {
-    return 'آخر قراءة: ${probe.lastReadingAt}';
+    return 'آخر قراءة: ${formatServerTimestamp(probe.lastReadingAt)}';
   }
   return 'لم تصل قراءة حديثة لهذا المجسّ';
 }
@@ -642,7 +643,7 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
                         if (widget.router.address.isNotEmpty)
                           widget.router.address,
                         pushed
-                            ? 'آخر نبضة: ${widget.router.lastPushAt}'
+                            ? 'آخر نبضة: ${formatServerTimestamp(widget.router.lastPushAt)}'
                             : 'لم تصل مقاييس بعد',
                       ].join(' · '),
                       style: Theme.of(context).textTheme.bodySmall,

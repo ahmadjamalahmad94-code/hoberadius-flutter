@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -369,7 +370,8 @@ class _RequestRow extends StatelessWidget {
                       [
                         r.method,
                         r.reference,
-                        r.createdAt,
+                        if (r.createdAt.isNotEmpty)
+                          formatServerTimestamp(r.createdAt),
                       ].where((e) => e.isNotEmpty).join(' • '),
                       style: const TextStyle(
                         color: AppTokens.textMuted,

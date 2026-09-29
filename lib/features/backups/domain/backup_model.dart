@@ -128,15 +128,21 @@ class BackupRun {
     );
   }
 
-  String get statusLabel => switch (status) {
-        'success' => 'ناجحة',
-        'failed' => 'فشلت',
-        'running' => 'قيد التنفيذ',
-        'pending' => 'بانتظار التنفيذ',
-        'skipped' => 'تم تجاوزها',
-        _ => status.trim().isEmpty ? 'غير محددة' : 'حالة غير معروفة',
-      };
+  String get statusLabel => backupStatusLabel(status);
 }
+
+/// Arabic for a backup job / run status (`never_run` was shown raw, R11 L-2).
+String backupStatusLabel(String status) =>
+    switch (status.trim().toLowerCase()) {
+      'success' || 'ok' || 'done' || 'completed' => 'ناجحة',
+      'failed' || 'error' => 'فشلت',
+      'running' => 'قيد التنفيذ',
+      'pending' || 'queued' => 'بانتظار التنفيذ',
+      'skipped' => 'تم تجاوزها',
+      'never_run' || 'never' => 'لم تُشغَّل بعد',
+      '' => 'غير محددة',
+      _ => 'حالة غير معروفة',
+    };
 
 int _asInt(Object? value) {
   if (value is int) return value;

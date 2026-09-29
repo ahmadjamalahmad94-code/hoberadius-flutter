@@ -1,4 +1,5 @@
 import 'package:hoberadius_app/core/format/server_time.dart';
+import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
 
 class CommunicationsHome {
   const CommunicationsHome({
@@ -595,7 +596,9 @@ String communicationChannelLabel(String value) {
     'whatsapp' => 'واتساب',
     'telegram' => 'تيليجرام',
     'email' => 'بريد إلكتروني',
-    'push' => 'إشعار فوري',
+    'push' || 'fcm' => 'إشعار فوري',
+    'in_app' => 'داخل التطبيق',
+    'webhook' => 'ويب هوك',
     _ => 'قناة غير محددة',
   };
 }
@@ -627,8 +630,25 @@ String communicationStatusLabel(String value) {
     'failed' => 'فشل',
     'dry_run_ready' => 'معاينة جاهزة',
     'read' => 'مقروء',
-    _ => value.trim().isEmpty ? 'غير محدد' : value,
+    // Delivery states the worker writes (`skipped` was shown raw, R11 L-2).
+    'skipped' => 'تم التخطّي',
+    'delivered' => 'سُلِّم',
+    'pending' => 'بالانتظار',
+    'sending' || 'running' => 'قيد الإرسال',
+    'cancelled' || 'canceled' => 'أُلغي',
+    'retry' || 'retrying' => 'إعادة محاولة',
+    'rejected' => 'مرفوض',
+    'undelivered' => 'لم يُسلَّم',
+    'draft' => 'مسودة',
+    _ => _unknownStatus(value),
   };
+}
+
+String _unknownStatus(String value) {
+  if (value.trim().isEmpty) return 'غير محدد';
+  final label = rawTokenLabel(value);
+  // Never raw English on the screen: an unseen token → a generic phrase.
+  return RegExp('[A-Za-z]').hasMatch(label) ? 'حالة غير معروفة' : label;
 }
 
 String dateTimeLabel(DateTime? date) {

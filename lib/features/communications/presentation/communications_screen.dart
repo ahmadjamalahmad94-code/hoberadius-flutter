@@ -1474,6 +1474,12 @@ class _DeliveryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final failed = item.status == 'failed';
+    final reason = item.errorMessage.trim().isEmpty
+        ? ''
+        : serverTextOrFallback(
+            item.errorMessage,
+            fallback: 'تعذّر الإرسال عبر هذه القناة',
+          );
     return ListTile(
       leading: CircleAvatar(
         backgroundColor: failed ? AppTokens.redSoft : AppTokens.blueSoft,
@@ -1487,11 +1493,18 @@ class _DeliveryTile extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w900),
       ),
       subtitle: Text(
-        '${item.channelLabel} · ${item.recipientLabel} · ${item.createdAtLabel}',
+        [
+          '${item.channelLabel} · ${item.recipientLabel} · ${item.createdAtLabel}',
+          if (reason.isNotEmpty) reason,
+        ].join('\n'),
       ),
       trailing: StatusPill(
         text: item.statusLabel,
-        tone: failed ? PillTone.red : PillTone.blue,
+        tone: failed
+            ? PillTone.red
+            : item.status == 'skipped'
+                ? PillTone.amber
+                : PillTone.blue,
         dot: true,
       ),
     );

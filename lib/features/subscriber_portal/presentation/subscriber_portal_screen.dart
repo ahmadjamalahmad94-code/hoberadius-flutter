@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_endpoint_storage.dart';
+import '../../../core/format/server_time.dart';
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -724,8 +726,10 @@ class _PaymentRow extends StatelessWidget {
 
     final amount = s(['amount', 'value', 'total']);
     final currency = s(['currency']);
-    final when = s(['created_at', 'date', 'paid_at']);
-    final status = s(['status', 'state']);
+    final rawWhen = s(['created_at', 'date', 'paid_at']);
+    final when = rawWhen.isEmpty ? '' : formatServerTimestamp(rawWhen);
+    final rawStatus = s(['status', 'state']);
+    final status = rawStatus.isEmpty ? '' : rawTokenLabel(rawStatus);
     final note = s(['note', 'reference', 'reference_code', 'purpose']);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),

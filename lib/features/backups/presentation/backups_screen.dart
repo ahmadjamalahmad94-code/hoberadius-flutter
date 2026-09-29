@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -171,10 +173,13 @@ class _Body extends StatelessWidget {
               children: [
                 _StatCard(
                   title: 'الحالة الأخيرة',
-                  value: job.lastStatus,
-                  subtitle: job.lastMessage.isEmpty
-                      ? 'لم يتم تشغيل نسخة بعد'
-                      : job.lastMessage,
+                  value: backupStatusLabel(job.lastStatus),
+                  subtitle: serverTextOrFallback(
+                    job.lastMessage,
+                    fallback: job.lastRunAt == null
+                        ? 'لم يتم تشغيل نسخة بعد'
+                        : backupStatusLabel(job.lastStatus),
+                  ),
                   icon: Icons.verified_outlined,
                 ),
                 _StatCard(
@@ -253,8 +258,19 @@ class _Body extends StatelessWidget {
                                   tone: _backupRunTone(run.status),
                                 ),
                               ),
-                              DataCell(Text(run.message)),
-                              DataCell(Text(run.path.isEmpty ? '—' : run.path)),
+                              DataCell(
+                                Text(
+                                  serverTextOrFallback(
+                                    run.message,
+                                    fallback: run.statusLabel,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  run.path.isEmpty ? '—' : ltrIsolate(run.path),
+                                ),
+                              ),
                               DataCell(Text(_fmt(run.createdAt))),
                             ],
                           ),
@@ -325,7 +341,7 @@ class _GoogleDriveCard extends StatelessWidget {
                     [
                       if (drive.email.isNotEmpty) 'الحساب: ${drive.email}',
                       if (drive.lastUploadAt.isNotEmpty)
-                        'آخر رفع: ${drive.lastUploadAt}',
+                        'آخر رفع: ${_fmtRaw(drive.lastUploadAt)}',
                     ].join(' · '),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -418,6 +434,10 @@ String _fmt(DateTime? value) {
   if (value == null) return '—';
   return DateFormat('yyyy-MM-dd HH:mm').format(value);
 }
+
+/// A timestamp the model keeps as a string (`last_upload_at`), on the
+/// panel clock instead of raw UTC ISO.
+String _fmtRaw(String value) => formatServerTimestamp(value);
 
 /// Google Drive limited-input device-flow dialog: shows the user_code +
 /// verification URL, and polls until the operator authorises (or cancels).

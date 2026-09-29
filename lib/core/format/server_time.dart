@@ -12,6 +12,8 @@
 /// same hour the web panel shows, whatever zone the phone is in.
 library;
 
+import 'package:intl/intl.dart';
+
 import 'panel_time.dart';
 
 /// Parses an API timestamp and returns it on the panel's wall clock
@@ -61,4 +63,21 @@ String toServerUtcIso(DateTime t) {
   String two(int v) => v.toString().padLeft(2, '0');
   return '${u.year.toString().padLeft(4, '0')}-${two(u.month)}-${two(u.day)}'
       'T${two(u.hour)}:${two(u.minute)}:${two(u.second)}Z';
+}
+
+/// `true` for a string that looks like an API date-time
+/// (`2026-09-29T01:35:23.057631Z`, `2026-09-29 01:35:23`).
+bool looksLikeServerTimestamp(Object? value) =>
+    value is String &&
+    RegExp(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}').hasMatch(value.trim());
+
+/// An API timestamp (`created_at`, `linked_at`, `*_at`) for display:
+/// «yyyy-MM-dd HH:mm» on the panel clock — never the raw UTC ISO string.
+/// Empty → [empty]; a value that does not parse is shown as it came.
+String formatServerTimestamp(Object? value, {String empty = '—'}) {
+  final text = '${value ?? ''}'.trim();
+  if (text.isEmpty || text == 'null' || text == 'None') return empty;
+  final t = parseServerDateTime(value is DateTime ? value : text);
+  if (t == null) return text;
+  return DateFormat('yyyy-MM-dd HH:mm').format(t);
 }

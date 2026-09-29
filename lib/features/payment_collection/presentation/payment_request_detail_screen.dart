@@ -427,7 +427,10 @@ class _AttemptRow extends StatelessWidget {
               ],
             ),
             if (attempt.errorMessage.isNotEmpty)
-              _Line(label: 'سبب الفشل', value: attempt.errorMessage),
+              _Line(
+                label: 'سبب الفشل',
+                value: humanizeTechnicalError(attempt.errorMessage),
+              ),
           ],
         ),
       ),
