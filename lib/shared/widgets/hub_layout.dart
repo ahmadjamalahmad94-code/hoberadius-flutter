@@ -154,10 +154,15 @@ class ActionItem {
     required this.onPressed,
     this.primary = false,
     this.tone,
+    this.tooltip,
   });
   final IconData icon;
   final String label;
   final VoidCallback? onPressed;
+
+  /// Explains a disabled button (e.g. the missing permission) on hover /
+  /// long-press.
+  final String? tooltip;
 
   /// Filled brand button (the main action of the bar).
   final bool primary;
@@ -238,6 +243,17 @@ class HubActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tip = item.tooltip;
+    final button = _button(context);
+    if (tip == null || tip.isEmpty) return button;
+    return Tooltip(
+      message: tip,
+      triggerMode: TooltipTriggerMode.tap,
+      child: button,
+    );
+  }
+
+  Widget _button(BuildContext context) {
     final shape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(AppTokens.s8 + 4),
     );

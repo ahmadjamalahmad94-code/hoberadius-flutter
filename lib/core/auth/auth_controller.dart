@@ -6,7 +6,9 @@ import '../api/api_endpoint_storage.dart';
 import '../api/api_exception.dart';
 import '../format/currency.dart';
 import '../format/panel_time.dart';
+import 'permissions.dart';
 import 'security_key_storage.dart';
+import 'session_reset.dart';
 import 'token_storage.dart';
 
 class AuthAdmin {
@@ -138,7 +140,12 @@ class AuthController extends StateNotifier<AuthState> {
   AuthController(this._ref) : super(const AuthState()) {
     _ref.listen<ApiClient>(
       apiClientProvider,
-      (_, client) => client.onUnauthorized = _onUnauthorized,
+      (_, client) => client
+        ..onUnauthorized = _onUnauthorized
+        // Any 403 that still happens: the grants changed server-side (a
+        // revoke while signed in) — re-read them so the UI hides what the
+        // server now refuses. Throttled inside the controller.
+        ..onForbidden = (_) => _permissions?.refresh(),
       fireImmediately: true,
     );
     _restore();
@@ -151,6 +158,7 @@ class AuthController extends StateNotifier<AuthState> {
     if (!state.isAuthenticated || state.loading) return;
     final serverBaseUrl = state.serverBaseUrl;
     await _ref.read(tokenStorageProvider).clear();
+    _resetSession();
     final msg = e.message.trim();
     state = AuthState(
       serverBaseUrl: serverBaseUrl,
@@ -162,6 +170,21 @@ class AuthController extends StateNotifier<AuthState> {
 
   final Ref _ref;
 
+  PermissionsController? get _permissions {
+    try {
+      return _ref.read(permissionsProvider.notifier);
+    } catch (_) {
+      return null; // container disposed
+    }
+  }
+
+  /// Sign-in / sign-out: drop the previous account's grants and cached
+  /// app-wide state so nothing of it shows under the next account.
+  void _resetSession() {
+    _permissions?.clear();
+    resetSessionScopedState(_ref);
+  }
+
   void _publishCurrency(String code) {
     try {
       _ref.read(sessionCurrencyProvider.notifier).state = code;
@@ -172,6 +195,9 @@ class AuthController extends StateNotifier<AuthState> {
   /// settings API (older servers); never fatal.
   Future<void> _loadPanelTimeZone(Map<String, dynamic> data) async {
     if (applyPanelTimeZoneFrom(data)) return;
+    // Settings need «عرض الإعدادات»: don't ask for a known 403.
+    final perms = _ref.read(permissionsProvider);
+    if (perms.loaded && !perms.can('settings.view')) return;
     try {
       final res = await _ref
           .read(apiClientProvider)
@@ -179,6 +205,20 @@ class AuthController extends StateNotifier<AuthState> {
       final d = res['data'];
       if (d is Map<String, dynamic>) applyPanelTimeZoneFromSettings(d);
     } catch (_) {/* keep the phone's zone */}
+  }
+
+  /// Applies the grants of `/api/admin/me`, falling back to [loginData]
+  /// when /me is unreachable (never fails the sign-in).
+  Future<void> _applyMe(Map<String, dynamic> loginData) async {
+    try {
+      final res = await _ref
+          .read(apiClientProvider)
+          .get('/api/admin/me', background: true);
+      final me = res['data'];
+      _permissions?.apply(me is Map<String, dynamic> ? me : loginData);
+    } catch (_) {
+      _permissions?.apply(loginData);
+    }
   }
 
   Future<void> _restore() async {
@@ -197,6 +237,8 @@ class AuthController extends StateNotifier<AuthState> {
     try {
       final res = await _ref.read(apiClientProvider).get('/api/admin/me');
       final d = (res['data'] ?? {}) as Map<String, dynamic>;
+      // Grants first: the router's first redirect must already see them.
+      _permissions?.apply(d);
       state = AuthState(
         token: stored,
         admin: d['admin'] is Map<String, dynamic>
@@ -213,6 +255,7 @@ class AuthController extends StateNotifier<AuthState> {
       await _loadPanelTimeZone(d);
     } on ApiException {
       await _ref.read(tokenStorageProvider).clear();
+      _permissions?.clear();
       state = AuthState(serverBaseUrl: serverBaseUrl);
     } catch (_) {
       // Network glitch: keep the token so the next refresh can recover.
@@ -233,6 +276,7 @@ class AuthController extends StateNotifier<AuthState> {
     );
     try {
       await _ref.read(tokenStorageProvider).clear();
+      _resetSession();
       await _ref.read(apiEndpointStorageProvider).writeBaseUrl(baseUrl);
       // Persist the per-deployment security key BEFORE the login call so the
       // request itself carries `X-API-Key` (a gateway in front of Flask may
@@ -257,6 +301,14 @@ class AuthController extends StateNotifier<AuthState> {
         );
       }
       await _ref.read(tokenStorageProvider).write(token);
+      // Grants of the login answer (permmodel); an older login answer has
+      // none, so read /me (older /me has none either → legacy, show all).
+      // Applied before the session state so the first redirect sees them.
+      if (d['grants'] is Map) {
+        _permissions?.apply(d);
+      } else {
+        await _applyMe(d);
+      }
       state = AuthState(
         token: token,
         admin: d['admin'] is Map<String, dynamic>
@@ -291,6 +343,7 @@ class AuthController extends StateNotifier<AuthState> {
       await _ref.read(apiClientProvider).post('/api/admin/logout');
     } catch (_) {/* best-effort */}
     await _ref.read(tokenStorageProvider).clear();
+    _resetSession();
     PanelTimeZone.reset();
     final serverBaseUrl =
         await _ref.read(apiEndpointStorageProvider).readBaseUrl();

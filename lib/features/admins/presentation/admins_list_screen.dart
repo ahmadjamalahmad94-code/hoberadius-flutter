@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -20,6 +22,7 @@ class AdminsListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncAdmins = ref.watch(adminsListProvider);
     final asyncRoles = ref.watch(rolesListProvider);
+    final perms = ref.watch(permissionsProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -41,11 +44,12 @@ class AdminsListScreen extends ConsumerWidget {
               onPressed: () => ref.invalidate(adminsListProvider),
             ),
             const SizedBox(width: AppTokens.s4),
-            GuardedCreateButton(
-              serviceKey: 'admins',
-              label: 'مدير جديد',
-              onCreate: () => context.goNamed('admin-new'),
-            ),
+            if (routeAllowed(perms, '/admins/new'))
+              GuardedCreateButton(
+                serviceKey: 'admins',
+                label: 'مدير جديد',
+                onCreate: () => context.goNamed('admin-new'),
+              ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
@@ -87,14 +91,15 @@ class AdminsListScreen extends ConsumerWidget {
   }
 }
 
-class _AdminsTable extends StatelessWidget {
+class _AdminsTable extends ConsumerWidget {
   const _AdminsTable({required this.admins, required this.roles});
   final List<Admin> admins;
   final Map<int, Role> roles;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final df = DateFormat('yyyy-MM-dd HH:mm');
+    final perms = ref.watch(permissionsProvider);
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -144,7 +149,11 @@ class _AdminsTable extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (a.isSuperAdmin)
+              if (a.isOriginalOwner)
+                const StatusPill(text: 'المالك', tone: PillTone.brand)
+              else if (a.isCoOwner)
+                const StatusPill(text: 'شريك', tone: PillTone.amber)
+              else if (a.isSuperAdmin)
                 const StatusPill(text: 'مدير عام', tone: PillTone.purple),
             ],
           ),
@@ -168,7 +177,7 @@ class _AdminsTable extends StatelessWidget {
               ),
             ],
           ),
-          onTap: a.id == null
+          onTap: a.id == null || !canOpenAdminRow(perms, a)
               ? null
               : () =>
                   ctx.goNamed('admin-edit', pathParameters: {'id': '${a.id}'}),
@@ -176,4 +185,15 @@ class _AdminsTable extends StatelessWidget {
       },
     );
   }
+}
+
+/// A manager row opens the edit form only when its save can succeed:
+/// admins.edit (or owner-like), never another admin's original-owner
+/// account, and owner / co-owner accounts only for an owner-like admin.
+bool canOpenAdminRow(AppPermissions p, Admin a) {
+  if (!routeAllowed(p, '/admins/${a.id ?? 0}')) return false;
+  if (p.legacy) return true;
+  if (a.isOriginalOwner && a.id != p.adminId) return false;
+  if (a.isOwner && !p.isOwnerLike) return false;
+  return true;
 }

@@ -244,7 +244,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
         // to the field it concerns (else the general box).
         final e = outcome!.error!;
         final field = generateErrorField(e);
-        final msg = visibleErrorMessage(e);
+        final msg = formSaveErrorMessage(e);
         setState(() {
           if (field == null) {
             _error = msg;

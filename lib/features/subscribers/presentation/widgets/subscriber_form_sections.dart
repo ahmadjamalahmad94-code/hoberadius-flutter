@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/api/api_exception.dart';
+import '../../../../core/auth/permissions.dart';
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_time_picker_circular.dart';
@@ -83,8 +85,9 @@ class SubscriberCoreSection extends StatelessWidget {
         // validator says why instead.
         readOnly: isEdit,
         textDirection: TextDirection.ltr,
-        autovalidateMode:
-            isEdit ? AutovalidateMode.disabled : AutovalidateMode.onUserInteraction,
+        autovalidateMode: isEdit
+            ? AutovalidateMode.disabled
+            : AutovalidateMode.onUserInteraction,
         decoration: isEdit
             ? InputDecoration(
                 errorText: fieldErrors['username'],
@@ -206,7 +209,8 @@ class SubscriberCoreSection extends StatelessWidget {
               // untouched row is not changed by opening it.
               child: DropdownButtonFormField<String>(
                 isExpanded: true,
-                initialValue: serviceType.trim().isEmpty ? 'Hotspot' : serviceType,
+                initialValue:
+                    serviceType.trim().isEmpty ? 'Hotspot' : serviceType,
                 items: [
                   for (final (value, label) in serviceTypeOptions(serviceType))
                     DropdownMenuItem(value: value, child: Text(label)),
@@ -435,7 +439,13 @@ class SubscriberManagementSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final admins = ref.watch(adminsListProvider);
+    // «المدير المسؤول» lists the managers (GET /api/v1/admins): only the
+    // owner / a co-owner or an admin holding admins.view may read that list
+    // — anyone else would get a 403, so the field is hidden and the server
+    // assigns the subscriber to the manager who creates it (p01 D18).
+    final showManager =
+        canPickResponsibleManager(ref.watch(permissionsProvider));
+    final admins = showManager ? ref.watch(adminsListProvider) : null;
     return CollapsibleSection(
       storageKey: 'sub.management',
       icon: Icons.manage_accounts_outlined,
@@ -443,40 +453,42 @@ class SubscriberManagementSection extends ConsumerWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'المدير المسؤول',
-            hint: 'اختر المدير الذي يتابع هذا الحساب',
-            child: admins.when(
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => TextFormField(
-                initialValue: managerId?.toString() ?? '',
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  hintText: 'رقم المدير (تعذّر جلب القائمة)',
-                ),
-                onChanged: (v) => onManagerChanged(int.tryParse(v.trim())),
-              ),
-              data: (list) => DropdownButtonFormField<int?>(
-                isExpanded: true,
-                initialValue:
-                    list.any((a) => a.id == managerId) ? managerId : null,
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('بدون مدير'),
+          if (admins != null &&
+              !(admins.hasError && _isForbidden(admins.error)))
+            FormFieldRow(
+              label: 'المدير المسؤول',
+              hint: 'اختر المدير الذي يتابع هذا الحساب',
+              child: admins.when(
+                loading: () => const LinearProgressIndicator(),
+                error: (_, __) => TextFormField(
+                  initialValue: managerId?.toString() ?? '',
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    hintText: 'رقم المدير (تعذّر جلب القائمة)',
                   ),
-                  for (final a in list)
-                    DropdownMenuItem<int?>(
-                      value: a.id,
-                      child: Text(
-                        a.fullName.isEmpty ? a.username : a.fullName,
-                      ),
+                  onChanged: (v) => onManagerChanged(int.tryParse(v.trim())),
+                ),
+                data: (list) => DropdownButtonFormField<int?>(
+                  isExpanded: true,
+                  initialValue:
+                      list.any((a) => a.id == managerId) ? managerId : null,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('بدون مدير'),
                     ),
-                ],
-                onChanged: onManagerChanged,
+                    for (final a in list)
+                      DropdownMenuItem<int?>(
+                        value: a.id,
+                        child: Text(
+                          a.fullName.isEmpty ? a.username : a.fullName,
+                        ),
+                      ),
+                  ],
+                  onChanged: onManagerChanged,
+                ),
               ),
             ),
-          ),
           FormFieldPair(
             first: FormFieldRow(
               label: 'المجموعة',
@@ -505,6 +517,14 @@ class SubscriberManagementSection extends ConsumerWidget {
     );
   }
 }
+
+/// The «المدير المسؤول» picker is offered (and its list fetched) only to
+/// the owner / a co-owner or an admin holding `admins.view`. On an older
+/// server (no permission contract) it stays, as before.
+bool canPickResponsibleManager(AppPermissions p) =>
+    p.isOwnerLike || p.can('admins.view');
+
+bool _isForbidden(Object? e) => e is ApiException && e.status == 403;
 
 /// Personal information section.
 class SubscriberPersonalSection extends StatelessWidget {

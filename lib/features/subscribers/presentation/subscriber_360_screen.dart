@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/hub_error_state.dart';
@@ -70,6 +72,10 @@ class _Subscriber360Content extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = data.subscriber;
+    final editDenied = routeDenial(
+      ref.watch(permissionsProvider),
+      '/subscribers/${s.username}',
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -98,10 +104,14 @@ class _Subscriber360Content extends ConsumerWidget {
               icon: Icons.edit_outlined,
               label: 'تعديل',
               primary: true,
-              onPressed: () => context.goNamed(
-                'subscriber-edit',
-                pathParameters: {'username': s.username},
-              ),
+              // The edit form opens only when its save would be accepted.
+              onPressed: editDenied != null
+                  ? null
+                  : () => context.goNamed(
+                        'subscriber-edit',
+                        pathParameters: {'username': s.username},
+                      ),
+              tooltip: editDenied,
             ),
             ActionItem(
               icon: Icons.account_balance_wallet_outlined,

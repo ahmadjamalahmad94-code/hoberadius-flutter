@@ -362,13 +362,18 @@ bool navSectionIsActive(String location, AppNavSection section) {
   return section.items.any((item) => navPathMatches(location, item.path));
 }
 
-int mobileNavIndexForLocation(String location) {
-  for (var i = 0; i < mobileNavDestinations.length - 1; i++) {
-    if (navPathMatches(location, mobileNavDestinations[i].path)) return i;
+/// Bottom-tab index for [location] among [destinations] (the permission-
+/// filtered tabs; the last one is always «المزيد»).
+int mobileNavIndexForLocation(
+  String location, [
+  List<AppNavItem> destinations = mobileNavDestinations,
+]) {
+  for (var i = 0; i < destinations.length - 1; i++) {
+    if (navPathMatches(location, destinations[i].path)) return i;
   }
   if (location == moreNavItem.path ||
       appNavigationItems.any((item) => navPathMatches(location, item.path))) {
-    return mobileNavDestinations.length - 1;
+    return destinations.length - 1;
   }
   return 0;
 }
@@ -410,12 +415,17 @@ const kExtraRouteTitles = <String, String>{
   '/license-activate': 'فعّل الترخيص',
   '/service-blocked': 'الخدمة موقوفة',
   '/service-upgrade': 'خدمة بانتظار التفعيل',
+  '/no-access': 'لا توجد صلاحية',
 };
 
 /// Title of the mobile app bar: the bottom tab when the location belongs
 /// to one, else the navigation item that owns the path, else a routed
 /// page's own title ([kExtraRouteTitles]), else the tab.
-String mobileTitleForLocation(String location, int tabIndex) {
+String mobileTitleForLocation(
+  String location,
+  int tabIndex, [
+  List<AppNavItem> destinations = mobileNavDestinations,
+]) {
   // Most specific first: '/cards/recharge' must not read as the cards tab.
   String? extra;
   var extraLen = -1;
@@ -426,18 +436,19 @@ String mobileTitleForLocation(String location, int tabIndex) {
     }
   });
   if (extra != null) return extra!;
+  final tab = tabIndex.clamp(0, destinations.length - 1);
   if (location == '/' ||
-      (tabIndex > 0 &&
-          tabIndex < mobileNavDestinations.length - 1 &&
-          navPathMatches(location, mobileNavDestinations[tabIndex].path))) {
-    return mobileNavDestinations[tabIndex].label;
+      (tab > 0 &&
+          tab < destinations.length - 1 &&
+          navPathMatches(location, destinations[tab].path))) {
+    return destinations[tab].label;
   }
   for (final item in appNavigationItems) {
     if (item.path != '/' && navPathMatches(location, item.path)) {
       return item.label;
     }
   }
-  return mobileNavDestinations[tabIndex].label;
+  return destinations[tab].label;
 }
 
 AppNavItem? navItemByRouteName(String routeName) {

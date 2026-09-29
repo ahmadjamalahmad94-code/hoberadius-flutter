@@ -1,3 +1,4 @@
+import '../../features/admins/domain/permission_labels.dart';
 import '../l10n/arabic_labels.dart';
 import 'api_exception.dart';
 
@@ -18,9 +19,33 @@ String visibleErrorMessage(
     if (!arabic && error.status == 404 && error.code != 'not_found') {
       return kUnknownPathMessage;
     }
-    return _safeMessage(error.message, fallback);
+    final text = _safeMessage(error.message, fallback);
+    if (error.status == 403) {
+      final need = forbiddenRequirementLabel(error.details);
+      if (need != null && !text.contains(need)) {
+        return '$text (الصلاحية المطلوبة: $need)';
+      }
+    }
+    return text;
   }
   return _safeMessage(error?.toString() ?? '', fallback);
+}
+
+/// The permission a 403 names, in Arabic: `details.permission` (permmodel)
+/// or `details.requires` (permguard: `users.create`, `a|b`, `__super__`;
+/// a `web:`/`mt:`/`grant:` spec names no key and gives null).
+String? forbiddenRequirementLabel(Object? details) {
+  if (details is! Map) return null;
+  final raw = '${details['permission'] ?? details['requires'] ?? ''}'.trim();
+  if (raw.isEmpty) return null;
+  if (raw == '__super__') return 'المالك أو الشريك فقط';
+  if (raw.contains(':')) return null;
+  final keys = [
+    for (final k in raw.split('|'))
+      if (k.trim().contains('.')) k.trim(),
+  ];
+  if (keys.isEmpty) return null;
+  return keys.map(permissionLabel).join(' أو ');
 }
 
 /// An API path the server does not know (JSON/HTML 404 without Arabic).
@@ -207,4 +232,16 @@ String visibleErrorWithRetryHint(Object? error, {String? fallback}) {
       : visibleErrorMessage(error, fallback: fallback);
   if (!isRetryableError(error) || msg.contains('أعد المحاولة')) return msg;
   return '$msg — اضغط «إعادة المحاولة».';
+}
+
+/// Error text for a refused form SAVE: the server's own Arabic reason and,
+/// on a 403 (permission / scope / locked section), a reminder that nothing
+/// was saved and the typed input is still in the form — the form never
+/// clears or navigates away on a refusal.
+String formSaveErrorMessage(Object? error) {
+  final message = visibleErrorMessage(error);
+  if (error is ApiException && error.status == 403) {
+    return '$message — لم يُحفَظ، وبياناتك باقية في النموذج.';
+  }
+  return message;
 }

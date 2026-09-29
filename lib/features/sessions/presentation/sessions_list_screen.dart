@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -206,6 +207,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
   Widget build(BuildContext context) {
     final onlineAsync = ref.watch(onlineSessionsProvider(_query));
     final historyAsync = ref.watch(accountingHistoryProvider);
+    // Each live action follows its own server grant (online.* keys).
+    final acts = SessionActionPermissions(ref.watch(permissionsProvider));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -283,16 +286,19 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
                       session: session,
                       formatBytes: _formatBytes,
                       formatDuration: _formatDuration,
-                      onDisconnect: () => _disconnect(session),
-                      onLockMac: () => _lockMac(session),
-                      onLockIp:
-                          session.isSubscriber ? () => _lockIp(session) : null,
-                      onTemporarySpeed: session.isSubscriber
+                      onDisconnect:
+                          acts.disconnect ? () => _disconnect(session) : null,
+                      onLockMac: acts.lockMac ? () => _lockMac(session) : null,
+                      onLockIp: session.isSubscriber && acts.lockIp
+                          ? () => _lockIp(session)
+                          : null,
+                      onTemporarySpeed: session.isSubscriber && acts.tempSpeed
                           ? () => _applyTemporarySpeed(session)
                           : null,
-                      onCancelTemporarySpeed: session.isSubscriber
-                          ? () => _cancelTemporarySpeed(session)
-                          : null,
+                      onCancelTemporarySpeed:
+                          session.isSubscriber && acts.tempSpeed
+                              ? () => _cancelTemporarySpeed(session)
+                              : null,
                     ),
                   ),
                 LoadMoreFooter(
@@ -579,8 +585,8 @@ class _SessionTile extends StatelessWidget {
     required this.session,
     required this.formatBytes,
     required this.formatDuration,
-    required this.onDisconnect,
-    required this.onLockMac,
+    this.onDisconnect,
+    this.onLockMac,
     this.onLockIp,
     this.onTemporarySpeed,
     this.onCancelTemporarySpeed,
@@ -589,8 +595,8 @@ class _SessionTile extends StatelessWidget {
   final OnlineSession session;
   final String Function(int) formatBytes;
   final String Function(int) formatDuration;
-  final VoidCallback onDisconnect;
-  final VoidCallback onLockMac;
+  final VoidCallback? onDisconnect;
+  final VoidCallback? onLockMac;
   final VoidCallback? onLockIp;
   final VoidCallback? onTemporarySpeed;
   final VoidCallback? onCancelTemporarySpeed;
@@ -699,17 +705,19 @@ class _SessionTile extends StatelessWidget {
           const SizedBox(height: AppTokens.s12),
           ActionBar(
             items: [
-              ActionItem(
-                icon: Icons.power_settings_new,
-                label: 'طرد',
-                tone: PillTone.red,
-                onPressed: onDisconnect,
-              ),
-              ActionItem(
-                icon: Icons.phonelink_lock_outlined,
-                label: 'تثبيت MAC',
-                onPressed: onLockMac,
-              ),
+              if (onDisconnect != null)
+                ActionItem(
+                  icon: Icons.power_settings_new,
+                  label: 'طرد',
+                  tone: PillTone.red,
+                  onPressed: onDisconnect,
+                ),
+              if (onLockMac != null)
+                ActionItem(
+                  icon: Icons.phonelink_lock_outlined,
+                  label: 'تثبيت MAC',
+                  onPressed: onLockMac,
+                ),
               if (onLockIp != null)
                 ActionItem(
                   icon: Icons.pin_outlined,
@@ -1134,4 +1142,16 @@ String compactSessionDuration(int seconds) {
     return '${d.inMinutes} د ${d.inSeconds.remainder(60)} ث';
   }
   return '${d.inSeconds} ث';
+}
+
+/// Live-session actions the admin may run (server ACTION_REGISTRY
+/// `session.*`, derived from the online.* / users.temp_speed keys).
+class SessionActionPermissions {
+  const SessionActionPermissions(this.p);
+  final AppPermissions p;
+
+  bool get disconnect => p.canAction('session.disconnect');
+  bool get lockMac => p.canAction('session.lock_mac');
+  bool get lockIp => p.canAction('session.lock_ip');
+  bool get tempSpeed => p.canAction('session.temp_speed');
 }

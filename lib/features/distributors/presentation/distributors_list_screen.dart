@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/format/currency.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -23,6 +25,10 @@ class DistributorsListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // «موزع جديد» only when distributor.manage (can_manage_distributors)
+    // would accept the save.
+    final newDenied =
+        routeDenial(ref.watch(permissionsProvider), '/distributors/new');
     final async = ref.watch(distributorsListProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -45,7 +51,10 @@ class DistributorsListScreen extends ConsumerWidget {
               icon: Icons.add,
               label: 'موزع جديد',
               primary: true,
-              onPressed: () => context.goNamed('distributor-new'),
+              onPressed: newDenied != null
+                  ? null
+                  : () => context.goNamed('distributor-new'),
+              tooltip: newDenied,
             ),
           ],
         ),
@@ -72,11 +81,13 @@ class DistributorsListScreen extends ConsumerWidget {
                 title: 'لا يوجد موزعون بعد',
                 subtitle:
                     'أضف أول موزع ثم اربط به حزم الكروت حسب النطاق المطلوب.',
-                action: ElevatedButton.icon(
-                  onPressed: () => context.goNamed('distributor-new'),
-                  icon: const Icon(Icons.add),
-                  label: const Text('موزع جديد'),
-                ),
+                action: newDenied != null
+                    ? null
+                    : ElevatedButton.icon(
+                        onPressed: () => context.goNamed('distributor-new'),
+                        icon: const Icon(Icons.add),
+                        label: const Text('موزع جديد'),
+                      ),
               );
             }
             return LayoutBuilder(

@@ -24,13 +24,15 @@ class PaymentsTable extends StatelessWidget {
   final Future<void> Function(PaymentTransaction payment)? onVoid;
 
   // A voided row already carries the «معكوسة» pill — no second label.
-  Widget _voidCell(PaymentTransaction p) => p.status == 'voided'
-      ? const SizedBox.shrink()
-      : TextButton.icon(
-          onPressed: onVoid == null ? null : () => onVoid!(p),
-          icon: const Icon(Icons.undo, size: 18),
-          label: const Text('عكس'),
-        );
+  // No handler (ledger void is owner-only) → no button at all.
+  Widget _voidCell(PaymentTransaction p) =>
+      p.status == 'voided' || onVoid == null
+          ? const SizedBox.shrink()
+          : TextButton.icon(
+              onPressed: onVoid == null ? null : () => onVoid!(p),
+              icon: const Icon(Icons.undo, size: 18),
+              label: const Text('عكس'),
+            );
 
   @override
   Widget build(BuildContext context) {

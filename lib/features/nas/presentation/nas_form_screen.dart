@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -182,7 +183,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
           _nameError = visibleErrorMessage(e);
           _error = null;
         } else {
-          _error = visibleErrorMessage(e);
+          _error = formSaveErrorMessage(e);
         }
       });
     } finally {
@@ -298,12 +299,13 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   label: _testing ? 'جارٍ الاختبار…' : 'اختبار الاتصال',
                   onPressed: (_loading || _testing) ? null : _test,
                 ),
-                ActionItem(
-                  icon: Icons.delete_outline,
-                  label: 'حذف الجهاز',
-                  tone: PillTone.red,
-                  onPressed: _loading ? null : _delete,
-                ),
+                if (ref.watch(permissionsProvider).can('nas.delete'))
+                  ActionItem(
+                    icon: Icons.delete_outline,
+                    label: 'حذف الجهاز',
+                    tone: PillTone.red,
+                    onPressed: _loading ? null : _delete,
+                  ),
               ],
             ),
           ],

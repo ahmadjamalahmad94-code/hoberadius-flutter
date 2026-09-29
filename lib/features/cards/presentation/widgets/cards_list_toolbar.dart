@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/auth/permissions.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/hub_layout.dart';
@@ -68,6 +69,12 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
 
   @override
   Widget build(BuildContext context) {
+    final perms = ref.watch(permissionsProvider);
+    // Exports = data.export (users.export); bulk = cards.batch_ops.
+    final exportDenied = perms.canAction('data.export')
+        ? null
+        : perms.deniedReason(action: 'data.export', perm: 'users.export');
+    final canBulk = perms.canAction('cards.batch_ops');
     final search = TextField(
       controller: _queryController,
       textInputAction: TextInputAction.search,
@@ -124,21 +131,25 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
                   ActionItem(
                     icon: Icons.file_download_outlined,
                     label: 'CSV',
-                    onPressed: widget.onExportCsv,
+                    onPressed: exportDenied == null ? widget.onExportCsv : null,
+                    tooltip: exportDenied,
                   ),
                   ActionItem(
                     icon: Icons.table_chart_outlined,
                     label: 'Excel',
-                    onPressed: widget.onExportXlsx,
+                    onPressed:
+                        exportDenied == null ? widget.onExportXlsx : null,
+                    tooltip: exportDenied,
                   ),
                   ActionItem(
                     icon: Icons.picture_as_pdf_outlined,
                     label: 'PDF',
-                    onPressed: widget.onExportPdf,
+                    onPressed: exportDenied == null ? widget.onExportPdf : null,
+                    tooltip: exportDenied,
                   ),
                 ],
               ),
-              if (widget.selectedCount > 0) ...[
+              if (widget.selectedCount > 0 && canBulk) ...[
                 const SizedBox(height: AppTokens.s12),
                 Text(
                   'محدد: ${widget.selectedCount} حزمة',

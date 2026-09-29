@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -153,6 +154,8 @@ class _RouterOperationsScreenState
                       builder: (_) => _HealthDialog(routerId: selected.id!),
                     ),
                   ),
+                  // MikroTik-domain pages: owner / co-owner (mt:* keys).
+                  if (ref.watch(permissionsProvider).isOwnerLike)
                   ActionItem(
                     icon: Icons.tune_outlined,
                     label: 'برمجة',
@@ -163,6 +166,7 @@ class _RouterOperationsScreenState
                   // «سياسات الشبكة» تعيش الآن داخل لوحة عمليات الراوتر (مطابقةً
                   // للويب الذي دمجها هنا) بدل بند مستقل في القائمة — حظر
                   // المواقع والمواقع المسموحة لكل راوتر.
+                  if (ref.watch(permissionsProvider).isOwnerLike)
                   ActionItem(
                     icon: Icons.policy_outlined,
                     label: 'سياسات الشبكة',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../admin_control/application/admin_control_providers.dart';
@@ -219,7 +220,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit)
+              if (widget.isEdit &&
+                  ref.watch(permissionsProvider).canAction('plan.delete'))
                 IconButton(
                   tooltip: 'أرشفة الباقة',
                   onPressed: loading ? null : _delete,

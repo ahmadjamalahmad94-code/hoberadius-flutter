@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -29,6 +31,8 @@ class CardsListScreen extends ConsumerWidget {
     final async = ref.watch(batchesOperationsProvider);
     final filters = ref.watch(batchOpsFiltersProvider);
     final selected = ref.watch(selectedBatchIdsProvider);
+    final canGenerate =
+        routeAllowed(ref.watch(permissionsProvider), '/cards/new');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -78,11 +82,13 @@ class CardsListScreen extends ConsumerWidget {
                 icon: Icons.credit_card_off_outlined,
                 title: 'لا توجد حزم مطابقة',
                 subtitle: 'جرّب تغيير البحث أو الفلتر، أو أنشئ حزمة جديدة.',
-                action: ElevatedButton.icon(
-                  onPressed: () => context.goNamed('card-batch-new'),
-                  icon: const Icon(Icons.add),
-                  label: const Text('حزمة جديدة'),
-                ),
+                action: canGenerate
+                    ? ElevatedButton.icon(
+                        onPressed: () => context.goNamed('card-batch-new'),
+                        icon: const Icon(Icons.add),
+                        label: const Text('حزمة جديدة'),
+                      )
+                    : null,
               );
             }
             return Column(
@@ -155,13 +161,11 @@ class CardsListScreen extends ConsumerWidget {
       );
       if (confirm != true) return;
     }
-    final result =
-        await ref.read(cardsListControllerProvider).runBulk(action);
+    final result = await ref.read(cardsListControllerProvider).runBulk(action);
     if (!context.mounted) return;
     final text = result.error ?? result.message;
     if (text != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(text)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     }
   }
 }

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -21,6 +23,8 @@ class PlansListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(plansListProvider);
+    // A plan card opens the edit form — only when its save is allowed.
+    final canEdit = routeAllowed(ref.watch(permissionsProvider), '/plans/0');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -60,7 +64,7 @@ class PlansListScreen extends ConsumerWidget {
                 subtitle: 'أضف الباقات من لوحة الويب لتظهر هنا.',
               );
             }
-            return _PlanGrid(plans: items);
+            return _PlanGrid(plans: items, canEdit: canEdit);
           },
         ),
       ],
@@ -72,8 +76,9 @@ class PlansListScreen extends ConsumerWidget {
 /// equal-width columns on wide screens (a row takes its tallest card's
 /// height) — no fixed aspect ratio, so no dead space under short cards.
 class _PlanGrid extends StatelessWidget {
-  const _PlanGrid({required this.plans});
+  const _PlanGrid({required this.plans, this.canEdit = true});
   final List<Plan> plans;
+  final bool canEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -89,14 +94,16 @@ class _PlanGrid extends StatelessWidget {
                 if (j > 0) const SizedBox(width: AppTokens.s12),
                 Expanded(
                   child: i + j < plans.length
-                      ? _PlanCard(plan: plans[i + j])
+                      ? _PlanCard(plan: plans[i + j], canEdit: canEdit)
                       : const SizedBox.shrink(),
                 ),
               ],
             ],
           );
           rows.add(
-            cols == 1 ? _PlanCard(plan: plans[i]) : IntrinsicHeight(child: row),
+            cols == 1
+                ? _PlanCard(plan: plans[i], canEdit: canEdit)
+                : IntrinsicHeight(child: row),
           );
         }
         return Column(
@@ -114,8 +121,9 @@ class _PlanGrid extends StatelessWidget {
 }
 
 class _PlanCard extends StatelessWidget {
-  const _PlanCard({required this.plan});
+  const _PlanCard({required this.plan, this.canEdit = true});
   final Plan plan;
+  final bool canEdit;
 
   String _typeLabel(String t) => switch (t) {
         'time' => 'وقت',
@@ -164,7 +172,7 @@ class _PlanCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTokens.r14),
-        onTap: plan.id == null
+        onTap: plan.id == null || !canEdit
             ? null
             : () => context.goNamed(
                   'plan-edit',

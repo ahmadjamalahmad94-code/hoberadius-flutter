@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -100,6 +101,8 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
         else ...[
           CardCheckerSummary(card: result),
           const SizedBox(height: AppTokens.s12),
+          // Single-card operations = cards.verify (web cards_checker POST).
+          if (ref.watch(permissionsProvider).can('cards.verify'))
           CardCheckerOperations(
             card: result,
             busy: state.actionLoading,

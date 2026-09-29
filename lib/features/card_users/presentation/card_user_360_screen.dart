@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -13,6 +14,7 @@ import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../cards/domain/card_item.dart';
 import '../application/card_users_providers.dart';
 import '../data/card_users_repository.dart';
 import '../domain/card_users_model.dart';
@@ -26,6 +28,10 @@ class CardUser360Screen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profileAsync = ref.watch(cardUser360Provider(cardUserId));
     final packagesAsync = ref.watch(cardMarketplacePackagesProvider);
+    final perms = ref.watch(permissionsProvider);
+    // storeuser.edit = recharge / purchase (money); storeuser.password.
+    final canMoney = perms.canAction('storeuser.edit');
+    final canPassword = perms.canAction('storeuser.password');
 
     return profileAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -61,17 +67,21 @@ class CardUser360Screen extends ConsumerWidget {
           const SizedBox(height: AppTokens.s12),
           ActionBar(
             items: [
-              ActionItem(
-                icon: Icons.account_balance_wallet_outlined,
-                label: 'شحن المحفظة',
-                primary: true,
-                onPressed: () => _showRechargeDialog(context, ref, cardUserId),
-              ),
-              ActionItem(
-                icon: Icons.lock_reset_outlined,
-                label: 'تغيير كلمة المرور',
-                onPressed: () => _showPasswordDialog(context, ref, cardUserId),
-              ),
+              if (canMoney)
+                ActionItem(
+                  icon: Icons.account_balance_wallet_outlined,
+                  label: 'شحن المحفظة',
+                  primary: true,
+                  onPressed: () =>
+                      _showRechargeDialog(context, ref, cardUserId),
+                ),
+              if (canPassword)
+                ActionItem(
+                  icon: Icons.lock_reset_outlined,
+                  label: 'تغيير كلمة المرور',
+                  onPressed: () =>
+                      _showPasswordDialog(context, ref, cardUserId),
+                ),
             ],
           ),
           const SizedBox(height: AppTokens.s12),
@@ -93,8 +103,9 @@ class CardUser360Screen extends ConsumerWidget {
                   onRetry: () =>
                       ref.invalidate(cardMarketplacePackagesProvider),
                 ),
-                data: (packages) =>
-                    _PurchasePanel(packages: packages, cardUserId: cardUserId),
+                data: (packages) => canMoney
+                    ? _PurchasePanel(packages: packages, cardUserId: cardUserId)
+                    : const SizedBox.shrink(),
               );
               if (!wide) {
                 return Column(
@@ -473,6 +484,13 @@ class _CopyValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (value.isEmpty) return const Text('غير متاحة');
+    // Masked by the server (no reveal permission): «••••», nothing to copy.
+    if (isMaskedCardPassword(value)) {
+      return const Tooltip(
+        message: 'كلمة المرور مخفيّة — لا تملك صلاحية كشفها.',
+        child: Text('••••'),
+      );
+    }
     return TextButton.icon(
       style: TextButton.styleFrom(
         visualDensity: VisualDensity.compact,

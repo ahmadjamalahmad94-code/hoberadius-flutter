@@ -102,7 +102,7 @@ class SubscriberFormActionController
       }
       return null;
     } catch (e) {
-      final message = visibleErrorMessage(e);
+      final message = formSaveErrorMessage(e);
       _set(state.copyWith(error: message, errorField: subscriberErrorField(e)));
       return message;
     } finally {
@@ -126,11 +126,11 @@ class SubscriberFormActionController
       } catch (e) {
         _set(
           state.copyWith(
-            error: visibleErrorMessage(e),
+            error: formSaveErrorMessage(e),
             errorField: subscriberErrorField(e),
           ),
         );
-        return visibleErrorMessage(e);
+        return formSaveErrorMessage(e);
       }
       // «بدون انتهاء»: an explicit null clears the expiry on updated
       // servers; an older server answers 200 and KEEPS it — say so instead

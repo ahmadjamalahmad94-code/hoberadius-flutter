@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/auth/permissions.dart';
+import '../../../../core/auth/route_permissions.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/page_header.dart';
@@ -16,6 +18,10 @@ class CardsListHeader extends ConsumerWidget {
     // «حزمة جديدة» stays blocked at the provider's card cap (same rule as the
     // old GuardedCreateButton; the cap banner explains it on the page).
     final atCap = ref.watch(grantLimitProvider('cards'))?.atCap ?? false;
+    final perms = ref.watch(permissionsProvider);
+    // The generator opens only when the server would save the batch.
+    final newDenied = routeDenial(perms, '/cards/new');
+    final checkerDenied = routeDenial(perms, '/cards/checker');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -39,13 +45,17 @@ class CardsListHeader extends ConsumerWidget {
               icon: Icons.add,
               label: 'حزمة جديدة',
               primary: true,
-              onPressed: atCap ? null : () => context.goNamed('card-batch-new'),
+              onPressed: (atCap || newDenied != null)
+                  ? null
+                  : () => context.goNamed('card-batch-new'),
+              tooltip: newDenied,
             ),
-            ActionItem(
-              icon: Icons.manage_search_outlined,
-              label: 'فحص بطاقة',
-              onPressed: () => context.goNamed('card-checker'),
-            ),
+            if (checkerDenied == null)
+              ActionItem(
+                icon: Icons.manage_search_outlined,
+                label: 'فحص بطاقة',
+                onPressed: () => context.goNamed('card-checker'),
+              ),
           ],
         ),
       ],

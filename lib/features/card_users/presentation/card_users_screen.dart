@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -26,6 +27,13 @@ class CardUsersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(cardUsersPageProvider);
     final packagesAsync = ref.watch(cardMarketplacePackagesProvider);
+    final perms = ref.watch(permissionsProvider);
+    final userDenied = perms.canAction('storeuser.create')
+        ? null
+        : perms.deniedReason(action: 'storeuser.create');
+    final packageDenied = perms.can('store.package_add')
+        ? null
+        : perms.deniedReason(perm: 'store.package_add');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -51,12 +59,18 @@ class CardUsersScreen extends ConsumerWidget {
               icon: Icons.person_add_alt_1_outlined,
               label: 'مستخدم جديد',
               primary: true,
-              onPressed: () => _showCreateUserDialog(context, ref),
+              onPressed: userDenied != null
+                  ? null
+                  : () => _showCreateUserDialog(context, ref),
+              tooltip: userDenied,
             ),
             ActionItem(
               icon: Icons.sell_outlined,
               label: 'باقة جديدة',
-              onPressed: () => _showCreatePackageDialog(context, ref),
+              onPressed: packageDenied != null
+                  ? null
+                  : () => _showCreatePackageDialog(context, ref),
+              tooltip: packageDenied,
             ),
           ],
         ),

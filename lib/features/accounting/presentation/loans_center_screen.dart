@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/api/idempotency.dart';
 import '../../../core/api/paging.dart';
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
 import '../../../core/format/number_input.dart';
 import '../../../core/format/panel_time.dart';
 import '../../../core/theme/tokens.dart';
@@ -124,6 +125,12 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_loansProvider(_status));
+    // Recording / settling a loan = subscriber.loan (users.loans).
+    final perms = ref.watch(permissionsProvider);
+    final loanDenied = perms.canAction('subscriber.loan')
+        ? null
+        : perms.deniedReason(action: 'subscriber.loan', perm: 'users.loans');
+    final settle = loanDenied == null ? _settleLoan : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -171,7 +178,8 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
                     icon: Icons.add_circle_outline,
                     label: 'تسجيل سلفة أو دين',
                     primary: true,
-                    onPressed: _createLoan,
+                    onPressed: loanDenied == null ? _createLoan : null,
+                    tooltip: loanDenied,
                   ),
                 ),
               ),
@@ -208,13 +216,13 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
                       return Column(
                         children: [
                           for (final loan in items) ...[
-                            _LoanCard(loan: loan, onSettle: _settleLoan),
+                            _LoanCard(loan: loan, onSettle: settle),
                             const SizedBox(height: AppTokens.s8),
                           ],
                         ],
                       );
                     }
-                    return _LoansTable(items: items, onSettle: _settleLoan);
+                    return _LoansTable(items: items, onSettle: settle);
                   },
                 ),
                 LoadMoreFooter(
@@ -259,19 +267,18 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
       // (it used to close and lose them behind a generic snackbar).
       submit: (draft) async {
         final key = _createKeys.keyFor('loan', draft.fingerprint);
-        final outcome = await ref
-            .read(accountingRepositoryProvider)
-            .createLoanWithOutcome(
-              username: draft.username,
-              days: draft.days,
-              hours: draft.hours,
-              amount: draft.amount,
-              currency: draft.currency,
-              reason: draft.reason,
-              priceFromDays: draft.priceFromDays,
-              applyToRadius: draft.applyToRadius,
-              idempotencyKey: key,
-            );
+        final outcome =
+            await ref.read(accountingRepositoryProvider).createLoanWithOutcome(
+                  username: draft.username,
+                  days: draft.days,
+                  hours: draft.hours,
+                  amount: draft.amount,
+                  currency: draft.currency,
+                  reason: draft.reason,
+                  priceFromDays: draft.priceFromDays,
+                  applyToRadius: draft.applyToRadius,
+                  idempotencyKey: key,
+                );
         _createKeys.reset();
         return outcome;
       },
@@ -354,10 +361,10 @@ class _LoansSummary extends StatelessWidget {
 }
 
 class _LoansTable extends StatelessWidget {
-  const _LoansTable({required this.items, required this.onSettle});
+  const _LoansTable({required this.items, this.onSettle});
 
   final List<LoanEntry> items;
-  final Future<void> Function(LoanEntry loan) onSettle;
+  final Future<void> Function(LoanEntry loan)? onSettle;
 
   @override
   Widget build(BuildContext context) {
@@ -405,7 +412,8 @@ class _LoansTable extends StatelessWidget {
                   DataCell(
                     loan.isOpen
                         ? TextButton.icon(
-                            onPressed: () => onSettle(loan),
+                            onPressed:
+                                onSettle == null ? null : () => onSettle!(loan),
                             icon: const Icon(Icons.done_all, size: 16),
                             label: const Text('تسوية'),
                           )
@@ -421,10 +429,10 @@ class _LoansTable extends StatelessWidget {
 }
 
 class _LoanCard extends StatelessWidget {
-  const _LoanCard({required this.loan, required this.onSettle});
+  const _LoanCard({required this.loan, this.onSettle});
 
   final LoanEntry loan;
-  final Future<void> Function(LoanEntry loan) onSettle;
+  final Future<void> Function(LoanEntry loan)? onSettle;
 
   @override
   Widget build(BuildContext context) {
@@ -522,7 +530,7 @@ class _LoanCard extends StatelessWidget {
                 ),
             ],
           ),
-          if (loan.isOpen) ...[
+          if (loan.isOpen && onSettle != null) ...[
             const SizedBox(height: AppTokens.s8),
             ActionBar(
               items: [
@@ -530,7 +538,7 @@ class _LoanCard extends StatelessWidget {
                   icon: Icons.done_all,
                   label: 'تسوية',
                   tone: PillTone.green,
-                  onPressed: () => onSettle(loan),
+                  onPressed: () => onSettle!(loan),
                 ),
               ],
             ),
@@ -1052,8 +1060,7 @@ String _shortDuration(int minutes) {
 String _fmtShort(DateTime? value) {
   if (value == null) return 'غير محدد';
   final local = value.toLocal();
-  final pattern =
-      local.year == panelNow().year ? 'MM-dd HH:mm' : 'yyyy-MM-dd';
+  final pattern = local.year == panelNow().year ? 'MM-dd HH:mm' : 'yyyy-MM-dd';
   return DateFormat(pattern).format(local);
 }
 

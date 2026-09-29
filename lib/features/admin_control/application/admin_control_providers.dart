@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/format/currency.dart';
 import '../data/admin_control_repository.dart';
 import '../domain/admin_control_model.dart';
@@ -14,6 +15,13 @@ final settingsProvider = FutureProvider.autoDispose<SettingsSnapshot>((ref) {
 final tenantCurrencyProvider = Provider.autoDispose<String>((ref) {
   // 1) /api/admin/me `system.currency` (known right after session restore)
   final fromSession = ref.watch(sessionCurrencyProvider);
+  // Without «عرض الإعدادات» /api/v1/settings answers 403 — never ask it;
+  // the session payload (/api/admin/me system.currency) is enough.
+  final canSettings =
+      ref.watch(permissionsProvider.select((p) => p.can('settings.view')));
+  if (!canSettings) {
+    return fromSession.isNotEmpty ? fromSession : kDefaultCurrency;
+  }
   final async = ref.watch(settingsProvider);
   return async.maybeWhen(
     // 2) settings `system.currency`, 3) settings `billing.currency`

@@ -21,8 +21,17 @@ class AdminsRepository {
     return Admin.fromJson(d is Map<String, dynamic> ? d : res);
   }
 
-  Future<Admin> createAdmin(Admin a, String password) async {
-    final body = a.toBody(pendingPassword: password);
+  Future<Admin> createAdmin(
+    Admin a,
+    String password, {
+    bool ownerFlags = true,
+    bool coOwnerFlag = false,
+  }) async {
+    final body = a.toBody(
+      pendingPassword: password,
+      ownerFlags: ownerFlags,
+      coOwnerFlag: coOwnerFlag,
+    );
     body['username'] = a.username;
     body['password'] = password;
     final res = await _api.post('/api/v1/admins', body: body);
@@ -30,10 +39,22 @@ class AdminsRepository {
     return Admin.fromJson(d is Map<String, dynamic> ? d : res);
   }
 
-  Future<Admin> updateAdmin(int id, Admin a, {String? pendingPassword}) async {
+  Future<Admin> updateAdmin(
+    int id,
+    Admin a, {
+    String? pendingPassword,
+    Admin? original,
+    bool ownerFlags = true,
+    bool coOwnerFlag = false,
+  }) async {
     final res = await _api.patch(
       '/api/v1/admins/$id',
-      body: a.toBody(pendingPassword: pendingPassword),
+      body: a.toBody(
+        pendingPassword: pendingPassword,
+        original: original,
+        ownerFlags: ownerFlags,
+        coOwnerFlag: coOwnerFlag,
+      ),
     );
     final d = res['data'];
     return Admin.fromJson(d is Map<String, dynamic> ? d : res);

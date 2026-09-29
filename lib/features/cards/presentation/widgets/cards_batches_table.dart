@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/auth/permissions.dart';
+import '../../../../core/auth/route_permissions.dart';
 import '../../../../core/format/currency.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -24,12 +26,14 @@ class CardsBatchesTable extends ConsumerWidget {
     final selected = ref.watch(selectedBatchIdsProvider);
     final ids = page.items.map((item) => item.id).whereType<int>().toSet();
     final allSelected = ids.isNotEmpty && ids.difference(selected).isEmpty;
+    // Selection only feeds the bulk bar (cards.batch_ops).
+    final canBulk = ref.watch(permissionsProvider).canAction('cards.batch_ops');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Select-all bar (was the table header checkbox).
-        if (ids.isNotEmpty)
+        if (ids.isNotEmpty && canBulk)
           Padding(
             padding: const EdgeInsets.only(bottom: AppTokens.s8),
             child: Row(
@@ -76,7 +80,7 @@ class CardsBatchesTable extends ConsumerWidget {
                     child: _BatchCard(
                       batch: batch,
                       selected: batch.id != null && selected.contains(batch.id),
-                      onToggle: batch.id == null
+                      onToggle: batch.id == null || !canBulk
                           ? null
                           : () {
                               final next = {...selected};
@@ -322,6 +326,11 @@ class _RowActions extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (batch.id == null) return const SizedBox.shrink();
     final id = {'id': '${batch.id}'};
+    final perms = ref.watch(permissionsProvider);
+    final editDenied = routeDenial(perms, '/cards/batches/${batch.id}/edit');
+    // Printing needs the real passwords: cards.print (permguard masks them
+    // otherwise).
+    final printDenied = routeDenial(perms, '/cards/batches/${batch.id}/print');
     return ActionBar(
       items: [
         ActionItem(
@@ -334,14 +343,18 @@ class _RowActions extends ConsumerWidget {
         ActionItem(
           icon: Icons.edit_outlined,
           label: 'تعديل',
-          onPressed: () =>
-              context.goNamed('card-batch-edit', pathParameters: id),
+          onPressed: editDenied != null
+              ? null
+              : () => context.goNamed('card-batch-edit', pathParameters: id),
+          tooltip: editDenied,
         ),
         ActionItem(
           icon: Icons.print_outlined,
           label: 'طباعة',
-          onPressed: () =>
-              context.goNamed('card-batch-print', pathParameters: id),
+          onPressed: printDenied != null
+              ? null
+              : () => context.goNamed('card-batch-print', pathParameters: id),
+          tooltip: printDenied,
         ),
       ],
     );

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/idempotency.dart';
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
 import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -392,6 +393,7 @@ class _SubscriberFinanceScreenState
 
   @override
   Widget build(BuildContext context) {
+    final perms = ref.watch(permissionsProvider);
     return FutureBuilder<SubscriberFinanceData>(
       future: _future,
       builder: (context, snapshot) {
@@ -480,21 +482,29 @@ class _SubscriberFinanceScreenState
                   }),
                   onSubmit: () => _createLoan(data),
                 );
-                if (!wide) {
+                // Each form only when its save is allowed (no form that
+                // the server would refuse after it is filled).
+                final forms = <Widget>[
+                  if (perms.canAction('subscriber.payment')) payment,
+                  if (perms.canAction('subscriber.loan')) loan,
+                ];
+                if (forms.isEmpty) return const SizedBox.shrink();
+                if (!wide || forms.length == 1) {
                   return Column(
                     children: [
-                      payment,
-                      const SizedBox(height: AppTokens.s12),
-                      loan,
+                      for (var i = 0; i < forms.length; i++) ...[
+                        if (i > 0) const SizedBox(height: AppTokens.s12),
+                        forms[i],
+                      ],
                     ],
                   );
                 }
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: payment),
+                    Expanded(child: forms[0]),
                     const SizedBox(width: AppTokens.s12),
-                    Expanded(child: loan),
+                    Expanded(child: forms[1]),
                   ],
                 );
               },
@@ -507,12 +517,17 @@ class _SubscriberFinanceScreenState
             LoansTable(
               items: data.loans,
               currency: data.currency,
-              onSettle: _busy ? null : (loan) => _settleLoan(loan, data),
+              onSettle: _busy || !perms.canAction('subscriber.loan')
+                  ? null
+                  : (loan) => _settleLoan(loan, data),
             ),
             const SizedBox(height: AppTokens.s12),
             PaymentsTable(
               items: data.payments,
-              onVoid: _busy ? null : _voidPayment,
+              // Voiding money = the ledger void, owner / co-owner only.
+              onVoid: !perms.isOwnerLike
+                  ? null
+                  : (_busy ? (_) async {} : _voidPayment),
             ),
             const SizedBox(height: AppTokens.s12),
             LedgerTable(items: data.ledger),

@@ -76,7 +76,10 @@ import '../../features/subscriber_portal/presentation/subscriber_portal_screen.d
 import '../../features/subscribers/presentation/subscriber_360_screen.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
 import '../../features/subscribers/presentation/subscribers_list_screen.dart';
+import '../../features/shell/no_access_screen.dart';
 import '../auth/auth_controller.dart';
+import '../auth/permission_route_gate.dart';
+import '../auth/permissions.dart';
 
 /// Routes stay limited to screens backed by working Flask endpoints. Any form
 /// route listed here is expected to use a real JSON contract.
@@ -91,6 +94,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     providerGrantsProvider,
     (_, __) => gateRefresh.value++,
   );
+  // Permission gate: refuses a screen BEFORE its form opens (never evicts
+  // the screen on display — see PermissionRouteGate).
+  final permGate = PermissionRouteGate();
   return GoRouter(
     initialLocation: '/',
     debugLogDiagnostics: false,
@@ -114,6 +120,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (loggedIn && !atHotspotCardsPortal && !atSubscriberPortal) {
         final gate = _providerGateRedirect(ref, loc);
         if (gate != null) return gate;
+        final denied = permGate.redirect(ref.read(permissionsProvider), loc);
+        if (denied != null) return denied;
       }
       return null;
     },
@@ -560,6 +568,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/account',
             name: 'account',
             builder: (ctx, st) => const AccountScreen(),
+          ),
+          GoRoute(
+            path: '/no-access',
+            name: 'no-access',
+            builder: (ctx, st) => NoAccessScreen(
+              from: st.uri.queryParameters['from'] ?? '',
+            ),
           ),
           // ── Provider-grant gate screens ──
           GoRoute(

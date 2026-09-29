@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -48,7 +49,15 @@ class TicketsListScreen extends ConsumerWidget {
               icon: Icons.add_comment_outlined,
               label: 'تذكرة جديدة',
               primary: true,
-              onPressed: () => _showCreateTicketDialog(context, ref),
+              // web tk_create = settings.edit
+              onPressed: ref.watch(permissionsProvider).can('settings.edit')
+                  ? () => _showCreateTicketDialog(context, ref)
+                  : null,
+              tooltip: ref.watch(permissionsProvider).can('settings.edit')
+                  ? null
+                  : ref
+                      .watch(permissionsProvider)
+                      .deniedReason(perm: 'settings.edit'),
             ),
             ActionItem(
               icon: Icons.playlist_add_check_circle_outlined,

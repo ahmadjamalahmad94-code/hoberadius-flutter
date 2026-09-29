@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -14,6 +16,9 @@ class RolesListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Roles are edited with admins.edit (or by the owner / a co-owner).
+    final canEditRoles =
+        routeAllowed(ref.watch(permissionsProvider), '/roles/new');
     final async = ref.watch(rolesListProvider);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -36,11 +41,12 @@ class RolesListScreen extends ConsumerWidget {
               onPressed: () => ref.invalidate(rolesListProvider),
             ),
             const SizedBox(width: AppTokens.s4),
-            ElevatedButton.icon(
-              onPressed: () => context.goNamed('role-new'),
-              icon: const Icon(Icons.add),
-              label: const Text('دور جديد'),
-            ),
+            if (canEditRoles)
+              ElevatedButton.icon(
+                onPressed: () => context.goNamed('role-new'),
+                icon: const Icon(Icons.add),
+                label: const Text('دور جديد'),
+              ),
           ],
         ),
         const SizedBox(height: AppTokens.s16),
@@ -106,7 +112,7 @@ class RolesListScreen extends ConsumerWidget {
                       Icons.chevron_left,
                       color: AppTokens.textMuted,
                     ),
-                    onTap: r.id == null
+                    onTap: r.id == null || !canEditRoles
                         ? null
                         : () => ctx.goNamed(
                               'role-edit',

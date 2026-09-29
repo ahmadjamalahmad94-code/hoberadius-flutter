@@ -636,7 +636,9 @@ class _RechargeDetailDialog extends StatelessWidget {
                     tone: card.used ? PillTone.amber : PillTone.green,
                   ),
                   title: Text(card.username),
-                  subtitle: Text('كلمة المرور: ${card.password}'),
+                  subtitle: Text(
+                    'كلمة المرور: ${cardPasswordDisplay(card.password)}',
+                  ),
                   trailing: Text(
                     _money(card.walletValue, TenantCurrencyScope.of(context)),
                     style: const TextStyle(fontWeight: FontWeight.w900),

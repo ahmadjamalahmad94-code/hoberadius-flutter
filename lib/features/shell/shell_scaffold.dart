@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/auth/auth_controller.dart';
+import '../../core/auth/permissions.dart';
 import '../../core/format/currency.dart';
 import '../../core/ota/ota_dialogs.dart';
 import '../../core/router/app_page_transitions.dart';
@@ -37,6 +38,23 @@ class ShellScaffold extends ConsumerStatefulWidget {
 
 class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
   DateTime? _lastBackAt;
+  AppLifecycleListener? _lifecycle;
+
+  @override
+  void initState() {
+    super.initState();
+    // Back from the background: the owner may have changed this admin's
+    // grants meanwhile — re-read them (throttled) so the menus follow.
+    _lifecycle = AppLifecycleListener(
+      onResume: () => ref.read(permissionsProvider.notifier).refresh(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,8 +124,8 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
   }
 }
 
-int _indexOfRoute(String location) {
-  return mobileNavIndexForLocation(location);
+int _indexOfRoute(String location, List<AppNavItem> destinations) {
+  return mobileNavIndexForLocation(location, destinations);
 }
 
 class _Mobile extends ConsumerWidget {
@@ -117,11 +135,15 @@ class _Mobile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final location = GoRouterState.of(context).matchedLocation;
-    final idx = _indexOfRoute(location);
+    // Tabs the admin may open (a manager without «المتصلون» has no such tab).
+    final dests = ref.watch(visibleMobileDestinationsProvider);
+    final idx = _indexOfRoute(location, dests);
     return Scaffold(
       // A page outside the bottom tabs (e.g. /notifications) used to show
       // the first tab's title «لوحة التحكم».
-      appBar: _MobileAppBar(title: mobileTitleForLocation(location, idx)),
+      appBar: _MobileAppBar(
+        title: mobileTitleForLocation(location, idx, dests),
+      ),
       body: SafeArea(
         child: _ContentArea(
           padding: const EdgeInsets.all(AppTokens.s12),
@@ -130,8 +152,8 @@ class _Mobile extends ConsumerWidget {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: idx,
-        onDestinationSelected: (i) => _onTap(context, i),
-        destinations: mobileNavDestinations
+        onDestinationSelected: (i) => _onTap(context, dests[i]),
+        destinations: dests
             .map(
               (d) => NavigationDestination(
                 icon: Icon(d.icon),
@@ -802,8 +824,9 @@ class _DesktopTopBar extends ConsumerWidget {
   }
 }
 
-void _onTap(BuildContext context, int i) {
-  context.goNamed(mobileNavDestinations[i].routeName);
+void _onTap(BuildContext context, AppNavItem item) {
+  // mobileNavDestinations filtered by permissions (visibleMobileDestinations).
+  context.goNamed(item.routeName);
 }
 
 /// How long the shell keeps trying to restore a page's scroll offset while

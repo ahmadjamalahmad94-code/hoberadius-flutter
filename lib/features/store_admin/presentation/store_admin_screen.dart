@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -179,7 +180,12 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
               _RequestRow(
                 request: r,
                 busy: _busyId == r.id,
-                actions: true,
+                // store.deposit_approve / store.withdraw_approve (store.review)
+                actions: ref.watch(permissionsProvider).canAction(
+                      widget.isDeposit
+                          ? 'store.deposit_approve'
+                          : 'store.withdraw_approve',
+                    ),
                 onConfirm: () => _confirm(r),
                 onReject: () => _reject(r),
               ),

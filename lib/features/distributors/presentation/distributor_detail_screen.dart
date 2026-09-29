@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -39,6 +40,10 @@ class DistributorDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Assign-batch / settle panels = distributor.manage (the server
+    // refuses both without it).
+    final canManage =
+        ref.watch(permissionsProvider).canAction('distributor.manage');
     final summary = ref.watch(distributorSummaryProvider(distributorId));
     final batches = ref.watch(distributorBatchesProvider(distributorId));
     return summary.when(
@@ -94,14 +99,16 @@ class DistributorDetailScreen extends ConsumerWidget {
                 direction: wide ? Axis.horizontal : Axis.vertical,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: wide ? 360 : double.infinity,
-                    child: _Actions(distributorId: distributorId),
-                  ),
-                  SizedBox(
-                    width: wide ? AppTokens.s16 : 0,
-                    height: wide ? 0 : AppTokens.s12,
-                  ),
+                  if (canManage) ...[
+                    SizedBox(
+                      width: wide ? 360 : double.infinity,
+                      child: _Actions(distributorId: distributorId),
+                    ),
+                    SizedBox(
+                      width: wide ? AppTokens.s16 : 0,
+                      height: wide ? 0 : AppTokens.s12,
+                    ),
+                  ],
                   if (wide)
                     Expanded(child: batchesWidget)
                   else

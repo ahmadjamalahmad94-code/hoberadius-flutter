@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/api/paging.dart';
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -188,6 +189,11 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(subscribersListProvider(_listQuery));
+    final perms = ref.watch(permissionsProvider);
+    // «مشترك جديد» only when the server would SAVE it (users.create + the
+    // action grant + an open section) — never a form refused after filling.
+    final createDenied = subscriberCreateDenial(perms);
+    final atCap = ref.watch(grantLimitProvider('subscribers'))?.atCap ?? false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -223,10 +229,10 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
               primary: true,
               // blocked at the provider's subscriber cap (was the guarded
               // create button; the limit banner below explains it)
-              onPressed:
-                  (ref.watch(grantLimitProvider('subscribers'))?.atCap ?? false)
-                      ? null
-                      : () => context.goNamed('subscriber-new'),
+              onPressed: (atCap || createDenied != null)
+                  ? null
+                  : () => context.goNamed('subscriber-new'),
+              tooltip: createDenied,
             ),
           ],
         ),
@@ -595,4 +601,14 @@ class _RowCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Why «مشترك جديد» is refused for [p] (Arabic), or null when the server
+/// would save a new subscriber.
+String? subscriberCreateDenial(AppPermissions p) {
+  if (!p.can('users.create')) return p.deniedReason(perm: 'users.create');
+  if (!p.canAction('subscriber.create')) {
+    return p.deniedReason(action: 'subscriber.create');
+  }
+  return null;
 }
