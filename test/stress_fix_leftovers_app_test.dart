@@ -9,6 +9,7 @@ import 'package:hoberadius_app/core/api/api_client.dart';
 import 'package:hoberadius_app/core/api/api_endpoint_storage.dart';
 import 'package:hoberadius_app/core/auth/auth_controller.dart';
 import 'package:hoberadius_app/core/auth/token_storage.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/router/pop_on_route_change.dart';
 import 'package:hoberadius_app/features/accounting/domain/accounting_model.dart';
@@ -195,7 +196,10 @@ void main() {
         ],
       });
       expect(t.mixedCurrency, isTrue);
-      expect(formatByCurrency(t.outstandingByCurrency), '30 ILS · 10 USD');
+      expect(
+        stripBidiMarks(formatByCurrency(t.outstandingByCurrency)),
+        '30 ILS · 10 USD',
+      );
     });
 
     test('revenue totals split per currency', () {

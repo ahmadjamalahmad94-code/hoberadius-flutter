@@ -131,10 +131,16 @@ class ApiClient {
 
   static const _loginPath = '/api/admin/login';
 
+  /// [background]: a best-effort read (e.g. the panel time zone after a
+  /// sign-in) whose 401 must not sign the operator out by itself.
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
+    bool background = false,
   }) {
+    if (background) {
+      return _send('GET', path, query: query, background: true);
+    }
     final key = _requestKey(path, query);
     final existing = _inFlightGets[key];
     if (existing != null) return existing;
@@ -179,6 +185,7 @@ class ApiClient {
     Map<String, dynamic>? query,
     Object? body,
     Map<String, String>? headers,
+    bool background = false,
   }) async {
     final idempotent = _isIdempotent(method);
     final isLogin = path == _loginPath;
@@ -247,7 +254,9 @@ class ApiClient {
       try {
         return _parseResponse(res);
       } on ApiException catch (e) {
-        if (e.status == 401 && !isLogin) onUnauthorized?.call(e);
+        if (e.status == 401 && !isLogin && !background) {
+          onUnauthorized?.call(e);
+        }
         rethrow;
       }
     }

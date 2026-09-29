@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -149,7 +150,7 @@ class _AdminsTable extends StatelessWidget {
           ),
           subtitle: Text(
             [
-              '@${a.username}',
+              ltrIsolate('@${a.username}'),
               if (a.email.isNotEmpty) a.email,
               if (role != null) role.label,
               if (a.lastLoginAt != null)

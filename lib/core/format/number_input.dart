@@ -100,7 +100,11 @@ NumberInput readNumberInput(
 }
 
 /// The value of [raw], or null when it is empty or not a valid number.
-num? parseNumberInput(String? raw, {bool decimal = true, bool allowNegative = false}) =>
+num? parseNumberInput(
+  String? raw, {
+  bool decimal = true,
+  bool allowNegative = false,
+}) =>
     readNumberInput(raw, decimal: decimal, allowNegative: allowNegative).value;
 
 /// Double convenience of [parseNumberInput].
@@ -109,7 +113,8 @@ double? parseDecimalInput(String? raw, {bool allowNegative = false}) =>
 
 /// Int convenience of [parseNumberInput] (whole numbers only).
 int? parseIntInput(String? raw, {bool allowNegative = false}) =>
-    parseNumberInput(raw, decimal: false, allowNegative: allowNegative)?.toInt();
+    parseNumberInput(raw, decimal: false, allowNegative: allowNegative)
+        ?.toInt();
 
 String _fmtBound(num v) {
   if (v == v.roundToDouble()) {
@@ -140,7 +145,8 @@ String? validateNumberInput(
   String? emptyMessage,
   String? maxMessage,
 }) {
-  final r = readNumberInput(raw, decimal: decimal, allowNegative: allowNegative);
+  final r =
+      readNumberInput(raw, decimal: decimal, allowNegative: allowNegative);
   if (r.isEmpty) return required ? (emptyMessage ?? 'مطلوب') : null;
   if (r.error != null) return r.error;
   final v = r.value!;

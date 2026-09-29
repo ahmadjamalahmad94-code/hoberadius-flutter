@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -381,7 +382,7 @@ class _WebSidebarState extends State<_WebSidebar> {
                           ),
                           Text(
                             widget.admin!.email.isEmpty
-                                ? '@${widget.admin!.username}'
+                                ? ltrIsolate('@${widget.admin!.username}')
                                 : widget.admin!.email,
                             style: const TextStyle(
                               color: _sidebarMuted,

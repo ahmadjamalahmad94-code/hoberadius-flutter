@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -237,7 +238,7 @@ class _NameCell extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
         ),
         Text(
-          '@${distributor.name}',
+          ltrIsolate('@${distributor.name}'),
           style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
           overflow: TextOverflow.ellipsis,
         ),

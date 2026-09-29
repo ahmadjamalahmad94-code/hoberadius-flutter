@@ -1,3 +1,6 @@
+import 'package:hoberadius_app/shared/widgets/number_text_field.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,8 +17,6 @@ import '../../../core/api/idempotency.dart';
 import '../../../core/format/currency.dart';
 import '../../../core/format/money_limits.dart';
 import '../../cards/data/cards_repository.dart';
-import '../../subscribers/domain/subscriber_actions_model.dart'
-    show parseLocalizedNumber;
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
 import 'distributors_list_screen.dart';
@@ -57,7 +58,7 @@ class DistributorDetailScreen extends ConsumerWidget {
         children: [
           PageHeader(
             title: item.distributor.title,
-            subtitle: '@${item.distributor.name}',
+            subtitle: ltrIsolate('@${item.distributor.name}'),
             inlineActions: true,
             leading: IconButton(
               tooltip: 'كل الموزعين',
@@ -200,6 +201,11 @@ class _ActionsState extends ConsumerState<_Actions> {
   /// default follows the debt: debt > 0 → «خصم من الدين»).
   String? _applyTo;
   bool _busy = false;
+
+  /// Same-click guard: set synchronously, so two or three taps landing in
+  /// the same frame (before `_busy` rebuilds the button) post ONE movement
+  /// (r11 M-1: 3 taps → 3 entries).
+  bool _submitting = false;
   final _idem = IdempotencyKeeper();
 
   @override
@@ -297,9 +303,9 @@ class _ActionsState extends ConsumerState<_Actions> {
                 ],
                 const SizedBox(height: AppTokens.s8),
                 FormFieldPair(
-                  first: TextField(
+                  first: NumberTextField(
                     controller: _amount,
-                    keyboardType: TextInputType.number,
+                    extraError: (v) => validateMoneyAmount(v),
                     decoration: const InputDecoration(labelText: 'المبلغ'),
                   ),
                   second: TextField(
@@ -354,8 +360,10 @@ class _ActionsState extends ConsumerState<_Actions> {
   }
 
   Future<void> _settle() async {
-    final amount = parseLocalizedNumber(_amount.text);
-    final problem = validateMoneyAmount(amount);
+    if (_submitting) return;
+    final read = readNumberInput(_amount.text);
+    final amount = read.value?.toDouble();
+    final problem = read.error ?? validateMoneyAmount(amount);
     if (problem != null) {
       _message(problem);
       return;
@@ -378,6 +386,9 @@ class _ActionsState extends ConsumerState<_Actions> {
       't': applyTo,
       'n': _settleNotes.text.trim(),
     };
+    // One Idempotency-Key per submission: a retry of the same body reuses
+    // it, the server answers the first result instead of a second entry.
+    final key = _idem.keyFor('distributor-settle', body);
     await _run(() async {
       await ref.read(distributorsRepositoryProvider).settle(
             widget.distributorId,
@@ -385,7 +396,7 @@ class _ActionsState extends ConsumerState<_Actions> {
             direction: _direction,
             applyTo: applyTo,
             notes: _settleNotes.text.trim(),
-            idempotencyKey: _idem.keyFor('distributor-settle', body),
+            idempotencyKey: key,
           );
       _idem.reset();
       _amount.clear();
@@ -396,6 +407,8 @@ class _ActionsState extends ConsumerState<_Actions> {
   }
 
   Future<void> _run(Future<void> Function() action) async {
+    if (_submitting) return;
+    _submitting = true;
     setState(() => _busy = true);
     try {
       await action();
@@ -405,6 +418,7 @@ class _ActionsState extends ConsumerState<_Actions> {
     } catch (e) {
       _message(visibleErrorWithRetryHint(e));
     } finally {
+      _submitting = false;
       if (mounted) setState(() => _busy = false);
     }
   }

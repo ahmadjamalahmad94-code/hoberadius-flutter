@@ -170,10 +170,14 @@ void main() {
       final summer = parseServerDateTime('2026-07-01T12:30:00Z')!;
       expect([summer.hour, summer.minute], [15, 30]);
       // A time picked on the panel clock is sent as the right UTC instant.
-      expect(toServerUtcIso(DateTime(2027, 1, 15, 14, 30)),
-          '2027-01-15T12:30:00Z');
-      expect(toServerUtcIso(DateTime(2026, 7, 1, 15, 30)),
-          '2026-07-01T12:30:00Z');
+      expect(
+        toServerUtcIso(DateTime(2027, 1, 15, 14, 30)),
+        '2027-01-15T12:30:00Z',
+      );
+      expect(
+        toServerUtcIso(DateTime(2026, 7, 1, 15, 30)),
+        '2026-07-01T12:30:00Z',
+      );
     });
 
     test('the late-October switch changes the offset', () {

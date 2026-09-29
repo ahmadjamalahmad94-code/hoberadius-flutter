@@ -10,7 +10,11 @@ import '../../../core/api/paging.dart';
 import '../../../core/format/money_limits.dart';
 
 export '../../../core/format/money_limits.dart'
-    show kMaxMoneyAmount, validateMoneyAmount;
+    show
+        kMaxMoneyAmount,
+        kMaxMoneyAmountLabel,
+        validateExtendSpan,
+        validateMoneyAmount;
 import '../domain/accounting_model.dart';
 
 /// The UI slug of each financial report → the `report_type` the snapshot
@@ -158,12 +162,39 @@ class AccountingRepository {
     bool priceFromDays = false,
     bool applyToRadius = false,
     String? idempotencyKey,
+  }) async =>
+      (await createLoanWithOutcome(
+        username: username,
+        hours: hours,
+        days: days,
+        amount: amount,
+        currency: currency,
+        reason: reason,
+        priceFromDays: priceFromDays,
+        applyToRadius: applyToRadius,
+        idempotencyKey: idempotencyKey,
+      ))
+          .loan;
+
+  /// [createLoan] with the server's full answer: the loan as recorded (its
+  /// amount computed by the server for `price_from_days`), or a 202
+  /// «بانتظار موافقة المالك» with no loan yet.
+  Future<LoanCreateOutcome> createLoanWithOutcome({
+    required String username,
+    int hours = 0,
+    int days = 0,
+    num amount = 0,
+    String? currency,
+    String reason = '',
+    bool priceFromDays = false,
+    bool applyToRadius = false,
+    String? idempotencyKey,
   }) async {
     if (amount < 0 || amount > kMaxMoneyAmount || !amount.isFinite) {
       throw ApiException(
         code: 'validation_error',
         message:
-            'قيمة السلفة غير صحيحة (0 إلى ${kMaxMoneyAmount.toStringAsFixed(0)}).',
+            'قيمة السلفة غير صحيحة (0 إلى $kMaxMoneyAmountLabel).',
       );
     }
     final res = await _api.post(
@@ -181,7 +212,12 @@ class AccountingRepository {
         'dry_run': false,
       },
     );
-    return LoanEntry.fromJson(_object(res, 'loan'));
+    final data = res['data'] is Map ? res['data'] as Map : const {};
+    return LoanCreateOutcome(
+      loan: LoanEntry.fromJson(_object(res, 'loan')),
+      pendingApproval: data['pending_approval'] == true,
+      message: '${data['message'] ?? ''}'.trim(),
+    );
   }
 
   /// Settles [amount] of the loan (partial settles keep the rest open on
@@ -316,6 +352,24 @@ List<Map<String, dynamic>> _items(Map<String, dynamic> res) {
       .whereType<Map>()
       .map((item) => item.map((key, value) => MapEntry(key.toString(), value)))
       .toList();
+}
+
+/// What POST /loans answered.
+class LoanCreateOutcome {
+  const LoanCreateOutcome({
+    required this.loan,
+    this.pendingApproval = false,
+    this.message = '',
+  });
+
+  /// The recorded loan (id 0 when it waits for approval).
+  final LoanEntry loan;
+
+  /// 202: the owner must approve it first — nothing was recorded yet.
+  final bool pendingApproval;
+
+  /// The server's Arabic message ('' on older servers).
+  final String message;
 }
 
 Map<String, dynamic> _object(Map<String, dynamic> res, String key) {

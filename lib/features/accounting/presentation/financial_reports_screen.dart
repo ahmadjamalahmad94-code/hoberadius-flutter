@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -395,7 +396,7 @@ class _SnapshotStrip extends StatelessWidget {
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: Text(
-                      '#${item['id']} · ${item['created_at'] ?? ''}',
+                      '#${item['id']} · ${formatReportTimestamp(item['created_at'])}',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -417,8 +418,23 @@ class _SnapshotStrip extends StatelessWidget {
   }
 }
 
+final RegExp _isoStamp = RegExp(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}');
+
+/// A server timestamp as the panel shows it («2026-09-29 03:01»), never the
+/// raw UTC ISO (`2026-09-29T00:01:08.532034Z`, 3 h off the operator clock).
+String formatReportTimestamp(Object? value) {
+  final text = '${value ?? ''}'.trim();
+  if (text.isEmpty) return '—';
+  final t = parseServerDateTime(text);
+  if (t == null) return text;
+  return DateFormat('yyyy-MM-dd HH:mm').format(t);
+}
+
 String _cell(Object? value) {
   if (value == null || value.toString().isEmpty) return '—';
+  if (value is String && _isoStamp.hasMatch(value.trim())) {
+    return formatReportTimestamp(value);
+  }
   // Amounts: grouped, 2 decimals, no float noise (117.58999999999999).
   if (value is double) {
     if (!value.isFinite) return '—';
@@ -455,6 +471,12 @@ const _columnLabels = {
   'open_count': 'المفتوحة',
   'open_total': 'إجمالي المفتوح',
   'owed': 'المستحق',
+  'outstanding': 'المتبقّي',
+  'settled_amount': 'المسدَّد',
+  'paid_to_debt': 'سداد الدين',
+  'paid_to_balance': 'إضافة للرصيد',
+  'created_at': 'التاريخ',
+  'first_entry_at': 'أول قيد',
   'owed_count': 'عدد المستحق',
   'credits': 'دائن',
   'debits': 'مدين',
@@ -463,13 +485,17 @@ const _columnLabels = {
   'balance': 'الرصيد',
   'credit_limit': 'حد الائتمان',
   'sessions': 'الجلسات',
-  'bytes_in': 'التحميل',
-  'bytes_out': 'الرفع',
+  // RFC 2866: input octets = the user's UPLOAD, output = DOWNLOAD.
+  'bytes_in': 'الرفع',
+  'bytes_out': 'التنزيل',
   'last_entry_at': 'آخر قيد',
   'source': 'المصدر',
 };
 
-String _label(String key) => _columnLabels[key] ?? key;
+String _label(String key) => financialReportColumnLabel(key);
+
+/// Arabic header of a financial-report column (raw key only if unknown).
+String financialReportColumnLabel(String key) => _columnLabels[key] ?? key;
 
 /// Known columns keep the order of [_columnLabels] (period / name first,
 /// then counts and money); unknown keys follow alphabetically.

@@ -36,6 +36,13 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
   String _status = '';
   String _sourceType = '';
 
+  /// The page as the stats should read it: the whole server page (with its
+  /// totals) when no filter is set, else only the visible rows.
+  RevenuePage _statsPage(RevenuePage page, List<RevenueRecord> filtered) =>
+      _status.isEmpty && _sourceType.isEmpty
+          ? page
+          : RevenuePage(items: filtered, count: filtered.length);
+
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_revenueProvider);
@@ -100,15 +107,15 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
                 else ...[
                   _RevenueStatsGrid(
                     // Unfiltered: the server's totals of ALL payments (not
-                    // only the loaded rows), split per currency if mixed.
-                    summary: _sourceType.isEmpty
-                        ? page.summary
-                        : RevenueSummary.fromItems(filtered),
+                    // only the loaded rows), one figure per currency, voided
+                    // rows excluded. A filter shows the visible rows only.
+                    collected: _statsPage(page, filtered).collectedPerCurrency,
+                    netProfit: _statsPage(page, filtered).netProfitPerCurrency,
+                    companyShare:
+                        _statsPage(page, filtered).companySharePerCurrency,
+                    partial: _sourceType.isNotEmpty || _status.isNotEmpty,
                     visibleCount: filtered.length,
                     totalCount: page.count,
-                    byCurrency: _sourceType.isEmpty && page.mixedCurrency
-                        ? page.collectedByCurrency
-                        : const [],
                   ),
                   const SizedBox(height: AppTokens.s12),
                   LayoutBuilder(
@@ -206,16 +213,20 @@ class _RevenueFilters extends StatelessWidget {
 
 class _RevenueStatsGrid extends StatelessWidget {
   const _RevenueStatsGrid({
-    required this.summary,
+    required this.collected,
+    required this.netProfit,
+    required this.companyShare,
     required this.visibleCount,
     required this.totalCount,
-    this.byCurrency = const [],
+    this.partial = false,
   });
 
-  final RevenueSummary summary;
+  final List<CurrencyAmount> collected;
+  final List<CurrencyAmount> netProfit;
+  final List<CurrencyAmount> companyShare;
 
-  /// Non-empty when the tenant mixes currencies (shown instead of a sum).
-  final List<CurrencyAmount> byCurrency;
+  /// A filter is on: the figures cover the visible rows only.
+  final bool partial;
   final int visibleCount;
   final int totalCount;
 
@@ -227,20 +238,18 @@ class _RevenueStatsGrid extends StatelessWidget {
           columns: constraints.maxWidth < 720 ? 2 : 4,
           items: [
             CountItem.text(
-              'إجمالي المحصل',
-              byCurrency.length > 1
-                  ? formatByCurrency(byCurrency)
-                  : _money(summary.totalCollected),
+              partial ? 'المحصل (المعروض)' : 'إجمالي المحصل',
+              formatCurrencyList(collected),
               tone: PillTone.green,
             ),
             CountItem.text(
-              'الربح الصافي',
-              _money(summary.totalNetProfit),
+              partial ? 'الربح الصافي (المعروض)' : 'الربح الصافي',
+              formatCurrencyList(netProfit),
               tone: PillTone.amber,
             ),
             CountItem.text(
-              'حصة الشركة',
-              _money(summary.totalCompanyShare),
+              partial ? 'حصة الشركة (المعروض)' : 'حصة الشركة',
+              formatCurrencyList(companyShare),
               tone: PillTone.brand,
             ),
             CountItem.text(

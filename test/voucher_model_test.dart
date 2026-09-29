@@ -52,7 +52,7 @@ void main() {
       'amount': 7.5,
       'count': 20,
       'plan_id': 4,
-      'expire_at': '2026-06-30T23:59:59.000Z',
+      'expire_at': '2026-06-30T23:59:59Z',
     });
 
     const withoutPlan = VoucherGenerateDraft(

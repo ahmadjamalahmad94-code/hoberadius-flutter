@@ -1,3 +1,4 @@
+import '../../../core/auth/auth_controller.dart' show applyPanelTimeZoneFromSettings;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -10,7 +11,10 @@ class AdminControlRepository {
 
   Future<SettingsSnapshot> settings() async {
     final res = await _api.get('/api/v1/settings');
-    return SettingsSnapshot.fromJson(_data(res));
+    final data = _data(res);
+    // The panel time zone may change in settings: follow it.
+    applyPanelTimeZoneFromSettings(data);
+    return SettingsSnapshot.fromJson(data);
   }
 
   Future<void> updateSetting(String key, String value) async {

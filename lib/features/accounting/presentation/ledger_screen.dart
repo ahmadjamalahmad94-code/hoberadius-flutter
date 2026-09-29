@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -197,17 +198,7 @@ String _fmt(DateTime? value) {
   return DateFormat('yyyy-MM-dd').format(value);
 }
 
-String _ledgerTypeLabel(String value) {
-  return switch (value.trim().toLowerCase()) {
-    'payment' => 'دفعة',
-    'loan' => 'سلفة',
-    'settlement' => 'تسوية',
-    'void' => 'قيد عكسي',
-    'adjustment' => 'تعديل مالي',
-    '' => 'غير محدد',
-    _ => 'نوع غير معروف',
-  };
-}
+String _ledgerTypeLabel(String value) => ledgerTypeLabel(value);
 
 String _ledgerStatusLabel(String value) {
   return switch (value.trim().toLowerCase()) {

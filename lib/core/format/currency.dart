@@ -9,6 +9,7 @@
 /// reach Riverpod.
 library;
 
+import 'bidi.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -120,9 +121,21 @@ List<CurrencyAmount> parseByCurrency(
   return out;
 }
 
-/// «1,200 ILS · 30 USD» for a mixed-currency total.
-String formatByCurrency(List<CurrencyAmount> parts) =>
-    parts.map((p) => formatWithCurrency(p.amount, p.currency)).join(' · ');
+/// «1,200 ILS · 30 USD» for a mixed-currency total. Each «amount CUR» is an
+/// LTR isolate so RTL text does not scramble the order (r09 N7: «ILS ·
+/// 426.31 USD · 420.10 EUR 5,905.48»).
+String formatByCurrency(List<CurrencyAmount> parts) => parts
+    .map((p) => ltrIsolate(formatWithCurrency(p.amount, p.currency)))
+    .join(' · ');
+
+/// One currency → «1,200 ILS»; several → [formatByCurrency]; none → «0».
+String formatCurrencyList(List<CurrencyAmount> parts, {String fallback = ''}) {
+  if (parts.isEmpty) return ltrIsolate(formatWithCurrency(0, fallback));
+  if (parts.length == 1) {
+    return ltrIsolate(formatWithCurrency(parts.single.amount, parts.single.currency));
+  }
+  return formatByCurrency(parts);
+}
 
 /// `system.currency` from /api/admin/me (or the login answer), written by
 /// the auth controller at session restore — available before the settings

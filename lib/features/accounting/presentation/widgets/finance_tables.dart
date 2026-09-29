@@ -4,8 +4,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/status_pill.dart';
+import '../../../../core/l10n/arabic_labels.dart';
 import '../../../subscribers/domain/subscriber_actions_model.dart'
-    show formatMoney;
+    show arDuration, formatMoney;
 import '../../domain/accounting_model.dart';
 
 /// Width under which the finance tables turn into stacked rows: on phones
@@ -22,8 +23,9 @@ class PaymentsTable extends StatelessWidget {
   final List<PaymentTransaction> items;
   final Future<void> Function(PaymentTransaction payment)? onVoid;
 
+  // A voided row already carries the «معكوسة» pill — no second label.
   Widget _voidCell(PaymentTransaction p) => p.status == 'voided'
-      ? const Text('معكوسة')
+      ? const SizedBox.shrink()
       : TextButton.icon(
           onPressed: onVoid == null ? null : () => onVoid!(p),
           icon: const Icon(Icons.undo, size: 18),
@@ -54,7 +56,7 @@ class PaymentsTable extends StatelessWidget {
                   _StackedRow(
                     title: '#${p.id} · ${_money(p.amount, p.currency)}',
                     subtitle:
-                        '${p.earnedMinutes} دقيقة · ${formatFinanceDate(p.createdAt)}',
+                        '${arDuration(p.earnedMinutes)} · ${formatFinanceDate(p.createdAt)}',
                     pill: StatusPill(
                       text: _accountingStatusLabel(p.status),
                       tone: _accountingStatusTone(p.status),
@@ -80,7 +82,7 @@ class PaymentsTable extends StatelessWidget {
                             cells: [
                               DataCell(Text('${p.id}')),
                               DataCell(Text(_money(p.amount, p.currency))),
-                              DataCell(Text('${p.earnedMinutes} دقيقة')),
+                              DataCell(Text(arDuration(p.earnedMinutes))),
                               DataCell(
                                 StatusPill(
                                   text: _accountingStatusLabel(p.status),
@@ -200,7 +202,7 @@ class LoansTable extends StatelessWidget {
                 loan.outstanding < loan.amount;
             return ListTile(
               title: Text(
-                '#${loan.id} · ${loan.durationMinutes} دقيقة • ${_money(loan.amount, cur)}',
+                '#${loan.id} · ${arDuration(loan.durationMinutes)} • ${_money(loan.amount, cur)}',
               ),
               subtitle: Text(
                 [
@@ -214,9 +216,11 @@ class LoansTable extends StatelessWidget {
                           onSettle == null ? null : () => onSettle!(loan),
                       child: const Text('تسوية'),
                     )
-                  : const StatusPill(
-                      text: 'تمت التسوية',
-                      tone: PillTone.neutral,
+                  : StatusPill(
+                      text: loanClosedLabel(loan.status),
+                      tone: loan.status == 'settled'
+                          ? PillTone.green
+                          : PillTone.neutral,
                     ),
             );
           }),
@@ -426,25 +430,15 @@ String _accountingStatusLabel(String value) {
   };
 }
 
-String _ledgerTypeLabel(String value) {
-  return switch (value.trim().toLowerCase()) {
-    'payment' => 'دفعة',
-    'loan' => 'سلفة',
-    'settlement' => 'تسوية',
-    'void' => 'قيد عكسي',
-    'adjustment' => 'تعديل مالي',
-    '' => 'غير محدد',
-    _ => 'نوع غير معروف',
-  };
-}
+/// Closed-loan pill: a forgiven/written-off loan is `voided` on the server —
+/// it was NOT paid, so it must never read «تمت التسوية».
+String loanClosedLabel(String status) => switch (status.trim().toLowerCase()) {
+      'settled' => 'تمت التسوية',
+      'voided' || 'forgiven' || 'writeoff' => 'مسامحة / ملغاة',
+      'pending' => 'بانتظار الموافقة',
+      _ => 'مغلقة',
+    };
 
-String _ledgerSourceLabel(String value) {
-  return switch (value.trim().toLowerCase()) {
-    'payment' => 'دفعة',
-    'loan' => 'سلفة',
-    'settlement' => 'تسوية',
-    'void' => 'قيد عكسي',
-    '' => '—',
-    _ => 'مصدر آخر',
-  };
-}
+String _ledgerTypeLabel(String value) => ledgerTypeLabel(value);
+
+String _ledgerSourceLabel(String value) => ledgerSourceLabel(value);

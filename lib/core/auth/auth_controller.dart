@@ -169,7 +169,9 @@ class AuthController extends StateNotifier<AuthState> {
   Future<void> _loadPanelTimeZone(Map<String, dynamic> data) async {
     if (applyPanelTimeZoneFrom(data)) return;
     try {
-      final res = await _ref.read(apiClientProvider).get('/api/v1/settings');
+      final res = await _ref
+          .read(apiClientProvider)
+          .get('/api/v1/settings', background: true);
       final d = res['data'];
       if (d is Map<String, dynamic>) applyPanelTimeZoneFromSettings(d);
     } catch (_) {/* keep the phone's zone */}
