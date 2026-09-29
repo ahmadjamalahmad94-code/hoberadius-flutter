@@ -6,6 +6,12 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hoberadius_app/features/cards/data/cards_repository.dart';
+import 'package:hoberadius_app/features/cards/presentation/card_batch_form_screen.dart';
+import 'package:hoberadius_app/features/plans/data/plans_repository.dart';
+import 'package:hoberadius_app/shared/widgets/form_field_row.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/features/accounting/presentation/financial_reports_screen.dart';
 import 'package:hoberadius_app/core/format/money_limits.dart';
@@ -718,6 +724,308 @@ void main() {
       expect(key.currentState!.validate(), isFalse);
       await tester.pump();
       expect(find.text('القيم السالبة غير مسموحة.'), findsOneWidget);
+    });
+  });
+
+  group('8 — «توليد دفعة كروت»: plan picker + generate dialog', () {
+    Map<String, dynamic> plan(
+      int id,
+      String name, {
+      bool enabled = true,
+      Map<String, dynamic>? meta,
+    }) =>
+        {
+          'id': id,
+          'name': name,
+          'enabled': enabled,
+          'price': 7,
+          'price_card': 5,
+          'currency': 'ILS',
+          'validity_days': 30,
+          if (meta != null) 'metadata': meta,
+        };
+
+    Map<String, dynamic> batchJson() => {
+          'id': 77,
+          'batch_code': 'B-000077',
+          'package_name': 'دفعة الاختبار',
+          'generated': 10,
+        };
+
+    late bool plansFail;
+    late FakeResponse Function(RecordedRequest r) onGenerate;
+
+    RecordingAdapter formServer() {
+      plansFail = false;
+      onGenerate = (_) => FakeResponse.ok({
+            'batch': batchJson(),
+            'cards': <dynamic>[],
+          });
+      return RecordingAdapter((r) {
+        if (r.path.endsWith('/profiles')) {
+          if (plansFail) return FakeResponse.error(500, 'internal', 'x');
+          return FakeResponse.ok({
+            'items': [
+              plan(1, 'Gold 1H'),
+              plan(2, 'Off plan', enabled: false),
+              plan(3, 'Old plan', meta: {'archived': true}),
+            ],
+          });
+        }
+        if (r.path.endsWith('/cards/generate')) return onGenerate(r);
+        return FakeResponse.ok({'items': <dynamic>[]});
+      });
+    }
+
+    Future<void> settle(WidgetTester tester, [int n = 8]) async {
+      for (var i = 0; i < n; i++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+    }
+
+    Future<void> pumpForm(WidgetTester tester, RecordingAdapter adapter) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = const Size(900, 2600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final router = GoRouter(
+        initialLocation: '/cards/new',
+        routes: [
+          GoRoute(
+            path: '/cards',
+            name: 'cards',
+            builder: (_, __) => const Text('BATCHES'),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'card-batch-new',
+                builder: (_, __) => const Scaffold(
+                  body: SingleChildScrollView(child: CardBatchFormScreen()),
+                ),
+              ),
+              GoRoute(
+                path: 'batches/:id',
+                name: 'card-batch-detail',
+                builder: (_, st) => Text('DETAIL ${st.pathParameters['id']}'),
+              ),
+              GoRoute(
+                path: 'batches/:id/print',
+                name: 'card-batch-print',
+                builder: (_, st) => Text('PRINT ${st.pathParameters['id']}'),
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            plansRepositoryProvider
+                .overrideWithValue(PlansRepository(fakeApiClient(adapter))),
+            cardsRepositoryProvider
+                .overrideWithValue(CardsRepository(fakeApiClient(adapter))),
+            tenantCurrencyProvider.overrideWith((ref) => 'ILS'),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await settle(tester);
+    }
+
+    /// The label of a FormFieldRow (a Text.rich with «*»/hint on phones).
+    Finder label(String text) => find.byWidgetPredicate(
+          (w) => w is RichText && w.text.toPlainText().startsWith(text),
+        );
+
+    Finder fieldOf(String text) => find.descendant(
+          of: find
+              .ancestor(of: label(text), matching: find.byType(FormFieldRow))
+              .first,
+          matching: find.byType(TextField),
+        );
+
+    TextField fieldAfter(WidgetTester tester, String text) {
+      final row = find.ancestor(
+        of: label(text),
+        matching: find.byType(FormFieldRow),
+      );
+      return tester.widget<TextField>(
+        find.descendant(of: row.first, matching: find.byType(TextField)),
+      );
+    }
+
+    Future<void> pickGold(WidgetTester tester) async {
+      await tester.tap(find.byType(DropdownButtonFormField<int>).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.textContaining('Gold 1H').last);
+      await tester.pumpAndSettle();
+    }
+
+    test('price × count, Arabic digits read', () {
+      expect(batchTotalPrice('5', '10'), '50');
+      expect(batchTotalPrice('٥', '٣'), '15');
+      expect(batchTotalPrice('2.5', '3'), '7.5');
+      expect(batchTotalPrice('x', '3'), isNull);
+      expect(formatBatchNumber(1.25), '1.25');
+    });
+
+    test('server 4xx → the field it concerns', () {
+      ApiException e(String m, [Object? d]) =>
+          ApiException(code: 'validation_error', message: m, details: d);
+      expect(generateErrorField(e('الباقة رقم 9 غير موجودة.')), 'plan');
+      expect(
+        generateErrorField(e('x', {'field': 'count'})),
+        'count',
+      );
+      expect(
+        generateErrorField(e('الحدّ الأعلى 5000 بطاقة في الدفعة الواحدة.')),
+        'count',
+      );
+      expect(generateErrorField(e('الخادم مشغول')), isNull);
+      // the backend's 422 for a length too short for prefix/suffix/batch no.
+      expect(
+        generateErrorField(
+          e('طول اسم المستخدم المختار 4 محارف لا يتّسع: الأجزاء الثابتة '
+              '(بادئة + رقم الحزمة + لاحقة) 5 محارف.'),
+        ),
+        'username_length',
+      );
+    });
+
+    testWidgets('only active plans; picking one fills the price and total',
+        (tester) async {
+      await pumpForm(tester, formServer());
+      expect(find.text('معرّف الباقة'), findsNothing);
+      await tester.tap(find.byType(DropdownButtonFormField<int>).first);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Gold 1H'), findsWidgets);
+      expect(find.textContaining('5 ILS · صلاحية 30 يوم'), findsWidgets);
+      expect(find.textContaining('Off plan'), findsNothing);
+      expect(find.textContaining('Old plan'), findsNothing);
+      await tester.tap(find.textContaining('Gold 1H').last);
+      await tester.pumpAndSettle();
+      expect(fieldAfter(tester, 'سعر البطاقة').controller!.text, '5');
+      expect(fieldAfter(tester, 'السعر الإجمالي').controller!.text, '50');
+      // Arabic digits in the count
+      await tester.enterText(
+        fieldOf('العدد'),
+        '٣',
+      );
+      await tester.pump();
+      expect(fieldAfter(tester, 'السعر الإجمالي').controller!.text, '15');
+    });
+
+    testWidgets('a failed plan list says so and «إعادة المحاولة» reloads',
+        (tester) async {
+      final adapter = formServer();
+      plansFail = true;
+      await pumpForm(tester, adapter);
+      expect(find.textContaining('تعذّر تحميل الباقات'), findsOneWidget);
+      expect(find.text('معرّف الباقة (يدوي)'), findsNothing);
+      plansFail = false;
+      await tester.tap(find.text('إعادة المحاولة'));
+      await settle(tester);
+      expect(find.text('اختر الباقة'), findsOneWidget);
+      expect(adapter.where('GET', '/profiles'), hasLength(2));
+    });
+
+    testWidgets('progress → success; «طباعة / تصدير» opens the print route',
+        (tester) async {
+      final adapter = formServer();
+      await pumpForm(tester, adapter);
+      await pickGold(tester);
+      final gate = Completer<void>();
+      adapter.beforeRespond = (r) async {
+        if (r.path.endsWith('/cards/generate')) await gate.future;
+      };
+      await tester.tap(find.text('توليد'));
+      await settle(tester, 4);
+      expect(find.text('جاري توليد 10 بطاقة…'), findsOneWidget);
+      gate.complete();
+      await settle(tester);
+      expect(find.text('تم توليد 10 بطاقة'), findsOneWidget);
+      expect(find.textContaining('B-000077'), findsOneWidget);
+      expect(find.text('عرض الحزمة'), findsOneWidget);
+      expect(find.text('رجوع للحزم'), findsOneWidget);
+      await tester.tap(find.text('طباعة / تصدير'));
+      await settle(tester);
+      expect(find.text('PRINT 77'), findsOneWidget);
+    });
+
+    for (final (button, target) in [
+      ('عرض الحزمة', 'DETAIL 77'),
+      ('رجوع للحزم', 'BATCHES'),
+    ]) {
+      testWidgets('«$button» → $target', (tester) async {
+        await pumpForm(tester, formServer());
+        await pickGold(tester);
+        await tester.tap(find.text('توليد'));
+        await settle(tester);
+        await tester.tap(find.text(button));
+        await settle(tester);
+        expect(find.text(target), findsOneWidget);
+      });
+    }
+
+    testWidgets('error → «إعادة المحاولة» resends with the SAME key and body',
+        (tester) async {
+      final adapter = formServer();
+      var calls = 0;
+      await pumpForm(tester, adapter);
+      await pickGold(tester);
+      onGenerate = (_) {
+        calls++;
+        if (calls == 1) {
+          return FakeResponse.error(
+            503,
+            'busy',
+            'الخادم مشغول، حاول بعد قليل.',
+          );
+        }
+        return FakeResponse.ok({'batch': batchJson(), 'cards': <dynamic>[]});
+      };
+      await tester.tap(find.text('توليد'));
+      await settle(tester);
+      expect(find.text('تعذّر توليد الكروت'), findsOneWidget);
+      await tester.tap(find.text('إعادة المحاولة'));
+      await settle(tester);
+      final posts = adapter.where('POST', '/cards/generate').toList();
+      expect(posts, hasLength(2));
+      expect(
+        posts[1].headers['Idempotency-Key'],
+        posts[0].headers['Idempotency-Key'],
+      );
+      expect(posts[0].headers['Idempotency-Key'], isNotNull);
+      expect(jsonEncode(posts[1].body), jsonEncode(posts[0].body));
+      expect(find.text('تم توليد 10 بطاقة'), findsOneWidget);
+    });
+
+    testWidgets('closing an error keeps the form and shows it at the field',
+        (tester) async {
+      final adapter = formServer();
+      await pumpForm(tester, adapter);
+      await pickGold(tester);
+      onGenerate = (_) => FakeResponse.error(
+            422,
+            'validation_error',
+            'الباقة رقم 1 غير موجودة.',
+          );
+      await tester.enterText(
+        fieldOf('اسم باقة الكروت'),
+        'دفعتي',
+      );
+      await tester.tap(find.text('توليد'));
+      await settle(tester);
+      await tester.tap(find.text('إغلاق'));
+      await settle(tester);
+      expect(find.text('تعذّر توليد الكروت'), findsNothing);
+      expect(find.text('الباقة رقم 1 غير موجودة.'), findsOneWidget);
+      expect(fieldAfter(tester, 'اسم باقة الكروت').controller!.text, 'دفعتي');
+      // no inline card list under the form any more
+      expect(find.textContaining('كلمة المرور: '), findsNothing);
     });
   });
 }

@@ -19,6 +19,7 @@ class CardNumberField extends StatelessWidget {
     this.check,
     this.decoration,
     this.onChanged,
+    this.serverError,
   });
 
   /// A money field: decimals allowed, at most [kMaxMoneyAmount].
@@ -29,6 +30,7 @@ class CardNumberField extends StatelessWidget {
     this.emptyMessage,
     this.decoration,
     this.onChanged,
+    this.serverError,
   })  : decimal = true,
         min = null,
         max = kMaxMoneyAmount,
@@ -46,6 +48,9 @@ class CardNumberField extends StatelessWidget {
   final InputDecoration? decoration;
   final ValueChanged<String>? onChanged;
 
+  /// The server's Arabic message about this field (4xx), shown under it.
+  final String? serverError;
+
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -53,7 +58,8 @@ class CardNumberField extends StatelessWidget {
       keyboardType: decimal ? decimalKeyboard : integerKeyboard,
       inputFormatters: numberFieldFormatters,
       autovalidateMode: AutovalidateMode.onUserInteraction,
-      decoration: decoration ?? const InputDecoration(),
+      decoration: (decoration ?? const InputDecoration())
+          .copyWith(errorText: serverError),
       onChanged: onChanged,
       validator: (v) => validateCardNumber(
         v,

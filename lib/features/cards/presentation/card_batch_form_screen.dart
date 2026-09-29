@@ -1,27 +1,25 @@
 // ignore_for_file: require_trailing_commas, deprecated_member_use
 
-import 'dart:convert';
-import 'dart:typed_data';
-
-import 'package:csv/csv.dart';
-import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/idempotency.dart';
+import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/format/number_input.dart';
-import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
-import '../../../shared/widgets/hub_layout.dart';
+import '../../admin_control/application/admin_control_providers.dart';
+import '../../plans/domain/plan_model.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
 import '../domain/username_preview.dart';
 import '../application/cards_list_providers.dart';
+import 'widgets/card_generate_dialog.dart';
 import 'widgets/card_number_field.dart';
+import 'widgets/card_plan_picker.dart';
 import 'widgets/cards_form_header.dart';
 
 class CardBatchFormScreen extends ConsumerStatefulWidget {
@@ -35,7 +33,6 @@ class CardBatchFormScreen extends ConsumerStatefulWidget {
 class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _packageName = TextEditingController();
-  final _plan = TextEditingController();
   final _count = TextEditingController(text: '10');
   final _pricePerCard = TextEditingController(text: '0');
   final _totalPrice = TextEditingController(text: '0');
@@ -63,8 +60,19 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   int _devices = 0;
 
   bool _loading = false;
+
+  /// A server error that names no field (the general error box).
   String? _error;
-  GenerateResult? _result;
+
+  /// Server errors next to the field they concern ('plan', 'count',
+  /// 'username_length').
+  Map<String, String> _fieldErrors = const {};
+
+  /// The picked plan (required; was a raw «معرّف الباقة» number).
+  Plan? _planPick;
+
+  /// «السعر الإجمالي» follows price × count until the operator types it.
+  bool _totalEdited = false;
 
   /// One Idempotency-Key per «توليد» submission; the same request sent again
   /// (retry after «الخادم مشغول» / a lost answer) returns the same batch.
@@ -78,6 +86,24 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     for (final c in [_prefix, _suffix, _ulen, _count]) {
       c.addListener(_refreshPreview);
     }
+    _pricePerCard.addListener(_recomputeTotal);
+    _count.addListener(_recomputeTotal);
+  }
+
+  /// price × count into «السعر الإجمالي» (Arabic digits read too) until
+  /// the operator edits the total by hand.
+  void _recomputeTotal() {
+    if (_totalEdited) return;
+    final total = batchTotalPrice(_pricePerCard.text, _count.text);
+    if (total != null && _totalPrice.text != total) _totalPrice.text = total;
+  }
+
+  void _pickPlan(Plan p) {
+    setState(() {
+      _planPick = p;
+      _fieldErrors = {..._fieldErrors}..remove('plan');
+    });
+    _pricePerCard.text = formatBatchNumber(planCardPrice(p));
   }
 
   void _refreshPreview() {
@@ -104,7 +130,6 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   void dispose() {
     for (final c in [
       _packageName,
-      _plan,
       _count,
       _pricePerCard,
       _totalPrice,
@@ -154,7 +179,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     if (count > kConfirmCardsAbove && !await _confirmLargeBatch(count)) return;
     if (!mounted) return;
     final req = GenerateBatchRequest(
-      planId: parseIntInput(_plan.text)!,
+      planId: _planPick!.id!,
       count: count,
       packageName: _packageName.text.trim(),
       usernamePrefix: normalizeCardAffix(_prefix.text),
@@ -173,49 +198,70 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       serviceName: _serviceName.text.trim(),
       notes: _notes.text.trim(),
     );
+    final repo = ref.read(cardsRepositoryProvider);
+    final router = GoRouter.maybeOf(context);
+    // The same body keeps the same key: «إعادة المحاولة» (and a second
+    // «توليد» after closing an error) replays, never a second batch.
+    final key = _idem.keyFor('cards/generate', req.toBody());
     setState(() {
       _loading = true;
       _error = null;
-      _result = null;
+      _fieldErrors = const {};
     });
     try {
-      final r = await ref.read(cardsRepositoryProvider).generate(
-            req,
-            idempotencyKey: _idem.keyFor('cards/generate', req.toBody()),
-          );
-      _idem.reset();
-      if (!mounted) return;
-      setState(() => _result = r);
-      ref.invalidate(batchesListProvider);
-      // The next batch number moved on — refresh the preview's estimate.
-      _nextBatchId = null;
-      if (_includeBatchNumber) _loadNextBatchId();
-    } catch (e) {
-      // 422 (cap / too few digit combinations: the server names the max),
-      // 503 busy (retry keeps the same key) — the server's Arabic text.
-      if (mounted) setState(() => _error = visibleErrorWithRetryHint(e));
+      final outcome = await showDialog<GenerateDialogOutcome>(
+        context: context,
+        useRootNavigator: true,
+        barrierDismissible: false,
+        builder: (_) => CardGenerateDialog(
+          count: count,
+          run: () async {
+            final r = await repo.generate(req, idempotencyKey: key);
+            // Still on this screen (the dialog is open): refresh the lists.
+            _idem.reset();
+            ref.invalidate(batchesListProvider);
+            return r;
+          },
+          routes: GenerateDialogRoutes(
+            print: (id) => router?.goNamed(
+              'card-batch-print',
+              pathParameters: {'id': '$id'},
+            ),
+            detail: (id) => router?.goNamed(
+              'card-batch-detail',
+              pathParameters: {'id': '$id'},
+            ),
+            batches: () => router?.goNamed('cards'),
+          ),
+        ),
+      );
+      if (outcome?.result != null) {
+        // The next batch number moved on — refresh the preview's estimate.
+        _nextBatchId = null;
+        if (mounted && _includeBatchNumber) _loadNextBatchId();
+      } else if (outcome?.error != null && mounted) {
+        // Closed after an error: the form is intact; the message goes next
+        // to the field it concerns (else the general box).
+        final e = outcome!.error!;
+        final field = generateErrorField(e);
+        final msg = visibleErrorMessage(e);
+        setState(() {
+          if (field == null) {
+            _error = msg;
+          } else {
+            _fieldErrors = {field: msg};
+          }
+        });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _exportCsv() async {
-    final r = _result;
-    if (r == null) return;
-    final rows = <List<dynamic>>[
-      ['username', 'password', 'expire_at'],
-      for (final c in r.cards)
-        [c.username, c.password, c.expireAt?.toIso8601String() ?? ''],
-    ];
-    final csv = const ListToCsvConverter().convert(rows);
-    // UTF-8 with BOM (codeUnits truncated every non-Latin character).
-    final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ...utf8.encode(csv)]);
-    await FileSaver.instance.saveFile(
-      name: 'cards_${r.batch.batchCode}',
-      bytes: bytes,
-      ext: 'csv',
-      mimeType: MimeType.csv,
-    );
+  void _clearFieldError(String field) {
+    if (_fieldErrors.containsKey(field)) {
+      setState(() => _fieldErrors = {..._fieldErrors}..remove(field));
+    }
   }
 
   Widget _num(
@@ -270,31 +316,40 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   label: 'اسم باقة الكروت',
                   child: TextFormField(controller: _packageName),
                 ),
-                FormFieldPair(
-                  first: FormFieldRow(
-                    label: 'معرّف الباقة',
-                    required: true,
-                    child: CardNumberField(
-                      controller: _plan,
-                      required: true,
-                      min: 1,
-                    ),
+                FormFieldRow(
+                  label: 'الباقة',
+                  required: true,
+                  child: CardPlanPicker(
+                    selectedId: _planPick?.id,
+                    onChanged: _pickPlan,
+                    serverError: _fieldErrors['plan'],
+                    currency: ref.watch(tenantCurrencyProvider),
                   ),
-                  second: FormFieldRow(
-                    label: 'العدد',
+                ),
+                FormFieldRow(
+                  label: 'العدد',
+                  required: true,
+                  hint: '1 – $kMaxCardsPerBatch',
+                  child: CardNumberField(
+                    controller: _count,
                     required: true,
-                    hint: '1 – $kMaxCardsPerBatch',
-                    child: CardNumberField(
-                      controller: _count,
-                      required: true,
-                      emptyMessage: validateCardCount(null),
-                      check: (v) => validateCardCount(v?.toInt()),
-                    ),
+                    emptyMessage: validateCardCount(null),
+                    check: (v) => validateCardCount(v?.toInt()),
+                    serverError: _fieldErrors['count'],
+                    onChanged: (_) => _clearFieldError('count'),
                   ),
                 ),
                 FormFieldPair(
                   first: _num(_pricePerCard, 'سعر البطاقة', money: true),
-                  second: _num(_totalPrice, 'السعر الإجمالي', money: true),
+                  second: FormFieldRow(
+                    label: 'السعر الإجمالي',
+                    hint: 'سعر البطاقة × العدد — يمكنك تعديله',
+                    child: CardNumberField.money(
+                      controller: _totalPrice,
+                      // Typed by hand: stop following price × count.
+                      onChanged: (_) => _totalEdited = true,
+                    ),
+                  ),
                 ),
                 FormFieldPair(
                   first: _num(_totalQuota, 'الحصة الكلية MB'),
@@ -345,7 +400,14 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                     ),
                   ),
                 ),
-                _num(_ulen, 'طول الاسم (كامل مع البادئة واللاحقة)'),
+                FormFieldRow(
+                  label: 'طول الاسم (كامل مع البادئة واللاحقة)',
+                  child: CardNumberField(
+                    controller: _ulen,
+                    serverError: _fieldErrors['username_length'],
+                    onChanged: (_) => _clearFieldError('username_length'),
+                  ),
+                ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('تضمين رقم الحزمة'),
@@ -458,97 +520,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
               ],
             ),
           ),
-          if (_result != null) ...[
-            const SizedBox(height: AppTokens.s16),
-            _BatchResult(result: _result!, onExportCsv: _exportCsv),
-          ],
           const SizedBox(height: AppTokens.s40),
-        ],
-      ),
-    );
-  }
-}
-
-class _BatchResult extends ConsumerWidget {
-  const _BatchResult({required this.result, required this.onExportCsv});
-  final GenerateResult result;
-  final VoidCallback onExportCsv;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final p = AppPalette.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: p.card,
-        borderRadius: BorderRadius.circular(AppTokens.r14),
-        border: Border.all(color: p.successStrong.withValues(alpha: 0.4)),
-        boxShadow: p.shCard,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppTokens.s12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [p.successBg, p.card],
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-              ),
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(AppTokens.r14),
-                topLeft: Radius.circular(AppTokens.r14),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.check_circle, color: p.successStrong),
-                    const SizedBox(width: AppTokens.s8),
-                    Expanded(
-                      child: Text(
-                        'تم توليد ${result.cards.length} كرت — الدفعة ${result.batch.batchCode}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: p.textPrimary,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTokens.s12),
-                ActionBar(
-                  items: [
-                    ActionItem(
-                      icon: Icons.file_download_outlined,
-                      label: 'تصدير ملف',
-                      onPressed: onExportCsv,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: result.cards.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
-            itemBuilder: (ctx, i) {
-              final c = result.cards[i];
-              return ListTile(
-                dense: true,
-                title: Text(
-                  c.username,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text('كلمة المرور: ${c.password}'),
-              );
-            },
-          ),
         ],
       ),
     );
@@ -664,4 +636,48 @@ class _UsernamePreviewCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// «السعر الإجمالي» = card price × count (Arabic digits too); null when
+/// either is not a valid number.
+String? batchTotalPrice(String price, String count) {
+  final p = parseNumberInput(price);
+  final c = parseIntInput(count);
+  if (p == null || c == null) return null;
+  return formatBatchNumber(p * c);
+}
+
+/// 5 → «5», 2.5 → «2.5», 1.005 → «1.01» (what the price fields show).
+String formatBatchNumber(num v) {
+  if (v == v.roundToDouble()) return v.toInt().toString();
+  var t = v.toStringAsFixed(2);
+  if (t.endsWith('0')) t = t.substring(0, t.length - 1);
+  return t;
+}
+
+/// Which generate-form field a server 4xx concerns: `details.field` when
+/// sent, else a keyword match; null = the general error box.
+String? generateErrorField(Object e) {
+  if (e is! ApiException) return null;
+  final d = e.details;
+  final f = d is Map ? '${d['field'] ?? ''}' : '';
+  const byField = {
+    'plan_id': 'plan',
+    'plan': 'plan',
+    'count': 'count',
+    'username_length': 'username_length',
+  };
+  if (byField.containsKey(f)) return byField[f];
+  final m = e.message;
+  if (m.contains('طول اسم') || m.contains('username_length')) {
+    return 'username_length';
+  }
+  if (m.contains('الباقة') || m.contains('العرض')) return 'plan';
+  if (m.contains('العدد') ||
+      m.contains('عدد البطاقات') ||
+      m.contains('عدد الكروت') ||
+      m.contains('الدفعة الواحدة')) {
+    return 'count';
+  }
+  return null;
 }
