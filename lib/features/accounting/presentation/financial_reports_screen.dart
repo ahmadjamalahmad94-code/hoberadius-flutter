@@ -1,3 +1,4 @@
+import '../../../core/format/currency.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -29,8 +30,8 @@ const _reports = <String, String>{
 };
 
 final _reportProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, slug) {
-  return ref.watch(accountingRepositoryProvider).financialReport(slug);
+    .family<FinancialReportTable, String>((ref, slug) {
+  return ref.watch(accountingRepositoryProvider).financialReportTable(slug);
 });
 
 final _snapshotProvider = FutureProvider.autoDispose
@@ -268,7 +269,8 @@ class _FinancialReportsScreenState
             title: 'تعذر جلب التقرير',
             subtitle: visibleErrorMessage(e),
           ),
-          data: (rows) {
+          data: (table) {
+            final rows = table.rows;
             if (rows.isEmpty) {
               return EmptyState(
                 icon: Icons.insert_chart_outlined,
@@ -276,8 +278,8 @@ class _FinancialReportsScreenState
                 subtitle: _reports[_slug],
               );
             }
-            final columns = rows.expand((row) => row.keys).toSet().toList()
-              ..sort(_compareColumns);
+            final columns = reportColumnKeys(table);
+            final labels = {for (final (k, l) in table.columns) k: l};
             return AppCard(
               padding: EdgeInsets.zero,
               child: Column(
@@ -319,7 +321,9 @@ class _FinancialReportsScreenState
                               ),
                       columns: columns
                           .map(
-                            (column) => DataColumn(label: Text(_label(column))),
+                            (column) => DataColumn(
+                              label: Text(labels[column] ?? _label(column)),
+                            ),
                           )
                           .toList(),
                       rows: rows
@@ -328,7 +332,7 @@ class _FinancialReportsScreenState
                               cells: columns
                                   .map(
                                     (column) => DataCell(
-                                      Text(_cell(row[column])),
+                                      Text(reportCell(row, column)),
                                     ),
                                   )
                                   .toList(),
@@ -434,6 +438,52 @@ final RegExp _isoStamp = RegExp(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}');
 /// A server timestamp as the panel shows it («2026-09-29 03:01»), never the
 /// raw UTC ISO (`2026-09-29T00:01:08.532034Z`, 3 h off the operator clock).
 String formatReportTimestamp(Object? value) => formatServerTimestamp(value);
+
+/// Internal helper columns never shown as their own column: a row's
+/// per-currency split is shown INSIDE its money cells instead.
+const _hiddenReportColumns = {'mixed_currency', 'by_currency'};
+
+/// The columns to show: the server's order (fix2 `columns`), else the keys
+/// of the rows in the app's own order; helper columns hidden.
+List<String> reportColumnKeys(FinancialReportTable table) {
+  final keys = table.columns.isNotEmpty
+      ? [
+          for (final (k, _) in table.columns) k,
+          for (final k in table.rows.expand((r) => r.keys).toSet())
+            if (!table.columns.any((c) => c.$1 == k)) k,
+        ]
+      : (table.rows.expand((row) => row.keys).toSet().toList()
+        ..sort(_compareColumns));
+  return keys.where((k) => !_hiddenReportColumns.contains(k)).toList();
+}
+
+const _moneyColumns = {
+  'total',
+  'amount',
+  'avg_amount',
+  'outstanding',
+  'credits',
+  'debits',
+  'net',
+  'open_total',
+  'owed',
+};
+
+/// One cell. A money cell of a MIXED-currency row shows one amount per
+/// currency (`by_currency`) — never one sum of ILS + USD + EUR.
+String reportCell(Map<String, dynamic> row, String column) {
+  final split = row['by_currency'];
+  if (_moneyColumns.contains(column) &&
+      split is List &&
+      (row['mixed_currency'] == true || split.length > 1)) {
+    final parts = parseByCurrency(
+      split,
+      fields: [column, 'total', 'total_amount', 'amount'],
+    );
+    if (parts.isNotEmpty) return formatByCurrency(parts);
+  }
+  return _cell(row[column]);
+}
 
 String _cell(Object? value) {
   if (value == null || value.toString().isEmpty) return '—';

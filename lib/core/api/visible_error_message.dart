@@ -10,10 +10,26 @@ String visibleErrorMessage(
   String fallback = 'تعذر تنفيذ الطلب. حاول مرة أخرى.',
 }) {
   if (error is ApiException) {
+    // Unknown API path / wrong method: fix2 servers answer JSON 404/405 in
+    // Arabic (kept); an older one answered an HTML 405 page — never shown
+    // raw, and the operator learns the server may be older than the app.
+    final arabic = _containsArabic(error.message);
+    if (!arabic && error.status == 405) return kMethodNotAllowedMessage;
+    if (!arabic && error.status == 404 && error.code != 'not_found') {
+      return kUnknownPathMessage;
+    }
     return _safeMessage(error.message, fallback);
   }
   return _safeMessage(error?.toString() ?? '', fallback);
 }
+
+/// An API path the server does not know (JSON/HTML 404 without Arabic).
+const String kUnknownPathMessage =
+    'هذه الخدمة غير موجودة على الخادم — قد يحتاج الخادم إلى تحديث.';
+
+/// A method the server refuses on that path (405).
+const String kMethodNotAllowedMessage =
+    'هذه العملية غير مدعومة على هذا الخادم — قد يحتاج الخادم إلى تحديث.';
 
 /// Rewrites the Python / OS error fragments the server passes through
 /// («تعذّر الاتصال بـ 10.10.0.1:8728 — [Errno 111] Connection refused»,

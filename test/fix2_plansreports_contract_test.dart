@@ -1,6 +1,10 @@
 // FIX2 — adoption of the plansreports backend contract (additive fields).
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hoberadius_app/core/api/api_exception.dart';
+import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import 'package:hoberadius_app/core/format/bidi.dart';
+import 'package:hoberadius_app/features/accounting/data/accounting_repository.dart';
+import 'package:hoberadius_app/features/accounting/presentation/financial_reports_screen.dart';
 import 'package:hoberadius_app/features/dashboard/domain/dashboard_model.dart';
 import 'package:hoberadius_app/features/revenue/data/revenue_repository.dart';
 import 'package:hoberadius_app/features/subscribers/domain/subscriber_actions_model.dart';
@@ -80,5 +84,81 @@ void main() {
     expect(lines[2], contains('150 MB من 200 MB'));
     expect(lines[3], contains('تنزيل 2 GB من 5 GB'));
     expect(quotaUsageLines({'used_today_mb': 12}), ['المستهلك اليوم: 12 MB']);
+  });
+
+  test('reports: server columns, hidden helpers, per-currency money cells', () {
+    final t = FinancialReportTable.fromResponse({
+      'data': {
+        'items': [
+          {
+            'period': '2026-09',
+            'total': 1000.5,
+            'transactions': 3,
+            'mixed_currency': true,
+            'by_currency': [
+              {'currency': 'ILS', 'total': 900},
+              {'currency': 'USD', 'total': 100.5},
+            ],
+          },
+        ],
+        'columns': [
+          {'key': 'period', 'label': 'الفترة'},
+          {'key': 'transactions', 'label': 'عدد العمليات'},
+          {'key': 'total', 'label': 'الإجمالي'},
+          {'key': 'by_currency', 'label': 'حسب العملة'},
+        ],
+      },
+    });
+    expect(t.columns.first, ('period', 'الفترة'));
+    expect(reportColumnKeys(t), ['period', 'transactions', 'total']);
+    expect(
+      stripBidiMarks(reportCell(t.rows.single, 'total')),
+      '900 ILS · 100.50 USD',
+    );
+    expect(reportCell(t.rows.single, 'transactions'), '3');
+    // Old server: no columns → keys of the rows.
+    final old = FinancialReportTable.fromResponse({
+      'data': {
+        'items': [
+          {'total': 5.0, 'period': 'x'},
+        ],
+      },
+    });
+    expect(old.columns, isEmpty);
+    expect(reportColumnKeys(old), containsAll(['total', 'period']));
+  });
+
+  test('unknown API path / method → Arabic, never raw', () {
+    expect(
+      visibleErrorMessage(
+        ApiException(
+          code: 'http_405',
+          message: 'Method Not Allowed',
+          status: 405,
+        ),
+      ),
+      kMethodNotAllowedMessage,
+    );
+    expect(
+      visibleErrorMessage(
+        ApiException(
+          code: 'http_404',
+          message: '<html>Not Found</html>',
+          status: 404,
+        ),
+      ),
+      kUnknownPathMessage,
+    );
+    // fix2 servers send an Arabic JSON message: kept.
+    expect(
+      visibleErrorMessage(
+        ApiException(
+          code: 'not_found',
+          message: 'المسار غير موجود.',
+          status: 404,
+        ),
+      ),
+      'المسار غير موجود.',
+    );
   });
 }
