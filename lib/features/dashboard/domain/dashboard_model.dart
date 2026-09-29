@@ -22,6 +22,7 @@ class DashboardMetrics {
     this.suspendedSubscribers = 0,
     this.disabledSubscribers = 0,
     this.bannedSubscribers = 0,
+    this.otherSubscribers = 0,
     this.plans = 0,
     this.enabledPlans = 0,
     this.disabledPlans = 0,
@@ -56,6 +57,10 @@ class DashboardMetrics {
   final int suspendedSubscribers;
   final int disabledSubscribers;
   final int bannedSubscribers;
+
+  /// `subscribers.other` (fix2 servers): rows in no status group above, so
+  /// the groups add up to the total.
+  final int otherSubscribers;
   final int plans;
   final int enabledPlans;
   final int disabledPlans;
@@ -110,6 +115,7 @@ class DashboardMetrics {
       suspendedSubscribers: _i(subscribersMap?['suspended']),
       disabledSubscribers: _i(subscribersMap?['disabled']),
       bannedSubscribers: _i(subscribersMap?['banned']),
+      otherSubscribers: _i(subscribersMap?['other']),
       plans: plansMap == null
           ? _firstInt([j['plans'], j['plans_total'], j['profiles_total']])
           : _i(plansMap['total']),

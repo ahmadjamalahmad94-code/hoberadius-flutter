@@ -574,6 +574,10 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
             onChanged: (v) => setState(() => _target = v ?? 'combined'),
           ),
         ),
+        if (c.quotaUsage.isNotEmpty) ...[
+          ActionNote(text: c.quotaUsage.join(kNewline)),
+          _gap(AppTokens.s8),
+        ],
         // Several windows (a total cap and/or the plan's monthly / daily
         // caps): the operator picks where the top-up goes; «تلقائي» lets the
         // server choose (total ⇒ monthly ⇒ daily).
@@ -1258,6 +1262,28 @@ PlanDirection changePlanDirection(SubscriberActionsContext c, Plan? next) {
   );
 }
 
+/// The toast after a change-plan: the new plan, the server's `direction`
+/// (fix2) and what happened to the time/money.
+String changePlanDoneMessage(String planName, Map<String, dynamic> res) {
+  final dir = switch ('${res['direction'] ?? ''}') {
+    'higher' => ' (عرض أعلى سعرًا للدقيقة)',
+    'lower' => ' (عرض أرخص للدقيقة)',
+    'neutral' => ' (نفس سعر الدقيقة)',
+    _ => '',
+  };
+  final debt = res['debt_amount'];
+  final d = debt is num ? debt : num.tryParse('${debt ?? ''}');
+  final minutes = res['minute_delta'];
+  final m = minutes is num ? minutes.toInt() : int.tryParse('${minutes ?? ''}');
+  final extra = [
+    if (d != null && d > 0) 'دين ${d.toStringAsFixed(2)}',
+    if (m != null && m > 0) 'أُضيف ${arDuration(m)}',
+    if (m != null && m < 0) 'نقص ${arDuration(-m)}',
+  ];
+  return 'تم تغيير العرض إلى ${autoIsolate(planName)}$dir'
+      '${extra.isEmpty ? '' : ' — ${extra.join('، ')}'}';
+}
+
 /// The change-plan choices: enabled plans other than the current one (a
 /// disabled or the same plan used to be offered — r04 N9).
 List<Plan> changePlanChoices(List<Plan> all, {int? currentPlanId}) => all
@@ -1290,14 +1316,14 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
   }
 
   Future<void> _submit() => run(() async {
-        await repo.changePlan(
+        final res = await repo.changePlan(
           c.username,
           planId: _next!.id!,
           policy: _policy,
           idempotencyKey:
               idemKey('change-plan', {'p': _next!.id, 'x': _policy}),
         );
-        return ActionOutcome('تم تغيير العرض إلى ${_next!.name}');
+        return ActionOutcome(changePlanDoneMessage(_next!.name, res));
       });
 
   @override
@@ -1800,3 +1826,6 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
     );
   }
 }
+
+/// A line break for joined notes.
+final String kNewline = String.fromCharCode(10);

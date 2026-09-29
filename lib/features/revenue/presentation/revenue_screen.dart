@@ -8,6 +8,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/revenue_repository.dart';
@@ -35,6 +36,35 @@ class RevenueScreen extends ConsumerStatefulWidget {
 class _RevenueScreenState extends ConsumerState<RevenueScreen> {
   String _status = '';
   String _sourceType = '';
+
+  /// Rows loaded with «تحميل المزيد» beyond the first page.
+  RevenuePage? _paged;
+  bool _loadingMore = false;
+  Object? _moreError;
+
+  Future<void> _loadMore(RevenuePage current) async {
+    if (_loadingMore || !current.hasMore) return;
+    setState(() {
+      _loadingMore = true;
+      _moreError = null;
+    });
+    try {
+      final next = await ref
+          .read(revenueRepositoryProvider)
+          .list(offset: current.items.length);
+      final before = current.items.length;
+      var merged = current.withMore(next.items, hasMore: next.hasMore);
+      // An old server that ignores the offset: nothing new → stop.
+      if (merged.items.length == before) {
+        merged = merged.withMore(const [], hasMore: false);
+      }
+      if (mounted) setState(() => _paged = merged);
+    } catch (e) {
+      if (mounted) setState(() => _moreError = e);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
 
   /// The page as the stats should read it: the whole server page (with its
   /// totals) when no filter is set, else only the visible rows.
@@ -73,7 +103,8 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
             title: 'تعذر تحميل الإيرادات',
             subtitle: visibleErrorMessage(error),
           ),
-          data: (page) {
+          data: (first) {
+            final page = _paged ?? first;
             final sourceOptions = _sourceOptions(page.items);
             final filtered = page.items.where((item) {
               final statusMatch = _status.isEmpty || item.status == _status;
@@ -133,6 +164,14 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
                       return _RevenueTable(items: filtered);
                     },
                   ),
+                  if (page.hasMore || _moreError != null)
+                    LoadMoreFooter(
+                      hasMore: page.hasMore,
+                      loading: _loadingMore,
+                      error: _moreError,
+                      shown: page.items.length,
+                      onLoadMore: () => _loadMore(page),
+                    ),
                 ],
               ],
             );

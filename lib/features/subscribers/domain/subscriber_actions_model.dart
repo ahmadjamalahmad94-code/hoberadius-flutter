@@ -178,6 +178,7 @@ class SubscriberActionsContext {
     this.dailyQuotaMb,
     this.usedTodayMb,
     this.quotaWindows = const [],
+    this.quotaUsage = const [],
     this.onlineSessions = 0,
     this.smsEnabled = true,
     this.whatsappEnabled = false,
@@ -210,6 +211,9 @@ class SubscriberActionsContext {
   /// `quota.quota_mb`, `quota.monthly`, `quota.daily`): `total`, `monthly`,
   /// `daily`. Empty on older servers (the server decides).
   final List<String> quotaWindows;
+
+  /// Caps and usage per window, ready to show («اليوم: 150 / 200 MB»).
+  final List<String> quotaUsage;
   final int onlineSessions;
   final bool smsEnabled;
   final bool whatsappEnabled;
@@ -258,6 +262,7 @@ class SubscriberActionsContext {
       dailyQuotaMb: _doubleOrNull(quota['daily_quota_mb']),
       usedTodayMb: _doubleOrNull(quota['used_today_mb']),
       quotaWindows: quotaWindowsOf(quota),
+      quotaUsage: quotaUsageLines(quota),
       onlineSessions: _intOrNull(j['online_sessions']) ?? 0,
       smsEnabled: channels['sms'] != false,
       whatsappEnabled: channels['whatsapp'] == true,
@@ -317,6 +322,7 @@ class SubscriberActionsContext {
         dailyQuotaMb: dailyQuotaMb,
         usedTodayMb: usedTodayMb,
         quotaWindows: quotaWindows,
+        quotaUsage: quotaUsage,
         onlineSessions: onlineSessions,
         smsEnabled: smsEnabled,
         whatsappEnabled: whatsappEnabled,
@@ -383,6 +389,54 @@ List<String> quotaWindowsOf(Map quota) {
   if (t != null && t > 0) out.add('total');
   if (anyCap(quota['monthly'])) out.add('monthly');
   if (anyCap(quota['daily'])) out.add('daily');
+  return out;
+}
+
+String _mbText(num mb) {
+  if (mb >= 1024) {
+    final gb = mb / 1024;
+    return '${gb == gb.roundToDouble() ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1)} GB';
+  }
+  return '${mb.round()} MB';
+}
+
+num? _numOf(Object? v) => v is num ? v : num.tryParse('${v ?? ''}');
+
+/// The quota state of actions-context (fix2): total cap + period usage and
+/// this period's top-ups, then the daily / monthly windows per direction.
+/// Each line is LTR-safe Arabic, e.g. «كوتة اليوم: 150 MB من 200 MB».
+List<String> quotaUsageLines(Map quota) {
+  final out = <String>[];
+  final cap = _numOf(quota['quota_mb']);
+  final used = _numOf(quota['used_mb']);
+  if (cap != null && cap > 0) {
+    out.add('الكوتة الإجمالية: '
+        '${used == null ? '' : '${_mbText(used)} من '}${_mbText(cap)}');
+  }
+  final topup = _numOf(quota['period_topup_mb']);
+  if (topup != null && topup > 0) {
+    out.add('إضافات هذه الفترة: ${_mbText(topup)}');
+  }
+  for (final (key, label) in const [('daily', 'كوتة اليوم'), ('monthly', 'كوتة الشهر')]) {
+    final w = quota[key];
+    if (w is! Map) continue;
+    final parts = <String>[];
+    for (final (dir, dirLabel, usedKey) in const [
+      ('combined', 'مجمّعة', 'used_mb'),
+      ('download', 'تنزيل', 'used_download_mb'),
+      ('upload', 'رفع', 'used_upload_mb'),
+    ]) {
+      final c = _numOf(w[dir]);
+      if (c == null || c <= 0) continue;
+      final u = _numOf(w[usedKey]);
+      parts.add('$dirLabel ${u == null ? '' : '${_mbText(u)} من '}${_mbText(c)}');
+    }
+    if (parts.isNotEmpty) out.add('$label: ${parts.join('، ')}');
+  }
+  if (out.isEmpty) {
+    final today = _numOf(quota['used_today_mb']);
+    if (today != null) out.add('المستهلك اليوم: ${_mbText(today)}');
+  }
   return out;
 }
 

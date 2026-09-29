@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/api/paging.dart';
 import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
@@ -8,7 +9,27 @@ class RevenuePage {
     this.serverCollected,
     this.collectedByCurrency = const [],
     this.mixedCurrency = false,
+    this.hasMore = false,
   });
+
+  /// `has_more` (fix2 servers); older servers never page.
+  final bool hasMore;
+
+  /// Stable row key across pages (payments and batch rows share ids).
+  static String rowKey(RevenueRecord r) => '${r.sourceType}:${r.id}';
+
+  /// This page with [more] rows appended (duplicates dropped).
+  RevenuePage withMore(List<RevenueRecord> more, {required bool hasMore}) {
+    final (merged, _) = mergeUniqueBy(items, more, rowKey);
+    return RevenuePage(
+      items: merged,
+      count: merged.length,
+      serverCollected: serverCollected,
+      collectedByCurrency: collectedByCurrency,
+      mixedCurrency: mixedCurrency,
+      hasMore: hasMore,
+    );
+  }
 
   /// `totals.by_currency` (updated servers): payments per currency.
   final List<CurrencyAmount> collectedByCurrency;
@@ -30,6 +51,7 @@ class RevenuePage {
       collectedByCurrency:
           totals is Map ? parseByCurrency(totals['by_currency']) : const [],
       mixedCurrency: totals is Map && totals['mixed_currency'] == true,
+      hasMore: data['has_more'] == true,
       serverCollected: collected is num
           ? collected.toDouble()
           : double.tryParse('${collected ?? ''}'),

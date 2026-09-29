@@ -70,6 +70,7 @@ class _DashboardBody extends StatelessWidget {
         metrics.suspendedSubscribers > 0 ||
         metrics.disabledSubscribers > 0 ||
         metrics.bannedSubscribers > 0 ||
+        metrics.otherSubscribers > 0 ||
         metrics.hasTopPlan;
     return LayoutBuilder(
       builder: (context, c) {
@@ -561,6 +562,15 @@ class _SubscriberAttention extends StatelessWidget {
             'subscribers',
             queryParameters: const {'status': 'banned'},
           ),
+        ),
+      if (metrics.otherSubscribers > 0)
+        _StatItem(
+          icon: Icons.more_horiz,
+          label: 'أخرى',
+          value: '${metrics.otherSubscribers}',
+          bg: p.surfaceTinted,
+          fg: p.textSecondary,
+          onTap: () => context.goNamed('subscribers'),
         ),
       if (metrics.hasTopPlan)
         _StatItem(
