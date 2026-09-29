@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
@@ -56,9 +59,17 @@ class _FinancialReportsScreenState
   Future<void> _exportCsv() async {
     setState(() => _exportingCsv = true);
     try {
-      final bytes = await ref
+      final raw = await ref
           .read(accountingRepositoryProvider)
           .exportFinancialReportCsv(_slug);
+      final bytes = financialReportCsvForSave(raw, _slug);
+      if (bytes == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا توجد بيانات للتصدير')),
+        );
+        return;
+      }
       await FileSaver.instance.saveFile(
         name: 'financial-report-${_slug.replaceAll('/', '-')}',
         bytes: bytes,
@@ -493,6 +504,44 @@ const _columnLabels = {
 };
 
 String _label(String key) => financialReportColumnLabel(key);
+
+/// The columns of a report whose empty export has nothing to take them from
+/// (the server's own `_REPORT_EMPTY_COLUMNS`).
+const kFinancialReportEmptyColumns = <String, List<String>>{
+  'card-sales': ['batch_id', 'count', 'total'],
+  'distributor-debts': [
+    'distributor_id',
+    'name',
+    'display_name',
+    'debt_balance',
+    'balance',
+    'credit_limit',
+  ],
+};
+
+/// The CSV to save for [slug]. A server CSV that is empty or only a UTF-8
+/// BOM (an empty report: 3 bytes, no header — R11 L-7) becomes a BOM + an
+/// Arabic header row of the report's known columns; null when the columns
+/// are not known either («لا توجد بيانات للتصدير», nothing is saved).
+Uint8List? financialReportCsvForSave(Uint8List bytes, String slug) {
+  var body = bytes;
+  if (body.length >= 3 &&
+      body[0] == 0xEF &&
+      body[1] == 0xBB &&
+      body[2] == 0xBF) {
+    body = Uint8List.sublistView(body, 3);
+  }
+  if (utf8.decode(body, allowMalformed: true).trim().isNotEmpty) return bytes;
+  final columns = kFinancialReportEmptyColumns[slug];
+  if (columns == null || columns.isEmpty) return null;
+  String cell(String v) =>
+      v.contains(RegExp(r'[",\r\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
+  final header = columns.map((c) => cell(financialReportColumnLabel(c)));
+  return Uint8List.fromList([
+    0xEF, 0xBB, 0xBF, // UTF-8 BOM: Excel opens the Arabic header correctly
+    ...utf8.encode('${header.join(',')}\r\n'),
+  ]);
+}
 
 /// Arabic header of a financial-report column (raw key only if unknown).
 String financialReportColumnLabel(String key) => _columnLabels[key] ?? key;
