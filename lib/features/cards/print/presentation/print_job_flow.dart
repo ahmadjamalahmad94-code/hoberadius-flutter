@@ -24,16 +24,10 @@ Future<void> runPrintFlow(
   final provider = quickPrintControllerProvider(batchId);
   final ctl = ref.read(provider.notifier);
   final repo = ref.read(quickPrintRepositoryProvider);
-  final messenger = ScaffoldMessenger.of(context);
   final navigator = Navigator.of(context, rootNavigator: true);
 
-  final int templateId;
-  try {
-    templateId = await ctl.save();
-  } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('$e')));
-    return;
-  }
+  final templateId = await saveDesignOrAsk(context, ctl);
+  if (templateId == null) return;
   final st = ref.read(provider);
   final settings = st.sheet.toSettings();
   final overrides = ctl.exportOverrides;
@@ -70,6 +64,137 @@ Future<void> runPrintFlow(
       ),
     ),
   );
+}
+
+/// Saves the design; a name another template already has opens
+/// [TemplateNameClashDialog] (replace that template, or save under another
+/// name) instead of a dead-end error. Null: cancelled or failed (the error is
+/// shown in a snack bar).
+Future<int?> saveDesignOrAsk(
+  BuildContext context,
+  QuickPrintController ctl,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  String? name;
+  int? target;
+  for (var round = 0; round < 5; round++) {
+    try {
+      return await ctl.save(name: name, targetTemplateId: target);
+    } on TemplateNameTaken catch (e) {
+      if (!context.mounted) return null;
+      final choice = await showDialog<TemplateNameChoice>(
+        context: context,
+        useRootNavigator: true,
+        builder: (_) => TemplateNameClashDialog(clash: e),
+      );
+      if (choice == null) return null;
+      name = choice.name;
+      target = choice.overwriteId;
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      return null;
+    }
+  }
+  return null;
+}
+
+/// The operator's answer to a template-name clash.
+class TemplateNameChoice {
+  const TemplateNameChoice.rename(this.name) : overwriteId = null;
+  const TemplateNameChoice.overwrite(this.name, int id) : overwriteId = id;
+  final String name;
+
+  /// Save INTO this existing template (replace it).
+  final int? overwriteId;
+}
+
+/// «يوجد قالب بهذا الاسم»: replace the existing template (when it is known)
+/// or pick another name (a free one is suggested).
+class TemplateNameClashDialog extends StatefulWidget {
+  const TemplateNameClashDialog({super.key, required this.clash});
+  final TemplateNameTaken clash;
+
+  @override
+  State<TemplateNameClashDialog> createState() =>
+      _TemplateNameClashDialogState();
+}
+
+class _TemplateNameClashDialogState extends State<TemplateNameClashDialog> {
+  late final TextEditingController _name =
+      TextEditingController(text: widget.clash.suggestion);
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _rename() {
+    final v = _name.text.trim();
+    if (v.isEmpty) {
+      setState(() => _error = 'اسم القالب مطلوب');
+      return;
+    }
+    if (v.toLowerCase() == widget.clash.name.trim().toLowerCase()) {
+      setState(() => _error = 'هذا الاسم مستخدم — اختر اسمًا آخر.');
+      return;
+    }
+    Navigator.of(context).pop(TemplateNameChoice.rename(v));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.clash;
+    return AlertDialog(
+      title: const Text('يوجد قالب بهذا الاسم'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              c.existingId > 0
+                  ? 'القالب «${c.name}» موجود. استبدله بهذا التصميم، '
+                      'أو احفظ باسم آخر.'
+                  : 'القالب «${c.name}» موجود. احفظ باسم آخر.',
+            ),
+            const SizedBox(height: AppTokens.s12),
+            TextField(
+              controller: _name,
+              autofocus: true,
+              maxLength: 120,
+              decoration: InputDecoration(
+                labelText: 'اسم جديد للقالب',
+                counterText: '',
+                errorText: _error,
+              ),
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
+              onSubmitted: (_) => _rename(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('إلغاء'),
+        ),
+        if (c.existingId > 0)
+          TextButton(
+            onPressed: () => Navigator.of(context)
+                .pop(TemplateNameChoice.overwrite(c.name, c.existingId)),
+            child: const Text('استبدال الموجود'),
+          ),
+        FilledButton(
+          onPressed: _rename,
+          child: const Text('حفظ باسم جديد'),
+        ),
+      ],
+    );
+  }
 }
 
 class _PrintResult {
@@ -565,6 +690,11 @@ class _PdfAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = ButtonStyle(
       minimumSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
+      // The default icon-button padding (16 + 24) left «مشاركة» ~38 px at
+      // 360 px wide and it was clipped to «شاركة» (R06 N8.1).
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 8),
+      ),
       textStyle: WidgetStatePropertyAll(
         Theme.of(context)
             .textTheme
@@ -579,28 +709,27 @@ class _PdfAction extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         : Icon(icon, size: 20);
-    return primary
-        ? FilledButton.icon(
-            onPressed: busy ? null : onTap,
-            style: style,
-            icon: iconW,
-            label: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.fade,
+    // Never clipped: a narrow button shrinks the label instead.
+    final text = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(label, maxLines: 1, softWrap: false),
+    );
+    return Tooltip(
+      message: label,
+      excludeFromSemantics: true,
+      child: primary
+          ? FilledButton.icon(
+              onPressed: busy ? null : onTap,
+              style: style,
+              icon: iconW,
+              label: text,
+            )
+          : OutlinedButton.icon(
+              onPressed: busy ? null : onTap,
+              style: style,
+              icon: iconW,
+              label: text,
             ),
-          )
-        : OutlinedButton.icon(
-            onPressed: busy ? null : onTap,
-            style: style,
-            icon: iconW,
-            label: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.fade,
-            ),
-          );
+    );
   }
 }

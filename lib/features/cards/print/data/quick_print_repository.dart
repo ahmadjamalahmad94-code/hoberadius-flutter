@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -92,7 +93,9 @@ class QuickPrintRepository {
   }
 
   /// One-page PDF: `mode: card` (one card, card-sized page) or `page`.
-  Future<Uint8List> preview({
+  /// Updated servers also say where the renderer really drew the username /
+  /// password / QR (`X-Print-Elements` header) — [PreviewResult.elements].
+  Future<PreviewResult> preview({
     required Map<String, String> form,
     int? templateId,
     int? batchId,
@@ -112,7 +115,10 @@ class QuickPrintRepository {
       options: Options(responseType: ResponseType.bytes),
       cancelToken: cancel,
     );
-    return Uint8List.fromList(res.data ?? const []);
+    return PreviewResult(
+      Uint8List.fromList(res.data ?? const []),
+      CardElements.tryParseHeader(res.headers.value('x-print-elements')),
+    );
   }
 
   /// Where username / password / QR really sit (mm from the card's top-left
@@ -136,7 +142,9 @@ class QuickPrintRepository {
     return CardElements.fromJson(d is Map ? _stringKeys(d) : const {});
   }
 
-  Future<Map<String, dynamic>> quickSave({
+  /// Create (no [templateId]) or update a template. Updated servers also
+  /// return where the saved design's elements really sit.
+  Future<QuickSaveResult> quickSave({
     required Map<String, String> form,
     int? templateId,
     Map<String, String> printSettings = const {},
@@ -151,8 +159,13 @@ class QuickPrintRepository {
         'print_settings': printSettings,
       },
     );
-    final t = _data(res)['template'];
-    return t is Map ? _stringKeys(t) : const {};
+    final d = _data(res);
+    final t = d['template'];
+    final e = d['elements'];
+    return QuickSaveResult(
+      t is Map ? _stringKeys(t) : const {},
+      e is Map ? CardElements.fromJson(_stringKeys(e)) : null,
+    );
   }
 
   Future<PrintExportJob> startExport({
@@ -207,12 +220,28 @@ class QuickPrintRepository {
       m.map((k, v) => MapEntry('$k', v));
 }
 
+/// `preview.pdf`: the PDF + (updated servers) the real element places.
+class PreviewResult {
+  const PreviewResult(this.pdf, this.elements);
+  final Uint8List pdf;
+  final CardElements? elements;
+}
+
+/// `quick-save`: the saved row + (updated servers) its real element places.
+class QuickSaveResult {
+  const QuickSaveResult(this.template, this.elements);
+  final Map<String, dynamic> template;
+  final CardElements? elements;
+}
+
 /// Card size (mm, oriented like the preview) + element boxes (mm).
 class CardElements {
   const CardElements({
     required this.widthMm,
     required this.heightMm,
     required this.boxes,
+    this.warnings = const [],
+    this.qrConflict = false,
   });
 
   final double widthMm;
@@ -221,33 +250,95 @@ class CardElements {
   /// `username` / `password` / `qr` → (x, y, w, h) in mm.
   final Map<String, ElementBox> boxes;
 
+  /// Server notes about what it changed (Arabic), e.g. the QR was moved so
+  /// it does not cover the credentials. Old servers: none.
+  final List<String> warnings;
+
+  /// The QR has no room beside the credentials (updated servers).
+  final bool qrConflict;
+
+  /// The `X-Print-Elements` header of `preview.pdf` (same JSON as
+  /// `quick-elements`); null when absent or unreadable (old servers).
+  static CardElements? tryParseHeader(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final j = jsonDecode(raw);
+      if (j is! Map) return null;
+      final m = j.map((k, v) => MapEntry('$k', v));
+      final d = m['data'] is Map && !m.containsKey('elements')
+          ? (m['data'] as Map).map((k, v) => MapEntry('$k', v))
+          : m;
+      return d['elements'] is Map ? CardElements.fromJson(d) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   factory CardElements.fromJson(Map<String, dynamic> j) {
     double n(Object? v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+    double? opt(Object? v) =>
+        v is num ? v.toDouble() : double.tryParse('${v ?? ''}');
     final card = j['card'] is Map ? j['card'] as Map : const {};
     final els = j['elements'] is Map ? j['elements'] as Map : const {};
+    final warnings = j['warnings'];
     return CardElements(
       widthMm: n(card['width_mm']),
       heightMm: n(card['height_mm']),
       boxes: {
         for (final e in els.entries)
           if (e.value is Map)
-            '${e.key}': ElementBox(
-              n((e.value as Map)['x']),
-              n((e.value as Map)['y']),
-              n((e.value as Map)['w']),
-              n((e.value as Map)['h']),
-            ),
+            '${e.key}': () {
+              final b = e.value as Map;
+              final req = b['requested'];
+              return ElementBox(
+                n(b['x']),
+                n(b['y']),
+                n(b['w']),
+                n(b['h']),
+                requestedX: req is Map ? opt(req['x']) : null,
+                requestedY: req is Map ? opt(req['y']) : null,
+                adjusted: b['adjusted'] == true,
+                sizePct: opt(b['size_pct']),
+              );
+            }(),
       },
+      warnings: warnings is List
+          ? [
+              for (final w in warnings)
+                if ('${w ?? ''}'.trim().isNotEmpty) '$w'.trim(),
+            ]
+          : const [],
+      qrConflict: j['qr_conflict'] == true,
     );
   }
 }
 
 class ElementBox {
-  const ElementBox(this.x, this.y, this.w, this.h);
+  const ElementBox(
+    this.x,
+    this.y,
+    this.w,
+    this.h, {
+    this.requestedX,
+    this.requestedY,
+    this.adjusted = false,
+    this.sizePct,
+  });
   final double x;
   final double y;
   final double w;
   final double h;
+
+  /// Where the design asked for it (null = automatic place / old server).
+  final double? requestedX;
+  final double? requestedY;
+
+  /// The renderer drew it somewhere else than [requestedX]/[requestedY]
+  /// (kept inside the card, off the credentials…). Old servers: false.
+  final bool adjusted;
+
+  /// QR only: the drawn size in % of the card width (updated servers).
+  final double? sizePct;
 }
 
 class PrintExportJob {
