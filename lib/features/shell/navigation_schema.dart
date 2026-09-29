@@ -373,10 +373,59 @@ int mobileNavIndexForLocation(String location) {
   return 0;
 }
 
+/// App-bar titles of routed pages that have no menu item: the web-only
+/// pages hidden from the menu ([kWebOnlyPaths]) and deep-link-only screens.
+/// Without this map they fell back to the bottom tab and every one of them
+/// was titled «لوحة التحكم» (R11 L-4). Labels follow the web sidebar.
+const kExtraRouteTitles = <String, String>{
+  '/notifications': 'الإشعارات',
+  '/print-templates': 'قوالب الطباعة',
+  '/cards/recharge': 'بطاقات الشحن المسبق',
+  '/cards/import': 'استيراد ملف كروت',
+  '/plans/new': 'إضافة عرض',
+  '/bandwidth-schedules': 'جدولة السرعات',
+  '/radius-resources': 'نطاقات العناوين',
+  '/router-alerts': 'التنبيهات الذكيّة',
+  '/wallets': 'الخزائن والمحافظ',
+  '/ledger': 'السجل والتقارير المحاسبية',
+  '/vouchers': 'الكوبونات',
+  '/invoices': 'الفواتير',
+  '/communications': 'التواصل والحملات',
+  '/alerts/telegram': 'تنبيهات تيليجرام',
+  '/saas-modules': 'الخدمات / المعدّات',
+  '/admins': 'المدراء والموزعون',
+  '/roles': 'الأدوار والصلاحيات',
+  '/business-ops': 'مشغّلو الأعمال',
+  '/backups': 'البيانات والحفظ والأرشفة',
+  '/recycle-bin': 'سلة المحذوفات',
+  '/lifecycle': 'الأرشفة التلقائية',
+  '/admin-control': 'إعدادات النظام',
+  '/audit': 'سجل العمليات',
+  '/mikrotik': 'اتصالات ميكروتك',
+  '/router-programming': 'برمجة الراوتر',
+  '/device-fingerprints': 'بصمات الأجهزة',
+  '/network-devices': 'مراقبة أجهزة الشبكة',
+  '/network-policy': 'سياسات الشبكة',
+  '/license-expired': 'الترخيص منتهي',
+  '/license-activate': 'فعّل الترخيص',
+  '/service-blocked': 'الخدمة موقوفة',
+  '/service-upgrade': 'خدمة بانتظار التفعيل',
+};
+
 /// Title of the mobile app bar: the bottom tab when the location belongs
-/// to one, else the navigation item that owns the path, else the tab.
+/// to one, else the navigation item that owns the path, else a routed
+/// page's own title ([kExtraRouteTitles]), else the tab.
 String mobileTitleForLocation(String location, int tabIndex) {
-  if (navPathMatches(location, '/notifications')) return 'الإشعارات';
+  // Most specific first: '/cards/recharge' must not read as the cards tab.
+  String? extra;
+  var extraLen = -1;
+  kExtraRouteTitles.forEach((path, title) {
+    if (navPathMatches(location, path) && path.length > extraLen) {
+      extra = title;
+      extraLen = path.length;
+    }
+  });
+  if (extra != null) return extra!;
   if (location == '/' ||
       (tabIndex > 0 &&
           tabIndex < mobileNavDestinations.length - 1 &&
