@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -12,6 +13,7 @@ import '../../plans/domain/plan_model.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
 import '../application/cards_list_providers.dart';
+import 'widgets/card_number_field.dart';
 
 final _importPlansProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
   return ref.watch(plansRepositoryProvider).list();
@@ -69,8 +71,8 @@ class _CardBatchImportScreenState extends ConsumerState<CardBatchImportScreen> {
               sourceType: _sourceType,
               packageName: _packageName.text.trim(),
               serviceName: _serviceName.text.trim(),
-              pricePerCard: num.tryParse(_pricePerCard.text.trim()) ?? 0,
-              totalPrice: num.tryParse(_totalPrice.text.trim()) ?? 0,
+              pricePerCard: parseNumberInput(_pricePerCard.text) ?? 0,
+              totalPrice: parseNumberInput(_totalPrice.text) ?? 0,
               notes: _notes.text.trim(),
               syncToRadius: _syncToRadius,
             ),
@@ -271,18 +273,16 @@ class _ImportForm extends StatelessWidget {
                     ),
                     _FieldBox(
                       compact: compact,
-                      child: TextFormField(
+                      child: CardNumberField.money(
                         controller: pricePerCard,
-                        keyboardType: TextInputType.number,
                         decoration:
                             const InputDecoration(labelText: 'سعر البطاقة'),
                       ),
                     ),
                     _FieldBox(
                       compact: compact,
-                      child: TextFormField(
+                      child: CardNumberField.money(
                         controller: totalPrice,
-                        keyboardType: TextInputType.number,
                         decoration:
                             const InputDecoration(labelText: 'السعر الإجمالي'),
                       ),

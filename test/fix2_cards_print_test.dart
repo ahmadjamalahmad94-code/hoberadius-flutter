@@ -8,7 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/features/accounting/presentation/financial_reports_screen.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/features/admin_control/application/admin_control_providers.dart';
+import 'package:hoberadius_app/features/cards/domain/card_batch_requests.dart';
+import 'package:hoberadius_app/features/cards/presentation/recharge_cards_screen.dart';
+import 'package:hoberadius_app/features/cards/presentation/widgets/card_number_field.dart';
 import 'package:hoberadius_app/features/cards/print/application/quick_print_controller.dart';
 import 'package:hoberadius_app/features/cards/print/data/quick_print_repository.dart';
 import 'package:hoberadius_app/features/cards/print/domain/auto_sizes.dart';
@@ -607,9 +612,13 @@ void main() {
       }
 
       expect(
-          await opened({'last_template_id': 4, 'default_template_id': 3}), 4);
+        await opened({'last_template_id': 4, 'default_template_id': 3}),
+        4,
+      );
       expect(
-          await opened({'last_template_id': 99, 'default_template_id': 4}), 4);
+        await opened({'last_template_id': 99, 'default_template_id': 4}),
+        4,
+      );
       // old server: the is_default flag in the list
       expect(await opened(const {}), 3);
     });
@@ -653,6 +662,62 @@ void main() {
       );
       final job = PrintExportJob.fromJson({'id': 5, 'status': 'cancelled'});
       expect((job.cancelled, job.failed, job.done), (true, false, false));
+    });
+  });
+
+  group('7 — card screens read numbers strictly', () {
+    test('«٣» is 3; «-1», «1e3», «7.5», text are refused in Arabic', () {
+      expect(validateCardNumber('٣', required: true, min: 1), isNull);
+      expect(parseIntInput('٣'), 3);
+      expect(validateCardNumber('-1'), 'القيم السالبة غير مسموحة.');
+      expect(validateCardNumber('1e3'), contains('«e»'));
+      expect(validateCardNumber('7.5'), 'أدخل عددًا صحيحًا بدون كسور.');
+      expect(validateCardNumber('abc'), 'أدخل رقمًا صحيحًا (أرقام فقط).');
+      expect(validateCardNumber(''), isNull, reason: 'optional stays optional');
+      expect(validateCardNumber('', required: true), 'مطلوب');
+      // money fields: decimals (Arabic «٫» too) up to the cap
+      expect(validateCardNumber('٥٫٥', decimal: true), isNull);
+      expect(parseNumberInput('٥٫٥'), 5.5);
+      expect(
+        validateCardNumber('100001', decimal: true, max: kMaxMoneyAmount),
+        startsWith('أعلى قيمة مسموحة'),
+      );
+      // the batch count keeps its own rule after the strict read
+      expect(
+        validateCardNumber('٠', check: (v) => validateCardCount(v?.toInt())),
+        validateCardCount(0),
+      );
+    });
+
+    test('a recharge row with a typo is reported, not dropped', () {
+      expect(rechargeRowError('٥', '٣'), isNull);
+      expect(rechargeRowError('', ''), isNull);
+      expect(rechargeRowError('5', 'x'), startsWith('عدد الكروت:'));
+      expect(rechargeRowError('-5', '3'), startsWith('قيمة الشحن:'));
+      expect(rechargeRowError('0', '3'), startsWith('قيمة الشحن:'));
+    });
+
+    testWidgets('the field accepts «٣» and shows the reason for «-1»',
+        (tester) async {
+      final key = GlobalKey<FormState>();
+      final c = TextEditingController();
+      addTearDown(c.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Form(
+              key: key,
+              child: CardNumberField(controller: c, required: true, min: 1),
+            ),
+          ),
+        ),
+      );
+      await tester.enterText(find.byType(TextFormField), '٣');
+      expect(key.currentState!.validate(), isTrue);
+      await tester.enterText(find.byType(TextFormField), '-1');
+      expect(key.currentState!.validate(), isFalse);
+      await tester.pump();
+      expect(find.text('القيم السالبة غير مسموحة.'), findsOneWidget);
     });
   });
 }

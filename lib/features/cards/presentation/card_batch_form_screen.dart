@@ -11,6 +11,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/idempotency.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/number_input.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
@@ -20,6 +21,7 @@ import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
 import '../domain/username_preview.dart';
 import '../application/cards_list_providers.dart';
+import 'widgets/card_number_field.dart';
 import 'widgets/cards_form_header.dart';
 
 class CardBatchFormScreen extends ConsumerStatefulWidget {
@@ -148,26 +150,26 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   Future<void> _submit() async {
     if (_loading) return;
     if (!_formKey.currentState!.validate()) return;
-    final count = int.parse(_count.text.trim());
+    final count = parseIntInput(_count.text)!;
     if (count > kConfirmCardsAbove && !await _confirmLargeBatch(count)) return;
     if (!mounted) return;
     final req = GenerateBatchRequest(
-      planId: int.parse(_plan.text.trim()),
+      planId: parseIntInput(_plan.text)!,
       count: count,
       packageName: _packageName.text.trim(),
       usernamePrefix: normalizeCardAffix(_prefix.text),
       usernameSuffix: normalizeCardAffix(_suffix.text),
       includeBatchNumber: _includeBatchNumber,
-      usernameLength: int.tryParse(_ulen.text) ?? 8,
-      passwordLength: int.tryParse(_plen.text) ?? 6,
+      usernameLength: parseIntInput(_ulen.text) ?? 8,
+      passwordLength: parseIntInput(_plen.text) ?? 6,
       passwordGenerationType: _noPassword ? 'digits' : _passwordType,
       loginWithoutPassword: _noPassword,
-      timeValue: int.tryParse(_timeVal.text) ?? 0,
+      timeValue: parseIntInput(_timeVal.text) ?? 0,
       timeUnit: _timeUnit,
       deviceCount: _devices,
-      pricePerCard: num.tryParse(_pricePerCard.text.trim()) ?? 0,
-      totalPrice: num.tryParse(_totalPrice.text.trim()) ?? 0,
-      totalQuotaMb: int.tryParse(_totalQuota.text.trim()) ?? 0,
+      pricePerCard: parseNumberInput(_pricePerCard.text) ?? 0,
+      totalPrice: parseNumberInput(_totalPrice.text) ?? 0,
+      totalQuotaMb: parseIntInput(_totalQuota.text) ?? 0,
       serviceName: _serviceName.text.trim(),
       notes: _notes.text.trim(),
     );
@@ -216,9 +218,16 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     );
   }
 
-  Widget _num(TextEditingController c, String label) => FormFieldRow(
+  Widget _num(
+    TextEditingController c,
+    String label, {
+    bool money = false,
+  }) =>
+      FormFieldRow(
         label: label,
-        child: TextFormField(controller: c, keyboardType: TextInputType.number),
+        child: money
+            ? CardNumberField.money(controller: c)
+            : CardNumberField(controller: c),
       );
 
   @override
@@ -265,30 +274,27 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   first: FormFieldRow(
                     label: 'معرّف الباقة',
                     required: true,
-                    child: TextFormField(
+                    child: CardNumberField(
                       controller: _plan,
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          (v == null || int.tryParse(v.trim()) == null)
-                              ? 'مطلوب'
-                              : null,
+                      required: true,
+                      min: 1,
                     ),
                   ),
                   second: FormFieldRow(
                     label: 'العدد',
                     required: true,
                     hint: '1 – $kMaxCardsPerBatch',
-                    child: TextFormField(
+                    child: CardNumberField(
                       controller: _count,
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          validateCardCount(int.tryParse(v?.trim() ?? '')),
+                      required: true,
+                      emptyMessage: validateCardCount(null),
+                      check: (v) => validateCardCount(v?.toInt()),
                     ),
                   ),
                 ),
                 FormFieldPair(
-                  first: _num(_pricePerCard, 'سعر البطاقة'),
-                  second: _num(_totalPrice, 'السعر الإجمالي'),
+                  first: _num(_pricePerCard, 'سعر البطاقة', money: true),
+                  second: _num(_totalPrice, 'السعر الإجمالي', money: true),
                 ),
                 FormFieldPair(
                   first: _num(_totalQuota, 'الحصة الكلية MB'),
@@ -357,10 +363,10 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   preview: UsernamePreview.of(
                     prefix: _prefix.text,
                     suffix: _suffix.text,
-                    totalLength: int.tryParse(_ulen.text.trim()),
+                    totalLength: parseIntInput(_ulen.text),
                     batchNumber:
                         _includeBatchNumber ? '${_nextBatchId ?? ''}' : '',
-                    count: int.tryParse(_count.text.trim()) ?? 0,
+                    count: parseIntInput(_count.text) ?? 0,
                   ),
                   batchEstimated: _includeBatchNumber,
                 ),
