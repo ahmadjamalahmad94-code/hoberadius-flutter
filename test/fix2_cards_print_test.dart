@@ -9,6 +9,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/features/cards/data/cards_repository.dart';
 import 'package:hoberadius_app/features/cards/presentation/card_batch_form_screen.dart';
+import 'package:hoberadius_app/features/cards/presentation/card_batch_import_screen.dart';
+import 'package:hoberadius_app/features/cards/domain/card_batch_import.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:hoberadius_app/features/plans/data/plans_repository.dart';
 import 'package:hoberadius_app/shared/widgets/form_field_row.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1026,6 +1029,73 @@ void main() {
       expect(fieldAfter(tester, 'اسم باقة الكروت').controller!.text, 'دفعتي');
       // no inline card list under the form any more
       expect(find.textContaining('كلمة المرور: '), findsNothing);
+    });
+  });
+
+  group('9 — card import report', () {
+    test('updated server: skipped messages + duplicate_in_file + invalid', () {
+      final r = CardBatchImportResult.fromJson({
+        'data': {
+          'batch': {'id': 5, 'batch_code': 'B-5', 'source_type': 'imported'},
+          'inserted_count': 7,
+          'skipped_count': 3,
+          'skipped': [
+            {
+              'username': '0599',
+              'reason': 'duplicate',
+              'message': 'الاسم مستعمل في النظام (بطاقة أو مشترك)',
+            },
+            {
+              'username': 'aa',
+              'reason': 'duplicate_in_file',
+              'message': 'مكرّر داخل الملف نفسه',
+            },
+            {'username': '', 'reason': 'missing_username', 'message': ''},
+          ],
+          'duplicate_in_file': {
+            'count': 1,
+            'samples': ['aa'],
+          },
+          'invalid': [
+            {
+              'reason': 'empty_username',
+              'label': 'اسم المستخدم فارغ (حقل مفقود)',
+              'count': 1,
+              'samples': [''],
+            },
+          ],
+          'radius_sync_enabled': true,
+          'radius_synced_count': 7,
+        },
+      });
+      expect(r.duplicateInFile, 1);
+      expect(r.invalid.single.label, 'اسم المستخدم فارغ (حقل مفقود)');
+      final summary = importResultSummary(r);
+      expect(summary, contains('مستورد'));
+      expect(summary, contains('مكرّر داخل الملف 1'));
+      expect(summary, contains('اسم المستخدم فارغ (حقل مفقود): 1'));
+      expect(
+        stripBidiMarks(importSkippedLine(r.skipped.first)),
+        '0599 — الاسم مستعمل في النظام (بطاقة أو مشترك)',
+      );
+      // no message: the known reason in Arabic
+      expect(importSkippedLine(r.skipped.last), '— — اسم المستخدم فارغ');
+    });
+
+    test('old server: codes only, no new counts', () {
+      final r = CardBatchImportResult.fromJson({
+        'batch': {'id': 5, 'batch_code': 'B-5', 'source_type': 'external'},
+        'inserted_count': 2,
+        'skipped_count': 1,
+        'skipped': [
+          {'username': 'x1', 'reason': 'duplicate'},
+        ],
+      });
+      expect(r.duplicateInFile, 0);
+      expect(r.invalid, isEmpty);
+      expect(importSkippedLine(r.skipped.single), contains('مستعمل'));
+      expect(importResultSummary(r), contains('خارجي'));
+      expect(kImportSyncCaption, contains('دائمًا'));
     });
   });
 }

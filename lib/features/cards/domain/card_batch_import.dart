@@ -80,6 +80,8 @@ class CardBatchImportResult {
     this.radiusSyncEnabled = false,
     this.radiusSyncedCount = 0,
     this.skipped = const [],
+    this.duplicateInFile = 0,
+    this.invalid = const [],
   });
 
   final CardBatch batch;
@@ -88,6 +90,13 @@ class CardBatchImportResult {
   final bool radiusSyncEnabled;
   final int radiusSyncedCount;
   final List<CardBatchImportSkippedRow> skipped;
+
+  /// Rows repeated inside the file itself (updated servers; 0 on old ones).
+  final int duplicateInFile;
+
+  /// Rows refused by the server's checks, grouped by reason (updated
+  /// servers): empty name, too long, bad characters…
+  final List<CardImportInvalidGroup> invalid;
 
   factory CardBatchImportResult.fromJson(Map<String, dynamic> json) {
     final data = (json['data'] is Map<String, dynamic>)
@@ -107,6 +116,11 @@ class CardBatchImportResult {
           .whereType<Map<String, dynamic>>()
           .map(CardBatchImportSkippedRow.fromJson)
           .toList(),
+      duplicateInFile: _countOf(data['duplicate_in_file']),
+      invalid: (data['invalid'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(CardImportInvalidGroup.fromJson)
+          .toList(),
     );
   }
 }
@@ -116,16 +130,65 @@ class CardBatchImportSkippedRow {
     this.row = '',
     this.username = '',
     this.reason = '',
+    this.message = '',
   });
 
   final String row;
   final String username;
   final String reason;
 
+  /// The server's Arabic explanation (updated servers).
+  final String message;
+
+  /// What to show: the Arabic message, else a known reason, else the code.
+  String get label {
+    if (message.trim().isNotEmpty) return message.trim();
+    return kCardImportReasonLabels[reason] ?? reason;
+  }
+
   factory CardBatchImportSkippedRow.fromJson(Map<String, dynamic> json) =>
       CardBatchImportSkippedRow(
         row: (json['row'] ?? '').toString(),
         username: (json['username'] ?? '').toString(),
         reason: (json['reason'] ?? '').toString(),
+        message: (json['message'] ?? '').toString(),
       );
+}
+
+int _countOf(Object? v) =>
+    v is Map ? cardParseInt(v['count']) ?? 0 : cardParseInt(v) ?? 0;
+
+/// Arabic names of the import skip reasons (old servers send codes only).
+const kCardImportReasonLabels = <String, String>{
+  'duplicate': 'الاسم مستعمل في النظام (بطاقة أو مشترك)',
+  'duplicate_in_file': 'مكرّر داخل الملف نفسه',
+  'missing_username': 'اسم المستخدم فارغ',
+  'empty_username': 'اسم المستخدم فارغ',
+  'username_too_long': 'اسم المستخدم طويل جدًّا',
+  'invalid_password': 'كلمة المرور تحوي محارف غير مسموحة',
+  'password_too_long': 'كلمة المرور أطول من 64 محرفًا',
+};
+
+/// One reason the server refused rows for, with how many.
+class CardImportInvalidGroup {
+  const CardImportInvalidGroup({
+    required this.reason,
+    required this.label,
+    required this.count,
+  });
+  final String reason;
+  final String label;
+  final int count;
+
+  factory CardImportInvalidGroup.fromJson(Map<String, dynamic> j) {
+    final reason = '${j['reason'] ?? ''}';
+    final label = '${j['label'] ?? ''}'.trim();
+    return CardImportInvalidGroup(
+      reason: reason,
+      label: label.isNotEmpty
+          ? label
+          : (kCardImportReasonLabels[reason] ?? reason),
+      count: cardParseInt(j['count']) ?? 0,
+    );
+  }
 }

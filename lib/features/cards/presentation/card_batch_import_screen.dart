@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/bidi.dart';
 import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -339,7 +340,7 @@ class _ImportForm extends StatelessWidget {
                   subtitle: Text(
                     external
                         ? 'معطل للملف الخارجي حتى لا يلمس أجهزة الشبكة أو خدمة فري ريدياس.'
-                        : 'يفعّل الكروت المستوردة كحسابات ريدياس فعلية.',
+                        : kImportSyncCaption,
                   ),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -452,14 +453,62 @@ class _ImportResultCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTokens.s8),
           Text(
-            '${batch.batchCode} · ${batch.sourceType} · متخطى ${result.skippedCount} · مزامنة الريدياس ${result.radiusSyncedCount}',
+            importResultSummary(result),
             style: const TextStyle(
               color: AppTokens.textSecondary,
               fontWeight: FontWeight.w700,
             ),
           ),
+          if (result.skipped.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s8),
+            const Text(
+              'الأسطر المتخطّاة وسببها:',
+              style: TextStyle(fontWeight: FontWeight.w800),
+            ),
+            for (final r in result.skipped.take(kImportSkippedShown))
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  importSkippedLine(r),
+                  style: const TextStyle(color: AppTokens.textSecondary),
+                ),
+              ),
+            if (result.skipped.length > kImportSkippedShown)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'و${result.skipped.length - kImportSkippedShown} أخرى.',
+                  style: const TextStyle(color: AppTokens.textMuted),
+                ),
+              ),
+          ],
         ],
       ),
     );
   }
 }
+
+/// «مستورد»: updated servers always create the RADIUS accounts (the cards
+/// work at once); the switch only matters to older servers.
+const kImportSyncCaption =
+    'الكروت المستوردة تُفعَّل كحسابات ريدياس فعلية دائمًا في الخوادم '
+    'المحدّثة — هذا المفتاح يؤثّر على الخوادم الأقدم فقط.';
+
+/// How many skipped rows the result card lists.
+const kImportSkippedShown = 20;
+
+/// «B-12 · مستورد · متخطى 3 · مكرّر داخل الملف 1 · … · مزامنة الريدياس 7».
+String importResultSummary(CardBatchImportResult result) => [
+      result.batch.batchCode,
+      result.batch.sourceType == 'external' ? 'خارجي' : 'مستورد',
+      'متخطى ${result.skippedCount}',
+      if (result.duplicateInFile > 0)
+        'مكرّر داخل الملف ${result.duplicateInFile}',
+      for (final g in result.invalid)
+        if (g.count > 0) '${g.label}: ${g.count}',
+      'مزامنة الريدياس ${result.radiusSyncedCount}',
+    ].where((s) => s.isNotEmpty).join(' · ');
+
+/// «0599 — الاسم مستعمل في النظام (بطاقة أو مشترك)».
+String importSkippedLine(CardBatchImportSkippedRow r) =>
+    '${r.username.isEmpty ? '—' : ltrIsolate(r.username)} — ${r.label}';
