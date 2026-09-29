@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
+import 'card_number_field.dart';
 
 class CardBatchCoreSection extends StatelessWidget {
   const CardBatchCoreSection({
@@ -40,28 +41,19 @@ class CardBatchCoreSection extends StatelessWidget {
             label: 'معرّف العرض',
             required: true,
             hint: 'تغيير العرض يطبّق على الكروت المتاحة فقط',
-            child: TextFormField(
-              controller: plan,
-              keyboardType: TextInputType.number,
-              validator: (v) =>
-                  int.tryParse(v?.trim() ?? '') == null ? 'مطلوب' : null,
-            ),
+            child: CardNumberField(controller: plan, required: true, min: 1),
           ),
           FormFieldPair(
             first: FormFieldRow(
               label: 'عدد الباقة',
               required: true,
               hint: 'لا يقلّ عن $minCount',
-              child: TextFormField(
+              child: CardNumberField(
                 controller: count,
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  final n = int.tryParse(v?.trim() ?? '');
-                  if (n == null || n < minCount) {
-                    return 'لا يقلّ عن $minCount';
-                  }
-                  return null;
-                },
+                required: true,
+                emptyMessage: 'لا يقلّ عن $minCount',
+                check: (n) =>
+                    n == null || n < minCount ? 'لا يقلّ عن $minCount' : null,
               ),
             ),
             second: FormFieldRow(
@@ -104,10 +96,17 @@ class CardBatchMoneySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget num(TextEditingController c, String label) => FormFieldRow(
-      label: label,
-      child: TextFormField(controller: c, keyboardType: TextInputType.number),
-    );
+    Widget num(
+      TextEditingController c,
+      String label, {
+      bool money = false,
+    }) =>
+        FormFieldRow(
+          label: label,
+          child: money
+              ? CardNumberField.money(controller: c)
+              : CardNumberField(controller: c),
+        );
     return CollapsibleSection(
       storageKey: 'batch.edit.money',
       icon: Icons.sell_outlined,
@@ -115,11 +114,11 @@ class CardBatchMoneySection extends StatelessWidget {
       child: Column(
         children: [
           FormFieldPair(
-            first: num(pricePerCard, 'سعر البطاقة'),
-            second: num(priceBulk, 'سعر الجملة'),
+            first: num(pricePerCard, 'سعر البطاقة', money: true),
+            second: num(priceBulk, 'سعر الجملة', money: true),
           ),
           FormFieldPair(
-            first: num(totalPrice, 'السعر الإجمالي'),
+            first: num(totalPrice, 'السعر الإجمالي', money: true),
             second: num(totalQuota, 'الحصة الكلية MB'),
           ),
           FormFieldPair(
@@ -195,17 +194,11 @@ class CardBatchGenerationSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'طول اسم الدخول',
-              child: TextFormField(
-                controller: ulen,
-                keyboardType: TextInputType.number,
-              ),
+              child: CardNumberField(controller: ulen),
             ),
             second: FormFieldRow(
               label: 'طول كلمة المرور',
-              child: TextFormField(
-                controller: plen,
-                keyboardType: TextInputType.number,
-              ),
+              child: CardNumberField(controller: plen),
             ),
           ),
           FormFieldRow(

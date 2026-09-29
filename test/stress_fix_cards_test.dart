@@ -111,13 +111,19 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final adapter = RecordingAdapter(
-      (_) => FakeResponse.ok(
-        {
-          'batch': {'id': 1},
-          'cards': [],
-        },
-        status: 201,
-      ),
+      (r) => r.path.endsWith('/profiles')
+          ? FakeResponse.ok({
+              'items': [
+                {'id': 3, 'name': 'P3', 'enabled': true},
+              ],
+            })
+          : FakeResponse.ok(
+              {
+                'batch': {'id': 1},
+                'cards': [],
+              },
+              status: 201,
+            ),
     );
     await tester.pumpWidget(
       ProviderScope(
@@ -133,16 +139,16 @@ void main() {
     );
     await tester.pumpAndSettle();
     final fields = find.byType(TextFormField);
-    // plan id, then count (see the form order)
-    await tester.enterText(fields.at(1), '3');
-    await tester.enterText(fields.at(2), '5000');
+    // (fix2) the plan is a picker now: name, then count (see the form order)
+    await _pickPlan(tester);
+    await tester.enterText(fields.at(1), '5000');
     await tester.tap(find.text('توليد').first);
     await tester.pumpAndSettle();
     expect(find.text('توليد عدد كبير من الكروت؟'), findsOneWidget);
     await tester.tap(find.text('إلغاء'));
     await tester.pumpAndSettle();
     expect(adapter.where('POST', '/cards/generate'), isEmpty);
-    await tester.enterText(fields.at(2), '1000000');
+    await tester.enterText(fields.at(1), '1000000');
     await tester.tap(find.text('توليد').first);
     await tester.pumpAndSettle();
     expect(find.textContaining('10000'), findsWidgets);
@@ -157,13 +163,19 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final adapter = RecordingAdapter(
-      (_) => FakeResponse.ok(
-        {
-          'batch': {'id': 1},
-          'cards': [],
-        },
-        status: 201,
-      ),
+      (r) => r.path.endsWith('/profiles')
+          ? FakeResponse.ok({
+              'items': [
+                {'id': 3, 'name': 'P3', 'enabled': true},
+              ],
+            })
+          : FakeResponse.ok(
+              {
+                'batch': {'id': 1},
+                'cards': [],
+              },
+              status: 201,
+            ),
     );
     await tester.pumpWidget(
       ProviderScope(
@@ -179,8 +191,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     final fields = find.byType(TextFormField);
-    await tester.enterText(fields.at(1), '3');
-    await tester.enterText(fields.at(2), '10');
+    await _pickPlan(tester);
+    await tester.enterText(fields.at(1), '10');
     await tester.tap(find.text('توليد').first);
     await tester.pumpAndSettle();
     final body = adapter.where('POST', '/cards/generate').single.body as Map;
@@ -188,4 +200,12 @@ void main() {
     expect(body['device_count'], 0);
     expect(body['password_generation_type'], 'digits');
   });
+}
+
+/// (fix2) «الباقة» is a required picker of active plans (was a number).
+Future<void> _pickPlan(WidgetTester tester) async {
+  await tester.tap(find.byType(DropdownButtonFormField<int>).first);
+  await tester.pumpAndSettle();
+  await tester.tap(find.textContaining('P3').last);
+  await tester.pumpAndSettle();
 }

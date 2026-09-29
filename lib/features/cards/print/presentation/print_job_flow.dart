@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:hoberadius_app/core/router/pop_on_route_change.dart';
+import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_saver/file_saver.dart';
@@ -24,16 +25,10 @@ Future<void> runPrintFlow(
   final provider = quickPrintControllerProvider(batchId);
   final ctl = ref.read(provider.notifier);
   final repo = ref.read(quickPrintRepositoryProvider);
-  final messenger = ScaffoldMessenger.of(context);
   final navigator = Navigator.of(context, rootNavigator: true);
 
-  final int templateId;
-  try {
-    templateId = await ctl.save();
-  } catch (e) {
-    messenger.showSnackBar(SnackBar(content: Text('$e')));
-    return;
-  }
+  final templateId = await saveDesignOrAsk(context, ctl);
+  if (templateId == null) return;
   final st = ref.read(provider);
   final settings = st.sheet.toSettings();
   final overrides = ctl.exportOverrides;
@@ -72,6 +67,137 @@ Future<void> runPrintFlow(
   );
 }
 
+/// Saves the design; a name another template already has opens
+/// [TemplateNameClashDialog] (replace that template, or save under another
+/// name) instead of a dead-end error. Null: cancelled or failed (the error is
+/// shown in a snack bar).
+Future<int?> saveDesignOrAsk(
+  BuildContext context,
+  QuickPrintController ctl,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  String? name;
+  int? target;
+  for (var round = 0; round < 5; round++) {
+    try {
+      return await ctl.save(name: name, targetTemplateId: target);
+    } on TemplateNameTaken catch (e) {
+      if (!context.mounted) return null;
+      final choice = await showDialog<TemplateNameChoice>(
+        context: context,
+        useRootNavigator: true,
+        builder: (_) => TemplateNameClashDialog(clash: e),
+      );
+      if (choice == null) return null;
+      name = choice.name;
+      target = choice.overwriteId;
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      return null;
+    }
+  }
+  return null;
+}
+
+/// The operator's answer to a template-name clash.
+class TemplateNameChoice {
+  const TemplateNameChoice.rename(this.name) : overwriteId = null;
+  const TemplateNameChoice.overwrite(this.name, int id) : overwriteId = id;
+  final String name;
+
+  /// Save INTO this existing template (replace it).
+  final int? overwriteId;
+}
+
+/// «يوجد قالب بهذا الاسم»: replace the existing template (when it is known)
+/// or pick another name (a free one is suggested).
+class TemplateNameClashDialog extends StatefulWidget {
+  const TemplateNameClashDialog({super.key, required this.clash});
+  final TemplateNameTaken clash;
+
+  @override
+  State<TemplateNameClashDialog> createState() =>
+      _TemplateNameClashDialogState();
+}
+
+class _TemplateNameClashDialogState extends State<TemplateNameClashDialog> {
+  late final TextEditingController _name =
+      TextEditingController(text: widget.clash.suggestion);
+  String? _error;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    super.dispose();
+  }
+
+  void _rename() {
+    final v = _name.text.trim();
+    if (v.isEmpty) {
+      setState(() => _error = 'اسم القالب مطلوب');
+      return;
+    }
+    if (v.toLowerCase() == widget.clash.name.trim().toLowerCase()) {
+      setState(() => _error = 'هذا الاسم مستخدم — اختر اسمًا آخر.');
+      return;
+    }
+    Navigator.of(context).pop(TemplateNameChoice.rename(v));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.clash;
+    return AlertDialog(
+      title: const Text('يوجد قالب بهذا الاسم'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              c.existingId > 0
+                  ? 'القالب «${c.name}» موجود. استبدله بهذا التصميم، '
+                      'أو احفظ باسم آخر.'
+                  : 'القالب «${c.name}» موجود. احفظ باسم آخر.',
+            ),
+            const SizedBox(height: AppTokens.s12),
+            TextField(
+              controller: _name,
+              autofocus: true,
+              maxLength: 120,
+              decoration: InputDecoration(
+                labelText: 'اسم جديد للقالب',
+                counterText: '',
+                errorText: _error,
+              ),
+              onChanged: (_) {
+                if (_error != null) setState(() => _error = null);
+              },
+              onSubmitted: (_) => _rename(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('إلغاء'),
+        ),
+        if (c.existingId > 0)
+          TextButton(
+            onPressed: () => Navigator.of(context)
+                .pop(TemplateNameChoice.overwrite(c.name, c.existingId)),
+            child: const Text('استبدال الموجود'),
+          ),
+        FilledButton(
+          onPressed: _rename,
+          child: const Text('حفظ باسم جديد'),
+        ),
+      ],
+    );
+  }
+}
+
 class _PrintResult {
   const _PrintResult(this.bytes, this.fileName);
   final Uint8List bytes;
@@ -90,8 +216,9 @@ class _PrintJobDialog extends StatefulWidget {
   final Future<Uint8List> Function(int id) download;
 
   /// «إلغاء» while the job is queued/running (a stuck export used to leave
-  /// no way out: the dialog cannot be dismissed).
-  final Future<void> Function(int id)? cancel;
+  /// no way out: the dialog cannot be dismissed). Returns the server's
+  /// reason when it refused (409: the job had already finished).
+  final Future<String?> Function(int id)? cancel;
 
   @override
   State<_PrintJobDialog> createState() => _PrintJobDialogState();
@@ -103,6 +230,9 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
   bool _downloading = false;
   Timer? _timer;
   bool _closed = false;
+
+  /// The server refused «إلغاء» (the job finished meanwhile): its reason.
+  String _notice = '';
 
   @override
   void initState() {
@@ -137,8 +267,17 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
     final id = _job?.id;
     _closed = true;
     _timer?.cancel();
-    if (id != null && widget.cancel != null) await widget.cancel!(id);
-    if (mounted) Navigator.of(context).pop();
+    final refused =
+        id != null && widget.cancel != null ? await widget.cancel!(id) : null;
+    if (!mounted) return;
+    if (refused != null && refused.trim().isNotEmpty && id != null) {
+      // Too late to cancel: say why and keep following the job.
+      _closed = false;
+      setState(() => _notice = refused);
+      _tick(id);
+      return;
+    }
+    Navigator.of(context).pop();
   }
 
   void _schedule(int id) {
@@ -151,10 +290,11 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
       final job = await widget.poll(id);
       if (_closed) return;
       setState(() => _job = job);
-      if (job.failed) {
+      if (job.failed || job.cancelled) {
+        final fallback =
+            job.cancelled ? 'أُلغيت مهمة الطباعة.' : 'تعذّر إنشاء الملف.';
         setState(
-          () =>
-              _error = job.message.isEmpty ? 'تعذّر إنشاء الملف.' : job.message,
+          () => _error = job.message.trim().isEmpty ? fallback : job.message,
         );
         return;
       }
@@ -166,6 +306,17 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
       final bytes = await widget.download(id);
       if (_closed || !mounted) return;
       Navigator.of(context).pop(_PrintResult(bytes, job.fileName));
+    } on ApiException catch (e) {
+      if (_closed) return;
+      if (e.status == 409 || e.status == 404) {
+        // Cancelled / failed / unknown job: the server's reason, no retry.
+        setState(() {
+          _downloading = false;
+          _error = visibleErrorMessage(e, fallback: 'تعذّر إنشاء الملف.');
+        });
+        return;
+      }
+      _timer = Timer(const Duration(seconds: 2), () => _tick(id));
     } catch (_) {
       if (!_closed) {
         // A transient network error: keep following the job.
@@ -182,11 +333,13 @@ class _PrintJobDialogState extends State<_PrintJobDialog> {
     final failed = _error.isNotEmpty;
     final label = failed
         ? _error
-        : _downloading
-            ? 'تنزيل الملف…'
-            : (job?.stageLabel.isNotEmpty ?? false)
-                ? job!.stageLabel
-                : 'تجهيز ملف الطباعة…';
+        : _notice.isNotEmpty
+            ? _notice
+            : _downloading
+                ? 'تنزيل الملف…'
+                : (job?.stageLabel.isNotEmpty ?? false)
+                    ? job!.stageLabel
+                    : 'تجهيز ملف الطباعة…';
     return PopScope(
       canPop: false,
       child: Dialog(
@@ -565,6 +718,11 @@ class _PdfAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final style = ButtonStyle(
       minimumSize: const WidgetStatePropertyAll(Size.fromHeight(48)),
+      // The default icon-button padding (16 + 24) left «مشاركة» ~38 px at
+      // 360 px wide and it was clipped to «شاركة» (R06 N8.1).
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 8),
+      ),
       textStyle: WidgetStatePropertyAll(
         Theme.of(context)
             .textTheme
@@ -579,28 +737,27 @@ class _PdfAction extends StatelessWidget {
             child: CircularProgressIndicator(strokeWidth: 2),
           )
         : Icon(icon, size: 20);
-    return primary
-        ? FilledButton.icon(
-            onPressed: busy ? null : onTap,
-            style: style,
-            icon: iconW,
-            label: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.fade,
+    // Never clipped: a narrow button shrinks the label instead.
+    final text = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(label, maxLines: 1, softWrap: false),
+    );
+    return Tooltip(
+      message: label,
+      excludeFromSemantics: true,
+      child: primary
+          ? FilledButton.icon(
+              onPressed: busy ? null : onTap,
+              style: style,
+              icon: iconW,
+              label: text,
+            )
+          : OutlinedButton.icon(
+              onPressed: busy ? null : onTap,
+              style: style,
+              icon: iconW,
+              label: text,
             ),
-          )
-        : OutlinedButton.icon(
-            onPressed: busy ? null : onTap,
-            style: style,
-            icon: iconW,
-            label: Text(
-              label,
-              maxLines: 1,
-              softWrap: false,
-              overflow: TextOverflow.fade,
-            ),
-          );
+    );
   }
 }

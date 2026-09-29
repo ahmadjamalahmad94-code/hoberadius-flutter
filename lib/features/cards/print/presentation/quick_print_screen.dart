@@ -525,6 +525,10 @@ class _PreviewCard extends StatelessWidget {
               style: const TextStyle(color: AppTokens.red),
             ),
           ],
+          for (final w in st.elementWarnings) ...[
+            const SizedBox(height: AppTokens.s8),
+            ElementWarningNote(text: w),
+          ],
           const SizedBox(height: AppTokens.s12),
           Center(
             child: Container(
@@ -570,7 +574,11 @@ class _DesignCardState extends State<_DesignCard> {
   @override
   void didUpdateWidget(covariant _DesignCard old) {
     super.didUpdateWidget(old);
-    if (old.st.templateId != widget.st.templateId &&
+    // A new template / a rename from the name-clash dialog: show it. What
+    // the operator types is already the form's name (no snap-back — an
+    // emptied field stays empty and says «اسم القالب مطلوب»).
+    final renamed = old.st.form.name != widget.st.form.name;
+    if ((old.st.templateId != widget.st.templateId || renamed) &&
         _name.text != widget.st.form.name) {
       _name.text = widget.st.form.name;
     }
@@ -642,7 +650,12 @@ class _DesignCardState extends State<_DesignCard> {
           const SizedBox(height: AppTokens.s12),
           TextField(
             controller: _name,
-            decoration: const InputDecoration(labelText: 'اسم القالب'),
+            maxLength: kTemplateNameMax,
+            decoration: InputDecoration(
+              labelText: 'اسم القالب',
+              counterText: '',
+              errorText: templateNameError(st.form.name),
+            ),
             onChanged: (v) => ctl.updateForm((f) => f.copyWith(name: v)),
           ),
           const SizedBox(height: AppTokens.s12),
@@ -1544,13 +1557,11 @@ class _SaveButton extends StatelessWidget {
           ? null
           : () async {
               final messenger = ScaffoldMessenger.of(context);
-              try {
-                await ctl.save();
+              final id = await saveDesignOrAsk(context, ctl);
+              if (id != null) {
                 messenger.showSnackBar(
                   const SnackBar(content: Text('تم حفظ التصميم')),
                 );
-              } catch (e) {
-                messenger.showSnackBar(SnackBar(content: Text('$e')));
               }
             },
       style: OutlinedButton.styleFrom(
@@ -1566,6 +1577,39 @@ class _SaveButton extends StatelessWidget {
             )
           : const Icon(Icons.save_outlined),
       label: Text(st.templateId == 0 ? 'حفظ كتصميم جديد' : 'حفظ التصميم'),
+    );
+  }
+}
+
+/// A server note about what the renderer changed on its own (amber).
+class ElementWarningNote extends StatelessWidget {
+  const ElementWarningNote({super.key, required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTokens.amberSoft,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, size: 18, color: AppTokens.amberInk),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppTokens.amberInk,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

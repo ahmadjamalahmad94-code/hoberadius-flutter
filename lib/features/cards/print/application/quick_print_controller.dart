@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:printing/printing.dart';
 
 import '../../../../core/api/api_exception.dart';
+import '../../../admin_control/application/admin_control_providers.dart';
 import '../data/quick_print_repository.dart';
 import '../domain/quick_print_form.dart';
 
@@ -30,6 +31,7 @@ class QuickPrintState {
     this.saving = false,
     this.dirty = false,
     this.elements,
+    this.elementWarnings = const [],
   });
 
   final bool loading;
@@ -57,6 +59,10 @@ class QuickPrintState {
   /// Real element places (mm) for the current design — sliders + drag.
   final CardElements? elements;
 
+  /// What the renderer changed on its own (Arabic, from the server): e.g.
+  /// the QR was moved so it does not cover the username / password.
+  final List<String> elementWarnings;
+
   QuickPrintState copyWith({
     bool? loading,
     String? error,
@@ -74,6 +80,7 @@ class QuickPrintState {
     bool? saving,
     bool? dirty,
     CardElements? elements,
+    List<String>? elementWarnings,
   }) =>
       QuickPrintState(
         loading: loading ?? this.loading,
@@ -92,20 +99,40 @@ class QuickPrintState {
         saving: saving ?? this.saving,
         dirty: dirty ?? this.dirty,
         elements: elements ?? this.elements,
+        elementWarnings: elementWarnings ?? this.elementWarnings,
       );
 }
 
 class QuickPrintController extends StateNotifier<QuickPrintState> {
-  QuickPrintController(this._repo, this.batchId)
-      : super(const QuickPrintState()) {
+  QuickPrintController(
+    this._repo,
+    this.batchId, {
+    String Function()? tenantCurrency,
+  })  : _tenantCurrency = tenantCurrency,
+        super(const QuickPrintState()) {
     _load();
   }
 
   final QuickPrintRepository _repo;
   final int batchId;
 
+  /// The panel currency, for batches whose payload has no `currency` (old
+  /// servers): «5» alone was printed on the card (R06 N5).
+  final String Function()? _tenantCurrency;
+  Map<String, dynamic> _batch = const {};
+
   /// The batch's card price («5 ILS»), offered as the price text.
-  String batchPriceText = '';
+  String get batchPriceText {
+    var fallback = '';
+    try {
+      fallback = _tenantCurrency?.call() ?? '';
+    } catch (_) {}
+    return batchPriceLabel(_batch, fallbackCurrency: fallback);
+  }
+
+  /// `preview.pdf` already carries the element places (`X-Print-Elements`):
+  /// no separate `quick-elements` request once that is known.
+  bool _headerElements = false;
   Timer? _debounce;
   CancelToken? _inflight;
   int _seq = 0;
@@ -114,35 +141,51 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     try {
       final results = await Future.wait([
         _repo.templates(),
-        _repo.lastSettings().catchError((_) => <String, String>{}),
+        _repo
+            .lastSettings()
+            .catchError((_) => const LastPrintSettings(<String, String>{})),
         _repo.batch(batchId),
       ]);
       final templates = results[0] as List<Map<String, dynamic>>;
-      final lps = results[1] as Map<String, String>;
+      final last = results[1] as LastPrintSettings;
+      final lps = last.settings;
       final batch = results[2] as Map<String, dynamic>;
-      // Web: no argument → the default template, else the newest.
+      // Updated servers: THIS admin's last template, else the tenant
+      // default. Older: the default flag in the list, else the newest.
       Map<String, dynamic>? tpl;
-      for (final t in templates) {
-        final l = t['layout_json'];
-        if (l is Map && l['is_default'] == true) tpl = t;
+      for (final want in [last.lastTemplateId, last.defaultTemplateId]) {
+        if (tpl != null || want <= 0) continue;
+        for (final t in templates) {
+          if (_id(t) == want) tpl = t;
+        }
+      }
+      if (tpl == null) {
+        for (final t in templates) {
+          final l = t['layout_json'];
+          if (l is Map && l['is_default'] == true) tpl = t;
+        }
       }
       tpl ??= templates.isEmpty ? null : templates.first;
       tpl = await _repo.fullTemplate(tpl);
+      var form = QuickPrintForm.fromTemplate(
+        tpl,
+        fallbackLoginUrl: _anyLoginUrl(templates),
+      );
+      if (tpl == null) {
+        form = form.copyWith(name: uniqueTemplateName(templates));
+      }
       state = state.copyWith(
         loading: false,
         templates: templates,
         templateId: _id(tpl),
-        form: QuickPrintForm.fromTemplate(
-          tpl,
-          fallbackLoginUrl: _anyLoginUrl(templates),
-        ),
+        form: form,
         sheet: QuickSheet.fromLastSettings(lps),
         batchCode: '${batch['batch_code'] ?? batch['package_name'] ?? batchId}',
         batchCards: _int(batch['total_cards'] ?? batch['generated']),
         noPassword: batch['login_without_password'] == true ||
             batch['login_without_password'] == 1,
       );
-      batchPriceText = batchPriceLabel(batch);
+      _batch = batch;
       refreshPreview(immediate: true);
     } catch (e) {
       state = state.copyWith(loading: false, error: _message(e));
@@ -158,13 +201,21 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     // stored background image/design come with it.
     tpl = await _repo.fullTemplate(tpl);
     if (!mounted) return;
+    var form = QuickPrintForm.fromTemplate(
+      tpl,
+      fallbackLoginUrl: _anyLoginUrl(state.templates),
+    );
+    // «تصميم جديد»: a name no saved template has («قالب سريع 2»…) — the
+    // default «قالب سريع» usually exists already and the save/print failed
+    // with «يوجد قالب طباعة بهذا الاسم» (R11 M-4).
+    if (tpl == null) {
+      form = form.copyWith(name: uniqueTemplateName(state.templates));
+    }
     state = state.copyWith(
       templateId: tpl == null ? 0 : id,
-      form: QuickPrintForm.fromTemplate(
-        tpl,
-        fallbackLoginUrl: _anyLoginUrl(state.templates),
-      ),
+      form: form,
       dirty: false,
+      elementWarnings: const [],
     );
     refreshPreview(immediate: true);
   }
@@ -269,17 +320,20 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     state = state.copyWith(previewBusy: true, previewError: '');
     try {
       final card = state.mode == PreviewMode.card;
-      final fields = state.form.toFields(passwordShown: !state.noPassword);
-      final elementsFuture = _repo
-          .elements(
-            form: fields,
-            templateId: state.templateId,
-            batchId: batchId,
-            cancel: cancel,
-          )
-          .then<CardElements?>((e) => e)
-          .catchError((_) => null);
-      final pdf = await _repo.preview(
+      final formAtStart = state.form;
+      final fields = formAtStart.toFields(passwordShown: !state.noPassword);
+      final elementsFuture = _headerElements
+          ? Future<CardElements?>.value()
+          : _repo
+              .elements(
+                form: fields,
+                templateId: state.templateId,
+                batchId: batchId,
+                cancel: cancel,
+              )
+              .then<CardElements?>((e) => e)
+              .catchError((_) => null);
+      final preview = await _repo.preview(
         form: fields,
         templateId: state.templateId,
         batchId: batchId,
@@ -289,19 +343,17 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
       );
       // The platform's PDF engine rasterizes the server's PDF (Android:
       // PdfRenderer) — no Flutter redraw, so the preview is the print.
+      if (preview.elements != null) _headerElements = true;
       final raster = await Printing.raster(
-        pdf,
+        preview.pdf,
         pages: const [0],
         dpi: card ? 300 : 120,
       ).first;
       final png = await raster.toPng();
-      final elements = await elementsFuture;
+      final elements = preview.elements ?? await elementsFuture;
       if (seq != _seq || !mounted) return;
-      state = state.copyWith(
-        previewPng: png,
-        previewBusy: false,
-        elements: elements,
-      );
+      state = state.copyWith(previewPng: png, previewBusy: false);
+      if (elements != null) applyElements(elements, formAtStart);
     } on DioException catch (e) {
       if (CancelToken.isCancel(e) || seq != _seq || !mounted) return;
       state = state.copyWith(previewBusy: false, previewError: _message(e));
@@ -311,16 +363,68 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
     }
   }
 
+  /// The server's real element places for [renderedForm]. An element the
+  /// renderer moved (`adjusted`: kept inside the card, off the credentials…)
+  /// moves the slider and the drag handle to where it is REALLY drawn — the
+  /// slider used to keep the dropped 16.1 mm while the card used 29.96 mm
+  /// (R06 N7). Only when the design did not change meanwhile (a stale answer
+  /// must not undo a newer move); no new preview (it already shows this).
+  void applyElements(CardElements els, QuickPrintForm renderedForm) {
+    var form = state.form;
+    if (identical(form, renderedForm)) {
+      double r(double v) => double.parse(v.toStringAsFixed(1));
+      bool moved(ElementBox b) =>
+          b.adjusted && b.requestedX != null && b.requestedY != null;
+      final u = els.boxes['username'];
+      if (u != null && moved(u) && (form.usernameX > 0 || form.usernameY > 0)) {
+        form = form.copyWith(usernameX: r(u.x), usernameY: r(u.y));
+      }
+      final p = els.boxes['password'];
+      if (p != null && moved(p) && (form.passwordX > 0 || form.passwordY > 0)) {
+        form = form.copyWith(passwordX: r(p.x), passwordY: r(p.y));
+      }
+      final q = els.boxes['qr'];
+      if (q != null && form.showQr && q.adjusted) {
+        if (moved(q) && (form.qrX > 0 || form.qrY > 0)) {
+          form = form.copyWith(qrX: r(q.x), qrY: r(q.y));
+        }
+        final pct = q.sizePct;
+        if (pct != null &&
+            form.qrSizePct > 0 &&
+            (pct - form.qrSizePct).abs() > 0.5) {
+          form = form.copyWith(qrSizePct: r(pct));
+        }
+      }
+    }
+    state = state.copyWith(
+      elements: els,
+      form: form,
+      elementWarnings: els.warnings,
+    );
+  }
+
   /// Save (create or update) through the web's builder. Returns the id.
-  Future<int> save() async {
+  ///
+  /// [name]: save under this name (the «اسم آخر» answer to a name clash).
+  /// [targetTemplateId]: write into that template (the «استبدال» answer).
+  /// Throws [TemplateNameRequired] for an empty name and
+  /// [TemplateNameTaken] when another template has the name (updated
+  /// servers: 409 `duplicate_name`; older: 422 with the Arabic message).
+  Future<int> save({String? name, int? targetTemplateId}) async {
+    if (name != null) {
+      state = state.copyWith(form: state.form.copyWith(name: name.trim()));
+    }
+    final form = state.form;
+    final nameError = templateNameError(form.name);
+    if (nameError != null) throw TemplateNameRequired(nameError);
     state = state.copyWith(saving: true);
     try {
       final saved = await _repo.quickSave(
-        form: state.form.toFields(),
-        templateId: state.templateId,
+        form: form.toFields(),
+        templateId: targetTemplateId ?? state.templateId,
         printSettings: state.sheet.toSettings(),
       );
-      final id = _id(saved);
+      final id = _id(saved.template);
       final templates = await _repo.templates();
       state = state.copyWith(
         saving: false,
@@ -328,11 +432,36 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
         templates: templates,
         dirty: false,
       );
+      final els = saved.elements;
+      if (els != null && els.boxes.isNotEmpty) applyElements(els, form);
       return id;
     } catch (e) {
       state = state.copyWith(saving: false);
+      if (isTemplateNameClash(e)) {
+        throw await _nameTaken(e, form.name.trim());
+      }
       rethrow;
     }
+  }
+
+  Future<TemplateNameTaken> _nameTaken(Object e, String name) async {
+    var templates = state.templates;
+    try {
+      templates = await _repo.templates();
+      if (mounted) state = state.copyWith(templates: templates);
+    } catch (_) {}
+    var existing = 0;
+    for (final t in templates) {
+      if (_sameName('${t['name'] ?? ''}', name)) existing = _id(t);
+    }
+    return TemplateNameTaken(
+      message: e is ApiException && e.message.trim().isNotEmpty
+          ? e.message
+          : 'يوجد قالب طباعة بهذا الاسم — اختر اسمًا آخر.',
+      name: name,
+      existingId: existing == state.templateId ? 0 : existing,
+      suggestion: uniqueTemplateName(templates, base: name),
+    );
   }
 
   /// Web export overrides: the hotspot address + login URL for the QR.
@@ -390,18 +519,100 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
 
 final quickPrintControllerProvider = StateNotifierProvider.autoDispose
     .family<QuickPrintController, QuickPrintState, int>(
-  (ref, batchId) =>
-      QuickPrintController(ref.watch(quickPrintRepositoryProvider), batchId),
+  (ref, batchId) => QuickPrintController(
+    ref.watch(quickPrintRepositoryProvider),
+    batchId,
+    tenantCurrency: () => ref.read(tenantCurrencyProvider),
+  ),
 );
 
+/// The server's cap on a template name (a 10,004-character name broke the
+/// web quick screen — R06 N4).
+const kTemplateNameMax = 120;
+
+/// The name field's error (the server's own wording), null when valid.
+String? templateNameError(String name) {
+  final v = name.trim();
+  if (v.isEmpty) return 'اسم القالب مطلوب';
+  if (v.length > kTemplateNameMax) {
+    return 'اسم القالب طويل جدًّا — $kTemplateNameMax حرفًا على الأكثر.';
+  }
+  return null;
+}
+
+/// An empty or too long name — nothing is sent (the field shows the text).
+class TemplateNameRequired implements Exception {
+  const TemplateNameRequired([this.message = 'اسم القالب مطلوب']);
+  final String message;
+  @override
+  String toString() => message;
+}
+
+/// Another print template already has [name]. [existingId] > 0: it is in the
+/// list and can be overwritten; [suggestion]: a free name to offer instead.
+class TemplateNameTaken implements Exception {
+  const TemplateNameTaken({
+    required this.message,
+    required this.name,
+    required this.existingId,
+    required this.suggestion,
+  });
+  final String message;
+  final String name;
+  final int existingId;
+  final String suggestion;
+  @override
+  String toString() => message;
+}
+
+/// The server refused a template name that is taken: 409 `duplicate_name`
+/// (updated servers) or 422 «يوجد قالب طباعة بهذا الاسم» (older servers).
+bool isTemplateNameClash(Object e) {
+  if (e is! ApiException) return false;
+  final clashText = e.message.contains('يوجد قالب طباعة بهذا الاسم');
+  if (e.status == 409) return e.code == 'duplicate_name' || clashText;
+  return e.status == 422 && clashText;
+}
+
+bool _sameName(String a, String b) =>
+    a.trim().toLowerCase() == b.trim().toLowerCase();
+
+/// [base] when no template has it, else «base 2», «base 3»… (a trailing
+/// number of [base] is continued: «قالب سريع 2» → «قالب سريع 3»).
+String uniqueTemplateName(
+  List<Map<String, dynamic>> templates, {
+  String base = 'قالب سريع',
+}) {
+  final names = {
+    for (final t in templates) '${t['name'] ?? ''}'.trim().toLowerCase(),
+  };
+  var stem = base.trim().isEmpty ? 'قالب سريع' : base.trim();
+  if (!names.contains(stem.toLowerCase())) return stem;
+  var n = 2;
+  final m = RegExp(r'^(.*\S)\s+(\d+)$').firstMatch(stem);
+  if (m != null) {
+    stem = m.group(1)!;
+    n = (int.tryParse(m.group(2)!) ?? 1) + 1;
+  }
+  while (names.contains('$stem $n'.toLowerCase())) {
+    n++;
+  }
+  return '$stem $n';
+}
+
 /// «5 ILS» from a batch row (`price_per_card` + `currency`), '' when free.
-String batchPriceLabel(Map<String, dynamic> batch) {
+/// Old servers send no `currency` → [fallbackCurrency] (the panel's).
+String batchPriceLabel(
+  Map<String, dynamic> batch, {
+  String fallbackCurrency = '',
+}) {
   final raw = batch['price_per_card'] ?? batch['card_price'] ?? batch['price'];
   final n = raw is num ? raw : num.tryParse('${raw ?? ''}');
   if (n == null || n <= 0) return '';
   final v = n.toDouble();
   final text =
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
-  final cur = '${batch['currency'] ?? ''}'.trim();
+  var cur = '${batch['currency'] ?? ''}'.trim();
+  if (cur.isEmpty) cur = fallbackCurrency.trim();
   return cur.isEmpty ? text : '$text $cur';
 }
