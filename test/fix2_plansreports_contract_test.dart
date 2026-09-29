@@ -14,11 +14,10 @@ void main() {
       'subscribers': {'total': 1004, 'enabled': 900, 'other': 6},
     });
     expect(m.otherSubscribers, 6);
-    expect(
-        DashboardMetrics.fromJson({
-          'subscribers': {'total': 1}
-        }).otherSubscribers,
-        0);
+    final none = DashboardMetrics.fromJson({
+      'subscribers': {'total': 1},
+    });
+    expect(none.otherSubscribers, 0);
   });
 
   test('revenue pages with offset; has_more read; duplicates dropped',
@@ -30,12 +29,12 @@ void main() {
           {
             'id': off + 1,
             'source_type': 'subscriber_payment',
-            'status': 'posted'
+            'status': 'posted',
           },
           {
             'id': off + 2,
             'source_type': 'subscriber_payment',
-            'status': 'posted'
+            'status': 'posted',
           },
         ],
         'count': 2,
