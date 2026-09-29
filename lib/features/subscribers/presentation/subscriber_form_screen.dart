@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -38,6 +39,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   String _mtService = 'pppoe';
   String _subscriptionType = 'fixed';
   DateTime? _expireAt;
+
+  /// Create form: «بدون انتهاء» chosen explicitly → `expire_at: null`.
+  bool _explicitNoExpiry = false;
   final Set<String> _workingDays = {};
   bool _disableOnFirstUse = false;
   bool _notifyOnLogin = false;
@@ -192,7 +196,16 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         subscriber.copyWith(username: original.username).toPatchDiff(original),
       );
     } else {
-      err = await notifier.submit(subscriber, isEdit: false);
+      // «بدون انتهاء» only from an admin allowed to set the expiry, and
+      // only while no date is chosen.
+      final explicit = _explicitNoExpiry &&
+          _expireAt == null &&
+          ref.read(permissionsProvider).canSetExpiry;
+      err = await notifier.submit(
+        subscriber,
+        isEdit: false,
+        explicitNoExpiry: explicit,
+      );
     }
     if (!mounted || err != null) return;
     context.goNamed('subscribers');
@@ -299,7 +312,17 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             onStatusChanged: (v) => setState(() => _status = v),
             onUserTypeChanged: (v) => setState(() => _userType = v),
             onServiceTypeChanged: (v) => setState(() => _serviceType = v),
-            onExpireChanged: (d) => setState(() => _expireAt = d),
+            onExpireChanged: (d) => setState(() {
+              _expireAt = d;
+              if (d != null) _explicitNoExpiry = false;
+            }),
+            explicitNoExpiry: _explicitNoExpiry,
+            onExplicitNoExpiryChanged: widget.isEdit
+                ? null
+                : (v) => setState(() {
+                      _explicitNoExpiry = v;
+                      if (v) _expireAt = null;
+                    }),
             onRename: widget.isEdit ? _rename : null,
             fieldErrors: {
               if (_ownsError &&

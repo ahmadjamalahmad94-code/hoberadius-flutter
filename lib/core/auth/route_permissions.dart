@@ -313,16 +313,55 @@ RouteRequirement? routeRequirementFor(String location) {
   return best;
 }
 
+/// Refusal shown to a distributor login opening another distributor's page.
+const kOtherDistributorPage = 'هذه صفحة موزّع آخر — تستطيع فتح صفحتك فقط.';
+
+/// Refusal of the tools screen when the server allows none of its tools.
+const kNoToolAllowed = 'لا تملك صلاحية أيّ أداة من الأدوات.';
+
+/// A distributor login whose own distributor id is known (fix2-final
+/// `admin.distributor_id`): its «الموزعون» entry is its own page.
+bool _ownDistributorKnown(AppPermissions p) =>
+    p.isDistributor && !p.legacy && !p.isOwner && p.distributorId != null;
+
+/// Where the router sends [location] for [p] before any permission check:
+/// a distributor login opening the distributors LIST lands on its own page
+/// (`/distributors/<id>`). Null = no rewrite.
+String? distributorOwnPageRedirect(AppPermissions p, String location) {
+  if (!_ownDistributorKnown(p)) return null;
+  final seg = _segments(location);
+  if (seg.length == 1 && seg.first == 'distributors') {
+    return '/distributors/${p.distributorId}';
+  }
+  return null;
+}
+
 /// Arabic reason [location] is refused for [p], or null when allowed.
 String? routeDenial(AppPermissions p, String location) {
   if (p.legacy || p.isOwner) return null;
-  final path = '/${_segments(location).join('/')}';
+  final seg = _segments(location);
+  final path = '/${seg.join('/')}';
   if (kAlwaysAllowedPaths.contains(path)) return null;
+  // A distributor login: its own page (and the list, which redirects to
+  // it) opens whatever its role keys say — the server scopes the data to
+  // that distributor; another distributor's page never opens.
+  if (_ownDistributorKnown(p) && seg.isNotEmpty && seg.first == 'distributors') {
+    if (seg.length == 1) return null;
+    if (seg.length == 2 && seg[1] != 'new') {
+      return seg[1] == '${p.distributorId}' ? null : kOtherDistributorPage;
+    }
+  }
   final req = routeRequirementFor(location);
   if (req == null) {
     return p.isDistributor ? 'هذه الصفحة غير متاحة لحساب الموزّع.' : null;
   }
-  return req.denial(p);
+  final denied = req.denial(p);
+  if (denied != null) return denied;
+  // The tools screen with a known per-tool map that allows nothing.
+  if (path == '/tools' && p.tools != null && !kToolKeys.any(p.canTool)) {
+    return kNoToolAllowed;
+  }
+  return null;
 }
 
 bool routeAllowed(AppPermissions p, String location) =>

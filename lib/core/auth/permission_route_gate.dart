@@ -17,6 +17,8 @@ class PermissionRouteGate {
 
   String? redirect(AppPermissions perms, String location) {
     if (location == _current) return null;
+    final own = distributorOwnPageRedirect(perms, location);
+    if (own != null) return own;
     final denied = routeDenial(perms, location);
     if (denied == null) {
       _current = location;

@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -387,12 +388,11 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
             if (dialogBusy) return;
             double? paymentAmount;
             if (withPayment) {
-              paymentAmount = double.tryParse(
-                amount.text.trim().replaceAll(',', '.'),
-              );
-              if (paymentAmount == null || paymentAmount <= 0) {
+              final money = readMoneyInput(amount.text);
+              paymentAmount = money.value;
+              if (paymentAmount == null) {
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('أدخل مبلغ دفع صحيح')),
+                  SnackBar(content: Text(money.error!)),
                 );
                 return;
               }
@@ -473,8 +473,10 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration:
-                                const InputDecoration(labelText: 'المبلغ'),
+                            decoration: const InputDecoration(
+                              labelText: 'المبلغ',
+                              helperText: kMaxMoneyHelper,
+                            ),
                           ),
                         ),
                         const SizedBox(width: AppTokens.s8),

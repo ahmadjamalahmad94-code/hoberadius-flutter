@@ -9,6 +9,7 @@ import '../format/panel_time.dart';
 import 'permissions.dart';
 import 'security_key_storage.dart';
 import 'session_reset.dart';
+import 'system_settings.dart';
 import 'token_storage.dart';
 
 class AuthAdmin {
@@ -182,6 +183,9 @@ class AuthController extends StateNotifier<AuthState> {
   /// app-wide state so nothing of it shows under the next account.
   void _resetSession() {
     _permissions?.clear();
+    try {
+      _ref.read(createWithoutExpiryProvider.notifier).state = null;
+    } catch (_) {/* container disposed */}
     resetSessionScopedState(_ref);
   }
 
@@ -194,6 +198,7 @@ class AuthController extends StateNotifier<AuthState> {
   /// The panel's time zone: from the session payload, else from the
   /// settings API (older servers); never fatal.
   Future<void> _loadPanelTimeZone(Map<String, dynamic> data) async {
+    publishCreateWithoutExpiry(_ref, data);
     if (applyPanelTimeZoneFrom(data)) return;
     // Settings need «عرض الإعدادات»: don't ask for a known 403.
     final perms = _ref.read(permissionsProvider);
@@ -203,21 +208,45 @@ class AuthController extends StateNotifier<AuthState> {
           .read(apiClientProvider)
           .get('/api/v1/settings', background: true);
       final d = res['data'];
-      if (d is Map<String, dynamic>) applyPanelTimeZoneFromSettings(d);
+      if (d is Map<String, dynamic>) {
+        applyPanelTimeZoneFromSettings(d);
+        publishCreateWithoutExpiry(_ref, d);
+      }
     } catch (_) {/* keep the phone's zone */}
+  }
+
+  /// The login answer carries no `system` block (fix2-final: only /me
+  /// does): read it from /api/admin/me — the panel zone (Gaza), the
+  /// currency and `create_without_expiry` — so a manager without
+  /// «عرض الإعدادات» does not fall back to the phone's zone. Grants stay
+  /// the login answer's. Null when /me is unreachable or has no system.
+  Future<Map<String, dynamic>?> _systemFromMe() async {
+    try {
+      final res = await _ref
+          .read(apiClientProvider)
+          .get('/api/admin/me', background: true);
+      final d = res['data'];
+      if (d is Map<String, dynamic> && d['system'] is Map) {
+        return {'system': d['system']};
+      }
+    } catch (_) {/* older server / offline: the settings fallback */}
+    return null;
   }
 
   /// Applies the grants of `/api/admin/me`, falling back to [loginData]
   /// when /me is unreachable (never fails the sign-in).
-  Future<void> _applyMe(Map<String, dynamic> loginData) async {
+  /// Returns the /me payload (null when it was unreachable).
+  Future<Map<String, dynamic>?> _applyMe(Map<String, dynamic> loginData) async {
     try {
       final res = await _ref
           .read(apiClientProvider)
           .get('/api/admin/me', background: true);
       final me = res['data'];
       _permissions?.apply(me is Map<String, dynamic> ? me : loginData);
+      return me is Map<String, dynamic> ? me : null;
     } catch (_) {
       _permissions?.apply(loginData);
+      return null;
     }
   }
 
@@ -304,10 +333,19 @@ class AuthController extends StateNotifier<AuthState> {
       // Grants of the login answer (permmodel); an older login answer has
       // none, so read /me (older /me has none either → legacy, show all).
       // Applied before the session state so the first redirect sees them.
+      Map<String, dynamic>? meData;
       if (d['grants'] is Map) {
         _permissions?.apply(d);
       } else {
-        await _applyMe(d);
+        meData = await _applyMe(d);
+      }
+      final Map<String, dynamic> session;
+      if (d['system'] is Map) {
+        session = d;
+      } else if (meData != null) {
+        session = {...d, if (meData['system'] is Map) 'system': meData['system']};
+      } else {
+        session = {...d, ...?await _systemFromMe()};
       }
       state = AuthState(
         token: token,
@@ -319,10 +357,10 @@ class AuthController extends StateNotifier<AuthState> {
             .map((e) => e.toString())
             .toList(),
         serverBaseUrl: baseUrl,
-        systemCurrency: systemCurrencyOf(d),
+        systemCurrency: systemCurrencyOf(session),
       );
       _publishCurrency(state.systemCurrency);
-      await _loadPanelTimeZone(d);
+      await _loadPanelTimeZone(session);
     } on ApiException catch (e) {
       state = AuthState(serverBaseUrl: baseUrl, error: e.message);
     } catch (_) {

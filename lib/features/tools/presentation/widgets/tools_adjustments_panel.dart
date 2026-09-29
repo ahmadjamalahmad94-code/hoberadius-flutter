@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/money_limits.dart';
+import '../../../../core/format/number_input.dart';
 import '../../../../core/format/server_time.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/app_card.dart';
@@ -28,6 +30,7 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
   String _action = 'disable';
   bool _dryRun = true;
   Map<String, dynamic>? _result;
+  String? _error;
 
   @override
   void dispose() {
@@ -77,6 +80,7 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
             ToolsTextField(
               controller: _minutes,
               label: 'عدد الدقائق',
+              hint: 'حتى سنة واحدة (525,600 دقيقة) في المرة',
               keyboardType: TextInputType.number,
             ),
           ],
@@ -94,6 +98,16 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
             label: 'معاينة بدون تنفيذ',
           ),
           const SizedBox(height: AppTokens.s4),
+          if (_error != null) ...[
+            Text(
+              _error!,
+              style: const TextStyle(
+                color: AppTokens.red,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: AppTokens.s4),
+          ],
           FilledButton.icon(
             onPressed: widget.busy ? null : _submit,
             icon: const Icon(Icons.play_arrow),
@@ -111,15 +125,30 @@ class _ToolsAdjustmentsPanelState extends State<ToolsAdjustmentsPanel> {
   }
 
   Future<void> _submit() async {
+    final minutes = parseIntInput(_minutes.text) ?? 0;
+    final problem =
+        _action == 'extend' ? validateAdjustmentMinutes(_minutes.text) : null;
+    setState(() => _error = problem);
+    if (problem != null) return;
     final result = await widget.run({
       'action': _action,
       'usernames': _users.text,
-      'minutes': int.tryParse(_minutes.text.trim()) ?? 0,
+      'minutes': minutes,
       'new_password': _password.text,
       'dry_run': _dryRun,
     });
     if (result != null && mounted) setState(() => _result = result);
   }
+}
+
+/// The bulk «تمديد وقت» minutes: a whole number above zero and at most a
+/// year per operation (owner rule; the server answers the same 422).
+String? validateAdjustmentMinutes(String raw) {
+  final minutes = parseIntInput(raw);
+  if (minutes == null || minutes <= 0) {
+    return 'أدخل عدد دقائق صحيحًا أكبر من صفر.';
+  }
+  return validateExtendSpan(minutes);
 }
 
 /// Preview / result of a general adjustment: counters + one line per

@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -278,13 +279,22 @@ class SubscriberActionsRepository {
   Future<void> disable(String username) =>
       _post(username, 'disable', const {}, what: 'تغيير حالة المشترك');
 
-  Future<Map<String, dynamic>> extendTimeLegacy(String username, int minutes) =>
-      _post(
-        username,
-        'extend_time',
-        {'minutes': minutes},
-        what: 'إضافة الوقت',
-      );
+  Future<Map<String, dynamic>> extendTimeLegacy(
+    String username,
+    int minutes,
+  ) async {
+    // Owner rule: at most a year per extension (older servers never check).
+    final tooLong = validateExtendSpan(minutes);
+    if (tooLong != null) {
+      throw ApiException(code: 'validation_error', message: tooLong);
+    }
+    return _post(
+      username,
+      'extend_time',
+      {'minutes': minutes},
+      what: 'إضافة الوقت',
+    );
+  }
 
   Future<void> resetPassword(String username, String newPassword) => _post(
         username,

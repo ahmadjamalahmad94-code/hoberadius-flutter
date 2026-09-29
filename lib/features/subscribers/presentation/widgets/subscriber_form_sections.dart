@@ -53,7 +53,13 @@ class SubscriberCoreSection extends StatelessWidget {
     required this.onExpireChanged,
     this.onRename,
     this.fieldErrors = const {},
+    this.explicitNoExpiry = false,
+    this.onExplicitNoExpiryChanged,
   });
+
+  /// Create form: «بدون انتهاء» chosen explicitly (`expire_at: null`).
+  final bool explicitNoExpiry;
+  final ValueChanged<bool>? onExplicitNoExpiryChanged;
 
   /// The server's Arabic message per field (422 mapped to its input).
   final Map<String, String> fieldErrors;
@@ -242,9 +248,12 @@ class SubscriberCoreSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'تاريخ الانتهاء',
-            child: ExpirePicker(
+            child: SubscriberExpiryField(
+              isEdit: isEdit,
               value: expireAt,
               onChange: onExpireChanged,
+              explicitNoExpiry: explicitNoExpiry,
+              onExplicitNoExpiryChanged: onExplicitNoExpiryChanged,
               error: fieldErrors['expire_at'],
             ),
           ),

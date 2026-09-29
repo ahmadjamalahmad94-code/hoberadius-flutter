@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -232,7 +233,8 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
                 ),
                 decoration: const InputDecoration(
                   labelText: 'المبلغ المؤكَّد (اختياري)',
-                  helperText: 'اتركه فارغًا لاعتماد المبلغ المطلوب.',
+                  helperText: 'اتركه فارغًا لاعتماد المبلغ المطلوب — '
+                      '$kMaxMoneyHelper.',
                 ),
               ),
             ],
@@ -256,6 +258,14 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
       ),
     );
     if (ok != true) return;
+    final amountError = confirmedAmountError(amountCtrl.text);
+    if (amountError != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(amountError)));
+      }
+      return;
+    }
     await _run(r, () {
       final repo = ref.read(storeAdminRepositoryProvider);
       return widget.isDeposit
@@ -818,3 +828,8 @@ class _ChatInboxCard extends StatelessWidget {
     );
   }
 }
+
+/// The optional «المبلغ المؤكَّد» of a deposit: empty = the requested
+/// amount; otherwise a money amount within the 100,000 cap.
+String? confirmedAmountError(String raw) =>
+    raw.trim().isEmpty ? null : readMoneyInput(raw).error;

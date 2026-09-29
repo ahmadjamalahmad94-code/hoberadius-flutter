@@ -91,14 +91,19 @@ class SubscriberFormActionController
     }
   }
 
-  Future<String?> submit(Subscriber subscriber, {required bool isEdit}) async {
+  /// [explicitNoExpiry]: the create form's «بدون انتهاء» (`expire_at: null`).
+  Future<String?> submit(
+    Subscriber subscriber, {
+    required bool isEdit,
+    bool explicitNoExpiry = false,
+  }) async {
     _set(state.copyWith(loading: true, error: null));
     try {
       final repo = ref.read(subscribersRepositoryProvider);
       if (isEdit) {
         await repo.update(subscriber);
       } else {
-        await repo.create(subscriber);
+        await repo.create(subscriber, explicitNoExpiry: explicitNoExpiry);
       }
       return null;
     } catch (e) {

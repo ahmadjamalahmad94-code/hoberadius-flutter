@@ -466,4 +466,37 @@ void main() {
     expect(outcome?.message, contains('ينتهي'));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('appfinal: extend dialog shows the one-year cap and refuses 366 d',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final repo = _FakeRepo();
+    final c = SubscriberActionsContext.fromJson(_contextJson());
+    await tester.pumpWidget(
+      _host(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showActionDialog(context, ExtendDialog(c: c)),
+            child: const Text('open'),
+          ),
+        ),
+        overrides: [
+          subscriberActionsRepositoryProvider.overrideWithValue(repo),
+        ],
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining(kExtendCapHint, findRichText: true),
+        findsOneWidget,);
+    await tester.enterText(find.byType(TextField).first, '366');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('أقصى تمديد في المرة الواحدة سنة'), findsWidgets);
+    await tester.tap(find.text('إضافة').last);
+    await tester.pumpAndSettle();
+    expect(repo.calls['extend'], isNull, reason: 'never sent');
+    expect(tester.takeException(), isNull);
+  });
 }

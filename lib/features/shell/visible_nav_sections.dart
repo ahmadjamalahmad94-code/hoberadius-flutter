@@ -92,7 +92,7 @@ List<GatedNavSection> filterNavSectionsByPermissions(
   for (final s in sections) {
     final items = [
       for (final i in s.items)
-        if (routeAllowed(perms, i.item.path)) i,
+        if (routeAllowed(perms, i.item.path)) _forDistributor(i, perms),
     ];
     if (items.isNotEmpty) {
       out.add(GatedNavSection(section: s.section, items: items));
@@ -100,6 +100,32 @@ List<GatedNavSection> filterNavSectionsByPermissions(
   }
   return out;
 }
+
+/// A distributor login's «الموزعون» entry opens its OWN page (the router
+/// rewrites `/distributors` to `/distributors/<id>`): label it so.
+GatedNavItem _forDistributor(GatedNavItem i, AppPermissions perms) {
+  if (!perms.isDistributor ||
+      perms.distributorId == null ||
+      i.item.path != '/distributors') {
+    return i;
+  }
+  final name = perms.distributorName;
+  return GatedNavItem(
+    requiresUpgrade: i.requiresUpgrade,
+    item: AppNavItem(
+      icon: i.item.icon,
+      label: kDistributorOwnPageLabel,
+      routeName: i.item.routeName,
+      path: i.item.path,
+      description: name.isEmpty
+          ? 'حزمك ومبيعاتك وتسوياتك.'
+          : 'صفحة «$name»: حزمك ومبيعاتك وتسوياتك.',
+    ),
+  );
+}
+
+/// Menu label of a distributor login's own page.
+const kDistributorOwnPageLabel = 'صفحتي كموزّع';
 
 /// Bottom tabs the admin may open (dashboard and «المزيد» always stay).
 List<AppNavItem> mobileDestinationsFor(AppPermissions perms) => [

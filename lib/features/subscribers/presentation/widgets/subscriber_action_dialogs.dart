@@ -347,6 +347,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
           FormFieldPair(
             first: FormFieldRow(
               label: 'المدّة',
+              hint: kExtendCapHint,
               child: TextField(
                 controller: _amount,
                 keyboardType: const TextInputType.numberWithOptions(
@@ -1829,3 +1830,6 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
 
 /// A line break for joined notes.
 final String kNewline = String.fromCharCode(10);
+
+/// Shown under «المدّة» of «إضافة وقت»: the owner's one-year rule, up front.
+const kExtendCapHint = 'حتى سنة واحدة في المرة';

@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -529,7 +530,8 @@ Future<VoucherGenerateDraft?> _voucherDialog(
                     const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(
                   labelText: 'القيمة لكل كوبون',
-                  helperText: 'يجب أن تكون القيمة أكبر من صفر.',
+                  helperText:
+                      'أكبر من صفر — الحدّ الأعلى $kMaxMoneyAmountLabel.',
                 ),
               ),
               const SizedBox(height: AppTokens.s8),
@@ -579,8 +581,12 @@ Future<VoucherGenerateDraft?> _voucherDialog(
           ),
           FilledButton(
             onPressed: () {
-              final parsedAmount =
-                  double.tryParse(amount.text.trim().replaceAll(',', '.')) ?? 0;
+              final money = readMoneyInput(amount.text);
+              if (money.error != null) {
+                _snack(context, money.error!);
+                return;
+              }
+              final parsedAmount = money.value ?? 0;
               final parsedCount = int.tryParse(count.text.trim()) ?? 0;
               if (parsedAmount <= 0 || parsedCount <= 0) {
                 _snack(context, 'أدخل عددًا وقيمة صحيحة قبل التوليد');

@@ -404,7 +404,16 @@ class Subscriber {
   /// The create body. `balance` is never sent: money enters a wallet only
   /// through «إضافة رصيد» (spend gate + ledger); fix2 servers answer a
   /// restricted manager's opening balance with 403.
-  Map<String, dynamic> toCreateBody() => _flat(true)..remove('balance');
+  ///
+  /// [explicitNoExpiry] («بدون انتهاء» chosen on purpose, no date): sends
+  /// `expire_at: null` — the server then never expires the subscriber. An
+  /// absent key instead follows the server's `create_without_expiry`
+  /// («expired» by default = born expired until renewed).
+  Map<String, dynamic> toCreateBody({bool explicitNoExpiry = false}) {
+    final body = _flat(true)..remove('balance');
+    if (explicitNoExpiry && expireAt == null) body['expire_at'] = null;
+    return body;
+  }
 
   /// Fields never written by the edit form: money moves through the balance
   /// / payment actions (with a ledger row), the password through «إعادة كلمة

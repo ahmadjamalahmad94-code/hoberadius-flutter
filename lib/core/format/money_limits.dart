@@ -1,3 +1,5 @@
+import 'number_input.dart';
+
 /// Hard ceiling for any single money amount (payment, extend price, loan,
 /// top-up) typed in the app — the lead's FIX2 cap, the same on API, web and
 /// app. Exactly 1,000,000 used to be accepted and pushed an expiry to 2711.
@@ -22,6 +24,21 @@ String? validateMoneyAmount(num? value, {double max = kMaxMoneyAmount}) {
   }
   return null;
 }
+
+/// A TYPED money amount (Arabic or Latin digits, «,» or «.» decimals):
+/// the parsed value, or an Arabic error — empty / not a number / ≤ 0 /
+/// above [kMaxMoneyAmount] (the owner's 100,000 cap).
+({double? value, String? error}) readMoneyInput(String raw) {
+  final v = parseDecimalInput(raw);
+  if (v == null) {
+    return (value: null, error: 'أدخل مبلغًا صحيحًا أكبر من صفر.');
+  }
+  final err = validateMoneyAmount(v);
+  return (value: err == null ? v : null, error: err);
+}
+
+/// Helper text under a money field: the cap, said up front.
+const String kMaxMoneyHelper = 'الحدّ الأعلى $kMaxMoneyAmountLabel';
 
 /// Longest extension ONE operation may add: a year (owner decision
 /// 2026-09-29) — a duration, a set-expiry jump, a paid amount turned into

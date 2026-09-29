@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/admins/domain/permission_labels.dart';
 import '../api/api_client.dart';
+import 'system_settings.dart';
 
 /// Section states of the server's per-manager grants (`grants.sections`).
 const kSectionOpen = 'open';
@@ -108,6 +109,21 @@ const kActionSection = <String, String>{
   'storeuser.delete': 'store',
 };
 
+/// The tools screen's tools, in tab order (`grants.tools` /
+/// `GET /api/v1/tools` keys — `permission_guard.TOOLS`).
+const kToolSetSpeeds = 'set_speeds';
+const kToolGeneralAdjustments = 'general_adjustments';
+const kToolTestAuth = 'test_auth';
+const kToolRadiusLog = 'radius_log';
+const kToolMaintenance = 'maintenance';
+const kToolKeys = <String>[
+  kToolSetSpeeds,
+  kToolGeneralAdjustments,
+  kToolTestAuth,
+  kToolRadiusLog,
+  kToolMaintenance,
+];
+
 /// The signed-in admin's effective permissions, from `/api/admin/me` (or the
 /// login answer): RBAC keys, per-manager grants (actions / sections /
 /// view-all) and the owner flags.
@@ -124,11 +140,15 @@ class AppPermissions {
     this.isOriginalOwner = false,
     this.isSuperAdmin = false,
     this.isDistributor = false,
+    this.distributorId,
+    this.distributorName = '',
     this.adminId,
     this.permissions = const <String>{},
     this.actions = const <String, bool>{},
     this.sections = const <String, String>{},
     this.viewAllSubscribers = true,
+    this.tools,
+    this.subscriberFields,
   });
 
   /// Nothing known yet (signed out / before the first /me): permissive.
@@ -151,6 +171,12 @@ class AppPermissions {
     final rawActions = g['actions'];
     final rawSections = g['sections'];
     final isOwner = admin['is_owner'] == true;
+    final rawTools = g['tools'];
+    final rawFields = g['fields'];
+    final subFields = rawFields is Map ? rawFields['subscriber'] : null;
+    final distributor = g['distributor'] is Map ? g['distributor'] as Map : null;
+    final distributorId =
+        _int(admin['distributor_id']) ?? _int(distributor?['id']);
     return AppPermissions(
       legacy: false,
       loaded: true,
@@ -160,9 +186,13 @@ class AppPermissions {
       isOriginalOwner: admin['is_original_owner'] == true,
       isSuperAdmin: admin['is_super_admin'] == true,
       isDistributor: admin['is_distributor'] == true ||
-          (_int(admin['distributor_id']) ?? 0) > 0 ||
-          g['distributor'] is Map ||
+          (distributorId ?? 0) > 0 ||
+          distributor != null ||
           g['is_distributor'] == true,
+      distributorId:
+          distributorId != null && distributorId > 0 ? distributorId : null,
+      distributorName:
+          '${admin['distributor_name'] ?? distributor?['name'] ?? ''}'.trim(),
       permissions: _keys(data['permissions']),
       actions: {
         if (rawActions is Map)
@@ -174,6 +204,14 @@ class AppPermissions {
             '${e.key}': '${e.value ?? ''}'.trim().toLowerCase(),
       },
       viewAllSubscribers: isOwner || g['view_all_subscribers'] == true,
+      // `grants.tools` (fix2-final): tool key → allowed. An empty map is the
+      // server's «could not evaluate» answer — treated as unknown.
+      tools: rawTools is Map && rawTools.isNotEmpty
+          ? {for (final e in rawTools.entries) '${e.key}': e.value == true}
+          : null,
+      // Optional per-field grants (`grants.fields.subscriber`): null = the
+      // server does not restrict fields (field control off / not sent).
+      subscriberFields: subFields is List ? {for (final f in subFields) '$f'} : null,
     );
   }
 
@@ -202,11 +240,27 @@ class AppPermissions {
 
   /// A distributor login (only when the server says so).
   final bool isDistributor;
+
+  /// The distributor this login IS (`admin.distributor_id`), when known —
+  /// its own page is `/distributors/<id>`.
+  final int? distributorId;
+
+  /// `admin.distributor_name` ('' when not sent).
+  final String distributorName;
   final int? adminId;
   final Set<String> permissions;
   final Map<String, bool> actions;
   final Map<String, String> sections;
   final bool viewAllSubscribers;
+
+  /// `grants.tools` — per-tool decision of the server's own guard
+  /// (`set_speeds`, `general_adjustments`, `test_auth`, `radius_log`,
+  /// `maintenance`). Null = not sent (older server) → see [canTool].
+  final Map<String, bool>? tools;
+
+  /// Subscriber fields the manager may set (`grants.fields.subscriber`),
+  /// null when the server does not restrict them.
+  final Set<String>? subscriberFields;
 
   /// Everything allowed: an older server, or the owner / a co-owner.
   bool get _all => legacy || isOwner;
@@ -258,6 +312,27 @@ class AppPermissions {
     final rbac = kActionRbac[action];
     if (rbac != null) return canAny(rbac);
     return true;
+  }
+
+  /// May run the tool [key] (`grants.tools`). Unknown map (older server) →
+  /// allowed, exactly as before: the server still refuses with its reason.
+  bool canTool(String key) {
+    if (_all) return true;
+    final t = tools;
+    if (t == null) return true;
+    return t[key] == true;
+  }
+
+  /// May set a subscriber's expiry — including the explicit «بدون انتهاء»
+  /// (`expire_at: null`). The server ignores an explicit clear from a
+  /// manager whose expiry field is locked; the app offers it only to the
+  /// owner-like, or to a manager holding the extend action (`users.extend`)
+  /// whose field grants (when sent) include `expiry`.
+  bool get canSetExpiry {
+    if (_all) return true;
+    final f = subscriberFields;
+    if (f != null && !f.contains('expiry')) return false;
+    return canAction('subscriber.extend');
   }
 
   /// Why [can] / [canAction] / a section refuses — an Arabic tooltip.
@@ -353,6 +428,7 @@ class PermissionsController extends StateNotifier<AppPermissions> {
           return;
         }
         state = next;
+        publishCreateWithoutExpiry(_ref, d);
       }
     } catch (_) {/* keep the last known grants */}
   }
