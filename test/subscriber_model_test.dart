@@ -196,7 +196,9 @@ void main() {
     expect(body['service_type'], 'PPPoE');
     expect(body['account_type'], 'Business');
     expect(body['manager_id'], 9);
-    expect(body['balance'], 20);
+    // fix2: the create body never carries a balance (403 for a restricted
+    // manager; money goes through «إضافة رصيد»).
+    expect(body.containsKey('balance'), isFalse);
     expect(body['group'], 'g1');
     expect(body['pool'], 'p1');
     expect(body['father_name'], 'father');

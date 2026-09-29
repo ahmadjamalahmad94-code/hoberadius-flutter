@@ -19,9 +19,9 @@ import 'plan_picker.dart';
 /// typed is stripped or rewritten; «7.5» in a whole-number field, «-1» or
 /// «abc» show an Arabic error instead of being saved as 0.
 class _NumField extends StatelessWidget {
-  const _NumField({required this.controller, this.decimal = false});
+  const _NumField({required this.controller});
   final TextEditingController controller;
-  final bool decimal;
+  bool get decimal => false;
   @override
   Widget build(BuildContext context) {
     return TextFormField(
@@ -50,7 +50,11 @@ class SubscriberCoreSection extends StatelessWidget {
     required this.onServiceTypeChanged,
     required this.onExpireChanged,
     this.onRename,
+    this.fieldErrors = const {},
   });
+
+  /// The server's Arabic message per field (422 mapped to its input).
+  final Map<String, String> fieldErrors;
 
   /// Edit form: opens «تغيير اسم المستخدم» (the name is the RADIUS key and
   /// changes only through the rename cascade — typing here was dropped).
@@ -83,6 +87,7 @@ class SubscriberCoreSection extends StatelessWidget {
             isEdit ? AutovalidateMode.disabled : AutovalidateMode.onUserInteraction,
         decoration: isEdit
             ? InputDecoration(
+                errorText: fieldErrors['username'],
                 helperText: 'لتغيير الاسم استخدم «إعادة تسمية».',
                 suffixIcon: IconButton(
                   tooltip: 'إعادة تسمية',
@@ -90,7 +95,7 @@ class SubscriberCoreSection extends StatelessWidget {
                   onPressed: onRename,
                 ),
               )
-            : null,
+            : InputDecoration(errorText: fieldErrors['username']),
         // Same rule as the rename dialog and the server: Latin letters,
         // digits and . _ - @ only, 3–64 characters.
         validator: (v) => isEdit
@@ -136,7 +141,10 @@ class SubscriberCoreSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'الجوال',
-              child: TextFormField(controller: controllers['mobile']),
+              child: TextFormField(
+                controller: controllers['mobile'],
+                decoration: InputDecoration(errorText: fieldErrors['mobile']),
+              ),
             ),
             second: FormFieldRow(
               label: 'البريد',
@@ -146,6 +154,7 @@ class SubscriberCoreSection extends StatelessWidget {
                 textDirection: TextDirection.ltr,
                 autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: validateOptionalEmail,
+                decoration: InputDecoration(errorText: fieldErrors['email']),
               ),
             ),
           ),
@@ -229,7 +238,11 @@ class SubscriberCoreSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'تاريخ الانتهاء',
-            child: ExpirePicker(value: expireAt, onChange: onExpireChanged),
+            child: ExpirePicker(
+              value: expireAt,
+              onChange: onExpireChanged,
+              error: fieldErrors['expire_at'],
+            ),
           ),
           FormFieldRow(
             label: 'ملاحظات',
@@ -479,15 +492,13 @@ class SubscriberManagementSection extends ConsumerWidget {
             label: 'الرصيد',
             hint: isEdit
                 ? 'للقراءة فقط — عدّله من إجراء «إضافة رصيد»'
-                : 'رصيد الحساب الحالي',
-            child: isEdit
-                ? TextFormField(
-                    controller: controllers['balance'],
-                    readOnly: true,
-                    enabled: false,
-                    decoration: const InputDecoration(hintText: '0'),
-                  )
-                : _NumField(controller: controllers['balance']!, decimal: true),
+                : 'يُضاف الرصيد بعد الإنشاء من إجراء «إضافة رصيد»',
+            child: TextFormField(
+              controller: controllers['balance'],
+              readOnly: true,
+              enabled: false,
+              decoration: const InputDecoration(hintText: '0'),
+            ),
           ),
         ],
       ),

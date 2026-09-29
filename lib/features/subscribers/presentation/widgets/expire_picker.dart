@@ -9,9 +9,17 @@ import '../../../../core/theme/tokens.dart';
 /// «end of that day»). Shown and picked on the PANEL's clock (the tenant's
 /// `billing.timezone`, labelled under the field); the model sends it as UTC.
 class ExpirePicker extends StatelessWidget {
-  const ExpirePicker({super.key, required this.value, required this.onChange});
+  const ExpirePicker({
+    super.key,
+    required this.value,
+    required this.onChange,
+    this.error,
+  });
 
   final DateTime? value;
+
+  /// The server's (or the form's) message about the expiry.
+  final String? error;
   final ValueChanged<DateTime?> onChange;
 
   Future<void> _pick(BuildContext context) async {
@@ -59,6 +67,17 @@ class ExpirePicker extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         _row(context, df),
+        if (error != null && error!.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              error!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTokens.red,
+                    fontWeight: FontWeight.w700,
+                  ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(
@@ -81,7 +100,10 @@ class ExpirePicker extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppTokens.r10),
             onTap: () => _pick(context),
             child: InputDecorator(
-              decoration: const InputDecoration(),
+              decoration: InputDecoration(
+                errorText: error == null || error!.isEmpty ? null : '',
+                errorStyle: const TextStyle(height: 0, fontSize: 0),
+              ),
               child: Text(
                 value == null ? 'بدون انتهاء' : df.format(value!),
                 textDirection: value == null ? null : TextDirection.ltr,

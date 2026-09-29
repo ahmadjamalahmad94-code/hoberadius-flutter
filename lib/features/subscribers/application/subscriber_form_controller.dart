@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
@@ -6,14 +7,29 @@ import '../domain/subscriber_model.dart';
 
 /// Loading + error state for the subscriber form action handlers.
 class SubscriberFormActionState {
-  const SubscriberFormActionState({this.loading = false, this.error});
+  const SubscriberFormActionState({
+    this.loading = false,
+    this.error,
+    this.errorField,
+  });
   final bool loading;
   final String? error;
 
-  SubscriberFormActionState copyWith({bool? loading, Object? error = _none}) =>
+  /// The form field [error] is about (`email`, `mobile`, `expire_at`…), so
+  /// the form can show it under that input; null = a general error.
+  final String? errorField;
+
+  SubscriberFormActionState copyWith({
+    bool? loading,
+    Object? error = _none,
+    Object? errorField = _none,
+  }) =>
       SubscriberFormActionState(
         loading: loading ?? this.loading,
         error: identical(error, _none) ? this.error : error as String?,
+        errorField: identical(errorField, _none)
+            ? (identical(error, _none) ? this.errorField : null)
+            : errorField as String?,
       );
 
   static const _none = Object();
@@ -87,7 +103,7 @@ class SubscriberFormActionController
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);
-      _set(state.copyWith(error: message));
+      _set(state.copyWith(error: message, errorField: subscriberErrorField(e)));
       return message;
     } finally {
       _set(state.copyWith(loading: false));
@@ -102,9 +118,20 @@ class SubscriberFormActionController
   ) async {
     _set(state.copyWith(loading: true, error: null));
     try {
-      final saved = await ref
-          .read(subscribersRepositoryProvider)
-          .updateChanged(username, changes);
+      final Subscriber? saved;
+      try {
+        saved = await ref
+            .read(subscribersRepositoryProvider)
+            .updateChanged(username, changes);
+      } catch (e) {
+        _set(
+          state.copyWith(
+            error: visibleErrorMessage(e),
+            errorField: subscriberErrorField(e),
+          ),
+        );
+        return visibleErrorMessage(e);
+      }
       // «بدون انتهاء»: an explicit null clears the expiry on updated
       // servers; an older server answers 200 and KEEPS it — say so instead
       // of pretending it worked (r10 N3).
@@ -188,6 +215,29 @@ class SubscriberFormActionController
       _set(state.copyWith(loading: false));
     }
   }
+}
+
+/// Which form field a server error concerns: `details.field` when the
+/// server names it, else the Arabic wording of the fix2 validation
+/// messages (e-mail, mobile, IP, expiry, username, status, balance).
+String? subscriberErrorField(Object? e) {
+  if (e is! ApiException) return null;
+  final d = e.details;
+  if (d is Map && d['field'] is String) {
+    final f = d['field'] as String;
+    return f == 'expiry' ? 'expire_at' : f;
+  }
+  final m = e.message;
+  if (m.contains('البريد')) return 'email';
+  if (m.contains('الجوال')) return 'mobile';
+  if (m.contains('تاريخ الانتهاء') || m.contains('أقصى تمديد') ||
+      m.contains('المدة الناتجة')) {
+    return 'expire_at';
+  }
+  if (m.contains('IP')) return 'static_ip';
+  if (m.contains('اسم الدخول') || m.contains('اسم المستخدم')) return 'username';
+  if (m.contains('الرصيد')) return 'balance';
+  return null;
 }
 
 final subscriberFormActionProvider =

@@ -301,6 +301,12 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             onServiceTypeChanged: (v) => setState(() => _serviceType = v),
             onExpireChanged: (d) => setState(() => _expireAt = d),
             onRename: widget.isEdit ? _rename : null,
+            fieldErrors: {
+              if (_ownsError &&
+                  action.errorField != null &&
+                  action.error != null)
+                action.errorField!: action.error!,
+            },
           ),
           const SizedBox(height: AppTokens.s12),
           SubscriberManagementSection(

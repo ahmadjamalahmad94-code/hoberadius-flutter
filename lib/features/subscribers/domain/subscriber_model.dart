@@ -401,7 +401,10 @@ class Subscriber {
     };
   }
 
-  Map<String, dynamic> toCreateBody() => _flat(true);
+  /// The create body. `balance` is never sent: money enters a wallet only
+  /// through «إضافة رصيد» (spend gate + ledger); fix2 servers answer a
+  /// restricted manager's opening balance with 403.
+  Map<String, dynamic> toCreateBody() => _flat(true)..remove('balance');
 
   /// Fields never written by the edit form: money moves through the balance
   /// / payment actions (with a ledger row), the password through «إعادة كلمة

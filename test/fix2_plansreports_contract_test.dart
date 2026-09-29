@@ -6,6 +6,8 @@ import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:hoberadius_app/features/accounting/data/accounting_repository.dart';
 import 'package:hoberadius_app/features/accounting/presentation/financial_reports_screen.dart';
 import 'package:hoberadius_app/features/dashboard/domain/dashboard_model.dart';
+import 'package:hoberadius_app/features/subscribers/application/subscriber_form_controller.dart';
+import 'package:hoberadius_app/features/subscribers/domain/subscriber_model.dart';
 import 'package:hoberadius_app/features/revenue/data/revenue_repository.dart';
 import 'package:hoberadius_app/features/subscribers/domain/subscriber_actions_model.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/widgets/subscriber_action_dialogs.dart';
@@ -160,5 +162,31 @@ void main() {
       ),
       'المسار غير موجود.',
     );
+  });
+
+  test('subscribers contract: 422 mapped to its field; no balance on create',
+      () {
+    ApiException e(String m, {Object? details}) => ApiException(
+          code: 'validation_error',
+          message: m,
+          status: 422,
+          details: details,
+        );
+    expect(subscriberErrorField(e('البريد الإلكترونيّ غير صالح.')), 'email');
+    expect(subscriberErrorField(e('رقم الجوال غير صالح.')), 'mobile');
+    expect(
+      subscriberErrorField(
+        e('أقصى تمديد في المرة الواحدة سنة — كرّر التمديد إن احتجت أكثر'),
+      ),
+      'expire_at',
+    );
+    expect(
+      subscriberErrorField(e('x', details: {'field': 'username'})),
+      'username',
+    );
+    expect(subscriberErrorField(e('خطأ عام')), isNull);
+    final body = Subscriber(username: 'abc', password: 'pass', balance: 20)
+        .toCreateBody();
+    expect(body.containsKey('balance'), isFalse);
   });
 }
