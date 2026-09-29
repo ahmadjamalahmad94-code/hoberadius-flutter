@@ -14,6 +14,7 @@ class SupportTicket {
     required this.createdAt,
     required this.updatedAt,
     required this.closedAt,
+    this.serverCategoryLabel = '',
   });
 
   final int id;
@@ -27,6 +28,9 @@ class SupportTicket {
   final DateTime? updatedAt;
   final DateTime? closedAt;
 
+  /// `category_label` from the server (optional, FIX2 contract).
+  final String serverCategoryLabel;
+
   factory SupportTicket.fromJson(Map<String, dynamic> json) {
     return SupportTicket(
       id: _int(json['id']),
@@ -39,6 +43,7 @@ class SupportTicket {
       createdAt: _date(json['created_at']),
       updatedAt: _date(json['updated_at']),
       closedAt: _date(json['closed_at']),
+      serverCategoryLabel: _string(json['category_label']).trim(),
     );
   }
 
@@ -59,18 +64,24 @@ class SupportTicket {
         _ => 'أولوية غير معروفة',
       };
 
-  String get categoryLabel => switch (category) {
-        'general' => 'عام',
-        'service' => 'خدمة',
-        'service_request' => 'طلب خدمة',
-        'complaint' => 'شكوى',
-        'payment' => 'دفع',
-        'billing' => 'حسابات وفواتير',
-        'connection' => 'اتصال',
-        'hardware' => 'معدات',
-        'technical' => 'فني',
-        _ => 'عام',
-      };
+  String get categoryLabel => serverCategoryLabel.isNotEmpty
+      ? serverCategoryLabel
+      : switch (category) {
+          'general' => 'عام',
+          'service' => 'خدمة',
+          'service_request' => 'طلب خدمة',
+          'complaint' => 'شكوى',
+          'payment' => 'دفع',
+          'billing' => 'حسابات وفواتير',
+          'connection' => 'اتصال',
+          'hardware' => 'معدات',
+          'technical' => 'فني',
+          'network' => 'الشبكة',
+          'installation' => 'تركيب',
+          'account' => 'الحساب',
+          'cards' => 'البطاقات',
+          _ => 'عام',
+        };
 }
 
 class TicketReply {

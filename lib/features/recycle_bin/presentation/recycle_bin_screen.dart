@@ -166,11 +166,7 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                                 ),
                                 DataCell(Text(_fmt(item.deletedAt))),
                                 DataCell(
-                                  Text(
-                                    item.deletedBy.isEmpty
-                                        ? 'غير معروف'
-                                        : item.deletedBy,
-                                  ),
+                                  Text(item.deletedByText),
                                 ),
                                 DataCell(
                                   SizedBox(

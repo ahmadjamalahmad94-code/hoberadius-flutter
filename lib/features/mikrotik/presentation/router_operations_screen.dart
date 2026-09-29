@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -735,7 +736,10 @@ class _BackupRow extends StatelessWidget {
                         : PillTone.neutral,
                   ),
                   if (backup.createdAt.isNotEmpty)
-                    _MiniFact('تاريخ الحفظ', backup.createdAt),
+                    _MiniFact(
+                      'تاريخ الحفظ',
+                      formatServerTimestamp(backup.createdAt),
+                    ),
                   if (backup.manifestSummary.isNotEmpty)
                     _MiniFact('الملخص', backup.manifestSummary),
                 ],
@@ -972,9 +976,10 @@ class _SectionCard extends StatelessWidget {
             )
           else
             Text(
-              section.error.isEmpty
-                  ? 'لم يرجع الراوتر بيانات لهذه الخانة.'
-                  : section.error,
+              visibleErrorMessage(
+                section.error,
+                fallback: 'لم يرجع الراوتر بيانات لهذه الخانة.',
+              ),
               style: const TextStyle(color: AppTokens.redInk),
             ),
           if (section.dialedAddress.isNotEmpty) ...[
@@ -1122,9 +1127,10 @@ class _LiveSectionCard extends StatelessWidget {
           const SizedBox(height: AppTokens.s12),
           if (!section.ok)
             Text(
-              section.error.isEmpty
-                  ? 'تعذر قراءة هذا القسم من الراوتر.'
-                  : section.error,
+              visibleErrorMessage(
+                section.error,
+                fallback: 'تعذر قراءة هذا القسم من الراوتر.',
+              ),
               style: const TextStyle(color: AppTokens.redInk),
             )
           else if (!section.hasData)
@@ -2432,11 +2438,13 @@ class _HealthDialogState extends ConsumerState<_HealthDialog> {
                         const SizedBox(width: AppTokens.s8),
                         Expanded(
                           child: Text(
-                            (s['message'] ??
-                                    s['title'] ??
-                                    s['kind'] ??
-                                    s.toString())
-                                .toString(),
+                            humanizeTechnicalError(
+                              (s['message'] ??
+                                      s['title'] ??
+                                      s['kind'] ??
+                                      s.toString())
+                                  .toString(),
+                            ),
                             style: const TextStyle(height: 1.4),
                           ),
                         ),
@@ -2481,7 +2489,9 @@ String formatRouterDiagnostics(Map<String, dynamic> data) {
   if (data['ok'] == false) {
     final err = data['error'];
     final msg = err is Map ? err['message'] : err;
-    final text = (msg ?? data['message'] ?? '').toString().trim();
+    final text = humanizeTechnicalError(
+      (msg ?? data['message'] ?? '').toString().trim(),
+    );
     return text.isEmpty
         ? 'فشل التشخيص — لم يردّ الراوتر.'
         : 'فشل التشخيص: $text';

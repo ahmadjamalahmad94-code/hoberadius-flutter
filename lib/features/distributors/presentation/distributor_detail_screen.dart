@@ -1,6 +1,7 @@
 import 'package:hoberadius_app/shared/widgets/number_text_field.dart';
 import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/bidi.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -446,26 +447,55 @@ class _PaymentTarget extends StatelessWidget {
   Widget build(BuildContext context) {
     final balance = summary?.balance ?? 0;
     final debt = summary?.debtBalance ?? 0;
+    final balanceLabel = 'إضافة للرصيد (${formatWithCurrency(balance, '')})';
+    final debtLabel = 'خصم من الدين (${formatWithCurrency(debt, '')})';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SegmentedButton<String>(
-          segments: [
-            ButtonSegment(
-              value: 'balance',
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: Text('إضافة للرصيد (${formatWithCurrency(balance, '')})'),
-            ),
-            ButtonSegment(
-              value: 'debt',
-              icon: const Icon(Icons.remove_circle_outline),
-              label: Text('خصم من الدين (${formatWithCurrency(debt, '')})'),
-              enabled: debt > 0,
-            ),
-          ],
-          selected: {value},
-          showSelectedIcon: false,
-          onSelectionChanged: (s) => onChanged(s.first),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Two segments side by side leave ~150 px each on a 360 px
+            // phone and «خصم من الدين (39)» broke onto two lines (R11 L-3):
+            // phones get the two choices stacked, one full-width row each.
+            if (constraints.maxWidth < kPaymentTargetStackWidth) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TargetOption(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: balanceLabel,
+                    selected: value == 'balance',
+                    onTap: () => onChanged('balance'),
+                  ),
+                  const SizedBox(height: AppTokens.s4),
+                  _TargetOption(
+                    icon: Icons.remove_circle_outline,
+                    label: debtLabel,
+                    selected: value == 'debt',
+                    onTap: debt > 0 ? () => onChanged('debt') : null,
+                  ),
+                ],
+              );
+            }
+            return SegmentedButton<String>(
+              segments: [
+                ButtonSegment(
+                  value: 'balance',
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: Text(balanceLabel),
+                ),
+                ButtonSegment(
+                  value: 'debt',
+                  icon: const Icon(Icons.remove_circle_outline),
+                  label: Text(debtLabel),
+                  enabled: debt > 0,
+                ),
+              ],
+              selected: {value},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => onChanged(s.first),
+            );
+          },
         ),
         const SizedBox(height: AppTokens.s4),
         Text(
@@ -475,6 +505,71 @@ class _PaymentTarget extends StatelessWidget {
           style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
         ),
       ],
+    );
+  }
+}
+
+/// Below this width the payment target is two stacked rows, not segments.
+const double kPaymentTargetStackWidth = 440;
+
+/// One payment-target choice as a full-width selectable row (phones).
+class _TargetOption extends StatelessWidget {
+  const _TargetOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final fg = !enabled
+        ? AppTokens.textMuted
+        : selected
+            ? AppTokens.brandInk
+            : AppTokens.sidebarBg;
+    return Material(
+      color: selected ? AppTokens.brandSoft : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        side: BorderSide(
+          color: selected ? AppTokens.brand : AppTokens.border,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTokens.s12,
+            vertical: AppTokens.s8,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 18,
+                color: fg,
+              ),
+              const SizedBox(width: AppTokens.s8),
+              Icon(icon, size: 18, color: fg),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -548,7 +643,7 @@ class _Batches extends StatelessWidget {
                       ),
                       DataCell(
                         Text(
-                          item.assignedAt.isEmpty ? '—' : item.assignedAt,
+                          formatServerTimestamp(item.assignedAt),
                         ),
                       ),
                     ],

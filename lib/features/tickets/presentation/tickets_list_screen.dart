@@ -176,16 +176,14 @@ class _StatusFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final (value, label) in _options) ...[
-            if (value.isNotEmpty) const SizedBox(width: 6),
-            _chip(value, label),
-          ],
-        ],
-      ),
+    // Wraps onto a second line instead of scrolling: at 390 px «محلولة» and
+    // «مغلقة» sat off-screen with no hint that the row scrolls (R09 N13).
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final (value, label) in _options) _chip(value, label),
+      ],
     );
   }
 

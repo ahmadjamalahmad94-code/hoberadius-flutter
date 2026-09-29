@@ -65,6 +65,9 @@ class BusinessLedgerEntry {
     required this.createdAt,
     this.actorId,
     this.targetId,
+    this.debitAccountLabel = '',
+    this.creditAccountLabel = '',
+    this.targetLabel = '',
   });
 
   final int id;
@@ -80,6 +83,12 @@ class BusinessLedgerEntry {
   final String referenceType;
   final int? referenceId;
   final DateTime? createdAt;
+
+  /// Server Arabic labels (FIX2 network contract, optional: older servers
+  /// omit them and the app maps the raw codes itself).
+  final String debitAccountLabel;
+  final String creditAccountLabel;
+  final String targetLabel;
 
   bool get isCorrection => entryType == 'correction';
 
@@ -98,6 +107,9 @@ class BusinessLedgerEntry {
       referenceType: _string(j['reference_type']),
       referenceId: _int(j['reference_id']),
       createdAt: _date(j['created_at']),
+      debitAccountLabel: _string(j['debit_account_label']).trim(),
+      creditAccountLabel: _string(j['credit_account_label']).trim(),
+      targetLabel: _string(j['target_label']).trim(),
     );
   }
 }

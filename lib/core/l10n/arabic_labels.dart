@@ -1,3 +1,5 @@
+import '../format/bidi.dart';
+
 String currencyLabel(String code) {
   return switch (code.trim().toUpperCase()) {
     'ILS' => 'شيكل إسرائيلي',
@@ -131,6 +133,46 @@ const Map<String, String> kRawTokenLabels = {
   'telegram': 'تيليجرام',
   'email': 'بريد إلكتروني',
   'push': 'إشعار',
+  // Business-ops ledger accounts / reference types.
+  'revenue': 'الإيرادات',
+  'expense': 'المصروفات',
+  'receivable': 'ذمم مدينة',
+  'payable': 'ذمم دائنة',
+  'company': 'الشركة',
+  'card_user': 'مستخدم كروت',
+  'package': 'باقة',
+  'plan': 'عرض',
+  'card_batch': 'حزمة بطاقات',
+  'subscription': 'اشتراك',
+  'voucher': 'كوبون',
+  'renewal': 'تجديد',
+  'profit_share': 'حصة ربح',
+  // Backups / delivery / job states.
+  'done': 'تمّ',
+  'completed': 'مكتمل',
+  'error': 'خطأ',
+  'never': 'أبدًا',
+  'not_configured': 'غير مهيّأ',
+  'disconnected': 'غير متصل',
+  'connected': 'متصل',
+  'local': 'محلي',
+  'google_drive': 'جوجل درايف',
+  'drive': 'جوجل درايف',
+  'undelivered': 'لم يُسلَّم',
+  'bounced': 'مرتدّ',
+  'rejected': 'مرفوض',
+  'retry': 'إعادة محاولة',
+  'retrying': 'إعادة محاولة',
+  'in_app': 'داخل التطبيق',
+  'fcm': 'إشعار',
+  'webhook': 'ويب هوك',
+  'no_recipient': 'لا يوجد مستلم',
+  'no_phone': 'لا يوجد رقم هاتف',
+  'channel_disabled': 'القناة معطّلة',
+  'disabled_channel': 'القناة معطّلة',
+  'opted_out': 'ألغى المستلم الاشتراك',
+  'duplicate': 'مكرّر',
+  'rate_limited': 'تجاوز حدّ الإرسال',
 };
 
 String rawTokenLabel(String value) {
@@ -138,12 +180,24 @@ String rawTokenLabel(String value) {
   final known = kRawTokenLabels[key];
   if (known != null) return known;
   // «wallet:4» / «distributor #1» (business-ops ledger parties).
-  final party = RegExp(r'^(wallet|distributor|subscriber|card|admin)\s*[:#]\s*(\d+)$')
-      .firstMatch(key);
+  final party = RegExp(r'^([a-z_]+)\s*[:#]\s*(\d+)$').firstMatch(key);
   if (party != null) {
-    return '${kRawTokenLabels[party.group(1)!]} #${party.group(2)}';
+    final kind = kRawTokenLabels[party.group(1)!];
+    if (kind != null) return '$kind #${party.group(2)}';
   }
   return value;
+}
+
+/// A business-ops ledger account / party code in Arabic: `cash` → «نقدًا»,
+/// `wallet:4` → «محفظة #4», `distributor #1` → «موزّع #1». A code the app
+/// does not know stays as one left-to-right run so RTL never reorders it
+/// (`revenue:plan` would otherwise read «plan:revenue»).
+String businessAccountLabel(String value) {
+  final text = value.trim();
+  if (text.isEmpty) return '—';
+  final label = rawTokenLabel(text);
+  if (label != text) return label;
+  return RegExp('[A-Za-z]').hasMatch(text) ? ltrIsolate(text) : text;
 }
 
 /// Arabic for a ledger `entry_type` — never «نوع غير معروف» for a type the

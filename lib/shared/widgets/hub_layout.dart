@@ -175,15 +175,40 @@ class ActionBar extends StatelessWidget {
   final List<ActionItem> items;
   final int maxPerRow;
 
+  /// Narrowest a button may get before its label is cut (icon + a short
+  /// Arabic word or «Excel»). Below it the bar uses fewer per row.
+  static const double minButtonWidth = 88;
+
+  /// Buttons per row for [count] items in [width]: at most [maxPerRow], never
+  /// narrower than [minButtonWidth], and balanced (4 → 2+2, not 3+1).
+  static int perRowFor(int count, double width, int maxPerRow) {
+    if (count <= 0) return 1;
+    var fit = maxPerRow;
+    if (width.isFinite) {
+      fit = ((width + AppTokens.s8) / (minButtonWidth + AppTokens.s8)).floor();
+    }
+    final cap = fit.clamp(1, maxPerRow.clamp(1, count));
+    final rows = (count / cap).ceil();
+    return (count / rows).ceil();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (items.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) => _buildRows(
+        perRowFor(items.length, constraints.maxWidth, maxPerRow),
+      ),
+    );
+  }
+
+  Widget _buildRows(int perRow) {
     final rows = <List<ActionItem>>[];
-    for (var i = 0; i < items.length; i += maxPerRow) {
+    for (var i = 0; i < items.length; i += perRow) {
       rows.add(
         items.sublist(
           i,
-          i + maxPerRow > items.length ? items.length : i + maxPerRow,
+          i + perRow > items.length ? items.length : i + perRow,
         ),
       );
     }
@@ -218,10 +243,10 @@ class HubActionButton extends StatelessWidget {
     );
     const size = Size.fromHeight(44);
     const pad = EdgeInsets.symmetric(horizontal: AppTokens.s8);
-    final label = Text(
-      item.label,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
+    // Shrinks rather than cuts: «…Ex» for «Excel» at 360 px (R11 L-5).
+    final label = FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(item.label, maxLines: 1, softWrap: false),
     );
     // Build from the theme's text style so the app font (Cairo) is kept — a
     // raw TextStyle here replaced the theme's and fell back to the device font.
@@ -357,14 +382,19 @@ class _InfoCell extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 2),
-          Text(
-            item.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: AppTokens.sidebarBg,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
+          // Shrinks a long value instead of cutting it («12 دقيقة 28 ثا…»).
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              item.value,
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(
+                color: AppTokens.sidebarBg,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ],

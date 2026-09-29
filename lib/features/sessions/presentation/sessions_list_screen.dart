@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/auto_height_grid.dart';
@@ -48,20 +49,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     return '${value.toStringAsFixed(value < 10 ? 1 : 0)} ${units[index]}';
   }
 
-  String _formatDuration(int seconds) {
-    if (seconds <= 0) return 'غير معروف';
-    final duration = Duration(seconds: seconds);
-    if (duration.inDays > 0) {
-      return '${duration.inDays} يوم ${duration.inHours.remainder(24)} ساعة';
-    }
-    if (duration.inHours > 0) {
-      return '${duration.inHours} ساعة ${duration.inMinutes.remainder(60)} دقيقة';
-    }
-    if (duration.inMinutes > 0) {
-      return '${duration.inMinutes} دقيقة ${duration.inSeconds.remainder(60)} ثانية';
-    }
-    return '${duration.inSeconds} ثانية';
-  }
+  String _formatDuration(int seconds) => compactSessionDuration(seconds);
 
   void _refresh() {
     ref.invalidate(onlineSessionsProvider(_query));
@@ -686,19 +674,19 @@ class _SessionTile extends StatelessWidget {
                 InfoItem(
                   icon: Icons.dns,
                   label: 'IP',
-                  value: session.framedIpAddress,
+                  value: ltrIsolate(session.framedIpAddress),
                 ),
               if (session.callingStationId.isNotEmpty)
                 InfoItem(
                   icon: Icons.devices,
                   label: 'MAC',
-                  value: session.callingStationId,
+                  value: ltrIsolate(session.callingStationId),
                 ),
               if (session.nasIpAddress.isNotEmpty)
                 InfoItem(
                   icon: Icons.router,
                   label: 'الراوتر',
-                  value: session.nasIpAddress,
+                  value: ltrIsolate(session.nasIpAddress),
                 ),
               if (session.startedAt != null)
                 InfoItem(
@@ -841,8 +829,8 @@ class _HistoryRow extends StatelessWidget {
     final df = DateFormat('yyyy-MM-dd HH:mm');
     final state = item.isOnline ? 'متصلة' : 'منتهية';
     final where = [
-      if (item.nasIpAddress.isNotEmpty) item.nasIpAddress,
-      if (item.framedIpAddress.isNotEmpty) item.framedIpAddress,
+      if (item.nasIpAddress.isNotEmpty) ltrIsolate(item.nasIpAddress),
+      if (item.framedIpAddress.isNotEmpty) ltrIsolate(item.framedIpAddress),
     ].join(' · ');
     final when = [
       if (item.startedAt != null) 'من ${df.format(item.startedAt!.toLocal())}',
@@ -1132,4 +1120,18 @@ String _stateLabel(OnlineSession session) {
     'disconnected' => 'مفصول',
     _ => raw.trim().isEmpty ? 'غير محدد' : raw,
   };
+}
+
+/// A session length short enough for a third of a 360 px row: «12 د 28 ث»,
+/// «1 س 22 د», «3 ي 4 س». The long form («12 دقيقة 28 ثانية») was cut to
+/// «12 دقيقة 28 ثا…» at 360 and 390 (R07 N15).
+String compactSessionDuration(int seconds) {
+  if (seconds <= 0) return 'غير معروف';
+  final d = Duration(seconds: seconds);
+  if (d.inDays > 0) return '${d.inDays} ي ${d.inHours.remainder(24)} س';
+  if (d.inHours > 0) return '${d.inHours} س ${d.inMinutes.remainder(60)} د';
+  if (d.inMinutes > 0) {
+    return '${d.inMinutes} د ${d.inSeconds.remainder(60)} ث';
+  }
+  return '${d.inSeconds} ث';
 }

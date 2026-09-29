@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -376,7 +377,10 @@ class _TimelineCard extends StatelessWidget {
                     dense: true,
                     title: Text(item.label),
                     subtitle: Text(
-                      item.createdAt.isEmpty ? 'بدون وقت' : item.createdAt,
+                      formatServerTimestamp(
+                        item.createdAt,
+                        empty: 'بدون وقت',
+                      ),
                     ),
                     leading: const Icon(
                       Icons.circle,

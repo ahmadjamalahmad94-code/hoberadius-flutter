@@ -422,13 +422,7 @@ final RegExp _isoStamp = RegExp(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}');
 
 /// A server timestamp as the panel shows it («2026-09-29 03:01»), never the
 /// raw UTC ISO (`2026-09-29T00:01:08.532034Z`, 3 h off the operator clock).
-String formatReportTimestamp(Object? value) {
-  final text = '${value ?? ''}'.trim();
-  if (text.isEmpty) return '—';
-  final t = parseServerDateTime(text);
-  if (t == null) return text;
-  return DateFormat('yyyy-MM-dd HH:mm').format(t);
-}
+String formatReportTimestamp(Object? value) => formatServerTimestamp(value);
 
 String _cell(Object? value) {
   if (value == null || value.toString().isEmpty) return '—';

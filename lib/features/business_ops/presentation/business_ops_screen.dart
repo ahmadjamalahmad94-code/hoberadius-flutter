@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/format/money_limits.dart';
+import '../../../core/format/number_input.dart';
 import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../features/admin_control/application/admin_control_providers.dart';
@@ -313,43 +314,126 @@ class _LedgerSection extends StatelessWidget {
                   ),
                 );
               }
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: const [
-                    DataColumn(label: Text('#')),
-                    DataColumn(label: Text('النوع')),
-                    DataColumn(label: Text('مدين')),
-                    DataColumn(label: Text('دائن')),
-                    DataColumn(label: Text('المبلغ')),
-                    DataColumn(label: Text('الهدف')),
-                    DataColumn(label: Text('المرجع')),
-                    DataColumn(label: Text('التاريخ')),
-                  ],
-                  rows: entries.map((entry) {
-                    return DataRow(
-                      cells: [
-                        DataCell(Text('${entry.id}')),
-                        DataCell(_TypeChip(entry: entry)),
-                        DataCell(Text(_dash(entry.debitAccount))),
-                        DataCell(Text(_dash(entry.creditAccount))),
-                        DataCell(
-                          Text(
-                            amountWithCurrency(entry.amount, entry.currency),
-                          ),
-                        ),
-                        DataCell(Text(_ref(entry.targetType, entry.targetId))),
-                        DataCell(
-                          Text(_ref(entry.referenceType, entry.referenceId)),
-                        ),
-                        DataCell(Text(_fmtDate(entry.createdAt))),
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  // Eight columns never fit a phone: at 360 px the table was
+                  // cut mid-cell («et:4», R11 L-2). Phones get one card per
+                  // entry with every field labelled.
+                  if (constraints.maxWidth < 600) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final entry in entries) ...[
+                          _LedgerEntryCard(entry: entry),
+                          const Divider(height: 1),
+                        ],
                       ],
                     );
-                  }).toList(),
-                ),
+                  }
+                  return _ledgerTable(entries);
+                },
               );
             },
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _ledgerTable(List<BusinessLedgerEntry> entries) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: const [
+          DataColumn(label: Text('#')),
+          DataColumn(label: Text('النوع')),
+          DataColumn(label: Text('مدين')),
+          DataColumn(label: Text('دائن')),
+          DataColumn(label: Text('المبلغ')),
+          DataColumn(label: Text('الهدف')),
+          DataColumn(label: Text('المرجع')),
+          DataColumn(label: Text('التاريخ')),
+        ],
+        rows: entries.map((entry) {
+          return DataRow(
+            cells: [
+              DataCell(Text('${entry.id}')),
+              DataCell(_TypeChip(entry: entry)),
+              DataCell(Text(_debit(entry))),
+              DataCell(Text(_credit(entry))),
+              DataCell(
+                Text(
+                  amountWithCurrency(entry.amount, entry.currency),
+                ),
+              ),
+              DataCell(Text(_target(entry))),
+              DataCell(
+                Text(_ref(entry.referenceType, entry.referenceId)),
+              ),
+              DataCell(Text(_fmtDate(entry.createdAt))),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+/// One ledger entry as a labelled card (phones).
+class _LedgerEntryCard extends StatelessWidget {
+  const _LedgerEntryCard({required this.entry});
+
+  final BusinessLedgerEntry entry;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget line(String label, String value) => Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 64,
+                child: Text(
+                  label,
+                  style: const TextStyle(color: AppTokens.textMuted),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        );
+    return Padding(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              _TypeChip(entry: entry),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: Text(
+                  amountWithCurrency(entry.amount, entry.currency),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              Text(
+                '#${entry.id}',
+                style: const TextStyle(color: AppTokens.textMuted),
+              ),
+            ],
+          ),
+          line('مدين', _debit(entry)),
+          line('دائن', _credit(entry)),
+          line('الهدف', _target(entry)),
+          line('المرجع', _ref(entry.referenceType, entry.referenceId)),
+          line('التاريخ', _fmtDate(entry.createdAt)),
         ],
       ),
     );
@@ -617,9 +701,7 @@ class _CorrectionDialogState extends ConsumerState<_CorrectionDialog> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
+                  inputFormatters: numberFieldFormatters,
                   validator: _positiveAmount,
                 ),
                 const SizedBox(height: AppTokens.s8),
@@ -641,9 +723,8 @@ class _CorrectionDialogState extends ConsumerState<_CorrectionDialog> {
                         decoration:
                             const InputDecoration(labelText: 'رقم الهدف'),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
+                        inputFormatters: numberFieldFormatters,
+                        validator: _optionalId,
                       ),
                     ),
                   ],
@@ -665,9 +746,8 @@ class _CorrectionDialogState extends ConsumerState<_CorrectionDialog> {
                         decoration:
                             const InputDecoration(labelText: 'رقم المرجع'),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
+                        inputFormatters: numberFieldFormatters,
+                        validator: _optionalId,
                       ),
                     ),
                   ],
@@ -711,12 +791,12 @@ class _CorrectionDialogState extends ConsumerState<_CorrectionDialog> {
       await ref.read(businessOpsRepositoryProvider).createCorrection(
             debitAccount: _debit.text.trim(),
             creditAccount: _credit.text.trim(),
-            amount: num.parse(_amount.text.trim()),
+            amount: parseNumberInput(_amount.text)!,
             currency: widget.currency,
             targetType: _targetType.text.trim(),
-            targetId: int.tryParse(_targetId.text.trim()),
+            targetId: parseIntInput(_targetId.text),
             referenceType: _referenceType.text.trim(),
-            referenceId: int.tryParse(_referenceId.text.trim()),
+            referenceId: parseIntInput(_referenceId.text),
             reason: _reason.text.trim(),
           );
       if (!mounted) return;
@@ -794,9 +874,8 @@ class _SnapshotDialogState extends ConsumerState<_SnapshotDialog> {
                         decoration:
                             const InputDecoration(labelText: 'رقم المرجع'),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
+                        inputFormatters: numberFieldFormatters,
+                        validator: _optionalId,
                       ),
                     ),
                     const SizedBox(width: AppTokens.s8),
@@ -806,9 +885,8 @@ class _SnapshotDialogState extends ConsumerState<_SnapshotDialog> {
                         decoration:
                             const InputDecoration(labelText: 'رقم الباقة'),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
+                        inputFormatters: numberFieldFormatters,
+                        validator: _optionalId,
                       ),
                     ),
                   ],
@@ -824,9 +902,7 @@ class _SnapshotDialogState extends ConsumerState<_SnapshotDialog> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
+                        inputFormatters: numberFieldFormatters,
                         validator: _nonNegative,
                       ),
                     ),
@@ -839,9 +915,7 @@ class _SnapshotDialogState extends ConsumerState<_SnapshotDialog> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
+                        inputFormatters: numberFieldFormatters,
                         validator: _nonNegative,
                       ),
                     ),
@@ -860,9 +934,7 @@ class _SnapshotDialogState extends ConsumerState<_SnapshotDialog> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
+                        inputFormatters: numberFieldFormatters,
                         validator: _optionalNonNegative,
                       ),
                     ),
@@ -874,9 +946,7 @@ class _SnapshotDialogState extends ConsumerState<_SnapshotDialog> {
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                        ],
+                        inputFormatters: numberFieldFormatters,
                         validator: _optionalNonNegative,
                       ),
                     ),
@@ -914,14 +984,14 @@ class _SnapshotDialogState extends ConsumerState<_SnapshotDialog> {
     try {
       await ref.read(businessOpsRepositoryProvider).captureSnapshot(
             referenceType: _referenceType.text.trim(),
-            referenceId: int.tryParse(_referenceId.text.trim()),
-            packageId: int.tryParse(_packageId.text.trim()),
-            retailPrice: num.parse(_retail.text.trim()),
-            wholesalePrice: num.parse(_wholesale.text.trim()),
+            referenceId: parseIntInput(_referenceId.text),
+            packageId: parseIntInput(_packageId.text),
+            retailPrice: parseNumberInput(_retail.text)!,
+            wholesalePrice: parseNumberInput(_wholesale.text)!,
             effectivePrice: _effective.text.trim().isEmpty
                 ? null
-                : num.tryParse(_effective.text.trim()),
-            discountAmount: num.tryParse(_discount.text.trim()) ?? 0,
+                : parseNumberInput(_effective.text),
+            discountAmount: parseNumberInput(_discount.text) ?? 0,
             currency: widget.currency,
           );
       if (!mounted) return;
@@ -943,32 +1013,60 @@ String? _required(String? value) {
   return null;
 }
 
-String? _positiveAmount(String? value) {
-  final parsed = num.tryParse(value?.trim() ?? '');
-  if (parsed == null) return 'أدخل رقمًا صحيحًا';
-  if (parsed <= 0) return 'يجب أن يكون أكبر من صفر';
-  return null;
-}
+/// Strict number readers (core/format/number_input.dart): Arabic-Indic
+/// digits and «٫» are accepted; «-», «e», «,» and letters are REFUSED with
+/// an Arabic message — never silently stripped (the old `[0-9.]` filter
+/// turned «1e9» into 19 and «-5» into 5). Money is capped at
+/// [kMaxMoneyAmount].
+String? _positiveAmount(String? value) => validateNumberInput(
+      value,
+      min: 0,
+      minExclusive: true,
+      max: kMaxMoneyAmount,
+      maxMessage: _kMoneyCapMessage,
+    );
 
-String? _nonNegative(String? value) {
-  final parsed = num.tryParse(value?.trim() ?? '');
-  if (parsed == null) return 'أدخل رقمًا صحيحًا';
-  if (parsed < 0) return 'لا يمكن أن يكون سالبًا';
-  return null;
-}
+String? _nonNegative(String? value) => validateNumberInput(
+      value,
+      min: 0,
+      max: kMaxMoneyAmount,
+      maxMessage: _kMoneyCapMessage,
+    );
 
-String? _optionalNonNegative(String? value) {
-  final text = value?.trim() ?? '';
-  if (text.isEmpty) return null;
-  return _nonNegative(value);
-}
+String? _optionalNonNegative(String? value) => validateNumberInput(
+      value,
+      required: false,
+      min: 0,
+      max: kMaxMoneyAmount,
+      maxMessage: _kMoneyCapMessage,
+    );
 
-String _dash(String value) => value.trim().isEmpty ? '—' : value;
+/// An optional record number (target / reference / package id).
+String? _optionalId(String? value) =>
+    validateNumberInput(value, required: false, decimal: false, min: 1);
+
+const _kMoneyCapMessage =
+    'المبلغ كبير جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.';
+
+String _dash(String value) =>
+    value.trim().isEmpty ? '—' : businessAccountLabel(value);
+
+/// The server's Arabic label wins; an older server → the app's mapping.
+String _debit(BusinessLedgerEntry e) => e.debitAccountLabel.isNotEmpty
+    ? e.debitAccountLabel
+    : _dash(e.debitAccount);
+
+String _credit(BusinessLedgerEntry e) => e.creditAccountLabel.isNotEmpty
+    ? e.creditAccountLabel
+    : _dash(e.creditAccount);
+
+String _target(BusinessLedgerEntry e) =>
+    e.targetLabel.isNotEmpty ? e.targetLabel : _ref(e.targetType, e.targetId);
 
 String _ref(String type, int? id) {
   if (type.trim().isEmpty && id == null) return '—';
-  if (id == null) return type;
-  return '$type #$id';
+  if (id == null) return businessAccountLabel(type);
+  return businessAccountLabel('$type #$id');
 }
 
 String _fmtDate(DateTime? value) {
