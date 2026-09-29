@@ -80,6 +80,7 @@ class BackupJob {
     required this.lastStatus,
     required this.lastMessage,
     required this.lastRunAt,
+    this.lastStatusLabel = '',
   });
 
   final int id;
@@ -90,6 +91,14 @@ class BackupJob {
   final String lastMessage;
   final DateTime? lastRunAt;
 
+  /// Server Arabic `last_status_label` (or `status_label`); optional.
+  final String lastStatusLabel;
+
+  /// The server's label when sent, else the app's mapping of [lastStatus].
+  String get statusText => lastStatusLabel.isNotEmpty
+      ? lastStatusLabel
+      : backupStatusLabel(lastStatus);
+
   factory BackupJob.fromJson(Map<String, dynamic> json) {
     return BackupJob(
       id: _asInt(json['id']),
@@ -99,6 +108,9 @@ class BackupJob {
       lastStatus: (json['last_status'] ?? 'never_run').toString(),
       lastMessage: (json['last_message'] ?? '').toString(),
       lastRunAt: parseServerDateTime(json['last_run_at']),
+      lastStatusLabel: (json['last_status_label'] ?? json['status_label'] ?? '')
+          .toString()
+          .trim(),
     );
   }
 }
@@ -110,10 +122,14 @@ class BackupRun {
     required this.path,
     required this.message,
     required this.createdAt,
+    this.serverStatusLabel = '',
   });
 
   final int id;
   final String status;
+
+  /// `status_label` from the server (optional).
+  final String serverStatusLabel;
   final String path;
   final String message;
   final DateTime? createdAt;
@@ -125,10 +141,13 @@ class BackupRun {
       path: (json['path'] ?? '').toString(),
       message: (json['message'] ?? '').toString(),
       createdAt: parseServerDateTime(json['created_at']),
+      serverStatusLabel: (json['status_label'] ?? '').toString().trim(),
     );
   }
 
-  String get statusLabel => backupStatusLabel(status);
+  String get statusLabel => serverStatusLabel.isNotEmpty
+      ? serverStatusLabel
+      : backupStatusLabel(status);
 }
 
 /// Arabic for a backup job / run status (`never_run` was shown raw, R11 L-2).

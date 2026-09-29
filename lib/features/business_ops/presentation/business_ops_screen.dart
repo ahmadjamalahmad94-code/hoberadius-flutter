@@ -359,14 +359,14 @@ class _LedgerSection extends StatelessWidget {
             cells: [
               DataCell(Text('${entry.id}')),
               DataCell(_TypeChip(entry: entry)),
-              DataCell(Text(_dash(entry.debitAccount))),
-              DataCell(Text(_dash(entry.creditAccount))),
+              DataCell(Text(_debit(entry))),
+              DataCell(Text(_credit(entry))),
               DataCell(
                 Text(
                   amountWithCurrency(entry.amount, entry.currency),
                 ),
               ),
-              DataCell(Text(_ref(entry.targetType, entry.targetId))),
+              DataCell(Text(_target(entry))),
               DataCell(
                 Text(_ref(entry.referenceType, entry.referenceId)),
               ),
@@ -429,9 +429,9 @@ class _LedgerEntryCard extends StatelessWidget {
               ),
             ],
           ),
-          line('مدين', _dash(entry.debitAccount)),
-          line('دائن', _dash(entry.creditAccount)),
-          line('الهدف', _ref(entry.targetType, entry.targetId)),
+          line('مدين', _debit(entry)),
+          line('دائن', _credit(entry)),
+          line('الهدف', _target(entry)),
           line('المرجع', _ref(entry.referenceType, entry.referenceId)),
           line('التاريخ', _fmtDate(entry.createdAt)),
         ],
@@ -1050,6 +1050,18 @@ const _kMoneyCapMessage =
 
 String _dash(String value) =>
     value.trim().isEmpty ? '—' : businessAccountLabel(value);
+
+/// The server's Arabic label wins; an older server → the app's mapping.
+String _debit(BusinessLedgerEntry e) => e.debitAccountLabel.isNotEmpty
+    ? e.debitAccountLabel
+    : _dash(e.debitAccount);
+
+String _credit(BusinessLedgerEntry e) => e.creditAccountLabel.isNotEmpty
+    ? e.creditAccountLabel
+    : _dash(e.creditAccount);
+
+String _target(BusinessLedgerEntry e) =>
+    e.targetLabel.isNotEmpty ? e.targetLabel : _ref(e.targetType, e.targetId);
 
 String _ref(String type, int? id) {
   if (type.trim().isEmpty && id == null) return '—';

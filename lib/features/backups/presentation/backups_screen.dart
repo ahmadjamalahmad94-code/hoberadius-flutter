@@ -173,12 +173,12 @@ class _Body extends StatelessWidget {
               children: [
                 _StatCard(
                   title: 'الحالة الأخيرة',
-                  value: backupStatusLabel(job.lastStatus),
+                  value: job.statusText,
                   subtitle: serverTextOrFallback(
                     job.lastMessage,
                     fallback: job.lastRunAt == null
                         ? 'لم يتم تشغيل نسخة بعد'
-                        : backupStatusLabel(job.lastStatus),
+                        : job.statusText,
                   ),
                   icon: Icons.verified_outlined,
                 ),
