@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter/material.dart';
 
@@ -110,13 +112,65 @@ PlanFormSelections selectionsFromPlan(Plan p) => PlanFormSelections(
       forceMacAddress: p.forceMacAddress,
     );
 
+/// Every numeric field of the plan form with its Arabic label: whole
+/// numbers except the price. Checked before saving — a collapsed section's
+/// field is not validated by the Form, and «٩», «7.5» or «abc» used to be
+/// saved as 0 (r04 N2 / r11 M-3: a free plan with no duration).
+const Map<String, String> kPlanNumberFields = {
+  'price': 'السعر',
+  'priority': 'الأولوية',
+  'duration_minutes': 'مدّة الاتصال (د)',
+  'validity_days': 'الصلاحية (أيام)',
+  'session_timeout_sec': 'مهلة الجلسة (ث)',
+  'idle_timeout_sec': 'مهلة الخمول (ث)',
+  'quota_total_mb': 'الكوتة الإجمالية (MB)',
+  'quota_daily_mb': 'الكوتة اليومية (MB)',
+  'quota_monthly_mb': 'الكوتة الشهرية (MB)',
+  'daily_download_quota_mb': 'تنزيل يومي (MB)',
+  'daily_upload_quota_mb': 'رفع يومي (MB)',
+  'daily_combined_quota_mb': 'مجمّع يومي (MB)',
+  'monthly_download_quota_mb': 'تنزيل شهري (MB)',
+  'monthly_upload_quota_mb': 'رفع شهري (MB)',
+  'monthly_combined_quota_mb': 'مجمّع شهري (MB)',
+  'speed_down_kbps': 'سرعة التنزيل',
+  'speed_up_kbps': 'سرعة الرفع',
+  'cir_down_kbps': 'CIR تنزيل',
+  'cir_up_kbps': 'CIR رفع',
+  'burst_down_kbps': 'Burst تنزيل',
+  'burst_up_kbps': 'Burst رفع',
+  'burst_threshold_kbps': 'عتبة Burst',
+  'burst_time_sec': 'زمن Burst',
+  'concurrent_sessions': 'الجلسات المتزامنة',
+  'vlan_id': 'VLAN',
+  'max_loan_minutes': 'أقصى سلفة (د)',
+  'allowed_devices_count': 'عدد الأجهزة',
+};
+
+/// The first invalid numeric field as «الحقل: السبب», or null.
+String? planFormNumberError(Map<String, TextEditingController> c) {
+  for (final e in kPlanNumberFields.entries) {
+    final ctrl = c[e.key];
+    if (ctrl == null) continue;
+    final err = validateNumberInput(
+      ctrl.text,
+      required: false,
+      decimal: e.key == 'price',
+      max: e.key == 'price' ? kMaxMoneyAmount : null,
+    );
+    if (err != null) return '${e.value}: $err';
+  }
+  return null;
+}
+
 Plan buildPlanFromForm(
   Map<String, TextEditingController> c,
   PlanFormSelections sel, {
   Plan? base,
 }) {
-  int parseInt(String key) => int.tryParse(c[key]!.text.trim()) ?? 0;
-  num parseNum(String key) => num.tryParse(c[key]!.text.trim()) ?? 0;
+  // Strict readers (Arabic-Indic digits and «٫» accepted); the screen
+  // refuses the save first when [planFormNumberError] finds a bad value.
+  int parseInt(String key) => parseIntInput(c[key]!.text) ?? 0;
+  num parseNum(String key) => parseNumberInput(c[key]!.text) ?? 0;
   String parseStr(String key) => c[key]!.text.trim();
 
   return (base ?? Plan(name: '')).copyWith(

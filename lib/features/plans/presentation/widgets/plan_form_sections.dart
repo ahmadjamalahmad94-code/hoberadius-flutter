@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
@@ -19,6 +21,10 @@ Widget _numField(
       child: TextFormField(
         controller: controllers[key],
         keyboardType: TextInputType.number,
+        inputFormatters: numberFieldFormatters,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        validator: (v) =>
+            validateNumberInput(v, required: false, decimal: false),
       ),
     );
 
@@ -431,6 +437,13 @@ class PlanCommerceSection extends StatelessWidget {
                 controller: controllers['price'],
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
+                ),
+                inputFormatters: numberFieldFormatters,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: (v) => validateNumberInput(
+                  v,
+                  required: false,
+                  max: kMaxMoneyAmount,
                 ),
               ),
             ),

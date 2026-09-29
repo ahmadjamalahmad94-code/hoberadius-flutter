@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -663,15 +664,17 @@ class _SessionTile extends StatelessWidget {
                 label: 'المدة',
                 value: formatDuration(session.sessionTime),
               ),
+              // RFC 2866: input octets (bytesIn) = the user's UPLOAD,
+              // output octets (bytesOut) = DOWNLOAD — as the web shows.
               InfoItem(
                 icon: Icons.download,
-                label: 'تحميل',
-                value: formatBytes(session.bytesIn),
+                label: 'تنزيل',
+                value: formatBytes(session.bytesOut),
               ),
               InfoItem(
                 icon: Icons.upload,
                 label: 'رفع',
-                value: formatBytes(session.bytesOut),
+                value: formatBytes(session.bytesIn),
               ),
             ],
           ),
@@ -907,13 +910,13 @@ class _HistoryRow extends StatelessWidget {
                   ),
                   InfoItem(
                     icon: Icons.download,
-                    label: 'تحميل',
-                    value: formatBytes(item.bytesIn),
+                    label: 'تنزيل',
+                    value: formatBytes(item.bytesOut),
                   ),
                   InfoItem(
                     icon: Icons.upload,
                     label: 'رفع',
-                    value: formatBytes(item.bytesOut),
+                    value: formatBytes(item.bytesIn),
                   ),
                 ],
               ),
@@ -948,7 +951,7 @@ class _TemporarySpeedDraft {
   final int uploadKbps;
   final int duration;
 
-  /// `minutes` | `hours` — mirrors the web temp-speed form's unit selector.
+  /// `minutes` | `hours` | `days` — the web temp-speed form's units.
   final String durationUnit;
 }
 
@@ -1019,6 +1022,10 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
                           value: 'hours',
                           child: Text('ساعات'),
                         ),
+                        DropdownMenuItem(
+                          value: 'days',
+                          child: Text('أيام'),
+                        ),
                       ],
                       onChanged: (v) => setState(() => unit = v ?? 'minutes'),
                     ),
@@ -1043,15 +1050,19 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
               icon: const Icon(Icons.speed_outlined),
               label: const Text('تطبيق'),
               onPressed: () {
-                final down = int.tryParse(download.text.trim()) ?? 0;
-                final up = int.tryParse(upload.text.trim()) ?? 0;
-                final value = int.tryParse(duration.text.trim()) ?? 0;
-                if (down <= 0 || up <= 0 || value <= 0) {
-                  setState(() {
-                    error = 'أدخل أرقامًا صحيحة أكبر من صفر.';
-                  });
+                final problem = validateTemporarySpeedInput(
+                  downloadText: download.text,
+                  uploadText: upload.text,
+                  durationText: duration.text,
+                  unit: unit,
+                );
+                if (problem != null) {
+                  setState(() => error = problem);
                   return;
                 }
+                final down = parseIntInput(download.text) ?? 0;
+                final up = parseIntInput(upload.text) ?? 0;
+                final value = parseIntInput(duration.text) ?? 0;
                 Navigator.pop(
                   ctx,
                   _TemporarySpeedDraft(
@@ -1072,6 +1083,32 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
     upload.dispose();
     duration.dispose();
   });
+}
+
+/// Temp-speed dialog guard (Arabic): whole positive numbers, a duration of
+/// at most a year whatever the unit.
+String? validateTemporarySpeedInput({
+  required String downloadText,
+  required String uploadText,
+  required String durationText,
+  required String unit,
+}) {
+  for (final (label, text) in [
+    ('سرعة التنزيل', downloadText),
+    ('سرعة الرفع', uploadText),
+    ('المدة', durationText),
+  ]) {
+    final err = validateNumberInput(text, decimal: false, min: 1);
+    if (err != null) return '$label: $err';
+  }
+  final v = parseIntInput(durationText) ?? 0;
+  final minutes = switch (unit) {
+    'days' => v * 1440,
+    'hours' => v * 60,
+    _ => v,
+  };
+  if (minutes > 365 * 1440) return 'المدة: الحدّ الأعلى سنة.';
+  return null;
 }
 
 String _terminateCauseLabel(String value) {

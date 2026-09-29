@@ -170,8 +170,13 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     });
   }
 
+  /// A local (typed-value) problem, shown where the server error shows.
+  String? _localError;
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final numberError = planFormNumberError(_c);
+    setState(() => _localError = numberError);
+    if (!_formKey.currentState!.validate() || numberError != null) return;
     final plan = buildPlanFromForm(_c, _selections, base: _loaded);
     final err = await ref
         .read(planFormActionProvider.notifier)
@@ -193,7 +198,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   Widget build(BuildContext context) {
     final action = ref.watch(planFormActionProvider);
     final loading = action.loading;
-    final error = action.error;
+    final error = _localError ?? action.error;
     return Form(
       key: _formKey,
       child: Column(
