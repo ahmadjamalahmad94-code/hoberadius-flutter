@@ -1,3 +1,4 @@
+import '../../../../core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -66,6 +67,8 @@ class PlanPicker extends ConsumerWidget {
           );
         }
         final current = int.tryParse(controller.text.trim());
+        // Disabled plans are not offered — except the one already set.
+        plans = plans.where((p) => p.enabled || p.id == current).toList();
         final exists = plans.any((p) => p.id == current);
         return DropdownButtonFormField<int?>(
           initialValue: exists ? current : null,
@@ -79,7 +82,9 @@ class PlanPicker extends ConsumerWidget {
               (p) => DropdownMenuItem<int?>(
                 value: p.id,
                 child: Text(
-                  '${p.name}${p.code.isNotEmpty ? "  •  ${p.code}" : ""}',
+                  '${autoIsolate(p.name)}'
+                  '${p.code.isNotEmpty ? "  •  ${ltrIsolate(p.code)}" : ""}'
+                  '${p.enabled ? '' : ' (معطّلة)'}',
                   overflow: TextOverflow.ellipsis,
                 ),
               ),

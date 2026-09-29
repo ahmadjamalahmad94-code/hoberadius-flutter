@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,7 +9,9 @@ import '../../../shared/widgets/page_header.dart';
 import '../application/subscriber_form_controller.dart';
 import '../application/subscriber_form_mapper.dart';
 import '../domain/subscriber_model.dart';
+import '../domain/subscriber_actions_model.dart';
 import 'widgets/subscriber_action_menu.dart';
+import 'widgets/subscriber_actions_sheet.dart';
 import 'widgets/subscriber_form_sections.dart';
 
 /// Subscriber create / edit form. UI-local state (text controllers and
@@ -57,9 +60,15 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   void initState() {
     super.initState();
     _c = {for (final k in _controllerKeys) k: TextEditingController()};
-    // Defer the load so the controller's first `state =` runs AFTER initState
+    // Defer so the controller's first `state =` runs AFTER initState
     // (modifying a provider during the build/initState phase is disallowed).
-    if (widget.isEdit) Future.microtask(_loadExisting);
+    // A fresh form starts clean: the action provider is app-wide and kept
+    // the previous form's error (r10 N6).
+    Future.microtask(() {
+      if (!mounted) return;
+      ref.read(subscriberFormActionProvider.notifier).clearError();
+      if (widget.isEdit) _loadExisting();
+    });
   }
 
   @override
@@ -107,6 +116,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       );
 
   Future<void> _loadExisting() async {
+    _ownsError = true;
     final result = await ref
         .read(subscriberFormActionProvider.notifier)
         .load(widget.username!);
@@ -139,8 +149,38 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
     });
   }
 
+  /// A typed-value problem found before any request (collapsed sections
+  /// included), shown in the error box.
+  String? _localError;
+
+  /// This form instance started a load/save — only then is the shared
+  /// provider's error ours to show.
+  bool _ownsError = false;
+
+  Future<void> _rename() async {
+    final u = widget.username;
+    if (u == null) return;
+    await runSubscriberAction(
+      context,
+      SubscriberAction.rename,
+      SubscriberActionsContext(username: u),
+      onRenamed: (name) => context.goNamed(
+        'subscriber-edit',
+        pathParameters: {'username': name},
+      ),
+    );
+  }
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final numberError = subscriberFormNumberError(_c);
+    final expiryError = validateExpiryJump(
+      original: _original?.expireAt,
+      next: _expireAt,
+      now: panelNow(),
+    );
+    setState(() => _localError = numberError ?? expiryError);
+    if (!_formKey.currentState!.validate() || _localError != null) return;
+    _ownsError = true;
     final subscriber = buildSubscriberFromForm(_c, _selections);
     final notifier = ref.read(subscriberFormActionProvider.notifier);
     final String? err;
@@ -162,7 +202,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   Widget build(BuildContext context) {
     final action = ref.watch(subscriberFormActionProvider);
     final loading = action.loading;
-    final error = action.error;
+    final error = _localError ?? (_ownsError ? action.error : null);
     return Form(
       key: _formKey,
       child: Column(
@@ -260,6 +300,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             onUserTypeChanged: (v) => setState(() => _userType = v),
             onServiceTypeChanged: (v) => setState(() => _serviceType = v),
             onExpireChanged: (d) => setState(() => _expireAt = d),
+            onRename: widget.isEdit ? _rename : null,
           ),
           const SizedBox(height: AppTokens.s12),
           SubscriberManagementSection(

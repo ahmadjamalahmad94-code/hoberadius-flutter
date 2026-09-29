@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:flutter/material.dart';
 
 import '../domain/subscriber_model.dart';
@@ -249,24 +251,24 @@ Subscriber buildSubscriberFromForm(
       remark: c['remark']!.text.trim(),
       primaryDnsPpp: c['dns1']!.text.trim(),
       secondaryDnsPpp: c['dns2']!.text.trim(),
-      overrideConcurrent: int.tryParse(c['simultaneous_use']!.text.trim()) ?? 0,
-      vlanId: int.tryParse(c['vlan_id']!.text.trim()) ?? 0,
-      deviceCount: int.tryParse(c['device_count']!.text.trim()) ?? 1,
+      overrideConcurrent: parseIntInput(c['simultaneous_use']!.text) ?? 0,
+      vlanId: parseIntInput(c['vlan_id']!.text) ?? 0,
+      deviceCount: parseIntInput(c['device_count']!.text) ?? 1,
       allowedMacs: c['allowed_macs']!.text.trim(),
       deviceConnectionFile: c['device_connection_file']!.text.trim(),
       bandwidthControlEnabled: sel.bandwidthControlEnabled,
       downloadSpeedKbps:
-          int.tryParse(c['download_speed_kbps']!.text.trim()) ?? 0,
-      uploadSpeedKbps: int.tryParse(c['upload_speed_kbps']!.text.trim()) ?? 0,
+          parseIntInput(c['download_speed_kbps']!.text) ?? 0,
+      uploadSpeedKbps: parseIntInput(c['upload_speed_kbps']!.text) ?? 0,
       customSpeed: sel.customSpeed,
       temporarySpeed: sel.temporarySpeed,
-      combinedQuotaMb: int.tryParse(c['combined_quota_mb']!.text.trim()) ?? 0,
-      downloadQuotaMb: int.tryParse(c['download_quota_mb']!.text.trim()) ?? 0,
-      uploadQuotaMb: int.tryParse(c['upload_quota_mb']!.text.trim()) ?? 0,
+      combinedQuotaMb: parseIntInput(c['combined_quota_mb']!.text) ?? 0,
+      downloadQuotaMb: parseIntInput(c['download_quota_mb']!.text) ?? 0,
+      uploadQuotaMb: parseIntInput(c['upload_quota_mb']!.text) ?? 0,
       totalConnectionTimeMin:
-          int.tryParse(c['total_connection_time_min']!.text.trim()) ?? 0,
+          parseIntInput(c['total_connection_time_min']!.text) ?? 0,
       dailyConnectionTimeMin:
-          int.tryParse(c['daily_connection_time_min']!.text.trim()) ?? 0,
+          parseIntInput(c['daily_connection_time_min']!.text) ?? 0,
       quotaLimitEnabled: sel.quotaLimitEnabled,
       connectionTimeLimitEnabled: sel.connectionTimeLimitEnabled,
       equalShareDownload: sel.equalShareDownload,
@@ -281,8 +283,8 @@ Subscriber buildSubscriberFromForm(
       mtRateLimit: c['mt_rate_limit']!.text.trim(),
       mtIpPool: c['mt_ip_pool']!.text.trim(),
       mtComment: c['mt_comment']!.text.trim(),
-      sessionTimeout: int.tryParse(c['session_timeout']!.text.trim()),
-      idleTimeout: int.tryParse(c['idle_timeout']!.text.trim()),
+      sessionTimeout: parseIntInput(c['session_timeout']!.text),
+      idleTimeout: parseIntInput(c['idle_timeout']!.text),
       calledStationId: c['called_station_id']!.text.trim(),
       allowedHours: c['allowed_hours']!.text.trim(),
       disableOnFirstUse: sel.disableOnFirstUse,
@@ -290,7 +292,7 @@ Subscriber buildSubscriberFromForm(
       notifyEmail: c['notify_email']!.text.trim(),
       notifyMobile: c['notify_mobile']!.text.trim(),
       subscriptionType: sel.subscriptionType,
-      subscriptionDays: int.tryParse(c['subscription_days']!.text.trim()),
+      subscriptionDays: parseIntInput(c['subscription_days']!.text),
       notes: c['notes']!.text.trim(),
       tags: c['tags']!
           .text
@@ -300,12 +302,60 @@ Subscriber buildSubscriberFromForm(
           .toList(),
     );
 
-double _parseMoney(String value) {
-  final normalized = value.trim().replaceAll(',', '.');
-  if (normalized.isEmpty) return 0;
-  final parsed = double.tryParse(normalized);
-  if (parsed == null) return 0;
-  return parsed;
+double _parseMoney(String value) => parseDecimalInput(value) ?? 0;
+
+/// Numeric fields of the subscriber form (all whole numbers except the
+/// money ones) with their Arabic labels — checked before saving, also when
+/// their section is collapsed (a bad value used to be saved as 0).
+const Map<String, String> kSubscriberNumberFields = {
+  'custom_price': 'السعر المخصص',
+  'balance': 'الرصيد',
+  'simultaneous_use': 'الجلسات المتزامنة',
+  'vlan_id': 'VLAN',
+  'device_count': 'عدد الأجهزة المسموحة',
+  'download_speed_kbps': 'سرعة التنزيل',
+  'upload_speed_kbps': 'سرعة الرفع',
+  'combined_quota_mb': 'الكوتا المدمجة',
+  'download_quota_mb': 'كوتا التنزيل',
+  'upload_quota_mb': 'كوتا الرفع',
+  'total_connection_time_min': 'إجمالي وقت الاتصال',
+  'daily_connection_time_min': 'وقت الاتصال اليومي',
+  'session_timeout': 'مهلة الجلسة',
+  'idle_timeout': 'مهلة الخمول',
+  'subscription_days': 'مدّة الاشتراك',
+};
+
+/// The first invalid numeric field as «الحقل: السبب», or null.
+String? subscriberFormNumberError(Map<String, TextEditingController> c) {
+  for (final e in kSubscriberNumberFields.entries) {
+    final ctrl = c[e.key];
+    if (ctrl == null) continue;
+    final money = e.key == 'custom_price' || e.key == 'balance';
+    final err = validateNumberInput(
+      ctrl.text,
+      required: false,
+      decimal: money,
+      max: money ? kMaxMoneyAmount : null,
+    );
+    if (err != null) return '${e.value}: $err';
+  }
+  return null;
+}
+
+/// The owner's one-year rule for a set expiry: moving it forward by more
+/// than a year in one save is refused (the server says the same). An
+/// earlier date, or none, is free.
+String? validateExpiryJump({
+  required DateTime? original,
+  required DateTime? next,
+  required DateTime now,
+}) {
+  if (next == null) return null;
+  if (next.year > kMaxExpiryYear) return '$kExpiryTooFarMessage.';
+  if (original != null && next.isAtSameMomentAs(original)) return null;
+  final anchor = original != null && original.isAfter(now) ? original : now;
+  final minutes = next.difference(anchor).inMinutes;
+  return validateExtendSpan(minutes);
 }
 
 String _moneyInput(double value) {

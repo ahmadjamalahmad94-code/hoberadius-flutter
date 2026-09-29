@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -651,9 +653,11 @@ Future<InvoiceDraft?> _invoiceDialog(
                           labelText: 'رقم المشترك',
                         ),
                         validator: (value) {
-                          final parsed = int.tryParse(value?.trim() ?? '');
+                          final parsed = parseIntInput(value);
                           if (parsed == null || parsed <= 0) {
-                            return 'اختر المشترك أو أدخل رقمه';
+                            return readNumberInput(value, decimal: false)
+                                    .error ??
+                                'اختر المشترك أو أدخل رقمه';
                           }
                           return null;
                         },
@@ -679,17 +683,15 @@ Future<InvoiceDraft?> _invoiceDialog(
                 const SizedBox(height: AppTokens.s12),
                 TextFormField(
                   controller: amount,
-                  keyboardType: TextInputType.number,
+                  keyboardType: decimalKeyboard,
+                  inputFormatters: numberFieldFormatters,
                   decoration: const InputDecoration(labelText: 'المبلغ'),
-                  validator: (value) {
-                    final parsed = double.tryParse(
-                      (value ?? '').replaceAll(',', '.'),
-                    );
-                    if (parsed == null || parsed < 0) {
-                      return 'أدخل مبلغًا صحيحًا';
-                    }
-                    return null;
-                  },
+                  validator: (value) => validateNumberInput(
+                    value,
+                    min: 0,
+                    max: kMaxMoneyAmount,
+                    emptyMessage: 'أدخل مبلغًا صحيحًا',
+                  ),
                 ),
                 const SizedBox(height: AppTokens.s12),
                 Row(
@@ -791,10 +793,10 @@ Future<InvoiceDraft?> _invoiceDialog(
               Navigator.pop(
                 context,
                 InvoiceDraft(
-                  subscriberId: int.parse(subscriberId.text.trim()),
+                  subscriberId: parseIntInput(subscriberId.text)!,
                   username: username.text.trim(),
-                  amount: double.parse(amount.text.trim().replaceAll(',', '.')),
-                  planId: int.tryParse(planId.text.trim()),
+                  amount: parseDecimalInput(amount.text)!,
+                  planId: parseIntInput(planId.text),
                   planName: planName.text.trim(),
                   serviceType: serviceType,
                   direction: direction,

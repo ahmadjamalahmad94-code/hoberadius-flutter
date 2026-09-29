@@ -168,6 +168,7 @@ class SubscriberActionsRepository {
     double amount = 0,
     String notes = '',
     String? idempotencyKey,
+    String window = 'auto',
   }) =>
       _post(
         username,
@@ -175,6 +176,8 @@ class SubscriberActionsRepository {
         {
           'quota_mb': quotaMb,
           'quota_target': target,
+          // total / monthly / daily (fix2 servers; older ones ignore it).
+          if (window != 'auto') 'quota_window': window,
           ...chargePayload(charge, amount, notes),
         },
         what: 'إضافة الكوتة',

@@ -14,6 +14,7 @@ import '../../domain/subscriber_actions_model.dart';
 import '../../domain/subscriber_model.dart';
 import '../../../../core/api/idempotency.dart';
 import '../../../../core/format/money_limits.dart';
+import '../../../../core/format/bidi.dart';
 import '../../../../core/format/number_input.dart';
 import 'action_dialog_kit.dart';
 import 'plan_picker.dart';
@@ -464,6 +465,7 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
   final _notes = TextEditingController();
   int _unitMb = 1024;
   String _target = 'combined';
+  String _window = 'auto';
   ChargeMode _charge = ChargeMode.free;
 
   SubscriberActionsContext get c => widget.c;
@@ -500,8 +502,10 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
           charge: _charge,
           amount: _amount,
           notes: _notes.text,
+          window: _window,
           idempotencyKey: idemKey('quota/topup', {
             'q': _quotaMb,
+            'w': _window,
             't': _target,
             'c': _charge.wire,
             'a': _amount,
@@ -570,6 +574,28 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
             onChanged: (v) => setState(() => _target = v ?? 'combined'),
           ),
         ),
+        // Several windows (a total cap and/or the plan's monthly / daily
+        // caps): the operator picks where the top-up goes; «تلقائي» lets the
+        // server choose (total ⇒ monthly ⇒ daily).
+        if (c.quotaWindows.length > 1)
+          FormFieldRow(
+            label: 'تُضاف إلى',
+            child: DropdownButtonFormField<String>(
+              initialValue: _window,
+              isExpanded: true,
+              decoration: actionFieldDecoration,
+              items: [
+                for (final w in ['auto', ...c.quotaWindows])
+                  DropdownMenuItem(value: w, child: Text(quotaWindowLabel(w))),
+              ],
+              onChanged: (v) => setState(() => _window = v ?? 'auto'),
+            ),
+          )
+        else if (c.quotaWindows.length == 1 && c.quotaWindows.single != 'total')
+          ActionNote(
+            text: 'تُضاف إلى ${quotaWindowLabel(c.quotaWindows.single)} '
+                '(الباقة بلا سقف إجمالي).',
+          ),
         const ActionFieldLabel('طريقة الإضافة'),
         ChoiceTiles<ChargeMode>(
           value: _charge,
@@ -1048,6 +1074,9 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
   String? get _invalid =>
       numberFieldError(_days.text, decimal: false) ??
       numberFieldError(_hours.text, decimal: false) ??
+      (_type == LoanType.debt && _unpriced
+          ? 'لا يمكن تسجيل دين: الباقة بلا سعر أو مدّة — اختر «مجانية».'
+          : null) ??
       validateLoan(
         type: _type,
         days: _d,
@@ -1061,6 +1090,9 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
         planMinutes: c.planMinutes,
         minutes: _d * 1440 + _h * 60,
       );
+
+  /// No price or no plan period: a debt loan would record 0.00.
+  bool get _unpriced => c.effectivePrice <= 0 || c.planMinutes <= 0;
 
   String get _hint {
     if (_type == LoanType.free) {
@@ -1126,8 +1158,8 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
           value: _type,
           onChanged: (v) => setState(() => _type = v),
           tone: PillTone.amber,
-          options: const [
-            ChoiceOption(
+          options: [
+            const ChoiceOption(
               LoanType.free,
               'مجانية',
               icon: Icons.card_giftcard_outlined,
@@ -1137,7 +1169,11 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
               LoanType.debt,
               'تسجيل دين (مدين)',
               icon: Icons.receipt_long_outlined,
-              caption: 'تُسجَّل قيمتها كدين على المشترك.',
+              // No price/period → the debt would be 0.00 (r03): not offered.
+              caption: _unpriced
+                  ? 'غير متاح: الباقة بلا سعر أو مدّة.'
+                  : 'تُسجَّل قيمتها كدين على المشترك.',
+              enabled: !_unpriced,
             ),
           ],
         ),
@@ -1187,14 +1223,46 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
 //  6. تغيير العرض / السرعة
 // ═════════════════════════════════════════════════════════════════════════
 
-String _planOptionLabel(Plan p) {
-  final mins =
-      p.durationMinutes > 0 ? p.durationMinutes : p.validityDays * 1440;
-  final price = formatMoney(p.price.toDouble(), '');
+int _planMinutes(Plan p) =>
+    p.durationMinutes > 0 ? p.durationMinutes : p.validityDays * 1440;
+
+/// «name — 30 ILS · 30 يوم» with the name and the price as bidi isolates:
+/// a Latin name («r04_meta — 302.35 · 30 يوم») was reordered right-to-left.
+String planOptionLabel(Plan p) {
+  final mins = _planMinutes(p);
+  final price = formatMoney(p.price.toDouble(), p.currency);
+  final name = autoIsolate(p.name);
+  final money = price.contains(kLtrIsolate) ? price : ltrIsolate(price);
   return mins > 0
-      ? '${p.name} — $price · ${arDuration(mins)}'
-      : '${p.name} — $price';
+      ? '$name — $money · ${arDuration(mins)}'
+      : '$name — $money';
 }
+
+/// Higher/lower for a change from [c]'s plan to [next], PER MINUTE (the
+/// server rule: a 5 ILS/day plan is dearer than 120 ILS/30 days — it was
+/// shown as «أرخص» by total price). Total prices when a period is unknown.
+PlanDirection changePlanDirection(SubscriberActionsContext c, Plan? next) {
+  final currentPrice =
+      (c.plan?.price ?? 0) > 0 ? c.plan!.price : c.effectivePrice;
+  final curRate =
+      c.plan?.ratePerMinute ?? planRatePerMinute(currentPrice, c.planMinutes);
+  final nextRate = next == null
+      ? null
+      : planRatePerMinute(next.price.toDouble(), _planMinutes(next));
+  final byRate = curRate != null && nextRate != null;
+  return planDirection(
+    currentPlanId: c.plan?.id,
+    currentPrice: byRate ? curRate : currentPrice,
+    nextPlanId: next?.id,
+    nextPrice: byRate ? nextRate : (next?.price.toDouble() ?? 0),
+  );
+}
+
+/// The change-plan choices: enabled plans other than the current one (a
+/// disabled or the same plan used to be offered — r04 N9).
+List<Plan> changePlanChoices(List<Plan> all, {int? currentPlanId}) => all
+    .where((p) => p.id != null && p.enabled && p.id != currentPlanId)
+    .toList();
 
 class ChangePlanDialog extends ConsumerStatefulWidget {
   const ChangePlanDialog({super.key, required this.c});
@@ -1211,15 +1279,8 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
 
   SubscriberActionsContext get c => widget.c;
 
-  double get _currentPrice =>
-      (c.plan?.price ?? 0) > 0 ? c.plan!.price : c.effectivePrice;
-
-  PlanDirection get _direction => planDirection(
-        currentPlanId: c.plan?.id,
-        currentPrice: _currentPrice,
-        nextPlanId: _next?.id,
-        nextPrice: _next?.price.toDouble() ?? 0,
-      );
+  /// Higher/lower is decided PER MINUTE — see [changePlanDirection].
+  PlanDirection get _direction => changePlanDirection(c, _next);
 
   void _select(Plan? p) {
     setState(() {
@@ -1269,7 +1330,13 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
               tone: PillTone.red,
             ),
             data: (items) {
-              final list = items.where((p) => p.id != null).toList();
+              final list = changePlanChoices(items, currentPlanId: c.plan?.id);
+              if (list.isEmpty) {
+                return const ActionNote(
+                  text: 'لا توجد عروض مفعّلة أخرى للتغيير إليها.',
+                  tone: PillTone.amber,
+                );
+              }
               return DropdownButtonFormField<int>(
                 initialValue: _next?.id,
                 isExpanded: true,
@@ -1280,7 +1347,7 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
                     DropdownMenuItem(
                       value: p.id,
                       child: Text(
-                        _planOptionLabel(p),
+                        planOptionLabel(p),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

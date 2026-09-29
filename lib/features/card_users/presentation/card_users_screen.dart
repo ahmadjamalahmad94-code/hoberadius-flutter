@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 import 'package:hoberadius_app/core/format/input_rules.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -417,17 +419,28 @@ Future<void> _showCreatePackageDialog(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
           if (name.text.trim().isEmpty) return;
+          final problem = marketplacePackageNumberError(
+            planId: planId.text,
+            price: price.text,
+            duration: duration.text,
+            down: down.text,
+            up: up.text,
+          );
+          if (problem != null) {
+            ScaffoldMessenger.of(dialogContext)
+                .showSnackBar(SnackBar(content: Text(problem)));
+            return;
+          }
           setState(() => busy = true);
           try {
             await ref.read(cardUsersRepositoryProvider).createPackage(
                   name: name.text.trim(),
-                  planId: int.tryParse(planId.text.trim()),
-                  price:
-                      num.tryParse(price.text.trim().replaceAll(',', '.')) ?? 0,
+                  planId: parseIntInput(planId.text),
+                  price: parseNumberInput(price.text) ?? 0,
                   currency: currency,
-                  durationMinutes: int.tryParse(duration.text.trim()) ?? 0,
-                  speedDownKbps: int.tryParse(down.text.trim()) ?? 0,
-                  speedUpKbps: int.tryParse(up.text.trim()) ?? 0,
+                  durationMinutes: parseIntInput(duration.text) ?? 0,
+                  speedDownKbps: parseIntInput(down.text) ?? 0,
+                  speedUpKbps: parseIntInput(up.text) ?? 0,
                 );
             ref.invalidate(cardMarketplacePackagesProvider);
             if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -625,4 +638,31 @@ Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
       },
     ),
   );
+}
+
+/// The marketplace-package dialog's numbers, strict (Arabic-Indic digits and
+/// «٫» accepted; «-», «e», «,» or text refused — they were read as 0).
+String? marketplacePackageNumberError({
+  required String planId,
+  required String price,
+  required String duration,
+  required String down,
+  required String up,
+}) {
+  for (final (label, text, decimal, max) in [
+    ('رقم الباقة', planId, false, null),
+    ('السعر', price, true, kMaxMoneyAmount),
+    ('المدة', duration, false, null),
+    ('التنزيل', down, false, null),
+    ('الرفع', up, false, null),
+  ]) {
+    final err = validateNumberInput(
+      text,
+      required: false,
+      decimal: decimal,
+      max: max,
+    );
+    if (err != null) return '$label: $err';
+  }
+  return null;
 }

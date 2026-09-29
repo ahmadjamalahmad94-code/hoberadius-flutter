@@ -34,6 +34,7 @@ class ActionPlan {
     required this.name,
     required this.price,
     required this.minutes,
+    this.ratePerMinute,
   });
 
   final int? id;
@@ -43,6 +44,10 @@ class ActionPlan {
   /// Plan period in minutes (30 days = 43200).
   final int minutes;
 
+  /// `rate_per_minute` of updated servers: the change-plan direction is
+  /// decided per minute, never by the total price.
+  final double? ratePerMinute;
+
   static ActionPlan? fromJson(Object? raw) {
     if (raw is! Map) return null;
     return ActionPlan(
@@ -50,9 +55,14 @@ class ActionPlan {
       name: (raw['name'] ?? '').toString(),
       price: _double(raw['price']),
       minutes: _intOrNull(raw['minutes']) ?? 0,
+      ratePerMinute: _doubleOrNull(raw['rate_per_minute']),
     );
   }
 }
+
+/// Price per minute of a plan (price ÷ period) — null when unknown.
+double? planRatePerMinute(double price, int minutes) =>
+    price > 0 && minutes > 0 ? price / minutes : null;
 
 class OpenLoan {
   const OpenLoan({
@@ -167,6 +177,7 @@ class SubscriberActionsContext {
     this.hasQuota = false,
     this.dailyQuotaMb,
     this.usedTodayMb,
+    this.quotaWindows = const [],
     this.onlineSessions = 0,
     this.smsEnabled = true,
     this.whatsappEnabled = false,
@@ -194,6 +205,11 @@ class SubscriberActionsContext {
   final bool hasQuota;
   final double? dailyQuotaMb;
   final double? usedTodayMb;
+
+  /// Where a top-up can go on this subscriber (updated servers:
+  /// `quota.quota_mb`, `quota.monthly`, `quota.daily`): `total`, `monthly`,
+  /// `daily`. Empty on older servers (the server decides).
+  final List<String> quotaWindows;
   final int onlineSessions;
   final bool smsEnabled;
   final bool whatsappEnabled;
@@ -241,6 +257,7 @@ class SubscriberActionsContext {
       hasQuota: quota['has_quota'] == true,
       dailyQuotaMb: _doubleOrNull(quota['daily_quota_mb']),
       usedTodayMb: _doubleOrNull(quota['used_today_mb']),
+      quotaWindows: quotaWindowsOf(quota),
       onlineSessions: _intOrNull(j['online_sessions']) ?? 0,
       smsEnabled: channels['sms'] != false,
       whatsappEnabled: channels['whatsapp'] == true,
@@ -299,6 +316,7 @@ class SubscriberActionsContext {
         hasQuota: hasQuota,
         dailyQuotaMb: dailyQuotaMb,
         usedTodayMb: usedTodayMb,
+        quotaWindows: quotaWindows,
         onlineSessions: onlineSessions,
         smsEnabled: smsEnabled,
         whatsappEnabled: whatsappEnabled,
@@ -344,6 +362,37 @@ const kDurationUnits = <(int, String)>[
   (60, 'ساعات'),
   (1, 'دقائق'),
 ];
+
+/// The quota windows a top-up may target, read from actions-context
+/// `quota` (fix2 server): a total cap, and/or the plan's monthly / daily
+/// caps (a daily-only plan used to be offered a top-up the server refused).
+List<String> quotaWindowsOf(Map quota) {
+  bool anyCap(Object? w) {
+    if (w is! Map) return false;
+    for (final k in const ['combined', 'download', 'upload', 'cap_mb']) {
+      final v = w[k];
+      final n = v is num ? v : num.tryParse('${v ?? ''}');
+      if (n != null && n > 0) return true;
+    }
+    return false;
+  }
+
+  final out = <String>[];
+  final total = quota['quota_mb'];
+  final t = total is num ? total : num.tryParse('${total ?? ''}');
+  if (t != null && t > 0) out.add('total');
+  if (anyCap(quota['monthly'])) out.add('monthly');
+  if (anyCap(quota['daily'])) out.add('daily');
+  return out;
+}
+
+/// Arabic label of a quota window.
+String quotaWindowLabel(String w) => switch (w) {
+      'total' => 'الكوتة الإجمالية',
+      'monthly' => 'كوتة هذا الشهر',
+      'daily' => 'كوتة اليوم',
+      _ => 'تلقائي (حسب الباقة)',
+    };
 
 enum ExtendMode { duration, exact }
 

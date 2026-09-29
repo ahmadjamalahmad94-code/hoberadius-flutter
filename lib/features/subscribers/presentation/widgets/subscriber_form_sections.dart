@@ -1,3 +1,6 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/input_rules.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,15 +15,22 @@ import '../../domain/subscriber_model.dart';
 import 'expire_picker.dart';
 import 'plan_picker.dart';
 
-/// Number-only text field used across the new parity sections.
+/// Number-only text field used across the new parity sections: nothing
+/// typed is stripped or rewritten; «7.5» in a whole-number field, «-1» or
+/// «abc» show an Arabic error instead of being saved as 0.
 class _NumField extends StatelessWidget {
-  const _NumField({required this.controller});
+  const _NumField({required this.controller, this.decimal = false});
   final TextEditingController controller;
+  final bool decimal;
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: decimal ? decimalKeyboard : integerKeyboard,
+      inputFormatters: numberFieldFormatters,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      validator: (v) =>
+          validateNumberInput(v, required: false, decimal: decimal),
     );
   }
 }
@@ -39,7 +49,12 @@ class SubscriberCoreSection extends StatelessWidget {
     required this.onUserTypeChanged,
     required this.onServiceTypeChanged,
     required this.onExpireChanged,
+    this.onRename,
   });
+
+  /// Edit form: opens «تغيير اسم المستخدم» (the name is the RADIUS key and
+  /// changes only through the rename cascade — typing here was dropped).
+  final VoidCallback? onRename;
 
   final Map<String, TextEditingController> controllers;
   final bool isEdit;
@@ -59,12 +74,25 @@ class SubscriberCoreSection extends StatelessWidget {
       required: true,
       child: TextFormField(
         controller: controllers['username'],
-        enabled: !isEdit,
-        inputFormatters: [
-          LengthLimitingTextInputFormatter(kSubscriberUsernameMax),
-        ],
+        // Edit: read-only + «إعادة تسمية» (a typed change was silently
+        // dropped — r10 N7). Create: no silent cut at 64 characters, the
+        // validator says why instead.
+        readOnly: isEdit,
+        textDirection: TextDirection.ltr,
+        autovalidateMode:
+            isEdit ? AutovalidateMode.disabled : AutovalidateMode.onUserInteraction,
+        decoration: isEdit
+            ? InputDecoration(
+                helperText: 'لتغيير الاسم استخدم «إعادة تسمية».',
+                suffixIcon: IconButton(
+                  tooltip: 'إعادة تسمية',
+                  icon: const Icon(Icons.drive_file_rename_outline, size: 20),
+                  onPressed: onRename,
+                ),
+              )
+            : null,
         // Same rule as the rename dialog and the server: Latin letters,
-        // digits and . _ - @ only — no spaces/Arabic/emoji/«/».
+        // digits and . _ - @ only, 3–64 characters.
         validator: (v) => isEdit
             ? null
             : ((v == null || v.trim().isEmpty)
@@ -112,7 +140,13 @@ class SubscriberCoreSection extends StatelessWidget {
             ),
             second: FormFieldRow(
               label: 'البريد',
-              child: TextFormField(controller: controllers['email']),
+              child: TextFormField(
+                controller: controllers['email'],
+                keyboardType: TextInputType.emailAddress,
+                textDirection: TextDirection.ltr,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: validateOptionalEmail,
+              ),
             ),
           ),
           FormFieldRow(
@@ -158,23 +192,15 @@ class SubscriberCoreSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'نوع الخدمة',
+              // The server accepts hotspot / pppoe / both (fix2 subscriber
+              // validation); an older stored value stays selectable so an
+              // untouched row is not changed by opening it.
               child: DropdownButtonFormField<String>(
                 isExpanded: true,
-                initialValue: const [
-                  'Hotspot',
-                  'PPPoE',
-                  'Balance',
-                  'Voucher',
-                  'Others',
-                ].contains(serviceType)
-                    ? serviceType
-                    : 'Hotspot',
-                items: const [
-                  DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
-                  DropdownMenuItem(value: 'PPPoE', child: Text('PPPoE')),
-                  DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
-                  DropdownMenuItem(value: 'Voucher', child: Text('كوبون')),
-                  DropdownMenuItem(value: 'Others', child: Text('أخرى')),
+                initialValue: serviceType.trim().isEmpty ? 'Hotspot' : serviceType,
+                items: [
+                  for (final (value, label) in serviceTypeOptions(serviceType))
+                    DropdownMenuItem(value: value, child: Text(label)),
                 ],
                 onChanged: (v) => onServiceTypeChanged(v ?? 'Hotspot'),
               ),
@@ -185,6 +211,13 @@ class SubscriberCoreSection extends StatelessWidget {
                 controller: controllers['custom_price'],
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
+                ),
+                inputFormatters: numberFieldFormatters,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: (v) => validateNumberInput(
+                  v,
+                  required: false,
+                  max: kMaxMoneyAmount,
                 ),
                 // The «leave empty» hint lives inside the field so the pair's
                 // labels stay one line each.
@@ -295,25 +328,16 @@ class SubscriberRadiusSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'الجلسات المتزامنة',
-            child: TextFormField(
-              controller: controllers['simultaneous_use'],
-              keyboardType: TextInputType.number,
-            ),
+            child: _NumField(controller: controllers['simultaneous_use']!),
           ),
           FormFieldPair(
             first: FormFieldRow(
               label: 'مهلة الجلسة (ث)',
-              child: TextFormField(
-                controller: controllers['session_timeout'],
-                keyboardType: TextInputType.number,
-              ),
+              child: _NumField(controller: controllers['session_timeout']!),
             ),
             second: FormFieldRow(
               label: 'مهلة الخمول (ث)',
-              child: TextFormField(
-                controller: controllers['idle_timeout'],
-                keyboardType: TextInputType.number,
-              ),
+              child: _NumField(controller: controllers['idle_timeout']!),
             ),
           ),
           FormFieldRow(
@@ -463,7 +487,7 @@ class SubscriberManagementSection extends ConsumerWidget {
                     enabled: false,
                     decoration: const InputDecoration(hintText: '0'),
                   )
-                : _NumField(controller: controllers['balance']!),
+                : _NumField(controller: controllers['balance']!, decimal: true),
           ),
         ],
       ),
@@ -627,14 +651,61 @@ class SubscriberSpeedSection extends StatelessWidget {
               child: _NumField(controller: controllers['upload_speed_kbps']!),
             ),
           ),
-          HubSwitchRow(
-            label: 'سرعة مؤقتة',
-            subtitle: 'رفع مؤقت بدون تغيير الباقة',
-            value: temporarySpeed,
-            onChanged: onTemporarySpeedChanged,
-            dense: true,
-          ),
+          // «سرعة مؤقتة» had no effect from this form (r02): a temporary
+          // speed is an ACTION on the live session with an end time — it
+          // lives in «المتصلون» → «سرعة مؤقتة», not in a saved switch.
+          const _TempSpeedHint(),
         ],
+      ),
+    );
+  }
+}
+
+/// Service types the server accepts (case-insensitively), and the
+/// dropdown items for [current]: its stored spelling is kept (opening a row
+/// never changes it), an older value (Balance/Voucher…) stays listed.
+List<(String, String)> serviceTypeOptions(String current) {
+  const canonical = [
+    ('Hotspot', 'هوتسبوت'),
+    ('PPPoE', 'PPPoE'),
+    ('both', 'كلاهما'),
+  ];
+  final cur = current.trim();
+  final out = <(String, String)>[];
+  var matched = cur.isEmpty;
+  for (final (v, label) in canonical) {
+    if (!matched && v.toLowerCase() == cur.toLowerCase()) {
+      out.add((current, label));
+      matched = true;
+    } else {
+      out.add((v, label));
+    }
+  }
+  if (!matched) out.add((current, legacyServiceTypeLabel(current)));
+  return out;
+}
+
+/// Arabic label of an older stored service type.
+String legacyServiceTypeLabel(String v) => switch (v.trim().toLowerCase()) {
+      'balance' => 'رصيد (قديم)',
+      'voucher' => 'كوبون (قديم)',
+      'others' => 'أخرى (قديم)',
+      'hotspot' => 'هوتسبوت',
+      'pppoe' => 'PPPoE',
+      _ => '$v (قديم)',
+    };
+
+class _TempSpeedHint extends StatelessWidget {
+  const _TempSpeedHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Text(
+        'السرعة المؤقتة تُطبَّق على الجلسة المتصلة من «المتصلون» ← '
+        '«سرعة مؤقتة» (بمدّة بالدقائق أو الساعات أو الأيام).',
+        style: Theme.of(context).textTheme.bodySmall,
       ),
     );
   }
@@ -875,7 +946,13 @@ class SubscriberNotificationsSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'بريد التنبيهات',
-              child: TextFormField(controller: controllers['notify_email']),
+              child: TextFormField(
+                controller: controllers['notify_email'],
+                keyboardType: TextInputType.emailAddress,
+                textDirection: TextDirection.ltr,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: validateOptionalEmail,
+              ),
             ),
             second: FormFieldRow(
               label: 'جوال التنبيهات',
@@ -933,10 +1010,7 @@ class SubscriberSubscriptionSection extends StatelessWidget {
             ),
             second: FormFieldRow(
               label: 'مدّة الاشتراك (أيام)',
-              child: TextFormField(
-                controller: controllers['subscription_days'],
-                keyboardType: TextInputType.number,
-              ),
+              child: _NumField(controller: controllers['subscription_days']!),
             ),
           ),
           HubSwitchRow(

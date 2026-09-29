@@ -53,6 +53,14 @@ class SubscriberFormActionController
     if (_alive) state = next;
   }
 
+  /// A fresh form: the provider is app-wide, so an error of an earlier
+  /// form («اسم المستخدم مستخدم مسبقًا») must not greet the next one.
+  void clearError() {
+    if (state.error != null || state.loading) {
+      _set(const SubscriberFormActionState());
+    }
+  }
+
   Future<LoadSubscriberResult> load(String username) async {
     _set(state.copyWith(loading: true, error: null));
     try {
@@ -94,9 +102,20 @@ class SubscriberFormActionController
   ) async {
     _set(state.copyWith(loading: true, error: null));
     try {
-      await ref
+      final saved = await ref
           .read(subscribersRepositoryProvider)
           .updateChanged(username, changes);
+      // «بدون انتهاء»: an explicit null clears the expiry on updated
+      // servers; an older server answers 200 and KEEPS it — say so instead
+      // of pretending it worked (r10 N3).
+      if (changes.containsKey('expire_at') &&
+          changes['expire_at'] == null &&
+          saved?.expireAt != null) {
+        const message = 'لم يُزِل الخادم تاريخ الانتهاء — هذا الخادم لا يدعم '
+            '«بدون انتهاء» بعد. حدّث الخادم أو اختر تاريخًا.';
+        _set(state.copyWith(error: message));
+        return message;
+      }
       return null;
     } catch (e) {
       final message = visibleErrorMessage(e);

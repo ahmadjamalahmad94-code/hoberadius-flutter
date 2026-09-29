@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -39,7 +40,8 @@ class SubscribersRepository {
     int limit = 50,
     int offset = 0,
   }) async {
-    final q = search.trim();
+    // Arabic keyboards type «٠٥٩٩…»: the server stores Latin digits.
+    final q = latinizeDigits(search.trim());
     final res = await _api.get(
       '/api/v1/accounts',
       query: {

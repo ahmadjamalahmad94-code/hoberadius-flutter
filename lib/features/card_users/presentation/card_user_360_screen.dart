@@ -1,8 +1,7 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
-import 'package:hoberadius_app/core/format/money_limits.dart';
-import 'package:hoberadius_app/features/subscribers/domain/subscriber_actions_model.dart'
-    show parseLocalizedNumber;
 import 'package:flutter/services.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -506,8 +505,8 @@ Future<void> _showRechargeDialog(
         Future<void> submit() async {
           // «-3» used to be stripped to «3» and credited: the minus is kept
           // and refused here with a message.
-          final problem =
-              validateMoneyAmount(parseLocalizedNumber(amount.text));
+          final read = readNumberInput(amount.text);
+          final problem = read.error ?? validateMoneyAmount(read.value);
           if (problem != null) {
             setState(() => error = problem);
             return;
@@ -519,7 +518,8 @@ Future<void> _showRechargeDialog(
           try {
             await ref
                 .read(cardUsersRepositoryProvider)
-                .recharge(cardUserId, amount: amount.text.trim());
+                // The normalised value («١٢٫٥» → 12.5), not the raw text.
+                .recharge(cardUserId, amount: '${read.value}');
             ref.invalidate(cardUser360Provider(cardUserId));
             ref.invalidate(cardUsersPageProvider);
             if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -541,9 +541,7 @@ Future<void> _showRechargeDialog(
               decimal: true,
               signed: true,
             ),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩.,٫-]')),
-            ],
+            inputFormatters: numberFieldFormatters,
             decoration: InputDecoration(
               labelText: 'المبلغ',
               errorText: error,
