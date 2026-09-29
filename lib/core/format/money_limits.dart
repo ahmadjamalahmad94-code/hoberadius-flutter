@@ -1,20 +1,46 @@
-/// Hard ceiling for any single money amount typed in the app. The server
-/// now rejects non-finite / absurd values too, but a 1e6 payment used to push
-/// an expiry to the year 2711 and 1e9 answered HTTP 500 — the app stops it
-/// before the request.
-const double kMaxMoneyAmount = 1000000;
+/// Hard ceiling for any single money amount (payment, extend price, loan,
+/// top-up) typed in the app — the lead's FIX2 cap, the same on API, web and
+/// app. Exactly 1,000,000 used to be accepted and pushed an expiry to 2711.
+const double kMaxMoneyAmount = 100000;
 
-/// Arabic validation of a typed money amount: positive, finite, ≤ [max].
+/// Smallest amount the server records (a cent).
+const double kMinMoneyAmount = 0.01;
+
+/// «100,000» for messages.
+const String kMaxMoneyAmountLabel = '100,000';
+
+/// Arabic validation of a typed money amount: finite, ≥ 0.01, ≤ [max].
 String? validateMoneyAmount(num? value, {double max = kMaxMoneyAmount}) {
   if (value == null || !value.isFinite || value <= 0) {
     return 'أدخل مبلغًا صحيحًا أكبر من صفر.';
   }
+  if (value < kMinMoneyAmount) {
+    return 'أقل مبلغ 0.01.';
+  }
   if (value > max) {
-    return 'المبلغ كبير جدًا — الحدّ الأعلى ${max.toStringAsFixed(0)}.';
+    return 'المبلغ كبير جدًا — الحدّ الأعلى ${max == kMaxMoneyAmount ? kMaxMoneyAmountLabel : max.toStringAsFixed(0)}.';
   }
   return null;
 }
 
-/// Longest time an action may add in one go (10 years) — a typo such as
-/// 99999 days produced absurd prices/expiries.
-const int kMaxActionMinutes = 10 * 366 * 1440;
+/// Longest extension ONE operation may add: a year (owner decision
+/// 2026-09-29) — a duration, a set-expiry jump, a paid amount turned into
+/// time, or a loan. Repeat the extension for more.
+const int kMaxExtendDays = 365;
+
+/// The owner's wording for [kMaxExtendDays] (the server's 422 is the same).
+const String kMaxExtendMessage =
+    'أقصى تمديد في المرة الواحدة سنة — كرّر التمديد إن احتجت أكثر';
+
+/// [kMaxExtendMessage] when [minutes] (added in one go) pass a year.
+String? validateExtendSpan(int minutes) =>
+    minutes > kMaxActionMinutes ? '$kMaxExtendMessage.' : null;
+
+/// [kMaxExtendDays] in minutes.
+const int kMaxActionMinutes = kMaxExtendDays * 1440;
+
+/// The server refuses any computed expiry after this year.
+const int kMaxExpiryYear = 2100;
+
+/// Arabic message when a computed expiry passes [kMaxExpiryYear].
+const String kExpiryTooFarMessage = 'المدة الناتجة تتجاوز الحدّ المسموح';

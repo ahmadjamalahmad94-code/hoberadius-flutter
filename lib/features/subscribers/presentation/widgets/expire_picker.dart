@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
@@ -5,8 +6,8 @@ import '../../../../core/theme/tokens.dart';
 
 /// Expiry = date AND time, like the web («تاريخ وساعة الانتهاء بالضبط»).
 /// Picking a date then a time; a new date defaults to 23:59 (the old
-/// «end of that day»). Shown and picked in the phone's local time; the model
-/// sends it as UTC.
+/// «end of that day»). Shown and picked on the PANEL's clock (the tenant's
+/// `billing.timezone`, labelled under the field); the model sends it as UTC.
 class ExpirePicker extends StatelessWidget {
   const ExpirePicker({super.key, required this.value, required this.onChange});
 
@@ -14,7 +15,7 @@ class ExpirePicker extends StatelessWidget {
   final ValueChanged<DateTime?> onChange;
 
   Future<void> _pick(BuildContext context) async {
-    final base = value ?? DateTime.now().add(const Duration(days: 30));
+    final base = value ?? panelNow().add(const Duration(days: 30));
     final day = await showDatePicker(
       context: context,
       initialDate: base,
@@ -53,6 +54,26 @@ class ExpirePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd  HH:mm', 'en');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _row(context, df),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            PanelTimeZone.label(value),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTokens.textMuted,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _row(BuildContext context, DateFormat df) {
     return Row(
       children: [
         Expanded(

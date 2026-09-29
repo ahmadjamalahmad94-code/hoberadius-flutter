@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -196,7 +197,7 @@ class _OperationalReportDetailScreenState
   }
 
   Future<void> _pickDate({required bool isFrom}) async {
-    final now = DateTime.now();
+    final now = panelNow();
     final initial = (isFrom ? _from : _to) ?? now;
     final picked = await showDatePicker(
       context: context,

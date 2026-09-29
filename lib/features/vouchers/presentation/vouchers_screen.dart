@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -554,10 +555,10 @@ Future<VoucherGenerateDraft?> _voucherDialog(
                 onPressed: () async {
                   final picked = await showDatePicker(
                     context: context,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    firstDate: panelNow(),
+                    lastDate: panelNow().add(const Duration(days: 3650)),
                     initialDate: expireAt ??
-                        DateTime.now().add(const Duration(days: 30)),
+                        panelNow().add(const Duration(days: 30)),
                   );
                   if (picked != null) setState(() => expireAt = picked);
                 },

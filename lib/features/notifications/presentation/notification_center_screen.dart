@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -599,7 +600,7 @@ String notificationTimeAgo(String iso) {
   if (iso.trim().isEmpty) return '';
   final dt = parseServerDateTime(iso);
   if (dt == null) return iso;
-  final diff = DateTime.now().difference(dt);
+  final diff = panelNow().difference(dt);
   if (diff.inSeconds < 60) return 'الآن';
   // Arabic number agreement («منذ 3 ساعات», not «منذ 3 ساعة»).
   if (diff.inMinutes < 60) return 'منذ ${arMinutes(diff.inMinutes)}';

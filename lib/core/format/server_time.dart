@@ -7,13 +7,20 @@
 /// time — reading it as local shifted every screen by the phone's offset
 /// (3 h in Palestine), and a later save converted that error back into the
 /// data. Every model must parse through [parseServerDateTime].
+///
+/// Times are returned on the PANEL's wall clock (see panel_time.dart): the
+/// same hour the web panel shows, whatever zone the phone is in.
 library;
 
-/// Parses an API timestamp and returns it in the device's local time, or
-/// `null` for null/empty/garbage. Accepts a [DateTime] too (already parsed).
+import 'panel_time.dart';
+
+/// Parses an API timestamp and returns it on the panel's wall clock
+/// ([toPanelWall]; the phone's zone until the server told us the panel's),
+/// or `null` for null/empty/garbage. Accepts a [DateTime] too: a UTC one is
+/// converted, a plain one is taken as already on the panel clock.
 DateTime? parseServerDateTime(Object? value) {
   if (value == null) return null;
-  if (value is DateTime) return value.toLocal();
+  if (value is DateTime) return value.isUtc ? toPanelWall(value) : value;
   var raw = value.toString().trim();
   if (raw.isEmpty || raw == 'None' || raw == 'null') return null;
   // A bare calendar date (report day, due date) has no time zone: keep it
@@ -43,13 +50,14 @@ DateTime? parseServerDateTime(Object? value) {
           parsed.millisecond,
           parsed.microsecond,
         );
-  return utc.toLocal();
+  return toPanelWall(utc);
 }
 
 /// UTC ISO-8601 with a trailing «Z» and no fractions, the shape every API
-/// write expects: `2026-09-28T21:00:00Z`.
+/// write expects: `2026-09-28T21:00:00Z`. A plain (non-UTC) [t] is a panel
+/// wall-clock time (what the operator picked / what was parsed).
 String toServerUtcIso(DateTime t) {
-  final u = t.toUtc();
+  final u = panelWallToInstant(t);
   String two(int v) => v.toString().padLeft(2, '0');
   return '${u.year.toString().padLeft(4, '0')}-${two(u.month)}-${two(u.day)}'
       'T${two(u.hour)}:${two(u.minute)}:${two(u.second)}Z';

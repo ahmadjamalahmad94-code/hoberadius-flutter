@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -13,6 +14,7 @@ import '../../domain/subscriber_actions_model.dart';
 import '../../domain/subscriber_model.dart';
 import '../../../../core/api/idempotency.dart';
 import '../../../../core/format/money_limits.dart';
+import '../../../../core/format/number_input.dart';
 import 'action_dialog_kit.dart';
 import 'plan_picker.dart';
 
@@ -189,7 +191,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
   late DateTime _exact;
 
   SubscriberActionsContext get c => widget.c;
-  DateTime get _now => widget.now ?? DateTime.now();
+  DateTime get _now => widget.now ?? panelNow();
 
   @override
   void initState() {
@@ -219,19 +221,21 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
         mode: _charge,
       );
 
-  String? get _invalid {
-    if (_mode == ExtendMode.duration && _minutes <= 0) {
-      return 'أدخل مدّة أكبر من صفر.';
-    }
-    if (_minutes > kMaxActionMinutes) {
-      return 'المدّة كبيرة جدًا — الحدّ الأعلى 10 سنوات.';
-    }
-    if (_charge != ChargeMode.free && _price > kMaxMoneyAmount) {
-      return 'قيمة الوقت كبيرة جدًا — الحدّ الأعلى '
-          '${kMaxMoneyAmount.toStringAsFixed(0)}.';
-    }
-    return null;
-  }
+  /// The plan has no price/period to price time with: only «مجاني» makes
+  /// sense (a paid 0.00 row used to be recorded, with a misleading hint).
+  bool get _unpriced => c.effectivePrice <= 0 || c.planMinutes <= 0;
+
+  String? get _invalid => extendInvalidReason(
+        mode: _mode,
+        amountText: _amount.text,
+        minutes: _minutes,
+        charge: _charge,
+        price: _price,
+        unpriced: _unpriced,
+        anchor: c.expireAt != null && c.expireAt!.isAfter(_now)
+            ? c.expireAt!
+            : _now,
+      );
 
   Future<void> _pickExact() async {
     final day = await showDatePicker(
@@ -260,6 +264,10 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
   String get _chargeHint {
     if (_charge == ChargeMode.free) {
       return 'إضافة وقت مجانية بدون أي قيمة مالية.';
+    }
+    if (_unpriced) {
+      return 'لا يوجد سعر للباقة (أو مدّة) لاحتساب قيمة الوقت — '
+          'اختر «مجاني» أو حدّد سعرًا مخصّصًا للمشترك.';
     }
     if (_price > 0) {
       return 'سعر الوقت المُضاف ${formatMoney(_price, c.currency)} '
@@ -344,7 +352,10 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
                   decimal: true,
                 ),
                 inputFormatters: numberInputFormatters,
-                decoration: actionFieldDecoration,
+                decoration: actionFieldDecoration.copyWith(
+                  errorText: numberFieldError(_amount.text),
+                  errorMaxLines: 3,
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -365,7 +376,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
         else
           FormFieldRow(
             label: 'ينتهي في',
-            hint: 'بتوقيتك المحلّي',
+            hint: PanelTimeZone.label(_exact),
             child: _DateTimeTile(value: _exact, onTap: _pickExact),
           ),
         if (_invalid != null) ...[
@@ -376,7 +387,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
         ChoiceTiles<ChargeMode>(
           value: _charge,
           onChanged: (v) => setState(() => _charge = v),
-          options: _chargeOptions(paidEnabled: !legacy),
+          options: _chargeOptions(paidEnabled: !legacy && !_unpriced),
         ),
         const SizedBox(height: 6),
         ActionNote(
@@ -469,8 +480,12 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
   double get _amount => parseLocalizedNumber(_money.text) ?? 0;
 
   String? get _invalid {
+    final sizeErr = numberFieldError(_size.text);
+    if (sizeErr != null) return sizeErr;
     if (_quotaMb <= 0) return 'أدخل حجم الكوتة.';
     if (_charge != ChargeMode.free) {
+      final moneyErr = numberFieldError(_money.text);
+      if (moneyErr != null) return moneyErr;
       if (_amount <= 0) return 'أدخل المبلغ للإضافة المدفوعة.';
       return validateMoneyAmount(_amount);
     }
@@ -520,7 +535,11 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
                 decimal: true,
               ),
               inputFormatters: numberInputFormatters,
-              decoration: actionFieldDecoration.copyWith(hintText: '0'),
+              decoration: actionFieldDecoration.copyWith(
+                hintText: '0',
+                errorText: numberFieldError(_size.text),
+                errorMaxLines: 3,
+              ),
               onChanged: (_) => setState(() {}),
             ),
           ),
@@ -579,7 +598,13 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
                   decimal: true,
                 ),
                 inputFormatters: numberInputFormatters,
-                decoration: actionFieldDecoration,
+                decoration: actionFieldDecoration.copyWith(
+                  errorText: numberFieldError(_money.text) ??
+                      (_money.text.trim().isEmpty
+                          ? null
+                          : validateMoneyAmount(_amount)),
+                  errorMaxLines: 3,
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -644,8 +669,10 @@ class _QuotaResetDialogState extends ConsumerState<QuotaResetDialog>
 
   @override
   Widget build(BuildContext context) {
-    final invalid =
-        _charge != ChargeMode.free && validateMoneyAmount(_amount) != null;
+    final moneyError = _charge == ChargeMode.free
+        ? null
+        : (numberFieldError(_money.text) ?? validateMoneyAmount(_amount));
+    final invalid = moneyError != null;
     return ActionDialogFrame(
       icon: Icons.restart_alt,
       tone: PillTone.blue,
@@ -714,7 +741,13 @@ class _QuotaResetDialogState extends ConsumerState<QuotaResetDialog>
                   decimal: true,
                 ),
                 inputFormatters: numberInputFormatters,
-                decoration: actionFieldDecoration,
+                decoration: actionFieldDecoration.copyWith(
+                  errorText: numberFieldError(_money.text) ??
+                      (_money.text.trim().isEmpty
+                          ? null
+                          : validateMoneyAmount(_amount)),
+                  errorMaxLines: 3,
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -792,8 +825,19 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final amountError =
-        _money.text.trim().isEmpty ? null : validateMoneyAmount(_amount);
+    final amountError = _money.text.trim().isEmpty
+        ? null
+        : (numberFieldError(_money.text) ??
+            validateMoneyAmount(_amount) ??
+            validateExtendSpan(
+              paymentExtendMinutes(
+                amount: _amount,
+                settledLoans: settledTotal(c.openLoans, _choices),
+                debt: _settleBalance ? c.debt : 0.0,
+                effectivePrice: c.effectivePrice,
+                planMinutes: c.planMinutes,
+              ),
+            ));
     final invalid = _amount < 0.01 || amountError != null;
     return ActionDialogFrame(
       icon: Icons.payments_outlined,
@@ -998,10 +1042,13 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
     super.dispose();
   }
 
-  int get _d => (parseLocalizedNumber(_days.text) ?? 0).floor();
-  int get _h => (parseLocalizedNumber(_hours.text) ?? 0).floor();
+  int get _d => parseIntInput(_days.text) ?? 0;
+  int get _h => parseIntInput(_hours.text) ?? 0;
 
-  String? get _invalid => validateLoan(
+  String? get _invalid =>
+      numberFieldError(_days.text, decimal: false) ??
+      numberFieldError(_hours.text, decimal: false) ??
+      validateLoan(
         type: _type,
         days: _d,
         hours: _h,
@@ -1052,7 +1099,10 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
         controller: ctrl,
         keyboardType: TextInputType.number,
         inputFormatters: intInputFormatters,
-        decoration: actionFieldDecoration,
+        decoration: actionFieldDecoration.copyWith(
+          errorText: numberFieldError(ctrl.text, decimal: false),
+          errorMaxLines: 3,
+        ),
         onChanged: (_) => setState(() {}),
       );
 

@@ -98,7 +98,7 @@ class InvoiceDraft {
       'payment_method': paymentMethod,
       'status': status,
       if (expirationAt != null)
-        'expiration_at': expirationAt!.toUtc().toIso8601String(),
+        'expiration_at': toServerUtcIso(expirationAt!),
       if (note.trim().isNotEmpty) 'note': note.trim(),
     };
   }

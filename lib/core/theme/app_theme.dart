@@ -64,6 +64,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
+        // Validation text wraps instead of «أحرف لاتينية وأرقام و …» in
+        // half-width fields (r10 N10): the rule must be readable.
+        errorMaxLines: 4,
+        helperMaxLines: 4,
         // Slightly shorter fields (≈48px) — phone forms were too tall.
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(

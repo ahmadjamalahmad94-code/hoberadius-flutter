@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -78,7 +79,7 @@ class SubscribersListController extends AutoDisposeFamilyAsyncNotifier<
       offset: offset,
     );
     final items =
-        _expiring ? filterExpiringSoon(page.items, DateTime.now()) : page.items;
+        _expiring ? filterExpiringSoon(page.items, panelNow()) : page.items;
     return (items, page);
   }
 
@@ -398,7 +399,7 @@ class _Table extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final df = DateFormat('yyyy-MM-dd');
     final p = AppPalette.of(context);
-    final now = DateTime.now();
+    final now = panelNow();
     final compact = density == _Density.compact;
     return ListView.separated(
       shrinkWrap: true,

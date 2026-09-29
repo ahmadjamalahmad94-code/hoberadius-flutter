@@ -167,8 +167,13 @@ void main() {
       expect(validateLoan(type: LoanType.free, days: 0, hours: 72), isNull);
     });
 
-    test('debt loan ≤ 366 days, zero duration rejected', () {
-      expect(validateLoan(type: LoanType.debt, days: 366, hours: 0), isNull);
+    test('debt loan ≤ 365 days (one-year rule), zero duration rejected', () {
+      expect(validateLoan(type: LoanType.debt, days: 365, hours: 0), isNull);
+      // Owner decision 2026-09-29: one operation adds at most a year.
+      expect(
+        validateLoan(type: LoanType.debt, days: 366, hours: 0),
+        contains('أقصى تمديد في المرة الواحدة سنة'),
+      );
       expect(validateLoan(type: LoanType.debt, days: 367, hours: 0), isNotNull);
       expect(validateLoan(type: LoanType.debt, days: 0, hours: 0), isNotNull);
     });

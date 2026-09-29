@@ -27,6 +27,8 @@ dependencies:
   # ui
   google_fonts: ^6.2.1
   intl: ^0.20.2
+  # Panel time zone (billing.timezone) — pure Dart, embedded tz database.
+  timezone: ^0.10.1
   fl_chart: ^0.68.0
 
   # csv export

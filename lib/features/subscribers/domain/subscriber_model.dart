@@ -349,7 +349,7 @@ class Subscriber {
       'status': status,
       'user_type': userType,
       'service_type': serviceType,
-      if (expireAt != null) 'expire_at': expireAt!.toUtc().toIso8601String(),
+      if (expireAt != null) 'expire_at': toServerUtcIso(expireAt!),
       'mac_lock': macLock,
       'static_ip': staticIp,
       'remark': remark,

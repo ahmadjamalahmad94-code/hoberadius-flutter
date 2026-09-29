@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -755,7 +756,7 @@ Future<InvoiceDraft?> _invoiceDialog(
                       context: context,
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2100),
-                      initialDate: expirationAt ?? DateTime.now(),
+                      initialDate: expirationAt ?? panelNow(),
                     );
                     if (picked != null) {
                       setState(() => expirationAt = picked);

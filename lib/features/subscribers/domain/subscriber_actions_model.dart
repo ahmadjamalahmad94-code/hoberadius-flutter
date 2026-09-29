@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 import 'subscriber_model.dart';
@@ -345,6 +347,41 @@ const kDurationUnits = <(int, String)>[
 
 enum ExtendMode { duration, exact }
 
+/// Why the extend dialog cannot be confirmed (Arabic), or null.
+///
+/// FIX2 caps: at most a year ([kMaxExtendDays]) per operation, a price ≤ 100,000 and no
+/// expiry past [kMaxExpiryYear]; a typed «1e9» / «-5» is an error, never a
+/// silently rewritten number; a paid/debt extension needs a real price.
+String? extendInvalidReason({
+  required ExtendMode mode,
+  required String amountText,
+  required int minutes,
+  required ChargeMode charge,
+  required double price,
+  required bool unpriced,
+  required DateTime anchor,
+}) {
+  if (mode == ExtendMode.duration) {
+    final err = readNumberInput(amountText).error;
+    if (err != null) return err;
+    if (minutes <= 0) return 'أدخل مدّة أكبر من صفر.';
+  }
+  final span = validateExtendSpan(minutes);
+  if (span != null) return span;
+  if (anchor.add(Duration(minutes: minutes)).year > kMaxExpiryYear) {
+    return '$kExpiryTooFarMessage (بعد سنة $kMaxExpiryYear).';
+  }
+  if (charge != ChargeMode.free) {
+    if (unpriced || price < kMinMoneyAmount) {
+      return 'لا يمكن احتساب قيمة لهذا الوقت (الباقة بلا سعر) — اختر «مجاني».';
+    }
+    if (price > kMaxMoneyAmount) {
+      return 'قيمة الوقت كبيرة جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.';
+    }
+  }
+  return null;
+}
+
 /// In «تاريخ وساعة الانتهاء» mode the price still needs a duration: the gap
 /// between the chosen moment and the subscriber's effective end (the later of
 /// its current expiry and now) — the same formula as the web and the server.
@@ -365,28 +402,10 @@ DateTime defaultExactExpiry(DateTime? currentExpire, DateTime now) {
 }
 
 /// Latin-digit number from what the operator typed («١٢٫٥» → 12.5).
-double? parseLocalizedNumber(String raw) {
-  var s = raw.trim();
-  if (s.isEmpty) return null;
-  const arabic = '٠١٢٣٤٥٦٧٨٩';
-  const persian = '۰۱۲۳۴۵۶۷۸۹';
-  final b = StringBuffer();
-  for (final ch in s.split('')) {
-    final a = arabic.indexOf(ch);
-    final p = persian.indexOf(ch);
-    if (a >= 0) {
-      b.write(a);
-    } else if (p >= 0) {
-      b.write(p);
-    } else if (ch == '٫' || ch == ',') {
-      b.write('.');
-    } else {
-      b.write(ch);
-    }
-  }
-  s = b.toString();
-  return double.tryParse(s);
-}
+///
+/// Strict (core/format/number_input.dart): «-5», «1e9», «1,5» or text give
+/// `null` — never a silently rewritten value.
+double? parseLocalizedNumber(String raw) => parseDecimalInput(raw);
 
 /// UTC ISO-8601 with a trailing «Z», no fractions: 2026-09-28T21:00:00Z.
 String toUtcIso(DateTime t) => toServerUtcIso(t);
@@ -451,7 +470,8 @@ String? validateLoan({
   if (type == LoanType.debt && minutes > maxDebtDays * 1440) {
     return 'سلفة الدين لا تتجاوز $maxDebtDays يومًا.';
   }
-  return null;
+  // Owner rule: one operation adds at most a year.
+  return validateExtendSpan(minutes);
 }
 
 Map<String, dynamic> loanPayload({
@@ -701,6 +721,23 @@ String paymentCoverageHint({
       : '';
   return 'سيُخصم ${formatMoney(cut, currency)}$partial لتسوية سلف/دين؛ '
       'والباقي ${formatMoney(timeAmount, currency)} ← $timeMsg';
+}
+
+/// Minutes a payment adds after settling debt/loans (0 when unknown) — for
+/// the one-year rule on «payment → time».
+int paymentExtendMinutes({
+  required double amount,
+  double settledLoans = 0,
+  double debt = 0,
+  required double effectivePrice,
+  required int planMinutes,
+}) {
+  if (!(amount > 0 && effectivePrice > 0 && planMinutes > 0)) return 0;
+  final wanted =
+      (settledLoans > 0 ? settledLoans : 0.0) + (debt > 0 ? debt : 0.0);
+  final timeAmount = amount - (wanted > amount ? amount : wanted);
+  if (timeAmount <= 0) return 0;
+  return (timeAmount / effectivePrice * planMinutes).floor();
 }
 
 String formatMoney(double v, String currency) {

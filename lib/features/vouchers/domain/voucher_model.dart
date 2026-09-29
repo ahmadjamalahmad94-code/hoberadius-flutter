@@ -121,7 +121,7 @@ class VoucherGenerateDraft {
       'amount': amount,
       'count': count,
       if (planId != null && planId! > 0) 'plan_id': planId,
-      if (expireAt != null) 'expire_at': expireAt!.toUtc().toIso8601String(),
+      if (expireAt != null) 'expire_at': toServerUtcIso(expireAt!),
     };
   }
 }

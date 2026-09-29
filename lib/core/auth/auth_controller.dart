@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../api/api_endpoint_storage.dart';
 import '../api/api_exception.dart';
 import '../format/currency.dart';
+import '../format/panel_time.dart';
 import 'security_key_storage.dart';
 import 'token_storage.dart';
 
@@ -94,6 +95,41 @@ String systemCurrencyOf(Map<String, dynamic> data) {
   return '${system['currency'] ?? ''}'.trim().toUpperCase();
 }
 
+/// Applies the panel time zone of an /api/admin/me or login payload.
+///
+/// Reads the zone NAME (`system.timezone`, or the older `system.tz_name`)
+/// — DST comes from the bundled tz database — and, as a fallback for an
+/// unknown name, the current offset (`system.utc_offset_minutes` /
+/// `tz_offset_minutes`, or the legacy hour value `system.tz_offset`).
+/// Returns false when the payload carries no zone (older servers) so the
+/// caller can ask /api/v1/settings.
+bool applyPanelTimeZoneFrom(Map<String, dynamic> data) {
+  final system = data['system'];
+  if (system is! Map) return false;
+  final name = '${system['timezone'] ?? system['tz_name'] ?? ''}'.trim();
+  num? read(Object? v) => v is num ? v : num.tryParse('${v ?? ''}');
+  final minutes = read(system['utc_offset_minutes']) ??
+      read(system['tz_offset_minutes']) ??
+      read(system['offset_minutes']);
+  final hours = minutes != null ? minutes / 60 : read(system['tz_offset']);
+  if (name.isEmpty && hours == null) return false;
+  PanelTimeZone.configure(name: name, offsetHours: hours);
+  return true;
+}
+
+/// Same from /api/v1/settings: `system.tz_*`, else the raw
+/// `billing.timezone` / `billing.timezone_offset` settings.
+bool applyPanelTimeZoneFromSettings(Map<String, dynamic> data) {
+  if (applyPanelTimeZoneFrom(data)) return true;
+  final settings = data['settings'];
+  if (settings is! Map) return false;
+  final name = '${settings['billing.timezone'] ?? ''}'.trim();
+  final off = num.tryParse('${settings['billing.timezone_offset'] ?? ''}');
+  if (name.isEmpty && off == null) return false;
+  PanelTimeZone.configure(name: name, offsetHours: off);
+  return true;
+}
+
 class AuthController extends StateNotifier<AuthState> {
   AuthController(this._ref) : super(const AuthState()) {
     _ref.listen<ApiClient>(
@@ -128,6 +164,17 @@ class AuthController extends StateNotifier<AuthState> {
     } catch (_) {/* container disposed */}
   }
 
+  /// The panel's time zone: from the session payload, else from the
+  /// settings API (older servers); never fatal.
+  Future<void> _loadPanelTimeZone(Map<String, dynamic> data) async {
+    if (applyPanelTimeZoneFrom(data)) return;
+    try {
+      final res = await _ref.read(apiClientProvider).get('/api/v1/settings');
+      final d = res['data'];
+      if (d is Map<String, dynamic>) applyPanelTimeZoneFromSettings(d);
+    } catch (_) {/* keep the phone's zone */}
+  }
+
   Future<void> _restore() async {
     final stored = await _ref.read(tokenStorageProvider).read();
     final serverBaseUrl =
@@ -157,6 +204,7 @@ class AuthController extends StateNotifier<AuthState> {
         systemCurrency: systemCurrencyOf(d),
       );
       _publishCurrency(state.systemCurrency);
+      await _loadPanelTimeZone(d);
     } on ApiException {
       await _ref.read(tokenStorageProvider).clear();
       state = AuthState(serverBaseUrl: serverBaseUrl);
@@ -216,6 +264,7 @@ class AuthController extends StateNotifier<AuthState> {
         systemCurrency: systemCurrencyOf(d),
       );
       _publishCurrency(state.systemCurrency);
+      await _loadPanelTimeZone(d);
     } on ApiException catch (e) {
       state = AuthState(serverBaseUrl: baseUrl, error: e.message);
     } catch (_) {
@@ -236,6 +285,7 @@ class AuthController extends StateNotifier<AuthState> {
       await _ref.read(apiClientProvider).post('/api/admin/logout');
     } catch (_) {/* best-effort */}
     await _ref.read(tokenStorageProvider).clear();
+    PanelTimeZone.reset();
     final serverBaseUrl =
         await _ref.read(apiEndpointStorageProvider).readBaseUrl();
     state = AuthState(serverBaseUrl: serverBaseUrl);
