@@ -224,6 +224,23 @@ void main() {
         isTrue,
       );
       expect(PanelTimeZone.name, 'Asia/Gaza');
+      // The webinput server's Arabic zone name is shown when sent.
+      applyPanelTimeZoneFrom({
+        'system': {
+          'timezone': 'Asia/Gaza',
+          'utc_offset_minutes': 120,
+          'timezone_label': 'غزة (فلسطين)',
+          'local_time': '2026-12-01 14:30',
+        },
+      });
+      expect(
+        stripBidiMarks(PanelTimeZone.label(DateTime.utc(2026, 1, 15))),
+        'بتوقيت اللوحة: غزة (فلسطين) UTC+02:00',
+      );
+      expect(
+        stripBidiMarks(PanelTimeZone.label(DateTime.utc(2026, 7, 15))),
+        'بتوقيت اللوحة: غزة (فلسطين) UTC+03:00',
+      );
       expect(
         applyPanelTimeZoneFrom({
           'system': {'tz_name': 'Asia/Damascus', 'tz_offset': 3.0},

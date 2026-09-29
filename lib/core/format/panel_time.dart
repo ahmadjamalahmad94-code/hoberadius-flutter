@@ -25,6 +25,7 @@ class PanelTimeZone {
   PanelTimeZone._();
 
   static String _name = '';
+  static String _label = '';
   static Duration? _fixedOffset;
   static tz.Location? _location;
   static bool _dbLoaded = false;
@@ -41,7 +42,8 @@ class PanelTimeZone {
   /// Sets the panel zone from the server's values. An unknown [name] falls
   /// back to [offsetHours] (the server's legacy `billing.timezone_offset`);
   /// neither → the phone's zone.
-  static void configure({String? name, num? offsetHours}) {
+  static void configure({String? name, num? offsetHours, String? label}) {
+    _label = (label ?? '').trim();
     final n = (name ?? '').trim();
     tz.Location? loc;
     if (n.isNotEmpty) {
@@ -69,6 +71,7 @@ class PanelTimeZone {
   static void reset() {
     _location = null;
     _name = '';
+    _label = '';
     _fixedOffset = null;
     revision++;
   }
@@ -104,6 +107,10 @@ class PanelTimeZone {
   static String label([DateTime? at]) {
     if (!isConfigured) return 'بتوقيت الجهاز (${offsetLabel(at)})';
     final zone = name.isEmpty ? offsetLabel(at) : '$name (${offsetLabel(at)})';
+    // The server's Arabic name («غزة (فلسطين)») when it sends one.
+    if (_label.isNotEmpty) {
+      return 'بتوقيت اللوحة: $_label ${ltrIsolate(offsetLabel(at))}';
+    }
     // LTR isolate so the zone name and sign are not reordered in RTL.
     return 'بتوقيت اللوحة: ${ltrIsolate(zone)}';
   }

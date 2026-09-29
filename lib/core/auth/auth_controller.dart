@@ -113,7 +113,11 @@ bool applyPanelTimeZoneFrom(Map<String, dynamic> data) {
       read(system['offset_minutes']);
   final hours = minutes != null ? minutes / 60 : read(system['tz_offset']);
   if (name.isEmpty && hours == null) return false;
-  PanelTimeZone.configure(name: name, offsetHours: hours);
+  PanelTimeZone.configure(
+    name: name,
+    offsetHours: hours,
+    label: '${system['timezone_label'] ?? ''}',
+  );
   return true;
 }
 
