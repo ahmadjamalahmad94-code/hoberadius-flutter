@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hoberadius_app/core/format/input_rules.dart';
-import 'package:flutter/services.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
@@ -12,6 +11,7 @@ import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../../shared/widgets/load_more_footer.dart';
+import '../../../shared/widgets/number_text_field.dart';
 import '../application/events_providers.dart';
 import '../data/events_repository.dart';
 import '../domain/business_event_model.dart';
@@ -473,13 +473,15 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                   ),
                   const SizedBox(width: AppTokens.s12),
                   Expanded(
-                    child: TextField(
+                    // Strict reader: «-», «e» and letters are refused
+                    // with a message, never silently stripped.
+                    child: NumberTextField(
                       controller: _actorId,
+                      decimal: false,
                       decoration: const InputDecoration(
                         labelText: 'رقم المنفذ',
                       ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      extraError: _idExtraError,
                     ),
                   ),
                 ],
@@ -508,13 +510,15 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                   ),
                   const SizedBox(width: AppTokens.s12),
                   Expanded(
-                    child: TextField(
+                    // Strict reader: «-», «e» and letters are refused
+                    // with a message, never silently stripped.
+                    child: NumberTextField(
                       controller: _targetId,
+                      decimal: false,
                       decoration: const InputDecoration(
                         labelText: 'رقم العنصر',
                       ),
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      extraError: _idExtraError,
                     ),
                   ),
                 ],
@@ -557,7 +561,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
       return;
     }
     final idProblem =
-        validateOptionalId(_actorId.text) ?? validateOptionalId(_targetId.text);
+        _optionalIdError(_actorId.text) ?? _optionalIdError(_targetId.text);
     if (idProblem != null) {
       _snack(context, idProblem);
       return;
@@ -570,9 +574,9 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
             eventKey: _eventKey,
             message: message,
             actorType: _actorType,
-            actorId: int.tryParse(_actorId.text.trim()),
+            actorId: parseIntInput(_actorId.text),
             targetType: _targetType,
-            targetId: int.tryParse(_targetId.text.trim()),
+            targetId: parseIntInput(_targetId.text),
             correlationId: _correlation.text.trim(),
           );
       ref.invalidate(businessEventsProvider);
@@ -676,3 +680,10 @@ IconData _categoryIcon(String category) {
 void _snack(BuildContext context, String text) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 }
+
+/// An optional record id (actor / target): whole, ≥ 1; Arabic-Indic digits
+/// accepted, anything else refused with an Arabic message.
+String? _optionalIdError(String text) =>
+    validateNumberInput(text, required: false, decimal: false, min: 1);
+
+String? _idExtraError(num value) => value < 1 ? 'أقل قيمة مسموحة 1.' : null;

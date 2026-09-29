@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -43,8 +44,11 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
           backgroundColor: color,
           content: Text(
             r.ok
-                ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
-                : '${r.status}: ${r.message}',
+                ? 'نجح: ${ltrIsolate('${r.ip}:${r.port}')} في ${r.ms} مللي ثانية'
+                : visibleErrorMessage(
+                    r.message,
+                    fallback: 'فشل اختبار الاتصال بالجهاز.',
+                  ),
           ),
         ),
       );
@@ -232,7 +236,7 @@ class _NasRow extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          d.name.isEmpty ? d.address : d.name,
+                          d.name.isEmpty ? ltrIsolate(d.address) : d.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -247,7 +251,9 @@ class _NasRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${d.address} · ${_nasVendorLabel(d.vendor)}',
+                    // IPs stay one LTR run: «::ffff:192.0.2.171» rendered
+                    // as «ffff:192.0.2.171::» in RTL (R07 N10).
+                    '${ltrIsolate(d.address)} · ${_nasVendorLabel(d.vendor)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: muted,
