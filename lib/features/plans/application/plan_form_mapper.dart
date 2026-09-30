@@ -151,11 +151,16 @@ String? planFormNumberError(Map<String, TextEditingController> c) {
   for (final e in kPlanNumberFields.entries) {
     final ctrl = c[e.key];
     if (ctrl == null) continue;
+    final priority = e.key == 'priority';
     final err = validateNumberInput(
       ctrl.text,
       required: false,
       decimal: e.key == 'price',
-      max: e.key == 'price' ? kMaxMoneyAmount : null,
+      min: priority ? kMinPlanPriority : null,
+      max: e.key == 'price'
+          ? kMaxMoneyAmount
+          : (priority ? kMaxPlanPriority : null),
+      maxMessage: priority ? 'الأولوية من 1 إلى 10.' : null,
     );
     if (err != null) return '${e.value}: $err';
   }
@@ -181,7 +186,8 @@ Plan buildPlanFromForm(
     description: parseStr('description'),
     color: parseStr('color'),
     enabled: sel.enabled,
-    priority: parseInt('priority'),
+    // Empty = «not chosen» = 5 (the server's default).
+    priority: parseIntInput(c['priority']!.text) ?? kDefaultPlanPriority,
     durationMinutes: parseInt('duration_minutes'),
     validityDays: parseInt('validity_days'),
     sessionTimeoutSec: parseInt('session_timeout_sec'),

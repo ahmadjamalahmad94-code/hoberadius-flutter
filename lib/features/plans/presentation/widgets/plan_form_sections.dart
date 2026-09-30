@@ -114,7 +114,7 @@ class PlanCoreSection extends StatelessWidget {
               controllers,
               'priority',
               'الأولوية',
-              hint: 'الأقل = أعلى أولوية',
+              hint: 'من 1 إلى 10 — الأقل = أعلى أولوية (الافتراضي 5)',
             ),
           ),
           _switchRow('مفعّلة', enabled, onEnabledChanged),

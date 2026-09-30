@@ -181,6 +181,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       original: _original?.expireAt,
       next: _expireAt,
       now: panelNow(),
+      creating: !widget.isEdit,
     );
     setState(() => _localError = numberError ?? expiryError);
     if (!_formKey.currentState!.validate() || _localError != null) return;

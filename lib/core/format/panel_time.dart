@@ -29,6 +29,10 @@ class PanelTimeZone {
   static Duration? _fixedOffset;
   static tz.Location? _location;
   static List<PanelTzTransition> _transitions = const [];
+
+  /// `system.local_time_rule.ambiguous`: «earlier» (the server's rule,
+  /// fold=0 — the default) or «later».
+  static bool ambiguousLater = false;
   static bool _dbLoaded = false;
 
   /// Bumped on every change (widgets/tests can compare).
@@ -49,7 +53,9 @@ class PanelTimeZone {
     num? offsetHours,
     String? label,
     List<PanelTzTransition>? transitions,
+    String? ambiguousRule,
   }) {
+    ambiguousLater = (ambiguousRule ?? '').trim().toLowerCase() == 'later';
     _transitions = [...?transitions]..sort((a, b) => a.at.compareTo(b.at));
     _label = (label ?? '').trim();
     final n = (name ?? '').trim();
@@ -77,6 +83,7 @@ class PanelTimeZone {
 
   /// Back to the phone's zone (sign-out, tests).
   static void reset() {
+    ambiguousLater = false;
     _transitions = const [];
     _location = null;
     _name = '';
@@ -190,7 +197,12 @@ DateTime panelWallToInstant(DateTime wall) {
   for (final off in offsets) {
     final candidate = asUtc.subtract(off);
     if (PanelTimeZone.offsetAt(candidate) != off) continue;
-    if (best == null || candidate.isBefore(best)) best = candidate;
+    if (best == null ||
+        (PanelTimeZone.ambiguousLater
+            ? candidate.isAfter(best)
+            : candidate.isBefore(best))) {
+      best = candidate;
+    }
   }
   return best ?? asUtc.subtract(before);
 }

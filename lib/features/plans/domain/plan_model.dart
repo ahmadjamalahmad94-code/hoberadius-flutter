@@ -8,6 +8,21 @@ import 'package:hoberadius_app/core/format/server_time.dart';
 /// the advanced groups (general / subscription / advanced / mikrotik /
 /// notifications). Anything not listed here flows through `extraFields`
 /// untouched, so the API contract doesn't break if the backend grows.
+/// Plan priority: ONE scale 1–10 on web, API and app (fix3; the API used
+/// 100 by default). 5 = «not chosen».
+const int kDefaultPlanPriority = 5;
+const int kMinPlanPriority = 1;
+const int kMaxPlanPriority = 10;
+
+/// The server's `plans_repo.normalize_priority`: 0 / null / 100 (the old
+/// defaults) → 5, above 10 → 10.
+int normalizePlanPriority(int? raw) {
+  if (raw == null || raw == 0 || raw == 100) return kDefaultPlanPriority;
+  if (raw > kMaxPlanPriority) return kMaxPlanPriority;
+  if (raw < kMinPlanPriority) return kDefaultPlanPriority;
+  return raw;
+}
+
 class Plan {
   Plan({
     this.id,
@@ -18,7 +33,7 @@ class Plan {
     this.description = '',
     this.color = '#2BAACC',
     this.enabled = true,
-    this.priority = 100,
+    this.priority = kDefaultPlanPriority,
     // — time / quota
     this.durationMinutes = 0,
     this.validityDays = 0,
@@ -225,7 +240,7 @@ class Plan {
       description: (j['description'] ?? '').toString(),
       color: (j['color'] ?? '#2BAACC').toString(),
       enabled: j['enabled'] == true || j['enabled'] == 1,
-      priority: _int(j['priority']) ?? 100,
+      priority: normalizePlanPriority(_int(j['priority'])),
       durationMinutes: _int(j['duration_minutes']) ?? 0,
       validityDays: _int(j['validity_days']) ?? 0,
       maxDailyMinutes: _int(j['max_daily_minutes']) ?? 0,

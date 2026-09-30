@@ -58,7 +58,7 @@ void main() {
       });
       expect(o.warning, isTrue);
       expect(o.message, contains('لم يؤكّد تطبيقها'));
-      expect(o.message, contains('الراوتر غير مهيّأ'));
+      expect(o.message, contains('راوتر الجلسة معطّل أو بلا كلمة سرّ RADIUS'));
       expect(o.message, isNot(contains('router_not_configured')));
     });
 
@@ -78,7 +78,7 @@ void main() {
             'coa': {'ok': true},
           },
         }).message,
-        contains('بفصل الجلسة'),
+        contains('بالفصل وإعادة الاتصال'),
       );
     });
 
@@ -387,7 +387,8 @@ void main() {
       );
       expect(
         validateNewSubscriberExpiry(now.add(const Duration(days: 366)), now),
-        kOneYearExtendMessage,
+        // the server's create wording (limits.create_too_long_msg)
+        startsWith('أقصى مدّة عند إنشاء المشترك سنة من الآن'),
       );
       AppLimits.configureFrom({
         'limits': {'max_extend_days': 30},
@@ -396,12 +397,13 @@ void main() {
         validateNewSubscriberExpiry(now.add(const Duration(days: 31)), now),
         contains('30 يومًا'),
       );
-      // the form's own check (create: no original) says the same
+      // the form's own check on create says the same
       expect(
         validateExpiryJump(
           original: null,
           next: now.add(const Duration(days: 31)),
           now: now,
+          creating: true,
         ),
         contains('30 يومًا'),
       );

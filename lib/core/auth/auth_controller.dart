@@ -148,6 +148,9 @@ bool applyPanelTimeZoneFrom(Map<String, dynamic> data) {
     offsetHours: hours,
     label: '${system['timezone_label'] ?? ''}',
     transitions: transitions,
+    ambiguousRule: system['local_time_rule'] is Map
+        ? '${(system['local_time_rule'] as Map)['ambiguous'] ?? ''}'
+        : null,
   );
   return true;
 }

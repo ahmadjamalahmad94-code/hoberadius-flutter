@@ -349,9 +349,12 @@ String? validateExpiryJump({
   required DateTime? original,
   required DateTime? next,
   required DateTime now,
+  bool creating = false,
 }) {
   if (next == null) return null;
-  if (next.year > kMaxExpiryYear) return '$kExpiryTooFarMessage.';
+  // A NEW subscriber: the server's create rule and wording.
+  if (creating) return validateNewSubscriberExpiry(next, now);
+  if (next.year > kMaxExpiryYear) return expiryTooFarMessage;
   if (original != null && next.isAtSameMomentAs(original)) return null;
   final anchor = original != null && original.isAfter(now) ? original : now;
   final minutes = next.difference(anchor).inMinutes;

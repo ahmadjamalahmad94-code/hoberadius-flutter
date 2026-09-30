@@ -176,6 +176,7 @@ class SubscriberActionsContext {
     this.debt = 0,
     this.openLoans = const [],
     this.hasQuota = false,
+    this.dailyResetAvailable,
     this.dailyQuotaMb,
     this.usedTodayMb,
     this.quotaWindows = const [],
@@ -206,6 +207,11 @@ class SubscriberActionsContext {
   final List<OpenLoan> openLoans;
   final bool hasQuota;
   final double? dailyQuotaMb;
+
+  /// `quota.daily_reset_available` (fix3 servers): false = the subscriber
+  /// has no daily quota nor daily time cap, and the server refuses a reset
+  /// (422) — «استعادة الكوتة اليومية» is hidden. Null on older servers.
+  final bool? dailyResetAvailable;
   final double? usedTodayMb;
 
   /// Where a top-up can go on this subscriber (updated servers:
@@ -260,6 +266,9 @@ class SubscriberActionsContext {
           .map((m) => OpenLoan.fromJson(Map<String, dynamic>.from(m)))
           .toList(),
       hasQuota: quota['has_quota'] == true,
+      dailyResetAvailable: quota['daily_reset_available'] is bool
+          ? quota['daily_reset_available'] as bool
+          : null,
       dailyQuotaMb: _doubleOrNull(quota['daily_quota_mb']),
       usedTodayMb: _doubleOrNull(quota['used_today_mb']),
       quotaWindows: quotaWindowsOf(quota),
@@ -320,6 +329,7 @@ class SubscriberActionsContext {
         debt: debt,
         openLoans: openLoans,
         hasQuota: hasQuota,
+        dailyResetAvailable: dailyResetAvailable,
         dailyQuotaMb: dailyQuotaMb,
         usedTodayMb: usedTodayMb,
         quotaWindows: quotaWindows,
@@ -473,7 +483,7 @@ String? extendInvalidReason({
   final span = validateExtendSpan(minutes);
   if (span != null) return span;
   if (anchor.add(Duration(minutes: minutes)).year > kMaxExpiryYear) {
-    return '$kExpiryTooFarMessage (بعد سنة $kMaxExpiryYear).';
+    return expiryTooFarMessage;
   }
   if (charge != ChargeMode.free) {
     if (unpriced || price < kMinMoneyAmount) {

@@ -16,6 +16,16 @@ class AppLimits {
   static const int defaultMaxExpiryYear = 2100;
   static const int defaultMaxCardsPerBatch = 10000;
 
+  /// The server's technical ceilings (`core/limits.py` TECH_*): they stay
+  /// even when a cap is set to «بلا حدّ» (`<field>_unlimited`).
+  static const int techMaxExtendDays = 36500;
+  static const double techMaxMoney = 1e9;
+  static const int techMaxExpiryYear = 2100;
+  static const int techMaxCardsPerBatch = 100000;
+
+  /// `max_extend_days_unlimited`: the message names the technical ceiling.
+  static bool extendUnlimited = false;
+
   static int maxExtendDays = defaultMaxExtendDays;
   static double maxSubscriberPayment = defaultMaxAmount;
   static double maxSubscriberBalanceAdd = defaultMaxAmount;
@@ -36,32 +46,65 @@ class AppLimits {
     final system = data['system'];
     if (system is Map && system['limits'] is Map) limits = system['limits'];
     if (limits is! Map) return false;
+    final m = limits;
+    bool unlimited(String key) {
+      final v = m['${key}_unlimited'];
+      return v == true || '$v'.toLowerCase() == 'true' || '$v' == '1';
+    }
+
     num? read(String key) {
-      final v = limits as Map;
-      final raw = v[key];
+      final raw = m[key];
       final n = raw is num ? raw : num.tryParse('${raw ?? ''}');
       return n != null && n.isFinite && n > 0 ? n : null;
     }
 
-    maxExtendDays = read('max_extend_days')?.toInt() ?? defaultMaxExtendDays;
-    maxAmountGeneric =
-        read('max_amount_generic')?.toDouble() ?? defaultMaxAmount;
-    maxSubscriberPayment =
-        read('max_subscriber_payment')?.toDouble() ?? maxAmountGeneric;
+    double money(String key, double fallback) {
+      if (unlimited(key)) return techMaxMoney;
+      final v = read(key)?.toDouble() ?? fallback;
+      return v > techMaxMoney ? techMaxMoney : v;
+    }
+
+    extendUnlimited = unlimited('max_extend_days');
+    if (extendUnlimited) {
+      maxExtendDays = techMaxExtendDays;
+    } else {
+      final minutes = read('max_extend_minutes')?.toInt();
+      final days = read('max_extend_days')?.toInt() ??
+          (minutes != null ? minutes ~/ 1440 : null) ??
+          defaultMaxExtendDays;
+      maxExtendDays = days > techMaxExtendDays ? techMaxExtendDays : days;
+    }
+    maxAmountGeneric = money('max_amount_generic', defaultMaxAmount);
+    maxSubscriberPayment = money('max_subscriber_payment', maxAmountGeneric);
     maxSubscriberBalanceAdd =
-        read('max_subscriber_balance_add')?.toDouble() ?? maxAmountGeneric;
+        money('max_subscriber_balance_add', maxAmountGeneric);
     maxDistributorBalanceAdd =
-        read('max_distributor_balance_add')?.toDouble() ?? maxAmountGeneric;
-    maxLoanAmount = read('max_loan_amount')?.toDouble() ?? maxAmountGeneric;
-    maxExpiryYear = read('max_expiry_year')?.toInt() ?? defaultMaxExpiryYear;
-    maxCardsPerBatch =
-        read('max_cards_per_batch')?.toInt() ?? defaultMaxCardsPerBatch;
+        money('max_distributor_balance_add', maxAmountGeneric);
+    maxLoanAmount = money('max_loan_amount', maxAmountGeneric);
+    // The year has no «بلا حدّ»: 2100 is its ceiling. `max_expiry_at` (the
+    // first instant NOT allowed) is only a cross-check of the same value.
+    var year = read('max_expiry_year')?.toInt();
+    if (year == null) {
+      final at = DateTime.tryParse('${m['max_expiry_at'] ?? ''}');
+      if (at != null) year = at.toUtc().year - 1;
+    }
+    year ??= defaultMaxExpiryYear;
+    maxExpiryYear = year > techMaxExpiryYear || unlimited('max_expiry_year')
+        ? techMaxExpiryYear
+        : year;
+    if (unlimited('max_cards_per_batch')) {
+      maxCardsPerBatch = techMaxCardsPerBatch;
+    } else {
+      final c = read('max_cards_per_batch')?.toInt() ?? defaultMaxCardsPerBatch;
+      maxCardsPerBatch = c > techMaxCardsPerBatch ? techMaxCardsPerBatch : c;
+    }
     revision++;
     return true;
   }
 
   /// Back to the defaults (sign-out, tests).
   static void reset() {
+    extendUnlimited = false;
     maxExtendDays = defaultMaxExtendDays;
     maxSubscriberPayment = defaultMaxAmount;
     maxSubscriberBalanceAdd = defaultMaxAmount;
@@ -167,11 +210,32 @@ const String kOneYearExtendMessage =
 
 /// The extension-cap message quoting the configured value: the owner's
 /// exact text for 365 days, else «أقصى تمديد في المرة الواحدة N يومًا — …».
-String get kMaxExtendMessage => extendCapMessage(AppLimits.maxExtendDays);
+String get kMaxExtendMessage => AppLimits.extendUnlimited
+    ? 'أقصى تمديد في المرة الواحدة ${daysAr(AppLimits.techMaxExtendDays)} '
+        '(الحدّ التقنيّ) — كرّر التمديد إن احتجت أكثر'
+    : extendCapMessage(AppLimits.maxExtendDays);
 
+/// The server's wording (`limits.extend_too_long_msg`): the owner's exact
+/// sentence at 365 days, else the configured days.
 String extendCapMessage(int days) => days == 365
     ? kOneYearExtendMessage
-    : 'أقصى تمديد في المرة الواحدة $days يومًا — كرّر التمديد إن احتجت أكثر';
+    : 'أقصى تمديد في المرة الواحدة ${daysAr(days)} — كرّر التمديد إن احتجت أكثر';
+
+/// Days in Arabic exactly like the server's `limits.days_ar`.
+String daysAr(int n) {
+  if (n == 1) return 'يومًا واحدًا';
+  if (n == 2) return 'يومين';
+  if (n >= 3 && n <= 10) return '$n أيام';
+  return '$n يومًا';
+}
+
+/// The create-time message (`limits.create_too_long_msg`).
+String get kCreateExpiryTooLongMessage {
+  final days = AppLimits.maxExtendDays;
+  final span = days == 365 ? 'سنة' : daysAr(days);
+  return 'أقصى مدّة عند إنشاء المشترك $span من الآن — أنشئه بهذه المدّة ثم '
+      'مدّد إن احتجت أكثر.';
+}
 
 /// [kMaxExtendMessage] — no added «.» (f03 N5) — when [minutes] (added in
 /// one go) pass the configured cap.
@@ -191,12 +255,17 @@ DateTime get kLastPickableDate => DateTime(kMaxExpiryYear, 12, 31);
 /// Arabic message when a computed expiry passes [kMaxExpiryYear].
 const String kExpiryTooFarMessage = 'المدة الناتجة تتجاوز الحدّ المسموح';
 
+/// The server's full wording (`limits.expiry_too_far_msg`) with the
+/// configured year.
+String get expiryTooFarMessage =>
+    '$kExpiryTooFarMessage. (آخر تاريخ انتهاء مسموح: نهاية سنة $kMaxExpiryYear)';
+
 /// The configured cap for a NEW subscriber's expiry (the 1-year rule now
 /// applies on create too): at most [kMaxExtendDays] from [now] (+1 minute
 /// of grace, as the server). Null when fine or no date.
 String? validateNewSubscriberExpiry(DateTime? expiry, DateTime now) {
   if (expiry == null) return null;
-  if (expiry.year > kMaxExpiryYear) return '$kExpiryTooFarMessage.';
+  if (expiry.year > kMaxExpiryYear) return expiryTooFarMessage;
   final minutes = expiry.difference(now).inMinutes;
-  return minutes > kMaxActionMinutes + 1 ? kMaxExtendMessage : null;
+  return minutes > kMaxActionMinutes + 1 ? kCreateExpiryTooLongMessage : null;
 }

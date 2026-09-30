@@ -8,6 +8,7 @@ import '../../../shared/widgets/page_header.dart';
 import '../../admin_control/application/admin_control_providers.dart';
 import '../application/plan_form_controller.dart';
 import '../application/plan_form_mapper.dart';
+import '../domain/plan_model.dart' show kDefaultPlanPriority;
 import 'widgets/plan_form_dialogs.dart';
 import 'widgets/plan_form_sections.dart';
 
@@ -105,7 +106,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     _c['currency']!.text = ref.read(tenantCurrencyProvider);
     _c['color']!.text = '#2BAACC';
     _c['concurrent_sessions']!.text = '1';
-    _c['priority']!.text = '100';
+    _c['priority']!.text = '$kDefaultPlanPriority';
     // Defer so the controller's first `state =` runs after initState (modifying
     // a provider during the build/initState phase is disallowed).
     if (widget.isEdit) Future.microtask(_loadExisting);

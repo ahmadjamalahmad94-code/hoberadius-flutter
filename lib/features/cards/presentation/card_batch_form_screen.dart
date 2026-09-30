@@ -176,6 +176,18 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   Future<void> _submit() async {
     if (_loading) return;
     if (!_formKey.currentState!.validate()) return;
+    // The server's length rule, checked BEFORE sending (the preview shows
+    // the same text): never generate a name the server refuses.
+    final lengthRefusal = cardUsernameLengthRefusal(
+      prefix: _prefix.text,
+      suffix: _suffix.text,
+      totalLength: parseIntInput(_ulen.text),
+      batchNumber: _includeBatchNumber ? '${_nextBatchId ?? ''}' : '',
+    );
+    if (lengthRefusal != null) {
+      setState(() => _fieldErrors = {'username_length': lengthRefusal});
+      return;
+    }
     final count = parseIntInput(_count.text)!;
     if (count > kConfirmCardsAbove && !await _confirmLargeBatch(count)) return;
     if (!mounted) return;
@@ -405,6 +417,9 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   label: 'طول الاسم (كامل مع البادئة واللاحقة)',
                   child: CardNumberField(
                     controller: _ulen,
+                    required: true,
+                    min: 1,
+                    max: kCardUsernameLengthMax,
                     serverError: _fieldErrors['username_length'],
                     onChanged: (_) => _clearFieldError('username_length'),
                   ),
@@ -623,6 +638,18 @@ class _UsernamePreviewCard extends StatelessWidget {
               legend(_suf, 'اللاحقة'),
             ],
           ),
+          if (p.refusal != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              p.refusal!,
+              key: const ValueKey('username-length-refusal'),
+              style: const TextStyle(
+                color: AppTokens.redInk,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           if (p.warning != null) ...[
             const SizedBox(height: 6),
             Text(

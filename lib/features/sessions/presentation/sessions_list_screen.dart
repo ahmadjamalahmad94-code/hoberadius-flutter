@@ -1,11 +1,11 @@
 import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/auth/permissions.dart';
-import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -504,20 +504,38 @@ class SessionActionOutcome {
   final bool warning;
 }
 
-/// Arabic reason of a CoA / PoD failure code (`coa.code`).
-String coaFailureReason(String code) => switch (code.trim().toLowerCase()) {
-      'router_not_configured' =>
-        'الراوتر غير مهيّأ لاستقبال الأوامر (لا يوجد سرّ RADIUS أو الراوتر معطّل)',
-      'no_active_session' => 'لم تُعثر على جلسة نشطة على الراوتر',
-      'timeout' || 'timed_out' => 'لم يردّ الراوتر في الوقت المحدد',
-      'nak' || 'coa_nak' || 'disconnect_nak' => 'رفض الراوتر الأمر',
-      'exception' || 'error' || '' => 'تعذّر إرسال الأمر إلى الراوتر',
-      final other => rawTokenLabel(other),
-    };
+/// Arabic reason of a CoA / PoD result code (`coa.code`) — the server's
+/// own table (`radius_coa.coa_code_ar`, fix3 cardsnet), word for word, so
+/// the app and the web say the same thing.
+const Map<String, String> kCoaCodeLabels = {
+  'router_not_configured': 'راوتر الجلسة معطّل أو بلا كلمة سرّ RADIUS',
+  'timeout': 'لم يردّ الراوتر (انتهت المهلة)',
+  'socket_error': 'تعذّر الإرسال إلى الراوتر',
+  'malformed': 'ردّ غير صالح من الراوتر',
+  'no_active_session': 'لا جلسة نشطة',
+  'empty_rate': 'لا سرعة صالحة للإرسال',
+  'empty_timeout': 'لا مهلة صالحة للإرسال',
+  'exception': 'خطأ داخليّ أثناء الإرسال',
+  'no_coa': 'لم يُرسَل أمر CoA',
+  'CoA-ACK': 'أكّد الراوتر التطبيق',
+  'Disconnect-ACK': 'أكّد الراوتر الفصل',
+  'CoA-NAK': 'رفض الراوتر الأمر (CoA-NAK)',
+  'Disconnect-NAK': 'رفض الراوتر الفصل (Disconnect-NAK)',
+};
 
-/// The message after «سرعة مؤقتة»: the server saved the window, and the
-/// response's `temporary_speed.coa` says whether the ROUTER applied it.
-/// An older server without `coa` keeps the neutral «تم طلب…» line.
+String coaFailureReason(String code) {
+  final c = code.trim();
+  final known = kCoaCodeLabels[c];
+  if (known != null) return known;
+  if (c.startsWith('unknown-code-')) return 'ردّ غير معروف من الراوتر';
+  return 'تعذّر تأكيد التطبيق على الراوتر';
+}
+
+/// The message after «سرعة مؤقتة», the same cases as the web flash
+/// (sessions.py): the server saved the window, and `temporary_speed.coa`
+/// says whether the ROUTER applied it. A failed CoA is a WARNING that says
+/// so clearly (f06 L5); no live session is an «info» (applied on the next
+/// login). An older server without `coa` keeps the neutral line.
 SessionActionOutcome tempSpeedOutcome(
   String username,
   Map<String, dynamic> data,
@@ -530,19 +548,45 @@ SessionActionOutcome tempSpeedOutcome(
       message: 'تم طلب تطبيق السرعة المؤقتة على $who.',
     );
   }
+  final rate = ts is Map && '${ts['rate'] ?? ''}'.trim().isNotEmpty
+      ? ' (${ltrIsolate('${ts['rate']}'.trim())})'
+      : '';
+  final endsRaw = ts is Map ? ts['ends_at'] : null;
+  final ends = endsRaw == null ? '' : formatServerTimestamp('$endsRaw');
+  final until = ends.isEmpty || ends == '—' ? '' : ' حتى ${ltrIsolate(ends)}';
   final reauth = ts is Map && '${ts['mode'] ?? ''}' == 'disconnect_reauth';
+  final code = '${coa['code'] ?? ''}'.trim();
   if (coa['ok'] == true) {
     return SessionActionOutcome(
       message: reauth
-          ? 'طُبّقت السرعة المؤقتة على $who (بفصل الجلسة وإعادة اتصالها).'
-          : 'طُبّقت السرعة المؤقتة على $who.',
+          ? 'طُبِّقت السرعة المؤقتة$rate على $who بالفصل وإعادة الاتصال — '
+              'سيعود بالسرعة الجديدة خلال ثوانٍ$until.'
+          : 'تم تطبيق السرعة المؤقتة$rate على $who مباشرةً — بدون فصل '
+              'المستخدم$until.',
     );
   }
-  final reason = coaFailureReason('${coa['code'] ?? ''}');
+  if (code == 'no_active_session') {
+    return SessionActionOutcome(
+      message: 'حُفظت السرعة المؤقتة$rate لـ $who — لا جلسة نشطة الآن؛ '
+          'ستُطبَّق تلقائيًا فور إعادة اتصاله.',
+    );
+  }
+  if (code == 'empty_rate') {
+    return const SessionActionOutcome(
+      warning: true,
+      message: 'لم تُحدَّد سرعة صالحة للإرسال.',
+    );
+  }
+  final reason = coaFailureReason(code);
   return SessionActionOutcome(
     warning: true,
-    message: 'حُفظت السرعة المؤقتة لـ $who، لكن الراوتر لم يؤكّد تطبيقها: '
-        '$reason. ستُطبَّق عند اتصاله التالي — أو افصل الجلسة ليعيد الاتصال.',
+    message: reauth
+        ? 'حُفظت السرعة المؤقتة$rate لـ $who، لكن تعذّر الفصل ($reason) — '
+            'تحقّق من اتصال الراوتر.'
+        : 'حُفظت السرعة المؤقتة$rate لـ $who$until، لكن الراوتر لم يؤكّد '
+            'تطبيقها ($reason). لم يُفصل المستخدم؛ إن لم تتغيّر سرعته افصل '
+            'الجلسة ليعيد الاتصال بالسرعة الجديدة (وتحقّق من CoA: المنفذ 3799 '
+            'وكلمة السرّ).',
   );
 }
 
