@@ -1,4 +1,5 @@
 import 'package:hoberadius_app/core/format/arabic_plural.dart';
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -822,6 +823,20 @@ class _MetricGrid extends StatelessWidget {
           sub: metrics.nasDevices > 0 ? '${metrics.nasEnabled} مفعّلة' : null,
           tone: _MetricTone.info,
           onTap: () => context.goNamed('nas'),
+        ),
+      // fix3 (owner 2026-09-30): «إجمالي مبيعات اليوم» — card sales only,
+      // local panel day. Absent `sales_today` (older server) hides the tile.
+      if (metrics.salesToday != null)
+        _MetricTile(
+          icon: Icons.point_of_sale_outlined,
+          label: 'إجمالي مبيعات اليوم',
+          value: arCount(metrics.salesToday!.cardsCount, arCard, showOne: true),
+          sub: metrics.salesToday!.moneyVisible &&
+                  metrics.salesToday!.byCurrency.isNotEmpty
+              ? formatByCurrency(metrics.salesToday!.byCurrency)
+              : null,
+          tone: _MetricTone.success,
+          onTap: vis.cards ? () => context.goNamed('cards') : null,
         ),
     ];
     if (tiles.isEmpty) return const SizedBox.shrink();

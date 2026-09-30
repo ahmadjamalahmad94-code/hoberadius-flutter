@@ -12,6 +12,10 @@
 /// Historically this model read `recent`/`audit` for an activity feed, but the
 /// API never returns those keys — it returns `recent_batches` (latest card
 /// batches) and `alerts` (the "ما يحتاج انتباه" panel). Those are now parsed.
+library;
+
+import '../../../core/format/currency.dart' show CurrencyAmount, parseByCurrency;
+
 class DashboardMetrics {
   DashboardMetrics({
     this.subscribers = 0,
@@ -47,6 +51,7 @@ class DashboardMetrics {
     this.radiusOk,
     this.recentBatches = const [],
     this.alerts = const [],
+    this.salesToday,
   });
 
   final int subscribers;
@@ -85,6 +90,9 @@ class DashboardMetrics {
   final bool? radiusOk;
   final List<RecentBatch> recentBatches;
   final List<DashboardAlert> alerts;
+
+  /// `sales_today` (fix3: «إجمالي مبيعات اليوم») — absent on an older server.
+  final SalesToday? salesToday;
 
   bool get hasTopPlan => topPlanName.isNotEmpty;
 
@@ -157,6 +165,7 @@ class DashboardMetrics {
           .whereType<Map>()
           .map((e) => DashboardAlert.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
+      salesToday: SalesToday.fromJson(_m(j['sales_today'])),
     );
   }
 
@@ -270,6 +279,37 @@ class DashboardAlert {
       default:
         return DashboardAlertLevel.info;
     }
+  }
+}
+
+/// «إجمالي مبيعات اليوم» (fix3, owner 2026-09-30) — card sales only, on the
+/// local panel day (`GET /api/v1/dashboard.sales_today`). ``null`` when the
+/// server does not send the key at all (older server) — the tile hides then.
+/// ``money_visible: false`` (no `reports.finance`) sends the count only.
+class SalesToday {
+  const SalesToday({
+    required this.date,
+    required this.cardsCount,
+    required this.moneyVisible,
+    this.byCurrency = const [],
+  });
+
+  final String date;
+  final int cardsCount;
+  final bool moneyVisible;
+
+  /// Card sales value per currency (batch price × cards sold today) — the
+  /// owner's decision: card sales only, not subscriber cash payments.
+  final List<CurrencyAmount> byCurrency;
+
+  static SalesToday? fromJson(Map<String, dynamic>? j) {
+    if (j == null) return null;
+    return SalesToday(
+      date: (j['date'] ?? '').toString(),
+      cardsCount: DashboardMetrics._i(j['cards_count']),
+      moneyVisible: DashboardMetrics._b(j['money_visible']) ?? false,
+      byCurrency: parseByCurrency(j['by_currency']),
+    );
   }
 }
 

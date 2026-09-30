@@ -765,6 +765,22 @@ void main() {
             'cards': <dynamic>[],
           });
       return RecordingAdapter((r) {
+        // fix3: CardPlanPicker now reads the lite `/plans/options` list
+        // first (active plans only, server-filtered) — mirror that here.
+        if (r.path.endsWith('/plans/options')) {
+          if (plansFail) return FakeResponse.error(500, 'internal', 'x');
+          return FakeResponse.ok({
+            'items': [
+              {
+                'id': 1,
+                'name': 'Gold 1H',
+                'price': 5,
+                'currency': 'ILS',
+                'validity_days': 30,
+              },
+            ],
+          });
+        }
         if (r.path.endsWith('/profiles')) {
           if (plansFail) return FakeResponse.error(500, 'internal', 'x');
           return FakeResponse.ok({
@@ -932,7 +948,7 @@ void main() {
       await tester.tap(find.text('إعادة المحاولة'));
       await settle(tester);
       expect(find.text('اختر الباقة'), findsOneWidget);
-      expect(adapter.where('GET', '/profiles'), hasLength(2));
+      expect(adapter.where('GET', '/plans/options'), hasLength(2));
     });
 
     testWidgets('progress → success; «طباعة / تصدير» opens the print route',

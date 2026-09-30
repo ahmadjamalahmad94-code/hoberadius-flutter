@@ -8,6 +8,7 @@ import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../../../shared/widgets/status_pill.dart';
+import '../../../plans/data/plans_repository.dart';
 import '../../../plans/domain/plan_model.dart';
 import '../../data/subscriber_actions_repository.dart';
 import '../../domain/subscriber_actions_model.dart';
@@ -17,7 +18,15 @@ import '../../../../core/format/money_limits.dart';
 import '../../../../core/format/bidi.dart';
 import '../../../../core/format/number_input.dart';
 import 'action_dialog_kit.dart';
-import 'plan_picker.dart';
+
+/// The change-plan dialog's plan list — the full `/api/v1/profiles` list
+/// (needs `plans.view`): unlike the create-form picker
+/// (`createSubscriberPlanOptionsProvider` in `plan_picker.dart`), this
+/// dialog needs full `Plan` fields (`rate_per_minute`, `enabled`, …) that
+/// the fix3 lite `plans/options` endpoint does not send.
+final plansForPickerProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
+  return ref.watch(plansRepositoryProvider).list();
+});
 
 /// What a finished action reports back to the caller: the toast text, and
 /// whether it is a plain success or an informational outcome (e.g. a loan

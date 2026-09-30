@@ -6,30 +6,22 @@ import '../../../../core/format/bidi.dart';
 import '../../../../core/format/currency.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../plans/data/plans_repository.dart';
-import '../../../plans/domain/plan_model.dart';
+import '../../../plans/domain/plan_option.dart';
 
-/// Plans a card batch can be generated from: enabled, not archived/deleted.
-final cardPlansProvider = FutureProvider.autoDispose<List<Plan>>((ref) async {
-  final plans = await ref.watch(plansRepositoryProvider).list();
-  return plans.where(isPlanPickableForCards).toList();
+/// Plans a card batch can be generated from — fix3: the lite
+/// `/api/v1/plans/options` endpoint (readable with `cards.generate`, not
+/// just `plans.view`), already active-only on the server; falls back to
+/// the full `/api/v1/profiles` list on an older server.
+final cardPlansProvider =
+    FutureProvider.autoDispose<List<PlanOption>>((ref) async {
+  return ref.watch(plansRepositoryProvider).listForPicker();
 });
 
-/// Disabled, archived or deleted plans are not offered for new cards.
-bool isPlanPickableForCards(Plan p) {
-  if (p.id == null || !p.enabled) return false;
-  final m = p.metadata;
-  bool truthy(Object? v) =>
-      v == true || v == 1 || '$v' == '1' || '$v'.toLowerCase() == 'true';
-  if (truthy(m['archived']) || truthy(m['is_archived'])) return false;
-  final deleted = '${m['deleted_at'] ?? ''}'.trim();
-  return deleted.isEmpty || deleted == 'null';
-}
-
-/// The price of ONE card of [p]: its card price, else its price.
-num planCardPrice(Plan p) => p.priceCard > 0 ? p.priceCard : p.price;
+/// The price of ONE card of [p].
+num planCardPrice(PlanOption p) => p.price;
 
 /// «صلاحية 30 يوم» / «ساعتان»… — '' when the plan has no duration.
-String planDurationLabel(Plan p) {
+String planDurationLabel(PlanOption p) {
   if (p.validityDays > 0) return 'صلاحية ${p.validityDays} يوم';
   final m = p.durationMinutes;
   if (m <= 0) return '';
@@ -39,7 +31,7 @@ String planDurationLabel(Plan p) {
 }
 
 /// «5 ILS · صلاحية 30 يوم» under the plan name.
-String planPickerSubtitle(Plan p, {String fallbackCurrency = ''}) {
+String planPickerSubtitle(PlanOption p, {String fallbackCurrency = ''}) {
   final cur =
       p.currency.trim().isNotEmpty ? p.currency.trim() : fallbackCurrency;
   return [
@@ -60,7 +52,7 @@ class CardPlanPicker extends ConsumerWidget {
   });
 
   final int? selectedId;
-  final ValueChanged<Plan> onChanged;
+  final ValueChanged<PlanOption> onChanged;
 
   /// The server's Arabic message about the plan (e.g. «الباقة رقم … غير
   /// موجودة»), shown under the field.

@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hoberadius_app/core/api/api_client.dart';
 import 'package:hoberadius_app/core/auth/permissions.dart';
 import 'package:hoberadius_app/core/auth/route_permissions.dart';
 import 'package:hoberadius_app/core/format/arabic_plural.dart';
@@ -31,6 +32,8 @@ import 'package:hoberadius_app/features/subscribers/application/subscriber_form_
 import 'package:hoberadius_app/features/subscribers/domain/subscriber_actions_model.dart';
 import 'package:hoberadius_app/features/subscribers/presentation/widgets/plan_picker.dart';
 import 'package:hoberadius_app/features/tools/presentation/widgets/tools_set_speeds_panel.dart';
+
+import 'support/fake_api.dart';
 
 AppPermissions perm(List<String> keys) => AppPermissions.fromMe({
       'admin': {'id': 5, 'is_owner': false},
@@ -435,12 +438,27 @@ void main() {
       expect(permissionLabel('store.view'), isNot('store.view'));
     });
 
-    testWidgets('new subscriber without «عرض الباقات»: a clear message',
-        (tester) async {
+    // fix3: `GET /api/v1/plans/options` is readable with `users.create`
+    // alone (no `plans.view` needed) — a manager who can create
+    // subscribers now gets a real picker, not the old client-side gate.
+    testWidgets(
+        'new subscriber with «إنشاء مشترك» (no «عرض الباقات»): the lite '
+        'plans/options list is used', (tester) async {
       final ctrl = TextEditingController();
+      final adapter = RecordingAdapter((req) {
+        if (req.path.contains('/plans/options')) {
+          return FakeResponse.ok({
+            'items': [
+              {'id': 9, 'name': 'باقة خفيفة', 'price': 5, 'currency': 'ILS'},
+            ],
+          });
+        }
+        return FakeResponse.error(404, 'not_found', 'غير موجود');
+      });
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            apiClientProvider.overrideWithValue(fakeApiClient(adapter)),
             permissionsProvider.overrideWith(
               (ref) => PermissionsController(ref)
                 ..apply({
@@ -455,7 +473,39 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<int?>));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('باقة خفيفة'), findsOneWidget);
+      expect(adapter.where('GET', '/plans/options'), isNotEmpty);
+    });
+
+    testWidgets(
+        'new subscriber with no plan-reading permission at all: a clear '
+        'message', (tester) async {
+      final ctrl = TextEditingController();
+      final adapter = RecordingAdapter(
+        (req) => FakeResponse.error(403, 'forbidden', 'لا تملك صلاحية.'),
+      );
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            apiClientProvider.overrideWithValue(fakeApiClient(adapter)),
+            permissionsProvider.overrideWith(
+              (ref) => PermissionsController(ref)
+                ..apply({
+                  'admin': {'id': 5, 'is_owner': false},
+                  'permissions': ['users.view'],
+                  'grants': {'actions': <String, bool>{}},
+                }),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(body: PlanPicker(controller: ctrl)),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
       expect(find.text(kNoPlanListMessage), findsOneWidget);
       expect(find.byType(LinearProgressIndicator), findsNothing);
     });

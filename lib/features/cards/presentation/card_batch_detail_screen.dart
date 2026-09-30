@@ -301,7 +301,11 @@ class _BatchSummary extends StatelessWidget {
         InfoItem(
           icon: Icons.person_outline,
           label: 'بواسطة',
-          value: actorLabel(batch.createdBy),
+          // fix3: prefer the server-resolved `created_by_name` («تطبيق —
+          // <المدير>») over the raw actor; falls back on an old server.
+          value: batch.createdByName.isNotEmpty
+              ? batch.createdByName
+              : actorLabel(batch.createdBy),
         ),
     ];
     return AppCard(

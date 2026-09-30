@@ -422,7 +422,11 @@ class _AttemptRow extends StatelessWidget {
                 InfoItem(
                   icon: Icons.person_outline,
                   label: 'منفذ العملية',
-                  value: _orUnset(attempt.actor),
+                  value: _orUnset(
+                    attempt.actorName.isNotEmpty
+                        ? attempt.actorName
+                        : attempt.actor,
+                  ),
                 ),
               ],
             ),

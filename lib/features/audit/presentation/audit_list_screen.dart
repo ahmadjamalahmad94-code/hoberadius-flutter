@@ -289,7 +289,7 @@ class _AuditTile extends StatelessWidget {
         padding: const EdgeInsets.only(top: 4),
         child: Text(
           [
-            'المنفذ: ${_actorLabel(event.actor)}',
+            'المنفذ: ${event.actorName.isNotEmpty ? event.actorName : _actorLabel(event.actor)}',
             if (event.ipAddress.isNotEmpty) event.ipAddress,
             if (event.createdAt != null) df.format(event.createdAt!.toLocal()),
           ].join(' • '),

@@ -18,6 +18,7 @@ class CardBatch {
     this.expireAt,
     this.createdAt,
     this.createdBy = '',
+    this.createdByName = '',
     this.usernamePrefix = '',
     this.usernameSuffix = '',
     this.usernameLength = 8,
@@ -88,6 +89,11 @@ class CardBatch {
   final DateTime? expireAt;
   final DateTime? createdAt;
   final String createdBy;
+
+  /// fix3: `created_by_name` — «تطبيق — <المدير>» resolved by the server.
+  /// Prefer this over [createdBy] when non-empty; falls back on an old
+  /// server that never sends it.
+  final String createdByName;
   final String usernamePrefix;
   final String usernameSuffix;
   final int usernameLength;
@@ -174,6 +180,7 @@ class CardBatch {
         expireAt: cardParseDate(j['expire_at']),
         createdAt: cardParseDate(j['created_at']),
         createdBy: (j['created_by'] ?? '').toString(),
+        createdByName: (j['created_by_name'] ?? '').toString(),
         usernamePrefix: (j['username_prefix'] ?? '').toString(),
         usernameSuffix: (j['username_suffix'] ?? '').toString(),
         usernameLength: cardParseInt(j['username_length']) ?? 8,

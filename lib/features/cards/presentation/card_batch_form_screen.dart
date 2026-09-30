@@ -13,7 +13,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../../admin_control/application/admin_control_providers.dart';
-import '../../plans/domain/plan_model.dart';
+import '../../plans/domain/plan_option.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
 import '../domain/username_preview.dart';
@@ -70,7 +70,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   Map<String, String> _fieldErrors = const {};
 
   /// The picked plan (required; was a raw «معرّف الباقة» number).
-  Plan? _planPick;
+  PlanOption? _planPick;
 
   /// «السعر الإجمالي» follows price × count until the operator types it.
   bool _totalEdited = false;
@@ -99,7 +99,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     if (total != null && _totalPrice.text != total) _totalPrice.text = total;
   }
 
-  void _pickPlan(Plan p) {
+  void _pickPlan(PlanOption p) {
     setState(() {
       _planPick = p;
       _fieldErrors = {..._fieldErrors}..remove('plan');
@@ -192,7 +192,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     if (count > kConfirmCardsAbove && !await _confirmLargeBatch(count)) return;
     if (!mounted) return;
     final req = GenerateBatchRequest(
-      planId: _planPick!.id!,
+      planId: _planPick!.id,
       count: count,
       packageName: _packageName.text.trim(),
       usernamePrefix: normalizeCardAffix(_prefix.text),

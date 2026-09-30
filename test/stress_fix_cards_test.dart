@@ -111,10 +111,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final adapter = RecordingAdapter(
-      (r) => r.path.endsWith('/profiles')
+      (r) => (r.path.endsWith('/profiles') || r.path.endsWith('/plans/options'))
           ? FakeResponse.ok({
               'items': [
-                {'id': 3, 'name': 'P3', 'enabled': true},
+                {'id': 3, 'name': 'P3', 'enabled': true, 'price': 0},
               ],
             })
           : FakeResponse.ok(
@@ -163,10 +163,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     final adapter = RecordingAdapter(
-      (r) => r.path.endsWith('/profiles')
+      (r) => (r.path.endsWith('/profiles') || r.path.endsWith('/plans/options'))
           ? FakeResponse.ok({
               'items': [
-                {'id': 3, 'name': 'P3', 'enabled': true},
+                {'id': 3, 'name': 'P3', 'enabled': true, 'price': 0},
               ],
             })
           : FakeResponse.ok(
