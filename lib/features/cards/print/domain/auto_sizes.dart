@@ -16,7 +16,12 @@ double _half(double v) => (v * 2).roundToDouble() / 2;
 /// automatic: `value_font_size = pill height × 0.52` (card_renderer
 /// `_pill_element`). The pill box comes back from `quick-elements` in mm,
 /// so the size in points is `h_mm × 0.52 × 72 / 25.4`.
+/// Updated servers send the drawn size (`font_pt`) — used as is.
 double? autoFontPt(ElementBox? pill) {
+  final drawn = pill?.fontPt;
+  if (drawn != null && drawn > 0) {
+    return _half(drawn).clamp(kMinFontPt, kMaxFontPt);
+  }
   if (pill == null || pill.h <= 0) return null;
   return _half(pill.h * 0.52 * _ptPerMm).clamp(kMinFontPt, kMaxFontPt);
 }

@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
@@ -39,7 +41,8 @@ class SubscribersRepository {
     int limit = 50,
     int offset = 0,
   }) async {
-    final q = search.trim();
+    // Arabic keyboards type «٠٥٩٩…»: the server stores Latin digits.
+    final q = latinizeDigits(search.trim());
     final res = await _api.get(
       '/api/v1/accounts',
       query: {
@@ -84,7 +87,7 @@ class SubscribersRepository {
     return Subscriber360.fromJson(_payload(res));
   }
 
-  Future<Subscriber> create(Subscriber s) async {
+  Future<Subscriber> create(Subscriber s, {bool explicitNoExpiry = false}) async {
     // The form validates first; this guards every other caller too.
     final problem = validateNewSubscriberUsername(s.username) ??
         validateNewSubscriberPassword(s.password);
@@ -101,7 +104,10 @@ class SubscribersRepository {
         status: 409,
       );
     }
-    final res = await _api.post('/api/v1/accounts', body: s.toCreateBody());
+    final res = await _api.post(
+      '/api/v1/accounts',
+      body: s.toCreateBody(explicitNoExpiry: explicitNoExpiry),
+    );
     return Subscriber.fromJson(_payload(res));
   }
 
@@ -147,6 +153,11 @@ class SubscribersRepository {
       _api.post('/api/v1/accounts/$username/enable');
 
   Future<DateTime?> extendTime(String username, int minutes) async {
+    // Owner rule: at most a year per extension — refused before sending.
+    final tooLong = validateExtendSpan(minutes);
+    if (tooLong != null) {
+      throw ApiException(code: 'validation_error', message: tooLong);
+    }
     final res = await _api.post(
       '/api/v1/accounts/$username/extend_time',
       body: {'minutes': minutes},

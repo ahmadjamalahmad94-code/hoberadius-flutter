@@ -10,6 +10,9 @@ class Admin {
     this.phone = '',
     this.roleId,
     this.isSuperAdmin = false,
+    this.isCoOwner = false,
+    this.isOwner = false,
+    this.isOriginalOwner = false,
     this.enabled = true,
     this.avatarUrl = '',
     this.tags = '',
@@ -24,7 +27,18 @@ class Admin {
   final String mobile;
   final String phone;
   final int? roleId;
+
+  /// «سوبر يوزر / مدير عام»: has the super_admin role (all non-owner keys).
   final bool isSuperAdmin;
+
+  /// «شريك»: a co-owner — every owner power (permmodel).
+  final bool isCoOwner;
+
+  /// Owner or co-owner (bypasses every permission).
+  final bool isOwner;
+
+  /// The protected original owner — nobody else may edit this account.
+  final bool isOriginalOwner;
   final bool enabled;
   final String avatarUrl;
   final String tags;
@@ -40,6 +54,9 @@ class Admin {
         phone: (j['phone'] ?? '').toString(),
         roleId: j['role_id'] as int?,
         isSuperAdmin: j['is_super_admin'] == true,
+        isCoOwner: j['is_co_owner'] == true,
+        isOwner: j['is_owner'] == true || j['is_co_owner'] == true,
+        isOriginalOwner: j['is_original_owner'] == true,
         enabled: j['enabled'] != false,
         avatarUrl: (j['avatar_url'] ?? '').toString(),
         tags: (j['tags'] ?? '').toString(),
@@ -49,14 +66,34 @@ class Admin {
 
   /// Build create/patch body. Password is form-only — included only when
   /// non-empty (so PATCH leaves it untouched when blank).
-  Map<String, dynamic> toBody({String? pendingPassword}) => {
+  ///
+  /// The owner flags (`is_super_admin` = «سوبر يوزر», `is_co_owner` =
+  /// «شريك») are owner-only on the server: they are sent only by an
+  /// owner-like admin ([ownerFlags]) and, on an edit, only when changed
+  /// against [original] — a manager holding admins.edit saving a profile
+  /// must not send them (the server would refuse the whole save).
+  Map<String, dynamic> toBody({
+    String? pendingPassword,
+    Admin? original,
+    bool ownerFlags = true,
+    bool coOwnerFlag = false,
+  }) =>
+      {
         if (id == null) 'username': username,
         'full_name': fullName,
         'email': email,
         'mobile': mobile,
         'phone': phone,
         if (roleId != null) 'role_id': roleId,
-        'is_super_admin': isSuperAdmin,
+        if (ownerFlags &&
+            (original == null
+                ? isSuperAdmin
+                : isSuperAdmin != original.isSuperAdmin))
+          'is_super_admin': isSuperAdmin,
+        if (ownerFlags &&
+            coOwnerFlag &&
+            (original == null ? isCoOwner : isCoOwner != original.isCoOwner))
+          'is_co_owner': isCoOwner,
         'enabled': enabled,
         'avatar_url': avatarUrl,
         'tags': tags,
@@ -83,6 +120,7 @@ class Admin {
     int? roleId,
     bool? clearRoleId,
     bool? isSuperAdmin,
+    bool? isCoOwner,
     bool? enabled,
     String? avatarUrl,
     String? tags,
@@ -96,6 +134,9 @@ class Admin {
         phone: phone ?? this.phone,
         roleId: clearRoleId == true ? null : (roleId ?? this.roleId),
         isSuperAdmin: isSuperAdmin ?? this.isSuperAdmin,
+        isCoOwner: isCoOwner ?? this.isCoOwner,
+        isOwner: isOwner,
+        isOriginalOwner: isOriginalOwner,
         enabled: enabled ?? this.enabled,
         avatarUrl: avatarUrl ?? this.avatarUrl,
         tags: tags ?? this.tags,

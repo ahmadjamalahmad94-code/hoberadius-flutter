@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -196,7 +198,7 @@ class _OperationalReportDetailScreenState
   }
 
   Future<void> _pickDate({required bool isFrom}) async {
-    final now = DateTime.now();
+    final now = panelNow();
     final initial = (isFrom ? _from : _to) ?? now;
     final picked = await showDatePicker(
       context: context,
@@ -251,8 +253,8 @@ class _ReportTable extends StatelessWidget {
       ),
       child: Text(
         dateFiltered
-            ? '${rows.length} سجل ضمن النطاق (من أصل $totalFetched)'
-            : '${rows.length} سجل',
+            ? '${arCount(rows.length, arRecord, showOne: true)} ضمن النطاق (من أصل $totalFetched)'
+            : arCount(rows.length, arRecord, showOne: true),
         style: const TextStyle(
           color: AppTokens.textMuted,
           fontWeight: FontWeight.w700,

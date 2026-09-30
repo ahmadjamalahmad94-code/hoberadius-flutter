@@ -4,11 +4,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api/idempotency.dart';
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
+import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../subscribers/data/subscriber_actions_repository.dart';
 import '../../subscribers/data/subscribers_repository.dart';
+import '../../subscribers/domain/subscriber_360_model.dart';
 import '../../subscribers/domain/subscriber_actions_model.dart';
 import '../application/subscriber_finance_data.dart';
 import '../data/accounting_repository.dart';
@@ -45,9 +48,11 @@ class _SubscriberFinanceScreenState
   final _loanHours = TextEditingController(text: '2');
   final _loanAmount = TextEditingController(text: '0');
   final _loanReason = TextEditingController();
-  bool _applyPayment = false;
+  // «تطبيق على الريدياس» is ON by default: a payment/loan recorded with it
+  // off gives money without time (r03 N15).
+  bool _applyPayment = true;
   bool _dryRunPayment = true;
-  bool _applyLoan = false;
+  bool _applyLoan = true;
   bool _dryRunLoan = true;
   bool _busy = false;
   String? _paymentError;
@@ -82,9 +87,9 @@ class _SubscriberFinanceScreenState
     _loanKeys.reset();
     _settleKeys.reset();
     setState(() {
-      _applyPayment = false;
+      _applyPayment = true;
       _dryRunPayment = true;
-      _applyLoan = false;
+      _applyLoan = true;
       _dryRunLoan = true;
       _paymentError = _paymentPreview = null;
       _loanError = _loanPreview = null;
@@ -111,6 +116,14 @@ class _SubscriberFinanceScreenState
     final payments = await repo.listPayments(subscriberId: sid);
     final loans = await repo.listLoans(subscriberId: sid);
     final ledger = await repo.listLedger(subscriberId: sid);
+    Subscriber360Financial? totals;
+    try {
+      // Server totals over EVERY row (payments, open outstanding).
+      totals = (await ref.read(subscribersRepositoryProvider).get360(username))
+          .financial;
+    } catch (_) {
+      totals = null;
+    }
     SubscriberActionsContext? ctx;
     try {
       ctx = await ref
@@ -119,7 +132,14 @@ class _SubscriberFinanceScreenState
     } catch (_) {
       ctx = null; // older server: no price/currency context
     }
-    return SubscriberFinanceData(sub, payments, loans, ledger, context: ctx);
+    return SubscriberFinanceData(
+      sub,
+      payments,
+      loans,
+      ledger,
+      context: ctx,
+      totals: totals,
+    );
   }
 
   void _refresh() {
@@ -162,8 +182,20 @@ class _SubscriberFinanceScreenState
   }
 
   Future<void> _createPayment(SubscriberFinanceData data) async {
-    final amount = parseLocalizedNumber(_paymentAmount.text);
-    final problem = validateMoneyAmount(amount);
+    final read = readNumberInput(_paymentAmount.text);
+    final amount = read.value?.toDouble();
+    final ctx = data.context;
+    final problem = read.error ??
+        validateMoneyAmount(amount, cap: MoneyCap.subscriberPayment) ??
+        (_applyPayment && ctx != null && amount != null
+            ? validateExtendSpan(
+                paymentExtendMinutes(
+                  amount: amount,
+                  effectivePrice: ctx.effectivePrice,
+                  planMinutes: ctx.planMinutes,
+                ),
+              )
+            : null);
     if (problem != null) {
       setState(() {
         _paymentError = problem;
@@ -216,9 +248,13 @@ class _SubscriberFinanceScreenState
   }
 
   Future<void> _createLoan(SubscriberFinanceData data) async {
-    final hours = (parseLocalizedNumber(_loanHours.text) ?? 0).floor();
-    final amount = parseLocalizedNumber(_loanAmount.text) ?? 0;
-    final problem = validateFinanceLoan(hours: hours, amount: amount);
+    final problem = validateFinanceLoanInput(
+          hoursText: _loanHours.text,
+          amountText: _loanAmount.text,
+        ) ??
+        validateExtendSpan((parseIntInput(_loanHours.text) ?? 0) * 60);
+    final hours = parseIntInput(_loanHours.text) ?? 0;
+    final amount = parseDecimalInput(_loanAmount.text) ?? 0;
     if (problem != null) {
       setState(() {
         _loanError = problem;
@@ -248,15 +284,22 @@ class _SubscriberFinanceScreenState
     final key = _loanKeys.keyFor('loan', body);
     final ok = await _run(
       () async {
-        await ref.read(accountingRepositoryProvider).createLoan(
-              username: widget.username,
-              hours: hours,
-              amount: amount,
-              reason: _loanReason.text.trim(),
-              applyToRadius: _applyLoan,
-              idempotencyKey: key,
-            );
-        _toast('تم تسجيل السلفة');
+        final outcome =
+            await ref.read(accountingRepositoryProvider).createLoanWithOutcome(
+                  username: widget.username,
+                  hours: hours,
+                  amount: amount,
+                  reason: _loanReason.text.trim(),
+                  applyToRadius: _applyLoan,
+                  idempotencyKey: key,
+                );
+        _toast(
+          outcome.pendingApproval
+              ? (outcome.message.isNotEmpty
+                  ? outcome.message
+                  : 'بانتظار موافقة المالك — لم تُسجَّل السلفة بعد.')
+              : 'تم تسجيل السلفة',
+        );
       },
       onError: (e) => _loanError = e,
     );
@@ -350,6 +393,7 @@ class _SubscriberFinanceScreenState
 
   @override
   Widget build(BuildContext context) {
+    final perms = ref.watch(permissionsProvider);
     return FutureBuilder<SubscriberFinanceData>(
       future: _future,
       builder: (context, snapshot) {
@@ -396,8 +440,7 @@ class _SubscriberFinanceScreenState
             ),
             const SizedBox(height: AppTokens.s12),
             FinanceSummaryCard(
-              payments: data.payments,
-              loans: data.loans,
+              figures: data.summary,
               currency: data.currency,
             ),
             const SizedBox(height: AppTokens.s8),
@@ -439,21 +482,29 @@ class _SubscriberFinanceScreenState
                   }),
                   onSubmit: () => _createLoan(data),
                 );
-                if (!wide) {
+                // Each form only when its save is allowed (no form that
+                // the server would refuse after it is filled).
+                final forms = <Widget>[
+                  if (perms.canAction('subscriber.payment')) payment,
+                  if (perms.canAction('subscriber.loan')) loan,
+                ];
+                if (forms.isEmpty) return const SizedBox.shrink();
+                if (!wide || forms.length == 1) {
                   return Column(
                     children: [
-                      payment,
-                      const SizedBox(height: AppTokens.s12),
-                      loan,
+                      for (var i = 0; i < forms.length; i++) ...[
+                        if (i > 0) const SizedBox(height: AppTokens.s12),
+                        forms[i],
+                      ],
                     ],
                   );
                 }
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: payment),
+                    Expanded(child: forms[0]),
                     const SizedBox(width: AppTokens.s12),
-                    Expanded(child: loan),
+                    Expanded(child: forms[1]),
                   ],
                 );
               },
@@ -466,12 +517,17 @@ class _SubscriberFinanceScreenState
             LoansTable(
               items: data.loans,
               currency: data.currency,
-              onSettle: _busy ? null : (loan) => _settleLoan(loan, data),
+              onSettle: _busy || !perms.canAction('subscriber.loan')
+                  ? null
+                  : (loan) => _settleLoan(loan, data),
             ),
             const SizedBox(height: AppTokens.s12),
             PaymentsTable(
               items: data.payments,
-              onVoid: _busy ? null : _voidPayment,
+              // Voiding money = the ledger void, owner / co-owner only.
+              onVoid: !perms.isOwnerLike
+                  ? null
+                  : (_busy ? (_) async {} : _voidPayment),
             ),
             const SizedBox(height: AppTokens.s12),
             LedgerTable(items: data.ledger),
@@ -482,13 +538,29 @@ class _SubscriberFinanceScreenState
   }
 }
 
+/// Finance-page loan guard on the TYPED text: «-1» is an error (it used to
+/// be stripped to 1 and record a 1.00 loan), not a silently rewritten value.
+String? validateFinanceLoanInput({
+  required String hoursText,
+  required String amountText,
+}) {
+  final h = readNumberInput(hoursText, decimal: false);
+  if (h.error != null) return 'عدد الساعات: ${h.error}';
+  final a = readNumberInput(amountText);
+  if (a.error != null) return 'قيمة السلفة: ${a.error}';
+  return validateFinanceLoan(
+    hours: (h.value ?? 0).toInt(),
+    amount: a.value ?? 0,
+  );
+}
+
 /// Finance-page loan guard: a positive number of hours and a value between
-/// 0 and [kMaxMoneyAmount].
+/// 0 and the configured loan cap (`max_loan_amount`).
 String? validateFinanceLoan({required int hours, required num amount}) {
   if (hours <= 0) return 'أدخل مدة السلفة بالساعات.';
   if (!amount.isFinite || amount < 0) return 'قيمة السلفة لا تكون سالبة.';
-  if (amount > kMaxMoneyAmount) {
-    return 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى ${kMaxMoneyAmount.toStringAsFixed(0)}.';
+  if (amount > AppLimits.maxLoanAmount) {
+    return 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى ${formatNumberBound(AppLimits.maxLoanAmount)}.';
   }
   return null;
 }

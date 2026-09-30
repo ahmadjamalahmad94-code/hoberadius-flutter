@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -91,7 +92,7 @@ class _AdminSummaryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    admin.email.isEmpty ? '@${admin.username}' : admin.email,
+                    ltrIsolate(admin.email.isEmpty ? '@${admin.username}' : admin.email),
                     style: const TextStyle(
                       color: AppTokens.textMuted,
                       fontSize: 13,

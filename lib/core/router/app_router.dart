@@ -76,28 +76,51 @@ import '../../features/subscriber_portal/presentation/subscriber_portal_screen.d
 import '../../features/subscribers/presentation/subscriber_360_screen.dart';
 import '../../features/subscribers/presentation/subscriber_form_screen.dart';
 import '../../features/subscribers/presentation/subscribers_list_screen.dart';
+import '../../features/shell/no_access_screen.dart';
 import '../auth/auth_controller.dart';
+import '../auth/permission_route_gate.dart';
+import '../auth/permissions.dart';
 
 /// Routes stay limited to screens backed by working Flask endpoints. Any form
 /// route listed here is expected to use a real JSON contract.
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final auth = ref.watch(authControllerProvider);
-  // Re-evaluate redirects whenever provider grants change (license lifecycle /
-  // service disable) without rebuilding the whole router (which would reset the
-  // navigation stack). go_router listens to this and re-runs `redirect`.
+  // ONE router for the app's lifetime. It used to be rebuilt on every auth
+  // change (`ref.watch(authControllerProvider)`), and a rebuilt GoRouter
+  // starts again at `initialLocation` — a reload or a notification deep link
+  // landed on the dashboard once the session restore finished (f07 N-C6).
+  // Auth, grants and provider-grant changes now only re-run `redirect`.
   final gateRefresh = ValueNotifier<int>(0);
   ref.onDispose(gateRefresh.dispose);
+  void bump() => gateRefresh.value++;
   ref.listen<AsyncValue<ProviderGrants?>>(
     providerGrantsProvider,
-    (_, __) => gateRefresh.value++,
+    (_, __) => bump(),
   );
+  ref.listen<AuthState>(
+    authControllerProvider,
+    (prev, next) {
+      if (prev?.isAuthenticated != next.isAuthenticated ||
+          prev?.bootstrapping != next.bootstrapping ||
+          prev?.token != next.token) {
+        bump();
+      }
+    },
+  );
+  // Grants arriving (session restore, a refresh after a 403, app resume):
+  // the current screen is re-checked and closed when no longer allowed.
+  ref.listen<AppPermissions>(permissionsProvider, (_, __) => bump());
+  final permGate = PermissionRouteGate();
   return GoRouter(
     initialLocation: '/',
     debugLogDiagnostics: false,
     refreshListenable: gateRefresh,
     redirect: (context, state) {
-      final loggedIn = auth.isAuthenticated;
+      final auth = ref.read(authControllerProvider);
       final loc = state.matchedLocation;
+      // The saved token is still being read: keep the location (reload /
+      // deep link); the shell shows a neutral loading state meanwhile.
+      if (auth.bootstrapping) return null;
+      final loggedIn = auth.isAuthenticated;
       final atLogin = loc == '/login';
       final atHotspotCardsPortal = loc.startsWith('/hotspot-cards');
       final atSubscriberPortal = loc.startsWith('/subscriber-portal');
@@ -114,6 +137,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (loggedIn && !atHotspotCardsPortal && !atSubscriberPortal) {
         final gate = _providerGateRedirect(ref, loc);
         if (gate != null) return gate;
+        final denied = permGate.redirect(ref.read(permissionsProvider), loc);
+        if (denied != null) return denied;
       }
       return null;
     },
@@ -560,6 +585,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/account',
             name: 'account',
             builder: (ctx, st) => const AccountScreen(),
+          ),
+          GoRoute(
+            path: '/no-access',
+            name: 'no-access',
+            builder: (ctx, st) => NoAccessScreen(
+              from: st.uri.queryParameters['from'] ?? '',
+            ),
           ),
           // ── Provider-grant gate screens ──
           GoRoute(

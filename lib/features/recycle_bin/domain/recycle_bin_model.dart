@@ -14,6 +14,8 @@ class RecycleBinItem {
     required this.retentionExpiresAt,
     required this.restoreAllowed,
     required this.retentionExpired,
+    this.serverStatusLabel = '',
+    this.deletedByLabel = '',
   });
 
   final String entityType;
@@ -29,6 +31,16 @@ class RecycleBinItem {
   final bool restoreAllowed;
   final bool retentionExpired;
 
+  /// Server Arabic `status_label` / `deleted_by_label` (optional; older
+  /// servers omit them).
+  final String serverStatusLabel;
+  final String deletedByLabel;
+
+  /// Who deleted it, for display: the server label, else the raw value.
+  String get deletedByText => deletedByLabel.isNotEmpty
+      ? deletedByLabel
+      : (deletedBy.isEmpty ? 'غير معروف' : deletedBy);
+
   factory RecycleBinItem.fromJson(Map<String, dynamic> json) {
     return RecycleBinItem(
       entityType: (json['entity_type'] ?? '').toString(),
@@ -43,18 +55,22 @@ class RecycleBinItem {
       retentionExpiresAt: parseServerDateTime(json['retention_expires_at']),
       restoreAllowed: _asBool(json['restore_allowed'], fallback: true),
       retentionExpired: _asBool(json['retention_expired']),
+      serverStatusLabel: (json['status_label'] ?? '').toString().trim(),
+      deletedByLabel: (json['deleted_by_label'] ?? '').toString().trim(),
     );
   }
 
-  String get statusLabel => switch (status) {
-        'active' => 'نشط',
-        'disabled' => 'معطل',
-        'deleted' => 'محذوف',
-        'archived' => 'مؤرشف',
-        'revoked' => 'ملغى',
-        'expired' => 'منتهي',
-        _ => status.trim().isEmpty ? 'غير محدد' : 'حالة غير معروفة',
-      };
+  String get statusLabel => serverStatusLabel.isNotEmpty
+      ? serverStatusLabel
+      : switch (status) {
+          'active' => 'نشط',
+          'disabled' => 'معطل',
+          'deleted' => 'محذوف',
+          'archived' => 'مؤرشف',
+          'revoked' => 'ملغى',
+          'expired' => 'منتهي',
+          _ => status.trim().isEmpty ? 'غير محدد' : 'حالة غير معروفة',
+        };
 }
 
 int _asInt(Object? value) {

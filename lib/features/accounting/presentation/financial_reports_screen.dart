@@ -1,3 +1,10 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
+import '../../../core/format/bidi.dart';
+import '../../../core/format/currency.dart';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -25,8 +32,8 @@ const _reports = <String, String>{
 };
 
 final _reportProvider = FutureProvider.autoDispose
-    .family<List<Map<String, dynamic>>, String>((ref, slug) {
-  return ref.watch(accountingRepositoryProvider).financialReport(slug);
+    .family<FinancialReportTable, String>((ref, slug) {
+  return ref.watch(accountingRepositoryProvider).financialReportTable(slug);
 });
 
 final _snapshotProvider = FutureProvider.autoDispose
@@ -55,9 +62,17 @@ class _FinancialReportsScreenState
   Future<void> _exportCsv() async {
     setState(() => _exportingCsv = true);
     try {
-      final bytes = await ref
+      final raw = await ref
           .read(accountingRepositoryProvider)
           .exportFinancialReportCsv(_slug);
+      final bytes = financialReportCsvForSave(raw, _slug);
+      if (bytes == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('لا توجد بيانات للتصدير')),
+        );
+        return;
+      }
       await FileSaver.instance.saveFile(
         name: 'financial-report-${_slug.replaceAll('/', '-')}',
         bytes: bytes,
@@ -162,7 +177,7 @@ class _FinancialReportsScreenState
       children: [
         PageHeader(
           title: 'التقارير المالية',
-          subtitle: 'مبنية من Ledger؛ التصحيح قيد عكسي ولا يحذف الأصل.',
+          subtitle: 'مبنية من دفتر القيود؛ التصحيح قيد عكسي ولا يحذف الأصل.',
           leading: const Icon(
             Icons.insert_chart_outlined,
             color: AppTokens.brand,
@@ -256,7 +271,8 @@ class _FinancialReportsScreenState
             title: 'تعذر جلب التقرير',
             subtitle: visibleErrorMessage(e),
           ),
-          data: (rows) {
+          data: (table) {
+            final rows = table.rows;
             if (rows.isEmpty) {
               return EmptyState(
                 icon: Icons.insert_chart_outlined,
@@ -264,8 +280,8 @@ class _FinancialReportsScreenState
                 subtitle: _reports[_slug],
               );
             }
-            final columns = rows.expand((row) => row.keys).toSet().toList()
-              ..sort(_compareColumns);
+            final columns = reportColumnKeys(table);
+            final labels = {for (final (k, l) in table.columns) k: l};
             return AppCard(
               padding: EdgeInsets.zero,
               child: Column(
@@ -307,7 +323,9 @@ class _FinancialReportsScreenState
                               ),
                       columns: columns
                           .map(
-                            (column) => DataColumn(label: Text(_label(column))),
+                            (column) => DataColumn(
+                              label: Text(labels[column] ?? _label(column)),
+                            ),
                           )
                           .toList(),
                       rows: rows
@@ -316,7 +334,7 @@ class _FinancialReportsScreenState
                               cells: columns
                                   .map(
                                     (column) => DataCell(
-                                      Text(_cell(row[column])),
+                                      Text(reportCell(row, column)),
                                     ),
                                   )
                                   .toList(),
@@ -395,11 +413,11 @@ class _SnapshotStrip extends StatelessWidget {
                   const SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: Text(
-                      '#${item['id']} · ${item['created_at'] ?? ''}',
+                      '#${item['id']} · ${formatReportTimestamp(item['created_at'])}',
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Text('${_snapshotCount(item)} صف'),
+                  Text(arCount(_snapshotCount(item), arRow, showOne: true)),
                 ],
               ),
             ),
@@ -417,12 +435,76 @@ class _SnapshotStrip extends StatelessWidget {
   }
 }
 
+final RegExp _isoStamp = RegExp(r'^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}');
+
+/// A server timestamp as the panel shows it («2026-09-29 03:01»), never the
+/// raw UTC ISO (`2026-09-29T00:01:08.532034Z`, 3 h off the operator clock).
+String formatReportTimestamp(Object? value) => formatServerTimestamp(value);
+
+/// Internal helper columns never shown as their own column: a row's
+/// per-currency split is shown INSIDE its money cells instead.
+const _hiddenReportColumns = {'mixed_currency', 'by_currency'};
+
+/// The columns to show: the server's order (fix2 `columns`), else the keys
+/// of the rows in the app's own order; helper columns hidden.
+List<String> reportColumnKeys(FinancialReportTable table) {
+  final keys = table.columns.isNotEmpty
+      ? [
+          for (final (k, _) in table.columns) k,
+          for (final k in table.rows.expand((r) => r.keys).toSet())
+            if (!table.columns.any((c) => c.$1 == k)) k,
+        ]
+      : (table.rows.expand((row) => row.keys).toSet().toList()
+        ..sort(_compareColumns));
+  return keys.where((k) => !_hiddenReportColumns.contains(k)).toList();
+}
+
+const _moneyColumns = {
+  'total',
+  'amount',
+  'avg_amount',
+  'outstanding',
+  'credits',
+  'debits',
+  'net',
+  'open_total',
+  'owed',
+};
+
+/// One cell. A money cell of a MIXED-currency row shows one amount per
+/// currency (`by_currency`) — never one sum of ILS + USD + EUR.
+String reportCell(Map<String, dynamic> row, String column) {
+  final split = row['by_currency'];
+  if (_moneyColumns.contains(column) &&
+      split is List &&
+      (row['mixed_currency'] == true || split.length > 1)) {
+    final parts = parseByCurrency(
+      split,
+      fields: [column, 'total', 'total_amount', 'amount'],
+    );
+    if (parts.isNotEmpty) return formatByCurrency(parts);
+  }
+  // A money cell carries ITS ROW's currency («3 USD», not a bare «3» —
+  // f04 L9), in the app's one money format.
+  final value = row[column];
+  final code = '${row['currency'] ?? ''}'.trim();
+  if (_moneyColumns.contains(column) && value is num && value.isFinite) {
+    return code.isEmpty
+        ? formatMoneyAmount(value)
+        : ltrIsolate(formatWithCurrency(value, code));
+  }
+  return _cell(value);
+}
+
 String _cell(Object? value) {
   if (value == null || value.toString().isEmpty) return '—';
-  // Amounts: grouped, 2 decimals, no float noise (117.58999999999999).
+  if (value is String && _isoStamp.hasMatch(value.trim())) {
+    return formatReportTimestamp(value);
+  }
+  // Amounts: the app's one money format, no float noise.
   if (value is double) {
     if (!value.isFinite) return '—';
-    return NumberFormat('#,##0.##').format(value);
+    return formatMoneyAmount(value);
   }
   if (value is int && value.abs() >= 10000) {
     return NumberFormat('#,##0').format(value);
@@ -455,6 +537,12 @@ const _columnLabels = {
   'open_count': 'المفتوحة',
   'open_total': 'إجمالي المفتوح',
   'owed': 'المستحق',
+  'outstanding': 'المتبقّي',
+  'settled_amount': 'المسدَّد',
+  'paid_to_debt': 'سداد الدين',
+  'paid_to_balance': 'إضافة للرصيد',
+  'created_at': 'التاريخ',
+  'first_entry_at': 'أول قيد',
   'owed_count': 'عدد المستحق',
   'credits': 'دائن',
   'debits': 'مدين',
@@ -463,13 +551,55 @@ const _columnLabels = {
   'balance': 'الرصيد',
   'credit_limit': 'حد الائتمان',
   'sessions': 'الجلسات',
-  'bytes_in': 'التحميل',
-  'bytes_out': 'الرفع',
+  // RFC 2866: input octets = the user's UPLOAD, output = DOWNLOAD.
+  'bytes_in': 'الرفع',
+  'bytes_out': 'التنزيل',
   'last_entry_at': 'آخر قيد',
   'source': 'المصدر',
 };
 
-String _label(String key) => _columnLabels[key] ?? key;
+String _label(String key) => financialReportColumnLabel(key);
+
+/// The columns of a report whose empty export has nothing to take them from
+/// (the server's own `_REPORT_EMPTY_COLUMNS`).
+const kFinancialReportEmptyColumns = <String, List<String>>{
+  'card-sales': ['batch_id', 'count', 'total'],
+  'distributor-debts': [
+    'distributor_id',
+    'name',
+    'display_name',
+    'debt_balance',
+    'balance',
+    'credit_limit',
+  ],
+};
+
+/// The CSV to save for [slug]. A server CSV that is empty or only a UTF-8
+/// BOM (an empty report: 3 bytes, no header — R11 L-7) becomes a BOM + an
+/// Arabic header row of the report's known columns; null when the columns
+/// are not known either («لا توجد بيانات للتصدير», nothing is saved).
+Uint8List? financialReportCsvForSave(Uint8List bytes, String slug) {
+  var body = bytes;
+  if (body.length >= 3 &&
+      body[0] == 0xEF &&
+      body[1] == 0xBB &&
+      body[2] == 0xBF) {
+    body = Uint8List.sublistView(body, 3);
+  }
+  if (utf8.decode(body, allowMalformed: true).trim().isNotEmpty) return bytes;
+  final columns = kFinancialReportEmptyColumns[slug];
+  if (columns == null || columns.isEmpty) return null;
+  String cell(String v) =>
+      v.contains(RegExp(r'[",\r\n]')) ? '"${v.replaceAll('"', '""')}"' : v;
+  final header = columns.map((c) => cell(financialReportColumnLabel(c)));
+  return Uint8List.fromList([
+    0xEF, 0xBB, 0xBF, // UTF-8 BOM: Excel opens the Arabic header correctly
+    ...utf8.encode('${header.join(',')}\r\n'),
+  ]);
+}
+
+/// Arabic header of a financial-report column (raw key only if unknown).
+String financialReportColumnLabel(String key) => _columnLabels[key] ?? key;
 
 /// Known columns keep the order of [_columnLabels] (period / name first,
 /// then counts and money); unknown keys follow alphabetically.

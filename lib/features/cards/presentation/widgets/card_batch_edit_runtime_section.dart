@@ -6,6 +6,7 @@ import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
+import 'card_number_field.dart';
 
 class CardBatchRuntimeSection extends StatelessWidget {
   const CardBatchRuntimeSection({
@@ -74,10 +75,7 @@ class CardBatchRuntimeSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'قيمة الوقت',
-              child: TextFormField(
-                controller: timeVal,
-                keyboardType: TextInputType.number,
-              ),
+              child: CardNumberField(controller: timeVal),
             ),
             second: FormFieldRow(
               label: 'وحدة الوقت',
@@ -96,10 +94,7 @@ class CardBatchRuntimeSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'عدد الأجهزة',
-              child: TextFormField(
-                controller: devices,
-                keyboardType: TextInputType.number,
-              ),
+              child: CardNumberField(controller: devices, min: 1),
             ),
             second: FormFieldRow(
               label: 'وضع المدة',

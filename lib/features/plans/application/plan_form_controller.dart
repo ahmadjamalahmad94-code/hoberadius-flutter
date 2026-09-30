@@ -67,7 +67,7 @@ class PlanFormActionController extends Notifier<PlanFormActionState> {
       ref.invalidate(plansListProvider);
       return null;
     } catch (e) {
-      final message = visibleErrorMessage(e);
+      final message = formSaveErrorMessage(e);
       _set(state.copyWith(error: message));
       return message;
     } finally {

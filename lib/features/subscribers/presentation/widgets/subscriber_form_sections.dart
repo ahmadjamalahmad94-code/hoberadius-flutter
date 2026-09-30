@@ -1,7 +1,12 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/input_rules.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/api/api_exception.dart';
+import '../../../../core/auth/permissions.dart';
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_time_picker_circular.dart';
@@ -12,15 +17,22 @@ import '../../domain/subscriber_model.dart';
 import 'expire_picker.dart';
 import 'plan_picker.dart';
 
-/// Number-only text field used across the new parity sections.
+/// Number-only text field used across the new parity sections: nothing
+/// typed is stripped or rewritten; «7.5» in a whole-number field, «-1» or
+/// «abc» show an Arabic error instead of being saved as 0.
 class _NumField extends StatelessWidget {
   const _NumField({required this.controller});
   final TextEditingController controller;
+  bool get decimal => false;
   @override
   Widget build(BuildContext context) {
     return TextFormField(
       controller: controller,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: decimal ? decimalKeyboard : integerKeyboard,
+      inputFormatters: numberFieldFormatters,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
+      validator: (v) =>
+          validateNumberInput(v, required: false, decimal: decimal),
     );
   }
 }
@@ -39,7 +51,22 @@ class SubscriberCoreSection extends StatelessWidget {
     required this.onUserTypeChanged,
     required this.onServiceTypeChanged,
     required this.onExpireChanged,
+    this.onRename,
+    this.fieldErrors = const {},
+    this.explicitNoExpiry = false,
+    this.onExplicitNoExpiryChanged,
   });
+
+  /// Create form: «بدون انتهاء» chosen explicitly (`expire_at: null`).
+  final bool explicitNoExpiry;
+  final ValueChanged<bool>? onExplicitNoExpiryChanged;
+
+  /// The server's Arabic message per field (422 mapped to its input).
+  final Map<String, String> fieldErrors;
+
+  /// Edit form: opens «تغيير اسم المستخدم» (the name is the RADIUS key and
+  /// changes only through the rename cascade — typing here was dropped).
+  final VoidCallback? onRename;
 
   final Map<String, TextEditingController> controllers;
   final bool isEdit;
@@ -59,12 +86,27 @@ class SubscriberCoreSection extends StatelessWidget {
       required: true,
       child: TextFormField(
         controller: controllers['username'],
-        enabled: !isEdit,
-        inputFormatters: [
-          LengthLimitingTextInputFormatter(kSubscriberUsernameMax),
-        ],
+        // Edit: read-only + «إعادة تسمية» (a typed change was silently
+        // dropped — r10 N7). Create: no silent cut at 64 characters, the
+        // validator says why instead.
+        readOnly: isEdit,
+        textDirection: TextDirection.ltr,
+        autovalidateMode: isEdit
+            ? AutovalidateMode.disabled
+            : AutovalidateMode.onUserInteraction,
+        decoration: isEdit
+            ? InputDecoration(
+                errorText: fieldErrors['username'],
+                helperText: 'لتغيير الاسم استخدم «إعادة تسمية».',
+                suffixIcon: IconButton(
+                  tooltip: 'إعادة تسمية',
+                  icon: const Icon(Icons.drive_file_rename_outline, size: 20),
+                  onPressed: onRename,
+                ),
+              )
+            : InputDecoration(errorText: fieldErrors['username']),
         // Same rule as the rename dialog and the server: Latin letters,
-        // digits and . _ - @ only — no spaces/Arabic/emoji/«/».
+        // digits and . _ - @ only, 3–64 characters.
         validator: (v) => isEdit
             ? null
             : ((v == null || v.trim().isEmpty)
@@ -108,11 +150,21 @@ class SubscriberCoreSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'الجوال',
-              child: TextFormField(controller: controllers['mobile']),
+              child: TextFormField(
+                controller: controllers['mobile'],
+                decoration: InputDecoration(errorText: fieldErrors['mobile']),
+              ),
             ),
             second: FormFieldRow(
               label: 'البريد',
-              child: TextFormField(controller: controllers['email']),
+              child: TextFormField(
+                controller: controllers['email'],
+                keyboardType: TextInputType.emailAddress,
+                textDirection: TextDirection.ltr,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: validateOptionalEmail,
+                decoration: InputDecoration(errorText: fieldErrors['email']),
+              ),
             ),
           ),
           FormFieldRow(
@@ -158,23 +210,16 @@ class SubscriberCoreSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'نوع الخدمة',
+              // The server accepts hotspot / pppoe / both (fix2 subscriber
+              // validation); an older stored value stays selectable so an
+              // untouched row is not changed by opening it.
               child: DropdownButtonFormField<String>(
                 isExpanded: true,
-                initialValue: const [
-                  'Hotspot',
-                  'PPPoE',
-                  'Balance',
-                  'Voucher',
-                  'Others',
-                ].contains(serviceType)
-                    ? serviceType
-                    : 'Hotspot',
-                items: const [
-                  DropdownMenuItem(value: 'Hotspot', child: Text('هوتسبوت')),
-                  DropdownMenuItem(value: 'PPPoE', child: Text('PPPoE')),
-                  DropdownMenuItem(value: 'Balance', child: Text('رصيد')),
-                  DropdownMenuItem(value: 'Voucher', child: Text('كوبون')),
-                  DropdownMenuItem(value: 'Others', child: Text('أخرى')),
+                initialValue:
+                    serviceType.trim().isEmpty ? 'Hotspot' : serviceType,
+                items: [
+                  for (final (value, label) in serviceTypeOptions(serviceType))
+                    DropdownMenuItem(value: value, child: Text(label)),
                 ],
                 onChanged: (v) => onServiceTypeChanged(v ?? 'Hotspot'),
               ),
@@ -186,6 +231,13 @@ class SubscriberCoreSection extends StatelessWidget {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
+                inputFormatters: numberFieldFormatters,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: (v) => validateNumberInput(
+                  v,
+                  required: false,
+                  max: kMaxMoneyAmount,
+                ),
                 // The «leave empty» hint lives inside the field so the pair's
                 // labels stay one line each.
                 decoration: const InputDecoration(
@@ -196,7 +248,14 @@ class SubscriberCoreSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'تاريخ الانتهاء',
-            child: ExpirePicker(value: expireAt, onChange: onExpireChanged),
+            child: SubscriberExpiryField(
+              isEdit: isEdit,
+              value: expireAt,
+              onChange: onExpireChanged,
+              explicitNoExpiry: explicitNoExpiry,
+              onExplicitNoExpiryChanged: onExplicitNoExpiryChanged,
+              error: fieldErrors['expire_at'],
+            ),
           ),
           FormFieldRow(
             label: 'ملاحظات',
@@ -231,7 +290,7 @@ class SubscriberMtSection extends StatelessWidget {
       child: Column(
         children: [
           FormFieldRow(
-            label: 'الـ profile',
+            label: 'ملف الراوتر (Profile)',
             child: TextFormField(controller: controllers['mt_profile']),
           ),
           FormFieldRow(
@@ -295,25 +354,16 @@ class SubscriberRadiusSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'الجلسات المتزامنة',
-            child: TextFormField(
-              controller: controllers['simultaneous_use'],
-              keyboardType: TextInputType.number,
-            ),
+            child: _NumField(controller: controllers['simultaneous_use']!),
           ),
           FormFieldPair(
             first: FormFieldRow(
               label: 'مهلة الجلسة (ث)',
-              child: TextFormField(
-                controller: controllers['session_timeout'],
-                keyboardType: TextInputType.number,
-              ),
+              child: _NumField(controller: controllers['session_timeout']!),
             ),
             second: FormFieldRow(
               label: 'مهلة الخمول (ث)',
-              child: TextFormField(
-                controller: controllers['idle_timeout'],
-                keyboardType: TextInputType.number,
-              ),
+              child: _NumField(controller: controllers['idle_timeout']!),
             ),
           ),
           FormFieldRow(
@@ -398,7 +448,13 @@ class SubscriberManagementSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final admins = ref.watch(adminsListProvider);
+    // «المدير المسؤول» lists the managers (GET /api/v1/admins): only the
+    // owner / a co-owner or an admin holding admins.view may read that list
+    // — anyone else would get a 403, so the field is hidden and the server
+    // assigns the subscriber to the manager who creates it (p01 D18).
+    final showManager =
+        canPickResponsibleManager(ref.watch(permissionsProvider));
+    final admins = showManager ? ref.watch(adminsListProvider) : null;
     return CollapsibleSection(
       storageKey: 'sub.management',
       icon: Icons.manage_accounts_outlined,
@@ -406,40 +462,42 @@ class SubscriberManagementSection extends ConsumerWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'المدير المسؤول',
-            hint: 'اختر المدير الذي يتابع هذا الحساب',
-            child: admins.when(
-              loading: () => const LinearProgressIndicator(),
-              error: (_, __) => TextFormField(
-                initialValue: managerId?.toString() ?? '',
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  hintText: 'رقم المدير (تعذّر جلب القائمة)',
-                ),
-                onChanged: (v) => onManagerChanged(int.tryParse(v.trim())),
-              ),
-              data: (list) => DropdownButtonFormField<int?>(
-                isExpanded: true,
-                initialValue:
-                    list.any((a) => a.id == managerId) ? managerId : null,
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('بدون مدير'),
+          if (admins != null &&
+              !(admins.hasError && _isForbidden(admins.error)))
+            FormFieldRow(
+              label: 'المدير المسؤول',
+              hint: 'اختر المدير الذي يتابع هذا الحساب',
+              child: admins.when(
+                loading: () => const LinearProgressIndicator(),
+                error: (_, __) => TextFormField(
+                  initialValue: managerId?.toString() ?? '',
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    hintText: 'رقم المدير (تعذّر جلب القائمة)',
                   ),
-                  for (final a in list)
-                    DropdownMenuItem<int?>(
-                      value: a.id,
-                      child: Text(
-                        a.fullName.isEmpty ? a.username : a.fullName,
-                      ),
+                  onChanged: (v) => onManagerChanged(int.tryParse(v.trim())),
+                ),
+                data: (list) => DropdownButtonFormField<int?>(
+                  isExpanded: true,
+                  initialValue:
+                      list.any((a) => a.id == managerId) ? managerId : null,
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('بدون مدير'),
                     ),
-                ],
-                onChanged: onManagerChanged,
+                    for (final a in list)
+                      DropdownMenuItem<int?>(
+                        value: a.id,
+                        child: Text(
+                          a.fullName.isEmpty ? a.username : a.fullName,
+                        ),
+                      ),
+                  ],
+                  onChanged: onManagerChanged,
+                ),
               ),
             ),
-          ),
           FormFieldPair(
             first: FormFieldRow(
               label: 'المجموعة',
@@ -455,21 +513,27 @@ class SubscriberManagementSection extends ConsumerWidget {
             label: 'الرصيد',
             hint: isEdit
                 ? 'للقراءة فقط — عدّله من إجراء «إضافة رصيد»'
-                : 'رصيد الحساب الحالي',
-            child: isEdit
-                ? TextFormField(
-                    controller: controllers['balance'],
-                    readOnly: true,
-                    enabled: false,
-                    decoration: const InputDecoration(hintText: '0'),
-                  )
-                : _NumField(controller: controllers['balance']!),
+                : 'يُضاف الرصيد بعد الإنشاء من إجراء «إضافة رصيد»',
+            child: TextFormField(
+              controller: controllers['balance'],
+              readOnly: true,
+              enabled: false,
+              decoration: const InputDecoration(hintText: '0'),
+            ),
           ),
         ],
       ),
     );
   }
 }
+
+/// The «المدير المسؤول» picker is offered (and its list fetched) only to
+/// the owner / a co-owner or an admin holding `admins.view`. On an older
+/// server (no permission contract) it stays, as before.
+bool canPickResponsibleManager(AppPermissions p) =>
+    p.isOwnerLike || p.can('admins.view');
+
+bool _isForbidden(Object? e) => e is ApiException && e.status == 403;
 
 /// Personal information section.
 class SubscriberPersonalSection extends StatelessWidget {
@@ -627,14 +691,61 @@ class SubscriberSpeedSection extends StatelessWidget {
               child: _NumField(controller: controllers['upload_speed_kbps']!),
             ),
           ),
-          HubSwitchRow(
-            label: 'سرعة مؤقتة',
-            subtitle: 'رفع مؤقت بدون تغيير الباقة',
-            value: temporarySpeed,
-            onChanged: onTemporarySpeedChanged,
-            dense: true,
-          ),
+          // «سرعة مؤقتة» had no effect from this form (r02): a temporary
+          // speed is an ACTION on the live session with an end time — it
+          // lives in «المتصلون» → «سرعة مؤقتة», not in a saved switch.
+          const _TempSpeedHint(),
         ],
+      ),
+    );
+  }
+}
+
+/// Service types the server accepts (case-insensitively), and the
+/// dropdown items for [current]: its stored spelling is kept (opening a row
+/// never changes it), an older value (Balance/Voucher…) stays listed.
+List<(String, String)> serviceTypeOptions(String current) {
+  const canonical = [
+    ('Hotspot', 'هوتسبوت'),
+    ('PPPoE', 'PPPoE'),
+    ('both', 'كلاهما'),
+  ];
+  final cur = current.trim();
+  final out = <(String, String)>[];
+  var matched = cur.isEmpty;
+  for (final (v, label) in canonical) {
+    if (!matched && v.toLowerCase() == cur.toLowerCase()) {
+      out.add((current, label));
+      matched = true;
+    } else {
+      out.add((v, label));
+    }
+  }
+  if (!matched) out.add((current, legacyServiceTypeLabel(current)));
+  return out;
+}
+
+/// Arabic label of an older stored service type.
+String legacyServiceTypeLabel(String v) => switch (v.trim().toLowerCase()) {
+      'balance' => 'رصيد (قديم)',
+      'voucher' => 'كوبون (قديم)',
+      'others' => 'أخرى (قديم)',
+      'hotspot' => 'هوتسبوت',
+      'pppoe' => 'PPPoE',
+      _ => '$v (قديم)',
+    };
+
+class _TempSpeedHint extends StatelessWidget {
+  const _TempSpeedHint();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Text(
+        'السرعة المؤقتة تُطبَّق على الجلسة المتصلة من «المتصلون» ← '
+        '«سرعة مؤقتة» (بمدّة بالدقائق أو الساعات أو الأيام).',
+        style: Theme.of(context).textTheme.bodySmall,
       ),
     );
   }
@@ -875,7 +986,13 @@ class SubscriberNotificationsSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'بريد التنبيهات',
-              child: TextFormField(controller: controllers['notify_email']),
+              child: TextFormField(
+                controller: controllers['notify_email'],
+                keyboardType: TextInputType.emailAddress,
+                textDirection: TextDirection.ltr,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
+                validator: validateOptionalEmail,
+              ),
             ),
             second: FormFieldRow(
               label: 'جوال التنبيهات',
@@ -933,10 +1050,7 @@ class SubscriberSubscriptionSection extends StatelessWidget {
             ),
             second: FormFieldRow(
               label: 'مدّة الاشتراك (أيام)',
-              child: TextFormField(
-                controller: controllers['subscription_days'],
-                keyboardType: TextInputType.number,
-              ),
+              child: _NumField(controller: controllers['subscription_days']!),
             ),
           ),
           HubSwitchRow(

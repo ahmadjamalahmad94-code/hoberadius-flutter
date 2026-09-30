@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1116,16 +1117,12 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
                       child: TextFormField(
                         controller: amount,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: 'المبلغ'),
-                        validator: (value) {
-                          final parsed = double.tryParse(
-                            (value ?? '').replaceAll(',', '.'),
-                          );
-                          if (parsed == null || parsed <= 0) {
-                            return 'أدخل مبلغًا موجبًا';
-                          }
-                          return null;
-                        },
+                        decoration: InputDecoration(
+                          labelText: 'المبلغ',
+                          helperText: kMaxMoneyHelper,
+                        ),
+                        validator: (value) =>
+                            readMoneyInput(value ?? '').error,
                       ),
                     ),
                     const SizedBox(width: AppTokens.s12),
@@ -1151,7 +1148,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
                   payerType: payerType,
                   payerId: int.tryParse(payerId.text.trim()),
                   purpose: purpose,
-                  amount: double.parse(amount.text.trim().replaceAll(',', '.')),
+                  amount: readMoneyInput(amount.text).value!,
                   currency: currency,
                 ),
               );

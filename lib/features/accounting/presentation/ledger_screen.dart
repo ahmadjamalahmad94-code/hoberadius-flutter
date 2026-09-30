@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -27,6 +29,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_ledgerProvider(_entryType));
+    // «عكس» (ledger void) is owner / co-owner only (auth/owner.OWNER_ONLY).
+    final canVoid = ref.watch(permissionsProvider).isOwnerLike;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -134,10 +138,12 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                         DataCell(
                           entry.entryType == 'void'
                               ? const Text('قيد عكسي')
-                              : TextButton(
-                                  onPressed: () => _voidEntry(entry),
-                                  child: const Text('عكس'),
-                                ),
+                              : !canVoid
+                                  ? const Text('—')
+                                  : TextButton(
+                                      onPressed: () => _voidEntry(entry),
+                                      child: const Text('عكس'),
+                                    ),
                         ),
                       ],
                     );
@@ -187,7 +193,8 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(visibleErrorMessage(e))));
     }
   }
 }
@@ -197,17 +204,7 @@ String _fmt(DateTime? value) {
   return DateFormat('yyyy-MM-dd').format(value);
 }
 
-String _ledgerTypeLabel(String value) {
-  return switch (value.trim().toLowerCase()) {
-    'payment' => 'دفعة',
-    'loan' => 'سلفة',
-    'settlement' => 'تسوية',
-    'void' => 'قيد عكسي',
-    'adjustment' => 'تعديل مالي',
-    '' => 'غير محدد',
-    _ => 'نوع غير معروف',
-  };
-}
+String _ledgerTypeLabel(String value) => ledgerTypeLabel(value);
 
 String _ledgerStatusLabel(String value) {
   return switch (value.trim().toLowerCase()) {

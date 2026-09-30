@@ -169,10 +169,13 @@ void main() {
     await tester.enterText(_field('المبلغ'), '999999999999');
     await tester.tap(find.text('تسجيل الدفعة'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('كبير جدًا'), findsOneWidget);
+    // Live under the field and in the card's error box.
+    expect(find.textContaining('كبير جدًا'), findsWidgets);
     expect(adapter.where('POST', '/payments'), isEmpty);
-    expect(validateMoneyAmount(1000000), isNull);
-    expect(validateMoneyAmount(1000001), isNotNull);
+    // FIX2 cap: 100,000 (exactly 1,000,000 used to pass → year 2711).
+    expect(validateMoneyAmount(100000), isNull);
+    expect(validateMoneyAmount(100000.01), isNotNull);
+    expect(validateMoneyAmount(1000000), isNotNull);
     expect(validateMoneyAmount(0), isNotNull);
     expect(validateMoneyAmount(double.infinity), isNotNull);
   });

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -92,7 +93,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
       ref.invalidate(rolesListProvider);
       if (mounted) context.goNamed('roles');
     } catch (e) {
-      setState(() => _error = visibleErrorMessage(e));
+      setState(() => _error = formSaveErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -164,7 +165,11 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit && !isSystem) ...[
+              if (widget.isEdit &&
+                  !isSystem &&
+                  ref.watch(permissionsProvider).canAny(
+                    const ['admins.delete'],
+                  )) ...[
                 const SizedBox(width: AppTokens.s8),
                 IconButton(
                   tooltip: 'حذف',

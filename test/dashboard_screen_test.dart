@@ -102,6 +102,38 @@ void main() {
     expect(find.text('غير جاهز'), findsOneWidget);
   });
 
+  testWidgets('shows the sales_today tile with card sales money',
+      (tester) async {
+    final metrics = DashboardMetrics.fromJson({
+      'nas': {'total': 4, 'enabled': 3},
+      'sales_today': {
+        'date': '2026-09-30',
+        'cards_count': 100,
+        'money_visible': true,
+        'by_currency': [
+          {'currency': 'ILS', 'total': 200.0},
+        ],
+      },
+    });
+
+    await _pumpDashboard(tester, metrics);
+
+    expect(find.text('إجمالي مبيعات اليوم'), findsOneWidget);
+    expect(find.textContaining('100 بطاقة'), findsOneWidget);
+  });
+
+  testWidgets('hides the sales_today tile when the server omits it (old '
+      'server)', (tester) async {
+    await _pumpDashboard(
+      tester,
+      DashboardMetrics.fromJson({
+        'nas': {'total': 4, 'enabled': 3},
+      }),
+    );
+
+    expect(find.text('إجمالي مبيعات اليوم'), findsNothing);
+  });
+
   testWidgets('shows empty states when batches + alerts are empty',
       (tester) async {
     await _pumpDashboard(tester, DashboardMetrics.fromJson({}));

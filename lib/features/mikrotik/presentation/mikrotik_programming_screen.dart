@@ -614,7 +614,10 @@ class _ApplyResultCard extends StatelessWidget {
             ),
           if (result.error.isNotEmpty) ...[
             const SizedBox(height: AppTokens.s8),
-            Text(result.error, style: const TextStyle(color: AppTokens.redInk)),
+            Text(
+              visibleErrorMessage(result.error),
+              style: const TextStyle(color: AppTokens.redInk),
+            ),
           ],
           if (result.steps.isNotEmpty) ...[
             const SizedBox(height: AppTokens.s8),

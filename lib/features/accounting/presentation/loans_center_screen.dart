@@ -5,18 +5,23 @@ import 'package:intl/intl.dart';
 import '../../../core/api/idempotency.dart';
 import '../../../core/api/paging.dart';
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
+import '../../../core/format/number_input.dart';
+import '../../../core/format/panel_time.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/load_more_footer.dart';
+import '../../../shared/widgets/number_text_field.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../../core/format/currency.dart';
 import '../../admin_control/application/admin_control_providers.dart';
 import '../../subscribers/domain/subscriber_actions_model.dart'
-    show kPaymentMethods, parseLocalizedNumber;
+    show kPaymentMethods, priceForMinutes;
+import '../../subscribers/data/subscriber_actions_repository.dart';
 import '../data/accounting_repository.dart';
 import '../domain/accounting_model.dart';
 
@@ -120,6 +125,12 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_loansProvider(_status));
+    // Recording / settling a loan = subscriber.loan (users.loans).
+    final perms = ref.watch(permissionsProvider);
+    final loanDenied = perms.canAction('subscriber.loan')
+        ? null
+        : perms.deniedReason(action: 'subscriber.loan', perm: 'users.loans');
+    final settle = loanDenied == null ? _settleLoan : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -167,7 +178,8 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
                     icon: Icons.add_circle_outline,
                     label: 'تسجيل سلفة أو دين',
                     primary: true,
-                    onPressed: _createLoan,
+                    onPressed: loanDenied == null ? _createLoan : null,
+                    tooltip: loanDenied,
                   ),
                 ),
               ),
@@ -204,13 +216,13 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
                       return Column(
                         children: [
                           for (final loan in items) ...[
-                            _LoanCard(loan: loan, onSettle: _settleLoan),
+                            _LoanCard(loan: loan, onSettle: settle),
                             const SizedBox(height: AppTokens.s8),
                           ],
                         ],
                       );
                     }
-                    return _LoansTable(items: items, onSettle: _settleLoan);
+                    return _LoansTable(items: items, onSettle: settle);
                   },
                 ),
                 LoadMoreFooter(
@@ -239,32 +251,42 @@ class _LoansCenterScreenState extends ConsumerState<LoansCenterScreen> {
     final created = await _loanDialog(
       context,
       currency: currency,
+      // «احتساب الدين من عدد الأيام»: the value the server will record,
+      // from the subscriber's own price (a read, never a money call).
+      estimate: (username, minutes) async {
+        final c = await ref
+            .read(subscriberActionsRepositoryProvider)
+            .actionsContext(username);
+        return priceForMinutes(
+          effectivePrice: c.effectivePrice,
+          planMinutes: c.planMinutes,
+          minutes: minutes,
+        );
+      },
       // Runs INSIDE the dialog: an error keeps it open with every input
       // (it used to close and lose them behind a generic snackbar).
       submit: (draft) async {
         final key = _createKeys.keyFor('loan', draft.fingerprint);
-        final loan = await ref.read(accountingRepositoryProvider).createLoan(
-              username: draft.username,
-              days: draft.days,
-              hours: draft.hours,
-              amount: draft.amount,
-              currency: draft.currency,
-              reason: draft.reason,
-              priceFromDays: draft.priceFromDays,
-              applyToRadius: draft.applyToRadius,
-              idempotencyKey: key,
-            );
+        final outcome =
+            await ref.read(accountingRepositoryProvider).createLoanWithOutcome(
+                  username: draft.username,
+                  days: draft.days,
+                  hours: draft.hours,
+                  amount: draft.amount,
+                  currency: draft.currency,
+                  reason: draft.reason,
+                  priceFromDays: draft.priceFromDays,
+                  applyToRadius: draft.applyToRadius,
+                  idempotencyKey: key,
+                );
         _createKeys.reset();
-        return loan;
+        return outcome;
       },
     );
     if (created == null) return;
     _refresh();
     if (!mounted) return;
-    _snack(
-      context,
-      'تم تسجيل ${created.amount > 0 ? 'الدين' : 'السلفة'} للمشترك ${created.username}',
-    );
+    _snack(context, loanCreatedMessage(created));
   }
 
   Future<void> _settleLoan(LoanEntry loan) async {
@@ -339,10 +361,10 @@ class _LoansSummary extends StatelessWidget {
 }
 
 class _LoansTable extends StatelessWidget {
-  const _LoansTable({required this.items, required this.onSettle});
+  const _LoansTable({required this.items, this.onSettle});
 
   final List<LoanEntry> items;
-  final Future<void> Function(LoanEntry loan) onSettle;
+  final Future<void> Function(LoanEntry loan)? onSettle;
 
   @override
   Widget build(BuildContext context) {
@@ -390,7 +412,8 @@ class _LoansTable extends StatelessWidget {
                   DataCell(
                     loan.isOpen
                         ? TextButton.icon(
-                            onPressed: () => onSettle(loan),
+                            onPressed:
+                                onSettle == null ? null : () => onSettle!(loan),
                             icon: const Icon(Icons.done_all, size: 16),
                             label: const Text('تسوية'),
                           )
@@ -406,10 +429,10 @@ class _LoansTable extends StatelessWidget {
 }
 
 class _LoanCard extends StatelessWidget {
-  const _LoanCard({required this.loan, required this.onSettle});
+  const _LoanCard({required this.loan, this.onSettle});
 
   final LoanEntry loan;
-  final Future<void> Function(LoanEntry loan) onSettle;
+  final Future<void> Function(LoanEntry loan)? onSettle;
 
   @override
   Widget build(BuildContext context) {
@@ -507,7 +530,7 @@ class _LoanCard extends StatelessWidget {
                 ),
             ],
           ),
-          if (loan.isOpen) ...[
+          if (loan.isOpen && onSettle != null) ...[
             const SizedBox(height: AppTokens.s8),
             ActionBar(
               items: [
@@ -515,7 +538,7 @@ class _LoanCard extends StatelessWidget {
                   icon: Icons.done_all,
                   label: 'تسوية',
                   tone: PillTone.green,
-                  onPressed: () => onSettle(loan),
+                  onPressed: () => onSettle!(loan),
                 ),
               ],
             ),
@@ -574,10 +597,26 @@ class _SettlementDraft {
   final String notes;
 }
 
-Future<LoanEntry?> _loanDialog(
+/// The toast after POST /loans: the server's approval result and the amount
+/// it actually recorded (computed by the server for «من عدد الأيام»).
+String loanCreatedMessage(LoanCreateOutcome o) {
+  if (o.pendingApproval) {
+    return o.message.isNotEmpty
+        ? o.message
+        : 'بانتظار موافقة المالك — أُرسلت السلفة للاعتماد ولم تُسجَّل بعد.';
+  }
+  final l = o.loan;
+  final what = l.amount > 0
+      ? 'الدين ${_money(l.amount)} ${l.currency}'.trim()
+      : 'السلفة';
+  return 'تم تسجيل $what للمشترك ${l.username}';
+}
+
+Future<LoanCreateOutcome?> _loanDialog(
   BuildContext context, {
   required String currency,
-  required Future<LoanEntry> Function(_LoanDraft draft) submit,
+  required Future<LoanCreateOutcome> Function(_LoanDraft draft) submit,
+  Future<double> Function(String username, int minutes)? estimate,
 }) async {
   final username = TextEditingController();
   final days = TextEditingController(text: '0');
@@ -585,7 +624,10 @@ Future<LoanEntry?> _loanDialog(
   final amount = TextEditingController(text: '0');
   final reason = TextEditingController();
   var priceFromDays = false;
-  var applyToRadius = false;
+  // ON by default: a loan recorded without it gives debt with no time.
+  var applyToRadius = true;
+  // Same-frame guard: two taps before the first rebuild = one request.
+  var submitting = false;
   var dryRun = true;
   // Supported codes (web settings list), the system currency first/default.
   var chosenCurrency = currency.isEmpty ? kDefaultCurrency : currency;
@@ -597,7 +639,7 @@ Future<LoanEntry?> _loanDialog(
   String? preview;
   var busy = false;
 
-  return showDialog<LoanEntry>(
+  return showDialog<LoanCreateOutcome>(
     context: context,
     useRootNavigator: true,
     builder: (context) => StatefulBuilder(
@@ -620,17 +662,17 @@ Future<LoanEntry?> _loanDialog(
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: NumberTextField(
                         controller: days,
-                        keyboardType: TextInputType.number,
+                        decimal: false,
                         decoration: const InputDecoration(labelText: 'أيام'),
                       ),
                     ),
                     const SizedBox(width: AppTokens.s8),
                     Expanded(
-                      child: TextField(
+                      child: NumberTextField(
                         controller: hours,
-                        keyboardType: TextInputType.number,
+                        decimal: false,
                         decoration: const InputDecoration(labelText: 'ساعات'),
                       ),
                     ),
@@ -640,15 +682,17 @@ Future<LoanEntry?> _loanDialog(
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: NumberTextField(
                         controller: amount,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: const InputDecoration(
+                        enabled: !priceFromDays,
+                        extraError: (v) => v > AppLimits.maxLoanAmount
+                            ? moneyTooLargeMessage(AppLimits.maxLoanAmount)
+                            : null,
+                        decoration: InputDecoration(
                           labelText: 'المبلغ',
-                          helperText:
-                              'ضع 0 للسلفة المجانية أو مبلغًا لتسجيل دين.',
+                          helperText: priceFromDays
+                              ? 'يحسبه الخادم من سعر باقة المشترك × المدة.'
+                              : 'ضع 0 للسلفة المجانية أو مبلغًا لتسجيل دين.',
                           helperMaxLines: 2,
                         ),
                       ),
@@ -694,8 +738,9 @@ Future<LoanEntry?> _loanDialog(
                   value: applyToRadius,
                   onChanged: (value) => setState(() => applyToRadius = value),
                   label: 'تطبيق المدة على الريدياس',
-                  subtitle:
-                      'أبقها مغلقة إذا كنت تسجل الدين فقط دون تمديد فعلي.',
+                  subtitle: applyToRadius
+                      ? 'تُمنح المدّة للحساب فورًا.'
+                      : 'مُطفأ: يُسجَّل الدين فقط دون تمديد فعلي.',
                 ),
                 HubSwitchRow(
                   dense: true,
@@ -737,20 +782,20 @@ Future<LoanEntry?> _loanDialog(
             onPressed: busy
                 ? null
                 : () async {
+                    if (submitting) return;
                     final user = username.text.trim();
-                    final parsedDays = int.tryParse(days.text.trim()) ?? 0;
-                    final parsedHours = int.tryParse(hours.text.trim()) ?? 0;
-                    final parsedAmount = parseLocalizedNumber(amount.text) ?? 0;
-                    String? problem;
-                    if (user.isEmpty || (parsedDays <= 0 && parsedHours <= 0)) {
-                      problem = 'أدخل اسم المشترك ومدة السلفة أو الدين.';
-                    } else if (parsedDays < 0 || parsedHours < 0) {
-                      problem = 'المدّة لا تكون سالبة.';
-                    } else if (parsedAmount < 0 ||
-                        parsedAmount > kMaxMoneyAmount) {
-                      problem =
-                          'المبلغ بين 0 و ${kMaxMoneyAmount.toStringAsFixed(0)}.';
-                    }
+                    final parsedDays = parseIntInput(days.text) ?? 0;
+                    final parsedHours = parseIntInput(hours.text) ?? 0;
+                    final parsedAmount = priceFromDays
+                        ? 0
+                        : (parseDecimalInput(amount.text) ?? 0);
+                    final problem = validateLoanCenterInput(
+                      username: user,
+                      daysText: days.text,
+                      hoursText: hours.text,
+                      amountText: priceFromDays ? '0' : amount.text,
+                      priceFromDays: priceFromDays,
+                    );
                     if (problem != null) {
                       setState(() {
                         error = problem;
@@ -772,20 +817,38 @@ Future<LoanEntry?> _loanDialog(
                     if (dryRun) {
                       // «تجربة آمنة»: local only — the loans endpoint
                       // recorded a real loan for dry_run on older servers.
+                      double? est;
+                      if (priceFromDays && estimate != null) {
+                        try {
+                          est = await estimate(
+                            user,
+                            parsedDays * 1440 + parsedHours * 60,
+                          );
+                        } catch (_) {
+                          est = null;
+                        }
+                      }
+                      if (!context.mounted) return;
                       setState(() {
                         error = null;
-                        preview = _loanCenterPreviewText(draft, chosenCurrency);
+                        preview = _loanCenterPreviewText(
+                          draft,
+                          chosenCurrency,
+                          estimated: est,
+                        );
                       });
                       return;
                     }
+                    submitting = true;
                     setState(() {
                       busy = true;
                       error = null;
                     });
                     try {
-                      final loan = await submit(draft);
-                      if (context.mounted) Navigator.pop(context, loan);
+                      final outcome = await submit(draft);
+                      if (context.mounted) Navigator.pop(context, outcome);
                     } catch (e) {
+                      submitting = false;
                       if (!context.mounted) return;
                       setState(() {
                         busy = false;
@@ -801,14 +864,51 @@ Future<LoanEntry?> _loanDialog(
   );
 }
 
+/// Loans-center dialog guard on the typed text (Arabic): «-1» or «1e3» are
+/// errors — they used to be stripped/rewritten into a real loan.
+String? validateLoanCenterInput({
+  required String username,
+  required String daysText,
+  required String hoursText,
+  required String amountText,
+  bool priceFromDays = false,
+}) {
+  final d = readNumberInput(daysText, decimal: false);
+  if (d.error != null) return 'الأيام: ${d.error}';
+  final h = readNumberInput(hoursText, decimal: false);
+  if (h.error != null) return 'الساعات: ${h.error}';
+  final a = readNumberInput(amountText);
+  if (a.error != null) return 'المبلغ: ${a.error}';
+  final days = (d.value ?? 0).toInt();
+  final hours = (h.value ?? 0).toInt();
+  if (username.trim().isEmpty) return 'أدخل اسم المشترك.';
+  if (days <= 0 && hours <= 0) return 'أدخل مدة السلفة أو الدين.';
+  final span = validateExtendSpan(days * 1440 + hours * 60);
+  if (span != null) return span;
+  if (priceFromDays && days <= 0) {
+    return '«احتساب الدين من عدد الأيام» يحتاج عدد أيام.';
+  }
+  final amount = a.value ?? 0;
+  if (amount > AppLimits.maxLoanAmount) {
+    return moneyTooLargeMessage(AppLimits.maxLoanAmount);
+  }
+  return null;
+}
+
 /// Local text of the loans-center «تجربة آمنة» — nothing is sent.
-String _loanCenterPreviewText(_LoanDraft d, String currency) {
+String _loanCenterPreviewText(
+  _LoanDraft d,
+  String currency, {
+  double? estimated,
+}) {
   final span = [
     if (d.days > 0) '${d.days} يوم',
     if (d.hours > 0) '${d.hours} ساعة',
   ].join(' و ');
   final value = d.priceFromDays
-      ? 'دين محسوب من سعر الباقة'
+      ? (estimated != null && estimated > 0
+          ? 'دين محسوب من سعر الباقة ≈ ${_money(estimated)} $currency'.trim()
+          : 'دين محسوب من سعر الباقة على الخادم')
       : d.amount > 0
           ? 'دين ${_money(d.amount)} ${currency.isEmpty ? '' : currency}'.trim()
           : 'سلفة مجانية';
@@ -828,7 +928,9 @@ Future<_SettlementDraft?> _settlementDialog(
   LoanEntry loan,
 ) {
   // Default = what is still owed (partial settles leave the rest open).
-  final amount = TextEditingController(text: _money(loan.outstanding));
+  final amount = TextEditingController(
+    text: loan.outstanding.toStringAsFixed(2),
+  );
   // A list with Arabic labels (the raw «manual» used to be typed/shown).
   var method = 'manual';
   final notes = TextEditingController();
@@ -843,10 +945,8 @@ Future<_SettlementDraft?> _settlementDialog(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
+            NumberTextField(
               controller: amount,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
               decoration: InputDecoration(
                 labelText: loan.currency.isEmpty
                     ? 'المبلغ المستلم'
@@ -880,7 +980,12 @@ Future<_SettlementDraft?> _settlementDialog(
         ),
         FilledButton(
           onPressed: () {
-            final parsedAmount = parseLocalizedNumber(amount.text) ?? 0;
+            final read = readNumberInput(amount.text);
+            if (read.error != null) {
+              _snack(context, read.error!);
+              return;
+            }
+            final parsedAmount = read.value ?? 0;
             final free = loan.amount <= 0;
             if (!free && parsedAmount <= 0) {
               _snack(context, 'أدخل مبلغ تسوية صحيح');
@@ -922,9 +1027,7 @@ PillTone _statusTone(String status) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _duration(int minutes) {
   final days = minutes ~/ 1440;
@@ -955,8 +1058,7 @@ String _shortDuration(int minutes) {
 String _fmtShort(DateTime? value) {
   if (value == null) return 'غير محدد';
   final local = value.toLocal();
-  final pattern =
-      local.year == DateTime.now().year ? 'MM-dd HH:mm' : 'yyyy-MM-dd';
+  final pattern = local.year == panelNow().year ? 'MM-dd HH:mm' : 'yyyy-MM-dd';
   return DateFormat(pattern).format(local);
 }
 

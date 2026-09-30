@@ -1,5 +1,7 @@
 // ignore_for_file: require_trailing_commas
 
+import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -11,6 +13,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -59,6 +63,12 @@ class CardBatchDetailScreen extends ConsumerWidget {
     final batchAsync = ref.watch(_batchDetailProvider(batchId));
     final cardsAsync = ref.watch(_cardsOfBatchProvider(batchId));
     final filter = ref.watch(_cardFilterProvider);
+    final perms = ref.watch(permissionsProvider);
+    final editDenied = routeDenial(perms, '/cards/batches/$batchId/edit');
+    final printDenied = routeDenial(perms, '/cards/batches/$batchId/print');
+    final exportDenied = perms.canAction('data.export')
+        ? null
+        : perms.deniedReason(action: 'data.export', perm: 'users.export');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -104,33 +114,42 @@ class CardBatchDetailScreen extends ConsumerWidget {
               icon: Icons.print_outlined,
               label: 'طباعة',
               primary: true,
-              onPressed: () => context.goNamed(
-                'card-batch-print',
-                pathParameters: {'id': '$batchId'},
-              ),
+              onPressed: printDenied != null
+                  ? null
+                  : () => context.goNamed(
+                        'card-batch-print',
+                        pathParameters: {'id': '$batchId'},
+                      ),
+              tooltip: printDenied,
             ),
             ActionItem(
               icon: Icons.edit_outlined,
               label: 'تعديل',
-              onPressed: () => context.goNamed(
-                'card-batch-edit',
-                pathParameters: {'id': '$batchId'},
-              ),
+              onPressed: editDenied != null
+                  ? null
+                  : () => context.goNamed(
+                        'card-batch-edit',
+                        pathParameters: {'id': '$batchId'},
+                      ),
+              tooltip: editDenied,
             ),
             ActionItem(
               icon: Icons.file_download_outlined,
               label: 'تصدير ملف',
-              onPressed: cardsAsync.maybeWhen(
-                data: (cards) => cards.isEmpty
-                    ? null
-                    : () => _exportCsv(
-                          context,
-                          ref,
-                          batchAsync.valueOrNull,
-                          ref.read(_cardFilterProvider),
-                        ),
-                orElse: () => null,
-              ),
+              tooltip: exportDenied,
+              onPressed: exportDenied != null
+                  ? null
+                  : cardsAsync.maybeWhen(
+                      data: (cards) => cards.isEmpty
+                          ? null
+                          : () => _exportCsv(
+                                context,
+                                ref,
+                                batchAsync.valueOrNull,
+                                ref.read(_cardFilterProvider),
+                              ),
+                      orElse: () => null,
+                    ),
             ),
           ],
         ),
@@ -211,7 +230,8 @@ class CardBatchDetailScreen extends ConsumerWidget {
       for (final c in cards)
         [
           c.username,
-          c.password,
+          // masked by the server → left empty, never exported as «••••••»
+          c.passwordMasked ? '' : c.password,
           c.used ? '1' : '0',
           c.revoked ? '1' : '0',
           c.expireAt?.toIso8601String() ?? '',
@@ -275,13 +295,17 @@ class _BatchSummary extends StatelessWidget {
         InfoItem(
           icon: Icons.devices,
           label: 'الأجهزة',
-          value: '${batch.deviceCount} جهاز',
+          value: arCount(batch.deviceCount, arDevice, showOne: true),
         ),
       if (batch.createdBy.isNotEmpty)
         InfoItem(
           icon: Icons.person_outline,
           label: 'بواسطة',
-          value: batch.createdBy,
+          // fix3: prefer the server-resolved `created_by_name` («تطبيق —
+          // <المدير>») over the raw actor; falls back on an old server.
+          value: batch.createdByName.isNotEmpty
+              ? batch.createdByName
+              : actorLabel(batch.createdBy),
         ),
     ];
     return AppCard(
@@ -498,7 +522,9 @@ class _CardsTable extends ConsumerWidget {
             : c.used
                 ? 'مُستخدَم'
                 : 'متاح';
-        final canRevoke = !c.revoked && c.id != null;
+        final canRevoke = !c.revoked &&
+            c.id != null &&
+            ref.watch(permissionsProvider).canAction('cards.revoke');
         return Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: AppTokens.s12,
@@ -521,7 +547,9 @@ class _CardsTable extends ConsumerWidget {
                       ),
                     ),
                     Text(
-                      'كلمة المرور: ${c.password}',
+                      c.passwordMasked
+                          ? 'كلمة المرور: •••• (مخفيّة — لا تملك صلاحية كشفها)'
+                          : 'كلمة المرور: ${c.password}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

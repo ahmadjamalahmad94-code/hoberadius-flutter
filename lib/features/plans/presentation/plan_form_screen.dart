@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../admin_control/application/admin_control_providers.dart';
 import '../application/plan_form_controller.dart';
 import '../application/plan_form_mapper.dart';
+import '../domain/plan_model.dart' show kDefaultPlanPriority;
 import 'widgets/plan_form_dialogs.dart';
 import 'widgets/plan_form_sections.dart';
 
@@ -104,7 +106,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     _c['currency']!.text = ref.read(tenantCurrencyProvider);
     _c['color']!.text = '#2BAACC';
     _c['concurrent_sessions']!.text = '1';
-    _c['priority']!.text = '100';
+    _c['priority']!.text = '$kDefaultPlanPriority';
     // Defer so the controller's first `state =` runs after initState (modifying
     // a provider during the build/initState phase is disallowed).
     if (widget.isEdit) Future.microtask(_loadExisting);
@@ -170,8 +172,13 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     });
   }
 
+  /// A local (typed-value) problem, shown where the server error shows.
+  String? _localError;
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    final numberError = planFormNumberError(_c);
+    setState(() => _localError = numberError);
+    if (!_formKey.currentState!.validate() || numberError != null) return;
     final plan = buildPlanFromForm(_c, _selections, base: _loaded);
     final err = await ref
         .read(planFormActionProvider.notifier)
@@ -193,7 +200,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   Widget build(BuildContext context) {
     final action = ref.watch(planFormActionProvider);
     final loading = action.loading;
-    final error = action.error;
+    final error = _localError ?? action.error;
     return Form(
       key: _formKey,
       child: Column(
@@ -214,7 +221,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit)
+              if (widget.isEdit &&
+                  ref.watch(permissionsProvider).canAction('plan.delete'))
                 IconButton(
                   tooltip: 'أرشفة الباقة',
                   onPressed: loading ? null : _delete,

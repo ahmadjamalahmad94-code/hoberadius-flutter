@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/api/api_client.dart';
+import '../../../../core/api/api_exception.dart';
 import '../../../../core/api/idempotency.dart';
 
 /// A light-list row whose image lives on the server only.
@@ -63,12 +65,18 @@ class QuickPrintRepository {
     return await template(id) ?? tpl;
   }
 
-  Future<Map<String, String>> lastSettings() async {
+  Future<LastPrintSettings> lastSettings() async {
     final res = await _api.get('/api/v1/print-templates/last-settings');
-    final s = _data(res)['settings'];
-    return s is Map
-        ? {for (final e in s.entries) '${e.key}': '${e.value ?? ''}'}
-        : const {};
+    final d = _data(res);
+    final s = d['settings'];
+    int id(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
+    return LastPrintSettings(
+      s is Map
+          ? {for (final e in s.entries) '${e.key}': '${e.value ?? ''}'}
+          : const {},
+      lastTemplateId: id(d['last_template_id']),
+      defaultTemplateId: id(d['default_template_id']),
+    );
   }
 
   Future<Map<String, dynamic>> batch(int id) async {
@@ -92,7 +100,9 @@ class QuickPrintRepository {
   }
 
   /// One-page PDF: `mode: card` (one card, card-sized page) or `page`.
-  Future<Uint8List> preview({
+  /// Updated servers also say where the renderer really drew the username /
+  /// password / QR (`X-Print-Elements` header) — [PreviewResult.elements].
+  Future<PreviewResult> preview({
     required Map<String, String> form,
     int? templateId,
     int? batchId,
@@ -112,7 +122,10 @@ class QuickPrintRepository {
       options: Options(responseType: ResponseType.bytes),
       cancelToken: cancel,
     );
-    return Uint8List.fromList(res.data ?? const []);
+    return PreviewResult(
+      _bytesOrThrow(res, 'تعذّر تجهيز المعاينة.'),
+      CardElements.tryParseHeader(res.headers.value('x-print-elements')),
+    );
   }
 
   /// Where username / password / QR really sit (mm from the card's top-left
@@ -136,7 +149,9 @@ class QuickPrintRepository {
     return CardElements.fromJson(d is Map ? _stringKeys(d) : const {});
   }
 
-  Future<Map<String, dynamic>> quickSave({
+  /// Create (no [templateId]) or update a template. Updated servers also
+  /// return where the saved design's elements really sit.
+  Future<QuickSaveResult> quickSave({
     required Map<String, String> form,
     int? templateId,
     Map<String, String> printSettings = const {},
@@ -151,8 +166,13 @@ class QuickPrintRepository {
         'print_settings': printSettings,
       },
     );
-    final t = _data(res)['template'];
-    return t is Map ? _stringKeys(t) : const {};
+    final d = _data(res);
+    final t = d['template'];
+    final e = d['elements'];
+    return QuickSaveResult(
+      t is Map ? _stringKeys(t) : const {},
+      e is Map ? CardElements.fromJson(_stringKeys(e)) : null,
+    );
   }
 
   Future<PrintExportJob> startExport({
@@ -174,10 +194,15 @@ class QuickPrintRepository {
 
   /// Stops a queued/running export (updated servers). Older servers have no
   /// cancel endpoint — the error is ignored and the dialog just closes.
-  Future<void> cancelJob(int id) async {
+  /// Returns the server's Arabic reason when it refused (409: the job had
+  /// already finished), else null.
+  Future<String?> cancelJob(int id) async {
     try {
       await _api.post('/api/v1/print-jobs/$id/cancel');
+    } on ApiException catch (e) {
+      if (e.status == 409 && e.message.trim().isNotEmpty) return e.message;
     } catch (_) {}
+    return null;
   }
 
   Future<PrintExportJob> job(int id) async {
@@ -185,12 +210,38 @@ class QuickPrintRepository {
     return PrintExportJob.fromJson(_job(res));
   }
 
+  /// The finished PDF. A cancelled / failed job answers 409 (404 for an
+  /// unknown one) with an Arabic JSON error → [ApiException] with that text
+  /// (the JSON error used to be handed on as if it were the PDF).
   Future<Uint8List> download(int jobId) async {
     final res = await _api.dio.get<List<int>>(
       '/api/v1/print-jobs/$jobId/download',
       options: Options(responseType: ResponseType.bytes),
     );
-    return Uint8List.fromList(res.data ?? const []);
+    return _bytesOrThrow(res, 'تعذّر تنزيل ملف الطباعة.');
+  }
+
+  /// The body of a bytes response, or its JSON error as [ApiException]
+  /// (the API client accepts every status for raw requests).
+  static Uint8List _bytesOrThrow(Response<List<int>> res, String fallback) {
+    final bytes = Uint8List.fromList(res.data ?? const []);
+    final status = res.statusCode ?? 200;
+    if (status < 400) return bytes;
+    var code = 'error';
+    var message = '';
+    try {
+      final j = jsonDecode(utf8.decode(bytes));
+      final err = j is Map ? j['error'] : null;
+      if (err is Map) {
+        code = '${err['code'] ?? code}';
+        message = '${err['message'] ?? ''}'.trim();
+      }
+    } catch (_) {}
+    throw ApiException(
+      code: code,
+      message: message.isEmpty ? fallback : message,
+      status: status,
+    );
   }
 
   Map<String, dynamic> _job(Map<String, dynamic> res) {
@@ -207,12 +258,41 @@ class QuickPrintRepository {
       m.map((k, v) => MapEntry('$k', v));
 }
 
+/// `GET last-settings`: the sheet settings + (updated servers) the template
+/// THIS admin used last and the tenant default (0 = unknown / old server).
+class LastPrintSettings {
+  const LastPrintSettings(
+    this.settings, {
+    this.lastTemplateId = 0,
+    this.defaultTemplateId = 0,
+  });
+  final Map<String, String> settings;
+  final int lastTemplateId;
+  final int defaultTemplateId;
+}
+
+/// `preview.pdf`: the PDF + (updated servers) the real element places.
+class PreviewResult {
+  const PreviewResult(this.pdf, this.elements);
+  final Uint8List pdf;
+  final CardElements? elements;
+}
+
+/// `quick-save`: the saved row + (updated servers) its real element places.
+class QuickSaveResult {
+  const QuickSaveResult(this.template, this.elements);
+  final Map<String, dynamic> template;
+  final CardElements? elements;
+}
+
 /// Card size (mm, oriented like the preview) + element boxes (mm).
 class CardElements {
   const CardElements({
     required this.widthMm,
     required this.heightMm,
     required this.boxes,
+    this.warnings = const [],
+    this.qrConflict = false,
   });
 
   final double widthMm;
@@ -221,33 +301,100 @@ class CardElements {
   /// `username` / `password` / `qr` → (x, y, w, h) in mm.
   final Map<String, ElementBox> boxes;
 
+  /// Server notes about what it changed (Arabic), e.g. the QR was moved so
+  /// it does not cover the credentials. Old servers: none.
+  final List<String> warnings;
+
+  /// The QR has no room beside the credentials (updated servers).
+  final bool qrConflict;
+
+  /// The `X-Print-Elements` header of `preview.pdf` (same JSON as
+  /// `quick-elements`); null when absent or unreadable (old servers).
+  static CardElements? tryParseHeader(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return null;
+    try {
+      final j = jsonDecode(raw);
+      if (j is! Map) return null;
+      final m = j.map((k, v) => MapEntry('$k', v));
+      final d = m['data'] is Map && !m.containsKey('elements')
+          ? (m['data'] as Map).map((k, v) => MapEntry('$k', v))
+          : m;
+      return d['elements'] is Map ? CardElements.fromJson(d) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   factory CardElements.fromJson(Map<String, dynamic> j) {
     double n(Object? v) => v is num ? v.toDouble() : double.tryParse('$v') ?? 0;
+    double? opt(Object? v) =>
+        v is num ? v.toDouble() : double.tryParse('${v ?? ''}');
     final card = j['card'] is Map ? j['card'] as Map : const {};
     final els = j['elements'] is Map ? j['elements'] as Map : const {};
+    final warnings = j['warnings'];
     return CardElements(
       widthMm: n(card['width_mm']),
       heightMm: n(card['height_mm']),
       boxes: {
         for (final e in els.entries)
           if (e.value is Map)
-            '${e.key}': ElementBox(
-              n((e.value as Map)['x']),
-              n((e.value as Map)['y']),
-              n((e.value as Map)['w']),
-              n((e.value as Map)['h']),
-            ),
+            '${e.key}': () {
+              final b = e.value as Map;
+              final req = b['requested'];
+              return ElementBox(
+                n(b['x']),
+                n(b['y']),
+                n(b['w']),
+                n(b['h']),
+                requestedX: req is Map ? opt(req['x']) : null,
+                requestedY: req is Map ? opt(req['y']) : null,
+                adjusted: b['adjusted'] == true,
+                sizePct: opt(b['size_pct']),
+                fontPt: opt(b['font_pt']),
+              );
+            }(),
       },
+      warnings: warnings is List
+          ? [
+              for (final w in warnings)
+                if ('${w ?? ''}'.trim().isNotEmpty) '$w'.trim(),
+            ]
+          : const [],
+      qrConflict: j['qr_conflict'] == true,
     );
   }
 }
 
 class ElementBox {
-  const ElementBox(this.x, this.y, this.w, this.h);
+  const ElementBox(
+    this.x,
+    this.y,
+    this.w,
+    this.h, {
+    this.requestedX,
+    this.requestedY,
+    this.adjusted = false,
+    this.sizePct,
+    this.fontPt,
+  });
   final double x;
   final double y;
   final double w;
   final double h;
+
+  /// Where the design asked for it (null = automatic place / old server).
+  final double? requestedX;
+  final double? requestedY;
+
+  /// The renderer drew it somewhere else than [requestedX]/[requestedY]
+  /// (kept inside the card, off the credentials…). Old servers: false.
+  final bool adjusted;
+
+  /// QR only: the drawn size in % of the card width (updated servers).
+  final double? sizePct;
+
+  /// Pills only: the value font really drawn, in pt (updated servers).
+  final double? fontPt;
 }
 
 class PrintExportJob {
@@ -274,6 +421,9 @@ class PrintExportJob {
   final String message;
 
   bool get failed => status == 'failed';
+
+  /// Updated servers end a cancelled job `cancelled` (never failed/success).
+  bool get cancelled => status == 'cancelled';
 
   /// The server flips `status` to success a moment before the file is
   /// written — only `download_ready` means the PDF can be fetched.

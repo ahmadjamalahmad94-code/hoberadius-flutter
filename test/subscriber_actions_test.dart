@@ -167,8 +167,13 @@ void main() {
       expect(validateLoan(type: LoanType.free, days: 0, hours: 72), isNull);
     });
 
-    test('debt loan ≤ 366 days, zero duration rejected', () {
-      expect(validateLoan(type: LoanType.debt, days: 366, hours: 0), isNull);
+    test('debt loan ≤ 365 days (one-year rule), zero duration rejected', () {
+      expect(validateLoan(type: LoanType.debt, days: 365, hours: 0), isNull);
+      // Owner decision 2026-09-29: one operation adds at most a year.
+      expect(
+        validateLoan(type: LoanType.debt, days: 366, hours: 0),
+        contains('أقصى تمديد في المرة الواحدة سنة'),
+      );
       expect(validateLoan(type: LoanType.debt, days: 367, hours: 0), isNotNull);
       expect(validateLoan(type: LoanType.debt, days: 0, hours: 0), isNotNull);
     });
@@ -239,7 +244,12 @@ void main() {
       expect(dir(30, 20), PlanDirection.lower);
       expect(dir(30, 40), PlanDirection.higher);
       expect(dir(30, 30), PlanDirection.neutral);
-      expect(dir(0, 40), PlanDirection.neutral);
+      // fix3 (f04 M2) — the server rule: a free plan is rate 0, so
+      // free → paid is «higher» and paid → free «lower» (was «neutral»,
+      // which offered only «تغيير العرض فقط» and the server refused it).
+      expect(dir(0, 40), PlanDirection.higher);
+      expect(dir(40, 0), PlanDirection.lower);
+      expect(dir(0, 0), PlanDirection.neutral);
       expect(dir(30, 40, nextId: 3), PlanDirection.neutral);
       expect(dir(30, 40, nextId: null), PlanDirection.neutral);
     });
@@ -459,6 +469,39 @@ void main() {
     // money actions carry an Idempotency-Key
     expect(repo.calls['extend_key'], isA<String>());
     expect(outcome?.message, contains('ينتهي'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('appfinal: extend dialog shows the one-year cap and refuses 366 d',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final repo = _FakeRepo();
+    final c = SubscriberActionsContext.fromJson(_contextJson());
+    await tester.pumpWidget(
+      _host(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showActionDialog(context, ExtendDialog(c: c)),
+            child: const Text('open'),
+          ),
+        ),
+        overrides: [
+          subscriberActionsRepositoryProvider.overrideWithValue(repo),
+        ],
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining(kExtendCapHint, findRichText: true),
+        findsOneWidget,);
+    await tester.enterText(find.byType(TextField).first, '366');
+    await tester.pumpAndSettle();
+    expect(find.textContaining('أقصى تمديد في المرة الواحدة سنة'), findsWidgets);
+    await tester.tap(find.text('إضافة').last);
+    await tester.pumpAndSettle();
+    expect(repo.calls['extend'], isNull, reason: 'never sent');
     expect(tester.takeException(), isNull);
   });
 }

@@ -1,9 +1,13 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 import 'package:hoberadius_app/core/format/input_rules.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -24,6 +28,13 @@ class CardUsersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final usersAsync = ref.watch(cardUsersPageProvider);
     final packagesAsync = ref.watch(cardMarketplacePackagesProvider);
+    final perms = ref.watch(permissionsProvider);
+    final userDenied = perms.canAction('storeuser.create')
+        ? null
+        : perms.deniedReason(action: 'storeuser.create');
+    final packageDenied = perms.can('store.package_add')
+        ? null
+        : perms.deniedReason(perm: 'store.package_add');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -49,12 +60,18 @@ class CardUsersScreen extends ConsumerWidget {
               icon: Icons.person_add_alt_1_outlined,
               label: 'مستخدم جديد',
               primary: true,
-              onPressed: () => _showCreateUserDialog(context, ref),
+              onPressed: userDenied != null
+                  ? null
+                  : () => _showCreateUserDialog(context, ref),
+              tooltip: userDenied,
             ),
             ActionItem(
               icon: Icons.sell_outlined,
               label: 'باقة جديدة',
-              onPressed: () => _showCreatePackageDialog(context, ref),
+              onPressed: packageDenied != null
+                  ? null
+                  : () => _showCreatePackageDialog(context, ref),
+              tooltip: packageDenied,
             ),
           ],
         ),
@@ -261,12 +278,12 @@ class _UserCard extends StatelessWidget {
                   InfoItem(
                     icon: Icons.credit_card_outlined,
                     label: 'الكروت',
-                    value: '${user.ownedCardsCount} كرت',
+                    value: arCount(user.ownedCardsCount, arVoucherCard, showOne: true),
                   ),
                   InfoItem(
                     icon: Icons.shopping_bag_outlined,
                     label: 'المشتريات',
-                    value: '${user.purchaseCount} عملية',
+                    value: arCount(user.purchaseCount, arOperation, showOne: true),
                   ),
                 ],
               ),
@@ -417,17 +434,28 @@ Future<void> _showCreatePackageDialog(
       builder: (dialogContext, setState) {
         Future<void> submit() async {
           if (name.text.trim().isEmpty) return;
+          final problem = marketplacePackageNumberError(
+            planId: planId.text,
+            price: price.text,
+            duration: duration.text,
+            down: down.text,
+            up: up.text,
+          );
+          if (problem != null) {
+            ScaffoldMessenger.of(dialogContext)
+                .showSnackBar(SnackBar(content: Text(problem)));
+            return;
+          }
           setState(() => busy = true);
           try {
             await ref.read(cardUsersRepositoryProvider).createPackage(
                   name: name.text.trim(),
-                  planId: int.tryParse(planId.text.trim()),
-                  price:
-                      num.tryParse(price.text.trim().replaceAll(',', '.')) ?? 0,
+                  planId: parseIntInput(planId.text),
+                  price: parseNumberInput(price.text) ?? 0,
                   currency: currency,
-                  durationMinutes: int.tryParse(duration.text.trim()) ?? 0,
-                  speedDownKbps: int.tryParse(down.text.trim()) ?? 0,
-                  speedUpKbps: int.tryParse(up.text.trim()) ?? 0,
+                  durationMinutes: parseIntInput(duration.text) ?? 0,
+                  speedDownKbps: parseIntInput(down.text) ?? 0,
+                  speedUpKbps: parseIntInput(up.text) ?? 0,
                 );
             ref.invalidate(cardMarketplacePackagesProvider);
             if (dialogContext.mounted) Navigator.pop(dialogContext);
@@ -625,4 +653,31 @@ Future<void> _showCreateUserDialog(BuildContext context, WidgetRef ref) async {
       },
     ),
   );
+}
+
+/// The marketplace-package dialog's numbers, strict (Arabic-Indic digits and
+/// «٫» accepted; «-», «e», «,» or text refused — they were read as 0).
+String? marketplacePackageNumberError({
+  required String planId,
+  required String price,
+  required String duration,
+  required String down,
+  required String up,
+}) {
+  for (final (label, text, decimal, max) in [
+    ('رقم الباقة', planId, false, null),
+    ('السعر', price, true, kMaxMoneyAmount),
+    ('المدة', duration, false, null),
+    ('التنزيل', down, false, null),
+    ('الرفع', up, false, null),
+  ]) {
+    final err = validateNumberInput(
+      text,
+      required: false,
+      decimal: decimal,
+      max: max,
+    );
+    if (err != null) return '$label: $err';
+  }
+  return null;
 }

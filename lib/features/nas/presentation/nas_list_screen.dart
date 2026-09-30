@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -43,8 +46,11 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
           backgroundColor: color,
           content: Text(
             r.ok
-                ? 'نجح: ${r.ip}:${r.port} في ${r.ms} ms'
-                : '${r.status}: ${r.message}',
+                ? 'نجح: ${ltrIsolate('${r.ip}:${r.port}')} في ${r.ms} مللي ثانية'
+                : visibleErrorMessage(
+                    r.message,
+                    fallback: 'فشل اختبار الاتصال بالجهاز.',
+                  ),
           ),
         ),
       );
@@ -61,6 +67,7 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(nasListProvider);
+    final newDenied = routeDenial(ref.watch(permissionsProvider), '/nas/new');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -84,9 +91,12 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
               primary: true,
               // blocked at the provider's NAS cap (the limit banner below
               // explains why) — same rule the guarded create button applied.
-              onPressed: (ref.watch(grantLimitProvider('nas'))?.atCap ?? false)
-                  ? null
-                  : () => context.goNamed('nas-new'),
+              onPressed:
+                  ((ref.watch(grantLimitProvider('nas'))?.atCap ?? false) ||
+                          newDenied != null)
+                      ? null
+                      : () => context.goNamed('nas-new'),
+              tooltip: newDenied,
             ),
           ],
         ),
@@ -113,11 +123,13 @@ class _NasListScreenState extends ConsumerState<NasListScreen> {
                 icon: Icons.router_outlined,
                 title: 'لا توجد أجهزة بعد',
                 subtitle: 'سجّل أول راوتر/AP للبدء بالعمليات.',
-                action: ElevatedButton.icon(
-                  onPressed: () => context.goNamed('nas-new'),
-                  icon: const Icon(Icons.add),
-                  label: const Text('جهاز جديد'),
-                ),
+                action: newDenied != null
+                    ? null
+                    : ElevatedButton.icon(
+                        onPressed: () => context.goNamed('nas-new'),
+                        icon: const Icon(Icons.add),
+                        label: const Text('جهاز جديد'),
+                      ),
               );
             }
             return AppCard(
@@ -165,7 +177,7 @@ class _NasTable extends StatelessWidget {
 
 /// One device: name + a single status pill on line 1, «IP · vendor» on
 /// line 2, a short «فحص» time on line 3, and the test button at the end.
-class _NasRow extends StatelessWidget {
+class _NasRow extends ConsumerWidget {
   const _NasRow({
     required this.device,
     required this.testing,
@@ -176,8 +188,12 @@ class _NasRow extends StatelessWidget {
   final VoidCallback onTest;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final d = device;
+    // The row opens the edit form — only when nas.edit (and the network
+    // section) would accept its save.
+    final canEdit =
+        routeAllowed(ref.watch(permissionsProvider), '/nas/${d.id ?? 0}');
     final p = AppPalette.of(context);
     final df = DateFormat('MM-dd HH:mm');
     final pulseOk = d.lastCheckStatus == 'reachable' && d.enabled;
@@ -186,7 +202,7 @@ class _NasRow extends StatelessWidget {
         : ('معطّل', PillTone.neutral);
     const muted = TextStyle(color: AppTokens.textMuted, fontSize: 12.5);
     return InkWell(
-      onTap: d.id == null
+      onTap: d.id == null || !canEdit
           ? null
           : () =>
               context.goNamed('nas-edit', pathParameters: {'id': '${d.id}'}),
@@ -232,7 +248,7 @@ class _NasRow extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          d.name.isEmpty ? d.address : d.name,
+                          d.name.isEmpty ? ltrIsolate(d.address) : d.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -247,7 +263,9 @@ class _NasRow extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${d.address} · ${_nasVendorLabel(d.vendor)}',
+                    // IPs stay one LTR run: «::ffff:192.0.2.171» rendered
+                    // as «ffff:192.0.2.171::» in RTL (R07 N10).
+                    '${ltrIsolate(d.address)} · ${_nasVendorLabel(d.vendor)}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: muted,

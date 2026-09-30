@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../application/card_batch_edit_provider.dart';
@@ -126,36 +127,34 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
       _error = null;
     });
     try {
-      final updated = await ref
-          .read(cardsRepositoryProvider)
-          .updateBatch(
+      final updated = await ref.read(cardsRepositoryProvider).updateBatch(
             widget.batchId,
             UpdateBatchRequest(
-              planId: int.parse(_plan.text.trim()),
-              count: int.parse(_count.text.trim()),
+              planId: parseIntInput(_plan.text)!,
+              count: parseIntInput(_count.text)!,
               packageName: _packageName.text.trim(),
               status: _status,
-              pricePerCard: num.tryParse(_pricePerCard.text.trim()) ?? 0,
-              priceBulk: num.tryParse(_priceBulk.text.trim()) ?? 0,
-              totalPrice: num.tryParse(_totalPrice.text.trim()) ?? 0,
-              totalQuotaMb: int.tryParse(_totalQuota.text.trim()) ?? 0,
+              pricePerCard: parseNumberInput(_pricePerCard.text) ?? 0,
+              priceBulk: parseNumberInput(_priceBulk.text) ?? 0,
+              totalPrice: parseNumberInput(_totalPrice.text) ?? 0,
+              totalQuotaMb: parseIntInput(_totalQuota.text) ?? 0,
               serviceName: _serviceName.text.trim(),
-              managerId: int.tryParse(_managerId.text.trim()) ?? 0,
+              managerId: parseIntInput(_managerId.text) ?? 0,
               usernamePrefix: _prefix.text.trim(),
               usernameSuffix: _suffix.text.trim(),
-              usernameLength: int.tryParse(_ulen.text.trim()) ?? 8,
-              passwordLength: int.tryParse(_plen.text.trim()) ?? 6,
+              usernameLength: parseIntInput(_ulen.text) ?? 8,
+              passwordLength: parseIntInput(_plen.text) ?? 6,
               passwordGenerationType: _passwordType,
               includeBatchNumber: _includeBatchNumber,
               startsWithOrEndsWith: _affixMode,
               prefixOrSuffixValue: _affixMode == 'suffix'
                   ? _suffix.text.trim()
                   : _affixMode == 'prefix'
-                  ? _prefix.text.trim()
-                  : '',
-              timeValue: int.tryParse(_timeVal.text.trim()) ?? 0,
+                      ? _prefix.text.trim()
+                      : '',
+              timeValue: parseIntInput(_timeVal.text) ?? 0,
               timeUnit: _timeUnit,
-              deviceCount: int.tryParse(_devices.text.trim()) ?? 1,
+              deviceCount: parseIntInput(_devices.text) ?? 1,
               durationMode: _durationMode,
               countBySeconds: _countBySeconds,
               countFromFirstConnect: _countFromFirstConnect,

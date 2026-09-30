@@ -1,8 +1,11 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/format/money_limits.dart';
+import '../../../core/format/number_input.dart';
 import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../features/admin_control/application/admin_control_providers.dart';
@@ -206,35 +209,60 @@ class _WalletSummary extends StatelessWidget {
     final balanceText = balancesByCurrency.entries
         .map((entry) => amountWithCurrency(_money(entry.value), entry.key))
         .join(' / ');
+    final cards = [
+      _SummaryCard(
+        icon: Icons.account_balance_wallet_outlined,
+        title: 'عدد المحافظ',
+        value: '$count',
+        tone: PillTone.brand,
+      ),
+      _SummaryCard(
+        icon: Icons.check_circle_outline,
+        title: 'محافظ نشطة',
+        value: '$active',
+        tone: PillTone.green,
+      ),
+    ];
+    // The balances line lists one amount per currency; in a third of a
+    // 360 px grid it was cut to «…300 شيك…» (R11 L-5). It gets a full-width
+    // row on phones and may wrap instead of being ellipsised.
+    final balances = _SummaryCard(
+      icon: Icons.summarize_outlined,
+      title: 'الأرصدة المعروضة',
+      value: balanceText.isEmpty ? '0.00' : balanceText,
+      tone: PillTone.blue,
+      wrapValue: true,
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth < 720 ? 2 : 3;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppTokens.s8,
-          crossAxisSpacing: AppTokens.s8,
-          childAspectRatio: constraints.maxWidth < 720 ? 2.35 : 3,
+        if (constraints.maxWidth >= 720) {
+          return IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final card in [...cards, balances]) ...[
+                  if (card != cards.first) const SizedBox(width: AppTokens.s8),
+                  Expanded(child: card),
+                ],
+              ],
+            ),
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _SummaryCard(
-              icon: Icons.account_balance_wallet_outlined,
-              title: 'عدد المحافظ',
-              value: '$count',
-              tone: PillTone.brand,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: cards[0]),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(child: cards[1]),
+                ],
+              ),
             ),
-            _SummaryCard(
-              icon: Icons.check_circle_outline,
-              title: 'محافظ نشطة',
-              value: '$active',
-              tone: PillTone.green,
-            ),
-            _SummaryCard(
-              icon: Icons.summarize_outlined,
-              title: 'الأرصدة المعروضة',
-              value: balanceText.isEmpty ? '0.00' : balanceText,
-              tone: PillTone.blue,
-            ),
+            const SizedBox(height: AppTokens.s8),
+            balances,
           ],
         );
       },
@@ -248,12 +276,16 @@ class _SummaryCard extends StatelessWidget {
     required this.title,
     required this.value,
     required this.tone,
+    this.wrapValue = false,
   });
 
   final IconData icon;
   final String title;
   final String value;
   final PillTone tone;
+
+  /// Let the value take several lines instead of being cut with «…».
+  final bool wrapValue;
 
   @override
   Widget build(BuildContext context) {
@@ -278,8 +310,8 @@ class _SummaryCard extends StatelessWidget {
                 ),
                 Text(
                   value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: wrapValue ? null : 1,
+                  overflow: wrapValue ? null : TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTokens.sidebarBg,
                     fontSize: 16,
@@ -637,75 +669,79 @@ Future<WalletCreateDraft?> _walletDialog(
   final currency = tenantCurrency;
   final result = await showDialog<WalletCreateDraft>(
     context: context,
-    builder: (_) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: const Text('محفظة جديدة'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _SelectField(
-                label: 'نوع المالك',
-                value: ownerType,
-                options: _ownerTypeOptions.where(
-                  (option) => option.value.isNotEmpty,
+    builder: (_) => _OwnedControllers(
+      controllers: [ownerId],
+      child: StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('محفظة جديدة'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SelectField(
+                  label: 'نوع المالك',
+                  value: ownerType,
+                  options: _ownerTypeOptions.where(
+                    (option) => option.value.isNotEmpty,
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      ownerType = value ?? 'company';
+                      if (ownerType == 'company') ownerId.clear();
+                    });
+                  },
                 ),
-                onChanged: (value) {
-                  setState(() {
-                    ownerType = value ?? 'company';
-                    if (ownerType == 'company') ownerId.clear();
-                  });
-                },
-              ),
-              const SizedBox(height: AppTokens.s12),
-              TextFormField(
-                controller: ownerId,
-                enabled: ownerType != 'company',
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'رقم المالك',
-                  helperText: 'مطلوب للمشترك أو الموزع أو مستخدم الكروت.',
+                const SizedBox(height: AppTokens.s12),
+                TextFormField(
+                  controller: ownerId,
+                  enabled: ownerType != 'company',
+                  keyboardType: integerKeyboard,
+                  inputFormatters: numberFieldFormatters,
+                  decoration: const InputDecoration(
+                    labelText: 'رقم المالك',
+                    helperText: 'مطلوب للمشترك أو الموزع أو مستخدم الكروت.',
+                  ),
+                  validator: (value) {
+                    if (ownerType == 'company') return null;
+                    return validateNumberInput(
+                      value,
+                      decimal: false,
+                      min: 1,
+                      emptyMessage: 'أدخل رقم المالك',
+                    );
+                  },
                 ),
-                validator: (value) {
-                  if (ownerType == 'company') return null;
-                  final parsed = int.tryParse(value?.trim() ?? '');
-                  if (parsed == null || parsed <= 0) {
-                    return 'أدخل رقم المالك';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: AppTokens.s12),
-              CurrencyField(currency: currency),
-            ],
+                const SizedBox(height: AppTokens.s12),
+                CurrencyField(currency: currency),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(
+                  context,
+                  WalletCreateDraft(
+                    ownerType: ownerType,
+                    ownerId: parseIntInput(ownerId.text),
+                    currency: currency,
+                  ),
+                );
+              },
+              child: const Text('إنشاء'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              Navigator.pop(
-                context,
-                WalletCreateDraft(
-                  ownerType: ownerType,
-                  ownerId: int.tryParse(ownerId.text.trim()),
-                  currency: currency,
-                ),
-              );
-            },
-            child: const Text('إنشاء'),
-          ),
-        ],
       ),
     ),
   );
-  ownerId.dispose();
   return result;
 }
 
@@ -720,86 +756,123 @@ Future<WalletChangeDraft?> _walletChangeDialog(
   var referenceType = 'manual';
   final result = await showDialog<WalletChangeDraft>(
     context: context,
-    builder: (_) => StatefulBuilder(
-      builder: (context, setState) => AlertDialog(
-        title: Text(credit ? 'شحن محفظة' : 'خصم من محفظة'),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: amount,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'المبلغ'),
-                  validator: (value) {
-                    final parsed = double.tryParse(
-                      (value ?? '').replaceAll(',', '.'),
-                    );
-                    if (parsed == null || parsed <= 0) {
-                      return 'أدخل مبلغًا موجبًا';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: AppTokens.s12),
-                _SelectField(
-                  label: 'نوع المرجع',
-                  value: referenceType,
-                  options: _referenceTypeOptions,
-                  onChanged: (value) =>
-                      setState(() => referenceType = value ?? 'manual'),
-                ),
-                const SizedBox(height: AppTokens.s12),
-                TextFormField(
-                  controller: referenceId,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'رقم المرجع',
-                    helperText: 'اختياري إذا كان التسجيل يدويًا فقط.',
+    builder: (_) => _OwnedControllers(
+      controllers: [amount, referenceId, notes],
+      child: StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(credit ? 'شحن محفظة' : 'خصم من محفظة'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextFormField(
+                    controller: amount,
+                    keyboardType: decimalKeyboard,
+                    // Strict: «,», «-», «e» and letters are refused with a
+                    // message, never rewritten («1,5» used to become 1.5).
+                    inputFormatters: numberFieldFormatters,
+                    decoration: const InputDecoration(labelText: 'المبلغ'),
+                    validator: (value) => validateNumberInput(
+                      value,
+                      min: 0,
+                      minExclusive: true,
+                      max: kMaxMoneyAmount,
+                      emptyMessage: 'أدخل مبلغًا موجبًا',
+                      maxMessage:
+                          'المبلغ كبير جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.',
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppTokens.s12),
-                TextFormField(
-                  controller: notes,
-                  minLines: 2,
-                  maxLines: 4,
-                  decoration: const InputDecoration(labelText: 'ملاحظات'),
-                ),
-              ],
+                  const SizedBox(height: AppTokens.s12),
+                  _SelectField(
+                    label: 'نوع المرجع',
+                    value: referenceType,
+                    options: _referenceTypeOptions,
+                    onChanged: (value) =>
+                        setState(() => referenceType = value ?? 'manual'),
+                  ),
+                  const SizedBox(height: AppTokens.s12),
+                  TextFormField(
+                    controller: referenceId,
+                    keyboardType: integerKeyboard,
+                    inputFormatters: numberFieldFormatters,
+                    validator: (value) => validateNumberInput(
+                      value,
+                      required: false,
+                      decimal: false,
+                      min: 1,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'رقم المرجع',
+                      helperText: 'اختياري إذا كان التسجيل يدويًا فقط.',
+                    ),
+                  ),
+                  const SizedBox(height: AppTokens.s12),
+                  TextFormField(
+                    controller: notes,
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(labelText: 'ملاحظات'),
+                  ),
+                ],
+              ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(
+                  context,
+                  WalletChangeDraft(
+                    amount: parseDecimalInput(amount.text)!,
+                    referenceType: referenceType,
+                    referenceId: parseIntInput(referenceId.text),
+                    notes: notes.text.trim(),
+                  ),
+                );
+              },
+              child: Text(credit ? 'شحن' : 'خصم'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (!formKey.currentState!.validate()) return;
-              Navigator.pop(
-                context,
-                WalletChangeDraft(
-                  amount: double.parse(amount.text.trim().replaceAll(',', '.')),
-                  referenceType: referenceType,
-                  referenceId: int.tryParse(referenceId.text.trim()),
-                  notes: notes.text.trim(),
-                ),
-              );
-            },
-            child: Text(credit ? 'شحن' : 'خصم'),
-          ),
-        ],
       ),
     ),
   );
-  amount.dispose();
-  referenceId.dispose();
-  notes.dispose();
   return result;
+}
+
+/// Disposes the dialog's controllers when the dialog is really gone. They
+/// were disposed as soon as `showDialog` returned, while the closing
+/// animation still rebuilt the fields («TextEditingController was used
+/// after being disposed»).
+class _OwnedControllers extends StatefulWidget {
+  const _OwnedControllers({required this.controllers, required this.child});
+
+  final List<TextEditingController> controllers;
+  final Widget child;
+
+  @override
+  State<_OwnedControllers> createState() => _OwnedControllersState();
+}
+
+class _OwnedControllersState extends State<_OwnedControllers> {
+  @override
+  void dispose() {
+    for (final c in widget.controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _SelectField extends StatelessWidget {
@@ -843,9 +916,7 @@ PillTone _statusTone(String status) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

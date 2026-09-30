@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 class HotspotPortalUser {
@@ -134,7 +135,7 @@ class HotspotPortalCard {
   final bool revoked;
 
   bool get expired =>
-      expiresAt != null && expiresAt!.isBefore(DateTime.now().toUtc());
+      expiresAt != null && expiresAt!.isBefore(panelNow());
 
   String get statusLabel {
     if (revoked) return 'ملغاة';

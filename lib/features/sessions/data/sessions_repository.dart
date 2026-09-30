@@ -305,6 +305,33 @@ final onlineSessionsProvider = AsyncNotifierProvider.autoDispose
   OnlineSessionsController.new,
 );
 
+/// The whole network's online counters, whatever tab / search is on.
+class OnlineTotals {
+  const OnlineTotals({
+    required this.total,
+    required this.subscribers,
+    required this.cards,
+  });
+  final int total;
+  final int subscribers;
+  final int cards;
+}
+
+/// One unfiltered `/sessions/online?limit=1` read: `total` + `types`.
+final onlineTotalsProvider =
+    FutureProvider.autoDispose<OnlineTotals>((ref) async {
+  final page =
+      await ref.watch(sessionsRepositoryProvider).listOnlinePage(limit: 1);
+  final types = page.typeCounts ?? const <String, int>{};
+  final subs = types['subscriber'] ?? 0;
+  final cards = types['card'] ?? 0;
+  return OnlineTotals(
+    total: page.total ?? (subs + cards),
+    subscribers: subs,
+    cards: cards,
+  );
+});
+
 final accountingHistoryProvider =
     FutureProvider.autoDispose<List<AccountingSessionHistory>>((ref) {
   return ref.watch(sessionsRepositoryProvider).listHistory();

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
+import '../../../../core/format/number_input.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/status_pill.dart';
 
@@ -168,7 +168,16 @@ class ActionDialogFrame extends StatelessWidget {
               if (error != null && error!.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                  child: ActionNote(text: error!, tone: PillTone.red),
+                  // A live region: screen readers announce the server's
+                  // message (r01 N14 — the rename error was silent).
+                  child: Semantics(
+                    container: true,
+                    liveRegion: true,
+                    label: 'خطأ: ${error!}',
+                    child: ExcludeSemantics(
+                      child: ActionNote(text: error!, tone: PillTone.red),
+                    ),
+                  ),
                 ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
@@ -472,13 +481,15 @@ class ReadOnlyValue extends StatelessWidget {
   }
 }
 
-/// Digits (Latin or Arabic-Indic) + one decimal separator.
-final numberInputFormatters = <TextInputFormatter>[
-  FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩۰-۹\.,٫]')),
-];
+/// Number fields keep exactly what was typed (the shared rule in
+/// core/format/number_input.dart): no character is stripped — «1e9» or «-5»
+/// show an error instead of silently becoming 19 / 5.
+final numberInputFormatters = numberFieldFormatters;
 
-final intInputFormatters = <TextInputFormatter>[
-  FilteringTextInputFormatter.allow(RegExp(r'[0-9٠-٩۰-۹]')),
-];
+final intInputFormatters = numberFieldFormatters;
+
+/// Arabic error for a typed number field (null when empty or valid).
+String? numberFieldError(String text, {bool decimal = true}) =>
+    readNumberInput(text, decimal: decimal).error;
 
 const actionFieldDecoration = InputDecoration(isDense: true);

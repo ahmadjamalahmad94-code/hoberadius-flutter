@@ -1,8 +1,10 @@
+import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../features/admin_control/application/admin_control_providers.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -48,7 +50,15 @@ class TicketsListScreen extends ConsumerWidget {
               icon: Icons.add_comment_outlined,
               label: 'تذكرة جديدة',
               primary: true,
-              onPressed: () => _showCreateTicketDialog(context, ref),
+              // web tk_create = settings.edit
+              onPressed: ref.watch(permissionsProvider).can('settings.edit')
+                  ? () => _showCreateTicketDialog(context, ref)
+                  : null,
+              tooltip: ref.watch(permissionsProvider).can('settings.edit')
+                  ? null
+                  : ref
+                      .watch(permissionsProvider)
+                      .deniedReason(perm: 'settings.edit'),
             ),
             ActionItem(
               icon: Icons.playlist_add_check_circle_outlined,
@@ -176,16 +186,14 @@ class _StatusFilterChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (final (value, label) in _options) ...[
-            if (value.isNotEmpty) const SizedBox(width: 6),
-            _chip(value, label),
-          ],
-        ],
-      ),
+    // Wraps onto a second line instead of scrolling: at 390 px «محلولة» and
+    // «مغلقة» sat off-screen with no hint that the row scrolls (R09 N13).
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final (value, label) in _options) _chip(value, label),
+      ],
     );
   }
 
@@ -413,12 +421,11 @@ Future<void> _showServiceRequestDialog(
 
           double? paymentAmount;
           if (createPayment) {
-            paymentAmount = double.tryParse(
-              amount.text.trim().replaceAll(',', '.'),
-            );
-            if (paymentAmount == null || paymentAmount <= 0) {
+            final money = readMoneyInput(amount.text);
+            paymentAmount = money.value;
+            if (paymentAmount == null) {
               ScaffoldMessenger.of(dialogContext).showSnackBar(
-                const SnackBar(content: Text('أدخل مبلغ دفع صحيح')),
+                SnackBar(content: Text(money.error!)),
               );
               return;
             }
@@ -558,8 +565,10 @@ Future<void> _showServiceRequestDialog(
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration:
-                                const InputDecoration(labelText: 'المبلغ'),
+                            decoration: InputDecoration(
+                              labelText: 'المبلغ',
+                              helperText: kMaxMoneyHelper,
+                            ),
                           ),
                         ),
                         const SizedBox(width: AppTokens.s8),

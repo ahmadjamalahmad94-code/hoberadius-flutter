@@ -2,7 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/auth/auth_controller.dart';
+import '../../core/auth/permissions.dart';
+import '../../core/auth/route_permissions.dart';
 import '../provider_grants/application/nav_visibility.dart';
+import 'navigation_schema.dart';
 
 /// Sections shown only when the network actually uses them — on top of the
 /// licence (provider-grant) gate. An optional feature the network never set
@@ -17,6 +20,11 @@ const kUsageGatedSectionIds = {'electronic-cards'};
 final eCardsInUseProvider = FutureProvider.autoDispose<bool>((ref) async {
   // Re-evaluate after a login/server switch (a different network).
   ref.watch(authControllerProvider.select((s) => s.admin?.id));
+  // No store permission: the three reads would only answer 403 — never
+  // call an endpoint known to refuse (and the section is hidden anyway).
+  if (!ref.watch(permissionsProvider.select((p) => p.can('store.view')))) {
+    return false;
+  }
   final api = ref.watch(apiClientProvider);
   try {
     final r = await Future.wait([
@@ -57,12 +65,77 @@ bool eCardsUsageFromResponses(
 /// Licence-gated sections minus usage-gated ones the network doesn't use.
 /// While usage is still loading those sections stay hidden (most networks
 /// don't use them, so this avoids an empty section flashing in and out).
+///
+/// Then the admin's permissions: an item whose screen the admin may not
+/// open (RBAC key, hidden manager section, owner-only, distributor login)
+/// is dropped, and a section left empty disappears.
 final visibleNavSectionsProvider =
     Provider.autoDispose<List<GatedNavSection>>((ref) {
   final sections = ref.watch(gatedNavSectionsProvider);
   final inUse = ref.watch(eCardsInUseProvider).valueOrNull ?? false;
-  return [
-    for (final s in sections)
-      if (!kUsageGatedSectionIds.contains(s.section.id) || inUse) s,
-  ];
+  final perms = ref.watch(permissionsProvider);
+  return filterNavSectionsByPermissions(
+    [
+      for (final s in sections)
+        if (!kUsageGatedSectionIds.contains(s.section.id) || inUse) s,
+    ],
+    perms,
+  );
+});
+
+/// Pure permission filter of the gated sections (kept separate for tests).
+List<GatedNavSection> filterNavSectionsByPermissions(
+  List<GatedNavSection> sections,
+  AppPermissions perms,
+) {
+  final out = <GatedNavSection>[];
+  for (final s in sections) {
+    final items = [
+      for (final i in s.items)
+        if (routeAllowed(perms, i.item.path)) _forDistributor(i, perms),
+    ];
+    if (items.isNotEmpty) {
+      out.add(GatedNavSection(section: s.section, items: items));
+    }
+  }
+  return out;
+}
+
+/// A distributor login's «الموزعون» entry opens its OWN page (the router
+/// rewrites `/distributors` to `/distributors/<id>`): label it so.
+GatedNavItem _forDistributor(GatedNavItem i, AppPermissions perms) {
+  if (!perms.isDistributor ||
+      perms.distributorId == null ||
+      i.item.path != '/distributors') {
+    return i;
+  }
+  final name = perms.distributorName;
+  return GatedNavItem(
+    requiresUpgrade: i.requiresUpgrade,
+    item: AppNavItem(
+      icon: i.item.icon,
+      label: kDistributorOwnPageLabel,
+      routeName: i.item.routeName,
+      path: i.item.path,
+      description: name.isEmpty
+          ? 'حزمك ومبيعاتك وتسوياتك.'
+          : 'صفحة «$name»: حزمك ومبيعاتك وتسوياتك.',
+    ),
+  );
+}
+
+/// Menu label of a distributor login's own page.
+const kDistributorOwnPageLabel = 'صفحتي كموزّع';
+
+/// Bottom tabs the admin may open (dashboard and «المزيد» always stay).
+List<AppNavItem> mobileDestinationsFor(AppPermissions perms) => [
+      for (final d in mobileNavDestinations)
+        if (d == dashboardNavItem ||
+            d == moreNavItem ||
+            routeAllowed(perms, d.path))
+          d,
+    ];
+
+final visibleMobileDestinationsProvider = Provider<List<AppNavItem>>((ref) {
+  return mobileDestinationsFor(ref.watch(permissionsProvider));
 });

@@ -188,5 +188,46 @@ void main() {
     expect(metrics.hasTopPlan, isFalse);
     expect(metrics.dbOk, isNull);
     expect(metrics.radiusOk, isNull);
+    // fix3: an older server that never sends `sales_today` hides the tile.
+    expect(metrics.salesToday, isNull);
+  });
+
+  test('DashboardMetrics parses sales_today with money visible', () {
+    final metrics = DashboardMetrics.fromJson({
+      'sales_today': {
+        'date': '2026-09-30',
+        'cards_count': 100,
+        'money_visible': true,
+        'by_currency': [
+          {'currency': 'ils', 'total': 200.0},
+        ],
+      },
+    });
+
+    final sales = metrics.salesToday;
+    expect(sales, isNotNull);
+    expect(sales!.date, '2026-09-30');
+    expect(sales.cardsCount, 100);
+    expect(sales.moneyVisible, isTrue);
+    expect(sales.byCurrency, hasLength(1));
+    expect(sales.byCurrency.single.currency, 'ILS');
+    expect(sales.byCurrency.single.amount, 200.0);
+  });
+
+  test('DashboardMetrics parses sales_today without finance permission '
+      '(count only)', () {
+    final metrics = DashboardMetrics.fromJson({
+      'sales_today': {
+        'date': '2026-09-30',
+        'cards_count': 5,
+        'money_visible': false,
+      },
+    });
+
+    final sales = metrics.salesToday;
+    expect(sales, isNotNull);
+    expect(sales!.cardsCount, 5);
+    expect(sales.moneyVisible, isFalse);
+    expect(sales.byCurrency, isEmpty);
   });
 }

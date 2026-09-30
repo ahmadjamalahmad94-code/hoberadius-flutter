@@ -1,3 +1,6 @@
+import 'package:hoberadius_app/core/format/currency.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 import 'subscriber_model.dart';
@@ -32,6 +35,7 @@ class ActionPlan {
     required this.name,
     required this.price,
     required this.minutes,
+    this.ratePerMinute,
   });
 
   final int? id;
@@ -41,6 +45,10 @@ class ActionPlan {
   /// Plan period in minutes (30 days = 43200).
   final int minutes;
 
+  /// `rate_per_minute` of updated servers: the change-plan direction is
+  /// decided per minute, never by the total price.
+  final double? ratePerMinute;
+
   static ActionPlan? fromJson(Object? raw) {
     if (raw is! Map) return null;
     return ActionPlan(
@@ -48,9 +56,14 @@ class ActionPlan {
       name: (raw['name'] ?? '').toString(),
       price: _double(raw['price']),
       minutes: _intOrNull(raw['minutes']) ?? 0,
+      ratePerMinute: _doubleOrNull(raw['rate_per_minute']),
     );
   }
 }
+
+/// Price per minute of a plan (price ÷ period) — null when unknown.
+double? planRatePerMinute(double price, int minutes) =>
+    price > 0 && minutes > 0 ? price / minutes : null;
 
 class OpenLoan {
   const OpenLoan({
@@ -163,8 +176,11 @@ class SubscriberActionsContext {
     this.debt = 0,
     this.openLoans = const [],
     this.hasQuota = false,
+    this.dailyResetAvailable,
     this.dailyQuotaMb,
     this.usedTodayMb,
+    this.quotaWindows = const [],
+    this.quotaUsage = const [],
     this.onlineSessions = 0,
     this.smsEnabled = true,
     this.whatsappEnabled = false,
@@ -191,7 +207,20 @@ class SubscriberActionsContext {
   final List<OpenLoan> openLoans;
   final bool hasQuota;
   final double? dailyQuotaMb;
+
+  /// `quota.daily_reset_available` (fix3 servers): false = the subscriber
+  /// has no daily quota nor daily time cap, and the server refuses a reset
+  /// (422) — «استعادة الكوتة اليومية» is hidden. Null on older servers.
+  final bool? dailyResetAvailable;
   final double? usedTodayMb;
+
+  /// Where a top-up can go on this subscriber (updated servers:
+  /// `quota.quota_mb`, `quota.monthly`, `quota.daily`): `total`, `monthly`,
+  /// `daily`. Empty on older servers (the server decides).
+  final List<String> quotaWindows;
+
+  /// Caps and usage per window, ready to show («اليوم: 150 / 200 MB»).
+  final List<String> quotaUsage;
   final int onlineSessions;
   final bool smsEnabled;
   final bool whatsappEnabled;
@@ -237,8 +266,13 @@ class SubscriberActionsContext {
           .map((m) => OpenLoan.fromJson(Map<String, dynamic>.from(m)))
           .toList(),
       hasQuota: quota['has_quota'] == true,
+      dailyResetAvailable: quota['daily_reset_available'] is bool
+          ? quota['daily_reset_available'] as bool
+          : null,
       dailyQuotaMb: _doubleOrNull(quota['daily_quota_mb']),
       usedTodayMb: _doubleOrNull(quota['used_today_mb']),
+      quotaWindows: quotaWindowsOf(quota),
+      quotaUsage: quotaUsageLines(quota),
       onlineSessions: _intOrNull(j['online_sessions']) ?? 0,
       smsEnabled: channels['sms'] != false,
       whatsappEnabled: channels['whatsapp'] == true,
@@ -295,8 +329,11 @@ class SubscriberActionsContext {
         debt: debt,
         openLoans: openLoans,
         hasQuota: hasQuota,
+        dailyResetAvailable: dailyResetAvailable,
         dailyQuotaMb: dailyQuotaMb,
         usedTodayMb: usedTodayMb,
+        quotaWindows: quotaWindows,
+        quotaUsage: quotaUsage,
         onlineSessions: onlineSessions,
         smsEnabled: smsEnabled,
         whatsappEnabled: whatsappEnabled,
@@ -343,7 +380,122 @@ const kDurationUnits = <(int, String)>[
   (1, 'دقائق'),
 ];
 
+/// The quota windows a top-up may target, read from actions-context
+/// `quota` (fix2 server): a total cap, and/or the plan's monthly / daily
+/// caps (a daily-only plan used to be offered a top-up the server refused).
+List<String> quotaWindowsOf(Map quota) {
+  bool anyCap(Object? w) {
+    if (w is! Map) return false;
+    for (final k in const ['combined', 'download', 'upload', 'cap_mb']) {
+      final v = w[k];
+      final n = v is num ? v : num.tryParse('${v ?? ''}');
+      if (n != null && n > 0) return true;
+    }
+    return false;
+  }
+
+  final out = <String>[];
+  final total = quota['quota_mb'];
+  final t = total is num ? total : num.tryParse('${total ?? ''}');
+  if (t != null && t > 0) out.add('total');
+  if (anyCap(quota['monthly'])) out.add('monthly');
+  if (anyCap(quota['daily'])) out.add('daily');
+  return out;
+}
+
+String _mbText(num mb) {
+  if (mb >= 1024) {
+    final gb = mb / 1024;
+    return '${gb == gb.roundToDouble() ? gb.toStringAsFixed(0) : gb.toStringAsFixed(1)} GB';
+  }
+  return '${mb.round()} MB';
+}
+
+num? _numOf(Object? v) => v is num ? v : num.tryParse('${v ?? ''}');
+
+/// The quota state of actions-context (fix2): total cap + period usage and
+/// this period's top-ups, then the daily / monthly windows per direction.
+/// Each line is LTR-safe Arabic, e.g. «كوتة اليوم: 150 MB من 200 MB».
+List<String> quotaUsageLines(Map quota) {
+  final out = <String>[];
+  final cap = _numOf(quota['quota_mb']);
+  final used = _numOf(quota['used_mb']);
+  if (cap != null && cap > 0) {
+    out.add('الكوتة الإجمالية: '
+        '${used == null ? '' : '${_mbText(used)} من '}${_mbText(cap)}');
+  }
+  final topup = _numOf(quota['period_topup_mb']);
+  if (topup != null && topup > 0) {
+    out.add('إضافات هذه الفترة: ${_mbText(topup)}');
+  }
+  for (final (key, label) in const [('daily', 'كوتة اليوم'), ('monthly', 'كوتة الشهر')]) {
+    final w = quota[key];
+    if (w is! Map) continue;
+    final parts = <String>[];
+    for (final (dir, dirLabel, usedKey) in const [
+      ('combined', 'مجمّعة', 'used_mb'),
+      ('download', 'تنزيل', 'used_download_mb'),
+      ('upload', 'رفع', 'used_upload_mb'),
+    ]) {
+      final c = _numOf(w[dir]);
+      if (c == null || c <= 0) continue;
+      final u = _numOf(w[usedKey]);
+      parts.add('$dirLabel ${u == null ? '' : '${_mbText(u)} من '}${_mbText(c)}');
+    }
+    if (parts.isNotEmpty) out.add('$label: ${parts.join('، ')}');
+  }
+  if (out.isEmpty) {
+    final today = _numOf(quota['used_today_mb']);
+    if (today != null) out.add('المستهلك اليوم: ${_mbText(today)}');
+  }
+  return out;
+}
+
+/// Arabic label of a quota window.
+String quotaWindowLabel(String w) => switch (w) {
+      'total' => 'الكوتة الإجمالية',
+      'monthly' => 'كوتة هذا الشهر',
+      'daily' => 'كوتة اليوم',
+      _ => 'تلقائي (حسب الباقة)',
+    };
+
 enum ExtendMode { duration, exact }
+
+/// Why the extend dialog cannot be confirmed (Arabic), or null.
+///
+/// Caps (`system.limits`): at most [kMaxExtendDays] per operation, a price ≤ the payment cap and no
+/// expiry past [kMaxExpiryYear]; a typed «1e9» / «-5» is an error, never a
+/// silently rewritten number; a paid/debt extension needs a real price.
+String? extendInvalidReason({
+  required ExtendMode mode,
+  required String amountText,
+  required int minutes,
+  required ChargeMode charge,
+  required double price,
+  required bool unpriced,
+  required DateTime anchor,
+}) {
+  if (mode == ExtendMode.duration) {
+    final err = readNumberInput(amountText).error;
+    if (err != null) return err;
+    if (minutes <= 0) return 'أدخل مدّة أكبر من صفر.';
+  }
+  final span = validateExtendSpan(minutes);
+  if (span != null) return span;
+  if (anchor.add(Duration(minutes: minutes)).year > kMaxExpiryYear) {
+    return expiryTooFarMessage;
+  }
+  if (charge != ChargeMode.free) {
+    if (unpriced || price < kMinMoneyAmount) {
+      return 'لا يمكن احتساب قيمة لهذا الوقت (الباقة بلا سعر) — اختر «مجاني».';
+    }
+    if (price > AppLimits.maxSubscriberPayment) {
+      return 'قيمة الوقت كبيرة جدًا — الحدّ الأعلى '
+          '${formatNumberBound(AppLimits.maxSubscriberPayment)}.';
+    }
+  }
+  return null;
+}
 
 /// In «تاريخ وساعة الانتهاء» mode the price still needs a duration: the gap
 /// between the chosen moment and the subscriber's effective end (the later of
@@ -365,28 +517,10 @@ DateTime defaultExactExpiry(DateTime? currentExpire, DateTime now) {
 }
 
 /// Latin-digit number from what the operator typed («١٢٫٥» → 12.5).
-double? parseLocalizedNumber(String raw) {
-  var s = raw.trim();
-  if (s.isEmpty) return null;
-  const arabic = '٠١٢٣٤٥٦٧٨٩';
-  const persian = '۰۱۲۳۴۵۶۷۸۹';
-  final b = StringBuffer();
-  for (final ch in s.split('')) {
-    final a = arabic.indexOf(ch);
-    final p = persian.indexOf(ch);
-    if (a >= 0) {
-      b.write(a);
-    } else if (p >= 0) {
-      b.write(p);
-    } else if (ch == '٫' || ch == ',') {
-      b.write('.');
-    } else {
-      b.write(ch);
-    }
-  }
-  s = b.toString();
-  return double.tryParse(s);
-}
+///
+/// Strict (core/format/number_input.dart): «-5», «1e9», «1,5» or text give
+/// `null` — never a silently rewritten value.
+double? parseLocalizedNumber(String raw) => parseDecimalInput(raw);
 
 /// UTC ISO-8601 with a trailing «Z», no fractions: 2026-09-28T21:00:00Z.
 String toUtcIso(DateTime t) => toServerUtcIso(t);
@@ -448,6 +582,11 @@ String? validateLoan({
   if (type == LoanType.free && minutes > maxFreeHours * 60) {
     return 'السلفة المجانية لا تتجاوز $maxFreeHours ساعة.';
   }
+  // Owner rule first: one operation adds at most a year — with the
+  // owner's exact wording (the dialog used its own «سلفة الدين لا تتجاوز
+  // 365 يومًا.» — f03 N5).
+  final span = validateExtendSpan(minutes);
+  if (span != null) return span;
   if (type == LoanType.debt && minutes > maxDebtDays * 1440) {
     return 'سلفة الدين لا تتجاوز $maxDebtDays يومًا.';
   }
@@ -519,23 +658,50 @@ Map<String, dynamic> paymentPayload({
 
 enum PlanDirection { lower, higher, neutral }
 
-/// Same rule as the web's updatePlanPolicy(): same plan, a missing price on
-/// either side, or equal prices → neutral.
+/// A plan with no duration is priced as a 30-day month on the server
+/// (`users.PLAN_PERIOD_FALLBACK_MINUTES` — same basis as payments, extend
+/// and loans).
+const int kPlanPeriodFallbackMinutes = 43200;
+
+/// The server's `plan_change_direction` on two prices PER MINUTE: a free
+/// plan (rate 0) → any paid plan is «higher» (free → paid used to offer only
+/// «تغيير العرض فقط» and the server refused it — f04 M2), paid → free is
+/// «lower», both free is «neutral»; equal rates (1e-9 relative) are
+/// «neutral».
+PlanDirection planDirectionByRate(double oldRate, double newRate) {
+  final o = oldRate.isFinite && oldRate > 0 ? oldRate : 0.0;
+  final n = newRate.isFinite && newRate > 0 ? newRate : 0.0;
+  if (o <= 0 && n <= 0) return PlanDirection.neutral;
+  if (o <= 0) return PlanDirection.higher;
+  if (n <= 0) return PlanDirection.lower;
+  if ((n - o).abs() <= 1e-9 * (o > n ? o : n)) return PlanDirection.neutral;
+  return n < o ? PlanDirection.lower : PlanDirection.higher;
+}
+
+/// The server's `direction` token → [PlanDirection] (null when unknown).
+PlanDirection? planDirectionFromServer(Object? raw) =>
+    switch ('${raw ?? ''}'.trim().toLowerCase()) {
+      'lower' => PlanDirection.lower,
+      'higher' => PlanDirection.higher,
+      'neutral' => PlanDirection.neutral,
+      _ => null,
+    };
+
+/// Direction between two plans given their [currentPrice]/[nextPrice]
+/// (each already per minute, or both totals over the same period). The
+/// same plan or no choice → neutral; otherwise the server rule of
+/// [planDirectionByRate] (a free plan counts as rate 0 — no longer
+/// «neutral» for a missing price).
 PlanDirection planDirection({
   required int? currentPlanId,
   required double currentPrice,
   required int? nextPlanId,
   required double nextPrice,
 }) {
-  if (nextPlanId == null ||
-      nextPlanId == currentPlanId ||
-      currentPrice <= 0 ||
-      nextPrice <= 0) {
+  if (nextPlanId == null || nextPlanId == currentPlanId) {
     return PlanDirection.neutral;
   }
-  if (nextPrice < currentPrice) return PlanDirection.lower;
-  if (nextPrice > currentPrice) return PlanDirection.higher;
-  return PlanDirection.neutral;
+  return planDirectionByRate(currentPrice, nextPrice);
 }
 
 class PlanPolicyOption {
@@ -703,11 +869,28 @@ String paymentCoverageHint({
       'والباقي ${formatMoney(timeAmount, currency)} ← $timeMsg';
 }
 
+/// Minutes a payment adds after settling debt/loans (0 when unknown) — for
+/// the one-year rule on «payment → time».
+int paymentExtendMinutes({
+  required double amount,
+  double settledLoans = 0,
+  double debt = 0,
+  required double effectivePrice,
+  required int planMinutes,
+}) {
+  if (!(amount > 0 && effectivePrice > 0 && planMinutes > 0)) return 0;
+  final wanted =
+      (settledLoans > 0 ? settledLoans : 0.0) + (debt > 0 ? debt : 0.0);
+  final timeAmount = amount - (wanted > amount ? amount : wanted);
+  if (timeAmount <= 0) return 0;
+  return (timeAmount / effectivePrice * planMinutes).floor();
+}
+
 String formatMoney(double v, String currency) {
-  final fixed =
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  // The app's one money format (grouped, 0 or 2 decimals).
+  final text = formatWithCurrency(v, currency);
   // LRI…PDI: keep «50 ILS» in reading order inside an Arabic sentence.
-  return currency.isEmpty ? fixed : '\u2066$fixed $currency\u2069';
+  return currency.isEmpty ? text : '\u2066$text\u2069';
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────

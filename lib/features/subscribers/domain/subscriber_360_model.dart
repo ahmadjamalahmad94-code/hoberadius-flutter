@@ -73,7 +73,12 @@ class Subscriber360Financial {
     required this.payments,
     required this.loans,
     required this.ledger,
+    this.hasTotals = false,
   });
+
+  /// The server sent `total_paid` / `open_loan_amount` (totals over every
+  /// row) — older servers or a partial payload do not.
+  final bool hasTotals;
 
   final double totalPaid;
   final double totalDiscount;
@@ -92,6 +97,8 @@ class Subscriber360Financial {
       payments: _mapList(json['payments']),
       loans: _mapList(json['loans']),
       ledger: _mapList(json['ledger']),
+      hasTotals: json.containsKey('total_paid') &&
+          json.containsKey('open_loan_amount'),
     );
   }
 }

@@ -66,6 +66,9 @@ class RecordingAdapter implements HttpClientAdapter {
   FakeHandler handler;
   final List<RecordedRequest> requests = [];
 
+  /// Optional hook awaited before answering (hold a request in flight).
+  Future<void> Function(RecordedRequest request)? beforeRespond;
+
   Iterable<RecordedRequest> where(String method, String pathPart) =>
       requests.where((r) => r.method == method && r.path.contains(pathPart));
 
@@ -100,6 +103,7 @@ class RecordingAdapter implements HttpClientAdapter {
       body: body,
     );
     requests.add(req);
+    if (beforeRespond != null) await beforeRespond!(req);
     final res = handler(req);
     return ResponseBody.fromString(
       jsonEncode(res.json),

@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 /// Business OS console models — finance ledger corrections, pricing snapshots,
@@ -65,6 +66,9 @@ class BusinessLedgerEntry {
     required this.createdAt,
     this.actorId,
     this.targetId,
+    this.debitAccountLabel = '',
+    this.creditAccountLabel = '',
+    this.targetLabel = '',
   });
 
   final int id;
@@ -80,6 +84,12 @@ class BusinessLedgerEntry {
   final String referenceType;
   final int? referenceId;
   final DateTime? createdAt;
+
+  /// Server Arabic labels (FIX2 network contract, optional: older servers
+  /// omit them and the app maps the raw codes itself).
+  final String debitAccountLabel;
+  final String creditAccountLabel;
+  final String targetLabel;
 
   bool get isCorrection => entryType == 'correction';
 
@@ -98,6 +108,9 @@ class BusinessLedgerEntry {
       referenceType: _string(j['reference_type']),
       referenceId: _int(j['reference_id']),
       createdAt: _date(j['created_at']),
+      debitAccountLabel: _string(j['debit_account_label']).trim(),
+      creditAccountLabel: _string(j['credit_account_label']).trim(),
+      targetLabel: _string(j['target_label']).trim(),
     );
   }
 }
@@ -178,7 +191,9 @@ String _string(Object? value, {String fallback = ''}) {
 
 String _money(Object? value) {
   final text = value?.toString().trim() ?? '';
-  return text.isEmpty ? '0.00' : text;
+  if (text.isEmpty) return '0';
+  final n = num.tryParse(text);
+  return n == null ? text : formatMoneyAmount(n);
 }
 
 int? _int(Object? value) {

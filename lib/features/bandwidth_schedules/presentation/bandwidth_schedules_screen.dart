@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -209,14 +210,14 @@ class _BandwidthSchedulesScreenState
               subscriberUsername:
                   _targetType == 'subscriber' ? (_subscriberUsername ?? '') : '',
               cardBatchId: _targetType == 'card_batch' ? _cardBatchId : null,
-              priority: int.tryParse(_priority.text.trim()) ?? 0,
+              priority: parseIntInput(_priority.text) ?? 0,
               name: _name.text.trim(),
               startsAtTime: _starts,
               endsAtTime: _ends,
-              speedDownKbps: int.tryParse(_down.text.trim()) ?? 0,
-              speedUpKbps: int.tryParse(_up.text.trim()) ?? 0,
-              cirDownKbps: int.tryParse(_cirDown.text.trim()) ?? 0,
-              cirUpKbps: int.tryParse(_cirUp.text.trim()) ?? 0,
+              speedDownKbps: parseIntInput(_down.text) ?? 0,
+              speedUpKbps: parseIntInput(_up.text) ?? 0,
+              cirDownKbps: parseIntInput(_cirDown.text) ?? 0,
+              cirUpKbps: parseIntInput(_cirUp.text) ?? 0,
               restoreMode: _restoreMode,
               enabled: _enabled,
               notes: _notes.text.trim(),

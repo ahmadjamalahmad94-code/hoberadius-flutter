@@ -5,8 +5,8 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
-import '../../../subscribers/presentation/widgets/action_dialog_kit.dart'
-    show intInputFormatters, numberInputFormatters;
+import '../../../../core/format/money_limits.dart';
+import '../../../../shared/widgets/number_text_field.dart';
 
 /// Compact info banner (tinted, small text) — was a full white card with a
 /// paragraph that took as much room as a form.
@@ -207,10 +207,10 @@ class PaymentFormCard extends StatelessWidget {
       icon: Icons.payments_outlined,
       children: [
         FormFieldPair(
-          first: TextField(
+          first: NumberTextField(
             controller: amount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: numberInputFormatters,
+            extraError: (v) =>
+                validateMoneyAmount(v, cap: MoneyCap.subscriberPayment),
             decoration: InputDecoration(
               labelText: currency.isEmpty ? 'المبلغ' : 'المبلغ ($currency)',
             ),
@@ -223,7 +223,9 @@ class PaymentFormCard extends StatelessWidget {
         const SizedBox(height: AppTokens.s4),
         HubSwitchRow(
           label: 'تطبيق على الريدياس',
-          subtitle: 'يمدد الحساب حسب المدة المستحقة',
+          subtitle: applyToRadius
+              ? 'يمدد الحساب حسب المدة المستحقة'
+              : 'مُطفأ: يُسجَّل المبلغ فقط بدون أي وقت للحساب',
           value: applyToRadius,
           onChanged: busy ? null : onApplyChanged,
           dense: true,
@@ -293,16 +295,16 @@ class LoanFormCard extends StatelessWidget {
       icon: Icons.handshake_outlined,
       children: [
         FormFieldPair(
-          first: TextField(
+          first: NumberTextField(
             controller: hours,
-            keyboardType: TextInputType.number,
-            inputFormatters: intInputFormatters,
+            decimal: false,
             decoration: const InputDecoration(labelText: 'عدد الساعات'),
           ),
-          second: TextField(
+          second: NumberTextField(
             controller: amount,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: numberInputFormatters,
+            extraError: (v) => v > AppLimits.maxLoanAmount
+                ? 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى ${formatNumberBound(AppLimits.maxLoanAmount)}.'
+                : null,
             decoration: InputDecoration(
               labelText:
                   currency.isEmpty ? 'قيمة السلفة' : 'قيمة السلفة ($currency)',
@@ -317,6 +319,9 @@ class LoanFormCard extends StatelessWidget {
         const SizedBox(height: AppTokens.s4),
         HubSwitchRow(
           label: 'تطبيق مؤقت على الريدياس',
+          subtitle: applyToRadius
+              ? 'تُمنح المدّة للحساب فورًا'
+              : 'مُطفأ: تُسجَّل السلفة بدون منح وقت',
           value: applyToRadius,
           onChanged: busy ? null : onApplyChanged,
           dense: true,

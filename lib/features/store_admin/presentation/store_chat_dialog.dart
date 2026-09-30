@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,8 +65,7 @@ class _StoreChatDialogState extends ConsumerState<_StoreChatDialog> {
           children: [
             Expanded(
               child: async.when(
-                loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Text(
                     visibleErrorMessage(e),
@@ -222,7 +222,7 @@ class _Bubble extends StatelessWidget {
               ),
             if (message.createdAt.isNotEmpty)
               Text(
-                message.createdAt,
+                formatServerTimestamp(message.createdAt),
                 style: const TextStyle(
                   color: AppTokens.textMuted,
                   fontSize: 10,

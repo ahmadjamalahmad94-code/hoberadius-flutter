@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -33,6 +35,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
 
   int? _roleId;
   bool _isSuperAdmin = false;
+  bool _isCoOwner = false;
   bool _enabled = true;
   Admin? _loaded;
 
@@ -88,6 +91,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
     setState(() {
       _roleId = a.roleId;
       _isSuperAdmin = a.isSuperAdmin;
+      _isCoOwner = a.isCoOwner;
       _enabled = a.enabled;
     });
   }
@@ -105,6 +109,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       roleId: _roleId,
       clearRoleId: _roleId == null,
       isSuperAdmin: _isSuperAdmin,
+      isCoOwner: _isCoOwner,
       enabled: _enabled,
     );
   }
@@ -118,19 +123,28 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
     try {
       final repo = ref.read(adminsRepositoryProvider);
       final admin = _build();
+      final flags = adminOwnerFlagsFor(ref.read(permissionsProvider), _loaded);
       if (widget.isEdit) {
         await repo.updateAdmin(
           widget.adminId!,
           admin,
           pendingPassword: _password.text,
+          original: _loaded,
+          ownerFlags: flags.superUser,
+          coOwnerFlag: flags.coOwner,
         );
       } else {
-        await repo.createAdmin(admin, _password.text);
+        await repo.createAdmin(
+          admin,
+          _password.text,
+          ownerFlags: flags.superUser,
+          coOwnerFlag: flags.coOwner,
+        );
       }
       ref.invalidate(adminsListProvider);
       if (mounted) context.goNamed('admins');
     } catch (e) {
-      setState(() => _error = visibleErrorMessage(e));
+      setState(() => _error = formSaveErrorMessage(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -174,7 +188,17 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
   @override
   Widget build(BuildContext context) {
     final asyncRoles = ref.watch(rolesListProvider);
-    final isProtectedSuper = _loaded?.isSuperAdmin == true;
+    final perms = ref.watch(permissionsProvider);
+    final flags = adminOwnerFlagsFor(perms, _loaded);
+    // Legacy servers: the old «مدير عام» flag stays locked once set. On the
+    // permmodel contract only the original owner row is protected.
+    final isProtectedSuper = perms.supportsOwnerContract
+        ? (_loaded?.isOriginalOwner ?? false)
+        : _loaded?.isSuperAdmin == true;
+    final canDelete = widget.isEdit &&
+        !isProtectedSuper &&
+        (perms.isOwnerLike || perms.can('admins.delete')) &&
+        !((_loaded?.isOwner ?? false) && !perms.isOwnerLike);
     return Form(
       key: _formKey,
       child: Column(
@@ -194,7 +218,7 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                   height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              if (widget.isEdit && !isProtectedSuper)
+              if (canDelete)
                 IconButton(
                   tooltip: 'أرشفة المدير',
                   onPressed: _loading ? null : _delete,
@@ -254,7 +278,8 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                 ),
                 FormFieldRow(
                   label: 'رابط الصورة الرمزية',
-                  hint: 'https://…',
+                  // LTR isolate: in RTL «https://…» read «…//:https» (f07 N-C8).
+                  hint: kAvatarUrlHint,
                   child: TextFormField(
                     controller: _avatar,
                     textDirection: TextDirection.ltr,
@@ -294,15 +319,47 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                     ),
                   ),
                 ),
-                FormFieldRow(
-                  label: 'مدير عام كامل الصلاحيات',
-                  child: Switch(
-                    value: _isSuperAdmin,
-                    onChanged: isProtectedSuper
-                        ? null
-                        : (v) => setState(() => _isSuperAdmin = v),
-                  ),
-                ),
+                if (_loaded?.isOriginalOwner ?? false)
+                  const _OwnerNote(
+                    text: 'المالك الأصليّ — محميّ: لا تُعدَّل صلاحياته من هنا.',
+                  )
+                else ...[
+                  if (flags.superUser)
+                    FormFieldRow(
+                      label: perms.supportsOwnerContract
+                          ? 'سوبر يوزر (كل الصلاحيات)'
+                          : 'مدير عام كامل الصلاحيات',
+                      hint: perms.supportsOwnerContract
+                          ? 'يمنح دور «مدير عام»: كل الصلاحيات عدا ما '
+                              'يخصّ المالك (الإعدادات، النسخ الاحتياطيّ، '
+                              'عكس القيود، تصفير البيانات).'
+                          : null,
+                      child: Switch(
+                        key: const ValueKey('admin-super-user-toggle'),
+                        value: _isSuperAdmin,
+                        onChanged: isProtectedSuper
+                            ? null
+                            : (v) => setState(() => _isSuperAdmin = v),
+                      ),
+                    ),
+                  if (flags.coOwner) ...[
+                    FormFieldRow(
+                      label: 'منح صلاحيات المالك (شريك)',
+                      child: Switch(
+                        key: const ValueKey('admin-co-owner-toggle'),
+                        value: _isCoOwner,
+                        onChanged: (v) => setState(() => _isCoOwner = v),
+                      ),
+                    ),
+                    const _OwnerNote(
+                      warning: true,
+                      text: 'تنبيه: الشريك يملك كل صلاحيات المالك — الإعدادات '
+                          'والنسخ الاحتياطيّ وعكس القيود وتصفير البيانات '
+                          'وإدارة المدراء ومنح الشراكة لغيره. امنحها لشريك '
+                          'تثق به فقط.',
+                    ),
+                  ],
+                ],
                 FormFieldRow(
                   label: 'مفعّل',
                   child: Switch(
@@ -360,3 +417,56 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
     );
   }
 }
+
+/// Which owner toggles the admin edit screen shows (and sends):
+///   • «سوبر يوزر (كل الصلاحيات)» (`is_super_admin`) and
+///   • «منح صلاحيات المالك (شريك)» (`is_co_owner`)
+/// — only to the owner or a co-owner, never on the original owner's row.
+/// An older server (no permission contract) keeps its old «مدير عام» switch
+/// and has no co-owner.
+({bool superUser, bool coOwner}) adminOwnerFlagsFor(
+  AppPermissions perms,
+  Admin? row,
+) {
+  final originalOwner = row?.isOriginalOwner ?? false;
+  final ownerLike = perms.isOwnerLike && !originalOwner;
+  return (
+    superUser: ownerLike,
+    coOwner: ownerLike && perms.supportsOwnerContract,
+  );
+}
+
+class _OwnerNote extends StatelessWidget {
+  const _OwnerNote({required this.text, this.warning = false});
+  final String text;
+  final bool warning;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppTokens.s12),
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: warning ? AppTokens.warningBg : AppTokens.brandSoft,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            warning
+                ? Icons.warning_amber_rounded
+                : Icons.verified_user_outlined,
+            size: 18,
+            color: warning ? AppTokens.amber : AppTokens.brand,
+          ),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(child: Text(text)),
+        ],
+      ),
+    );
+  }
+}
+
+/// The avatar-URL example, one left-to-right run inside the Arabic form.
+final String kAvatarUrlHint = ltrIsolate('https://…');

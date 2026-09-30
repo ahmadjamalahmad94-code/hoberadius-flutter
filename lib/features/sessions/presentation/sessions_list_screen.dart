@@ -1,8 +1,12 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/auto_height_grid.dart';
@@ -47,23 +51,11 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     return '${value.toStringAsFixed(value < 10 ? 1 : 0)} ${units[index]}';
   }
 
-  String _formatDuration(int seconds) {
-    if (seconds <= 0) return 'غير معروف';
-    final duration = Duration(seconds: seconds);
-    if (duration.inDays > 0) {
-      return '${duration.inDays} يوم ${duration.inHours.remainder(24)} ساعة';
-    }
-    if (duration.inHours > 0) {
-      return '${duration.inHours} ساعة ${duration.inMinutes.remainder(60)} دقيقة';
-    }
-    if (duration.inMinutes > 0) {
-      return '${duration.inMinutes} دقيقة ${duration.inSeconds.remainder(60)} ثانية';
-    }
-    return '${duration.inSeconds} ثانية';
-  }
+  String _formatDuration(int seconds) => compactSessionDuration(seconds);
 
   void _refresh() {
     ref.invalidate(onlineSessionsProvider(_query));
+    ref.invalidate(onlineTotalsProvider);
     ref.invalidate(accountingHistoryProvider);
   }
 
@@ -99,13 +91,22 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
   Future<void> _runAction({
     required OnlineSession session,
     required String successMessage,
-    required Future<void> Function(SessionsRepository repo) action,
+    required Future<Object?> Function(SessionsRepository repo) action,
+    SessionActionOutcome Function(Object? result)? outcome,
   }) async {
     try {
-      await action(ref.read(sessionsRepositoryProvider));
+      final result = await action(ref.read(sessionsRepositoryProvider));
       if (!mounted) return;
+      final o = outcome?.call(result) ??
+          SessionActionOutcome(message: successMessage);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
+        SnackBar(
+          content: Text(o.message),
+          backgroundColor: o.warning ? AppTokens.warningFg : null,
+          duration: o.warning
+              ? const Duration(seconds: 8)
+              : const Duration(milliseconds: 4000),
+        ),
       );
       _refresh();
     } catch (error) {
@@ -180,8 +181,14 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     await _runAction(
       session: session,
       successMessage: 'تم طلب تطبيق السرعة المؤقتة على ${session.username}.',
+      // The router's answer decides the message: «saved but NOT applied»
+      // is a warning, never a plain success (f06 L5).
+      outcome: (res) => tempSpeedOutcome(
+        session.username,
+        res is Map<String, dynamic> ? res : const {},
+      ),
       action: (repo) async {
-        await repo.applyTemporarySpeed(
+        return repo.applyTemporarySpeed(
           username: session.username,
           sessionId: session.sessionId,
           downloadKbps: draft.downloadKbps,
@@ -204,12 +211,10 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     await _runAction(
       session: session,
       successMessage: 'تم طلب إلغاء السرعة المؤقتة لـ ${session.username}.',
-      action: (repo) async {
-        await repo.cancelTemporarySpeed(
-          username: session.username,
-          sessionId: session.sessionId,
-        );
-      },
+      action: (repo) => repo.cancelTemporarySpeed(
+        username: session.username,
+        sessionId: session.sessionId,
+      ),
     );
   }
 
@@ -217,6 +222,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
   Widget build(BuildContext context) {
     final onlineAsync = ref.watch(onlineSessionsProvider(_query));
     final historyAsync = ref.watch(accountingHistoryProvider);
+    // Each live action follows its own server grant (online.* keys).
+    final acts = SessionActionPermissions(ref.watch(permissionsProvider));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -282,9 +289,17 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _SummaryStrip(
-                  items: items,
-                  total: loaded.list.total,
-                  typeCounts: loaded.typeCounts,
+                  counts: onlineSummaryCounts(
+                    filtered: _query,
+                    items: items,
+                    total: loaded.list.total,
+                    typeCounts: loaded.typeCounts,
+                    // A tab / search is on: the tiles still show the WHOLE
+                    // network (f06 L7 «كل المتصلين 6» with 602 cards on).
+                    overall: _query == const OnlineSessionsQuery()
+                        ? null
+                        : ref.watch(onlineTotalsProvider).valueOrNull,
+                  ),
                 ),
                 const SizedBox(height: AppTokens.s12),
                 for (final session in items)
@@ -294,16 +309,19 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
                       session: session,
                       formatBytes: _formatBytes,
                       formatDuration: _formatDuration,
-                      onDisconnect: () => _disconnect(session),
-                      onLockMac: () => _lockMac(session),
-                      onLockIp:
-                          session.isSubscriber ? () => _lockIp(session) : null,
-                      onTemporarySpeed: session.isSubscriber
+                      onDisconnect:
+                          acts.disconnect ? () => _disconnect(session) : null,
+                      onLockMac: acts.lockMac ? () => _lockMac(session) : null,
+                      onLockIp: session.isSubscriber && acts.lockIp
+                          ? () => _lockIp(session)
+                          : null,
+                      onTemporarySpeed: session.isSubscriber && acts.tempSpeed
                           ? () => _applyTemporarySpeed(session)
                           : null,
-                      onCancelTemporarySpeed: session.isSubscriber
-                          ? () => _cancelTemporarySpeed(session)
-                          : null,
+                      onCancelTemporarySpeed:
+                          session.isSubscriber && acts.tempSpeed
+                              ? () => _cancelTemporarySpeed(session)
+                              : null,
                     ),
                   ),
                 LoadMoreFooter(
@@ -477,21 +495,153 @@ class _FiltersCard extends StatelessWidget {
   }
 }
 
+/// What a live-session action reports to the operator.
+class SessionActionOutcome {
+  const SessionActionOutcome({required this.message, this.warning = false});
+  final String message;
+
+  /// Done on the server but NOT confirmed by the router.
+  final bool warning;
+}
+
+/// Arabic reason of a CoA / PoD result code (`coa.code`) — the server's
+/// own table (`radius_coa.coa_code_ar`, fix3 cardsnet), word for word, so
+/// the app and the web say the same thing.
+const Map<String, String> kCoaCodeLabels = {
+  'router_not_configured': 'راوتر الجلسة معطّل أو بلا كلمة سرّ RADIUS',
+  'timeout': 'لم يردّ الراوتر (انتهت المهلة)',
+  'socket_error': 'تعذّر الإرسال إلى الراوتر',
+  'malformed': 'ردّ غير صالح من الراوتر',
+  'no_active_session': 'لا جلسة نشطة',
+  'empty_rate': 'لا سرعة صالحة للإرسال',
+  'empty_timeout': 'لا مهلة صالحة للإرسال',
+  'exception': 'خطأ داخليّ أثناء الإرسال',
+  'no_coa': 'لم يُرسَل أمر CoA',
+  'CoA-ACK': 'أكّد الراوتر التطبيق',
+  'Disconnect-ACK': 'أكّد الراوتر الفصل',
+  'CoA-NAK': 'رفض الراوتر الأمر (CoA-NAK)',
+  'Disconnect-NAK': 'رفض الراوتر الفصل (Disconnect-NAK)',
+};
+
+String coaFailureReason(String code) {
+  final c = code.trim();
+  final known = kCoaCodeLabels[c];
+  if (known != null) return known;
+  if (c.startsWith('unknown-code-')) return 'ردّ غير معروف من الراوتر';
+  return 'تعذّر تأكيد التطبيق على الراوتر';
+}
+
+/// The message after «سرعة مؤقتة», the same cases as the web flash
+/// (sessions.py): the server saved the window, and `temporary_speed.coa`
+/// says whether the ROUTER applied it. A failed CoA is a WARNING that says
+/// so clearly (f06 L5); no live session is an «info» (applied on the next
+/// login). An older server without `coa` keeps the neutral line.
+SessionActionOutcome tempSpeedOutcome(
+  String username,
+  Map<String, dynamic> data,
+) {
+  final ts = data['temporary_speed'];
+  final coa = ts is Map ? ts['coa'] : null;
+  final who = ltrIsolate(username);
+  if (coa is! Map) {
+    return SessionActionOutcome(
+      message: 'تم طلب تطبيق السرعة المؤقتة على $who.',
+    );
+  }
+  final rate = ts is Map && '${ts['rate'] ?? ''}'.trim().isNotEmpty
+      ? ' (${ltrIsolate('${ts['rate']}'.trim())})'
+      : '';
+  final endsRaw = ts is Map ? ts['ends_at'] : null;
+  final ends = endsRaw == null ? '' : formatServerTimestamp('$endsRaw');
+  final until = ends.isEmpty || ends == '—' ? '' : ' حتى ${ltrIsolate(ends)}';
+  final reauth = ts is Map && '${ts['mode'] ?? ''}' == 'disconnect_reauth';
+  final code = '${coa['code'] ?? ''}'.trim();
+  if (coa['ok'] == true) {
+    return SessionActionOutcome(
+      message: reauth
+          ? 'طُبِّقت السرعة المؤقتة$rate على $who بالفصل وإعادة الاتصال — '
+              'سيعود بالسرعة الجديدة خلال ثوانٍ$until.'
+          : 'تم تطبيق السرعة المؤقتة$rate على $who مباشرةً — بدون فصل '
+              'المستخدم$until.',
+    );
+  }
+  if (code == 'no_active_session') {
+    return SessionActionOutcome(
+      message: 'حُفظت السرعة المؤقتة$rate لـ $who — لا جلسة نشطة الآن؛ '
+          'ستُطبَّق تلقائيًا فور إعادة اتصاله.',
+    );
+  }
+  if (code == 'empty_rate') {
+    return const SessionActionOutcome(
+      warning: true,
+      message: 'لم تُحدَّد سرعة صالحة للإرسال.',
+    );
+  }
+  final reason = coaFailureReason(code);
+  return SessionActionOutcome(
+    warning: true,
+    message: reauth
+        ? 'حُفظت السرعة المؤقتة$rate لـ $who، لكن تعذّر الفصل ($reason) — '
+            'تحقّق من اتصال الراوتر.'
+        : 'حُفظت السرعة المؤقتة$rate لـ $who$until، لكن الراوتر لم يؤكّد '
+            'تطبيقها ($reason). لم يُفصل المستخدم؛ إن لم تتغيّر سرعته افصل '
+            'الجلسة ليعيد الاتصال بالسرعة الجديدة (وتحقّق من CoA: المنفذ 3799 '
+            'وكلمة السرّ).',
+  );
+}
+
+/// The three counters of «المتصلون».
+class OnlineSummaryCounts {
+  const OnlineSummaryCounts({
+    required this.allLabel,
+    required this.all,
+    required this.subscribers,
+    required this.cards,
+  });
+  final String allLabel;
+  final int all;
+  final int subscribers;
+  final int cards;
+}
+
+/// «كل المتصلين» is the whole network, whatever tab or search is on: under
+/// a filter the tiles use [overall] (an unfiltered count); while it is not
+/// known the first tile says «المعروض» instead of claiming «كل المتصلين».
+OnlineSummaryCounts onlineSummaryCounts({
+  required OnlineSessionsQuery filtered,
+  required List<OnlineSession> items,
+  int? total,
+  Map<String, int>? typeCounts,
+  OnlineTotals? overall,
+}) {
+  final isFiltered = filtered != const OnlineSessionsQuery();
+  if (isFiltered && overall != null) {
+    return OnlineSummaryCounts(
+      allLabel: 'كل المتصلين',
+      all: overall.total,
+      subscribers: overall.subscribers,
+      cards: overall.cards,
+    );
+  }
+  final subscribers = typeCounts?['subscriber'] ??
+      items.where((item) => item.isSubscriber).length;
+  final cards =
+      typeCounts?['card'] ?? items.where((item) => item.isCard).length;
+  return OnlineSummaryCounts(
+    allLabel: isFiltered ? 'المعروض' : 'كل المتصلين',
+    all: total ?? items.length,
+    subscribers: subscribers,
+    cards: cards,
+  );
+}
+
 class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip({required this.items, this.total, this.typeCounts});
+  const _SummaryStrip({required this.counts});
 
-  final List<OnlineSession> items;
-
-  /// Server counters of the WHOLE result (not only the loaded pages).
-  final int? total;
-  final Map<String, int>? typeCounts;
+  final OnlineSummaryCounts counts;
 
   @override
   Widget build(BuildContext context) {
-    final subscribers = typeCounts?['subscriber'] ??
-        items.where((item) => item.isSubscriber).length;
-    final cards =
-        typeCounts?['card'] ?? items.where((item) => item.isCard).length;
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 640 ? 3 : 2;
@@ -503,18 +653,18 @@ class _SummaryStrip extends StatelessWidget {
           children: [
             _SummaryTile(
               icon: Icons.wifi_tethering,
-              label: 'كل المتصلين',
-              value: '${total ?? items.length}',
+              label: counts.allLabel,
+              value: '${counts.all}',
             ),
             _SummaryTile(
               icon: Icons.person_outline,
               label: 'مشتركون',
-              value: '$subscribers',
+              value: '${counts.subscribers}',
             ),
             _SummaryTile(
               icon: Icons.credit_card,
               label: 'كروت',
-              value: '$cards',
+              value: '${counts.cards}',
             ),
           ],
         );
@@ -590,8 +740,8 @@ class _SessionTile extends StatelessWidget {
     required this.session,
     required this.formatBytes,
     required this.formatDuration,
-    required this.onDisconnect,
-    required this.onLockMac,
+    this.onDisconnect,
+    this.onLockMac,
     this.onLockIp,
     this.onTemporarySpeed,
     this.onCancelTemporarySpeed,
@@ -600,8 +750,8 @@ class _SessionTile extends StatelessWidget {
   final OnlineSession session;
   final String Function(int) formatBytes;
   final String Function(int) formatDuration;
-  final VoidCallback onDisconnect;
-  final VoidCallback onLockMac;
+  final VoidCallback? onDisconnect;
+  final VoidCallback? onLockMac;
   final VoidCallback? onLockIp;
   final VoidCallback? onTemporarySpeed;
   final VoidCallback? onCancelTemporarySpeed;
@@ -663,15 +813,17 @@ class _SessionTile extends StatelessWidget {
                 label: 'المدة',
                 value: formatDuration(session.sessionTime),
               ),
+              // RFC 2866: input octets (bytesIn) = the user's UPLOAD,
+              // output octets (bytesOut) = DOWNLOAD — as the web shows.
               InfoItem(
                 icon: Icons.download,
-                label: 'تحميل',
-                value: formatBytes(session.bytesIn),
+                label: 'تنزيل',
+                value: formatBytes(session.bytesOut),
               ),
               InfoItem(
                 icon: Icons.upload,
                 label: 'رفع',
-                value: formatBytes(session.bytesOut),
+                value: formatBytes(session.bytesIn),
               ),
             ],
           ),
@@ -683,19 +835,19 @@ class _SessionTile extends StatelessWidget {
                 InfoItem(
                   icon: Icons.dns,
                   label: 'IP',
-                  value: session.framedIpAddress,
+                  value: ltrIsolate(session.framedIpAddress),
                 ),
               if (session.callingStationId.isNotEmpty)
                 InfoItem(
                   icon: Icons.devices,
                   label: 'MAC',
-                  value: session.callingStationId,
+                  value: ltrIsolate(session.callingStationId),
                 ),
               if (session.nasIpAddress.isNotEmpty)
                 InfoItem(
                   icon: Icons.router,
                   label: 'الراوتر',
-                  value: session.nasIpAddress,
+                  value: ltrIsolate(session.nasIpAddress),
                 ),
               if (session.startedAt != null)
                 InfoItem(
@@ -708,17 +860,19 @@ class _SessionTile extends StatelessWidget {
           const SizedBox(height: AppTokens.s12),
           ActionBar(
             items: [
-              ActionItem(
-                icon: Icons.power_settings_new,
-                label: 'طرد',
-                tone: PillTone.red,
-                onPressed: onDisconnect,
-              ),
-              ActionItem(
-                icon: Icons.phonelink_lock_outlined,
-                label: 'تثبيت MAC',
-                onPressed: onLockMac,
-              ),
+              if (onDisconnect != null)
+                ActionItem(
+                  icon: Icons.power_settings_new,
+                  label: 'طرد',
+                  tone: PillTone.red,
+                  onPressed: onDisconnect,
+                ),
+              if (onLockMac != null)
+                ActionItem(
+                  icon: Icons.phonelink_lock_outlined,
+                  label: 'تثبيت MAC',
+                  onPressed: onLockMac,
+                ),
               if (onLockIp != null)
                 ActionItem(
                   icon: Icons.pin_outlined,
@@ -838,8 +992,8 @@ class _HistoryRow extends StatelessWidget {
     final df = DateFormat('yyyy-MM-dd HH:mm');
     final state = item.isOnline ? 'متصلة' : 'منتهية';
     final where = [
-      if (item.nasIpAddress.isNotEmpty) item.nasIpAddress,
-      if (item.framedIpAddress.isNotEmpty) item.framedIpAddress,
+      if (item.nasIpAddress.isNotEmpty) ltrIsolate(item.nasIpAddress),
+      if (item.framedIpAddress.isNotEmpty) ltrIsolate(item.framedIpAddress),
     ].join(' · ');
     final when = [
       if (item.startedAt != null) 'من ${df.format(item.startedAt!.toLocal())}',
@@ -907,13 +1061,13 @@ class _HistoryRow extends StatelessWidget {
                   ),
                   InfoItem(
                     icon: Icons.download,
-                    label: 'تحميل',
-                    value: formatBytes(item.bytesIn),
+                    label: 'تنزيل',
+                    value: formatBytes(item.bytesOut),
                   ),
                   InfoItem(
                     icon: Icons.upload,
                     label: 'رفع',
-                    value: formatBytes(item.bytesOut),
+                    value: formatBytes(item.bytesIn),
                   ),
                 ],
               ),
@@ -948,7 +1102,7 @@ class _TemporarySpeedDraft {
   final int uploadKbps;
   final int duration;
 
-  /// `minutes` | `hours` — mirrors the web temp-speed form's unit selector.
+  /// `minutes` | `hours` | `days` — the web temp-speed form's units.
   final String durationUnit;
 }
 
@@ -1019,6 +1173,10 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
                           value: 'hours',
                           child: Text('ساعات'),
                         ),
+                        DropdownMenuItem(
+                          value: 'days',
+                          child: Text('أيام'),
+                        ),
                       ],
                       onChanged: (v) => setState(() => unit = v ?? 'minutes'),
                     ),
@@ -1043,15 +1201,19 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
               icon: const Icon(Icons.speed_outlined),
               label: const Text('تطبيق'),
               onPressed: () {
-                final down = int.tryParse(download.text.trim()) ?? 0;
-                final up = int.tryParse(upload.text.trim()) ?? 0;
-                final value = int.tryParse(duration.text.trim()) ?? 0;
-                if (down <= 0 || up <= 0 || value <= 0) {
-                  setState(() {
-                    error = 'أدخل أرقامًا صحيحة أكبر من صفر.';
-                  });
+                final problem = validateTemporarySpeedInput(
+                  downloadText: download.text,
+                  uploadText: upload.text,
+                  durationText: duration.text,
+                  unit: unit,
+                );
+                if (problem != null) {
+                  setState(() => error = problem);
                   return;
                 }
+                final down = parseIntInput(download.text) ?? 0;
+                final up = parseIntInput(upload.text) ?? 0;
+                final value = parseIntInput(duration.text) ?? 0;
                 Navigator.pop(
                   ctx,
                   _TemporarySpeedDraft(
@@ -1072,6 +1234,32 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
     upload.dispose();
     duration.dispose();
   });
+}
+
+/// Temp-speed dialog guard (Arabic): whole positive numbers, a duration of
+/// at most a year whatever the unit.
+String? validateTemporarySpeedInput({
+  required String downloadText,
+  required String uploadText,
+  required String durationText,
+  required String unit,
+}) {
+  for (final (label, text) in [
+    ('سرعة التنزيل', downloadText),
+    ('سرعة الرفع', uploadText),
+    ('المدة', durationText),
+  ]) {
+    final err = validateNumberInput(text, decimal: false, min: 1);
+    if (err != null) return '$label: $err';
+  }
+  final v = parseIntInput(durationText) ?? 0;
+  final minutes = switch (unit) {
+    'days' => v * 1440,
+    'hours' => v * 60,
+    _ => v,
+  };
+  if (minutes > 365 * 1440) return 'المدة: الحدّ الأعلى سنة.';
+  return null;
 }
 
 String _terminateCauseLabel(String value) {
@@ -1095,4 +1283,30 @@ String _stateLabel(OnlineSession session) {
     'disconnected' => 'مفصول',
     _ => raw.trim().isEmpty ? 'غير محدد' : raw,
   };
+}
+
+/// A session length short enough for a third of a 360 px row: «12 د 28 ث»,
+/// «1 س 22 د», «3 ي 4 س». The long form («12 دقيقة 28 ثانية») was cut to
+/// «12 دقيقة 28 ثا…» at 360 and 390 (R07 N15).
+String compactSessionDuration(int seconds) {
+  if (seconds <= 0) return 'غير معروف';
+  final d = Duration(seconds: seconds);
+  if (d.inDays > 0) return '${d.inDays} ي ${d.inHours.remainder(24)} س';
+  if (d.inHours > 0) return '${d.inHours} س ${d.inMinutes.remainder(60)} د';
+  if (d.inMinutes > 0) {
+    return '${d.inMinutes} د ${d.inSeconds.remainder(60)} ث';
+  }
+  return '${d.inSeconds} ث';
+}
+
+/// Live-session actions the admin may run (server ACTION_REGISTRY
+/// `session.*`, derived from the online.* / users.temp_speed keys).
+class SessionActionPermissions {
+  const SessionActionPermissions(this.p);
+  final AppPermissions p;
+
+  bool get disconnect => p.canAction('session.disconnect');
+  bool get lockMac => p.canAction('session.lock_mac');
+  bool get lockIp => p.canAction('session.lock_ip');
+  bool get tempSpeed => p.canAction('session.temp_speed');
 }

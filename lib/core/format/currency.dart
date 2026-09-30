@@ -9,6 +9,7 @@
 /// reach Riverpod.
 library;
 
+import 'bidi.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -64,15 +65,27 @@ class TenantCurrencyScope extends InheritedWidget {
       oldWidget.code != code;
 }
 
-/// «1,234.5 JOD» — amount + the tenant currency code (none when unknown).
-String formatWithCurrency(num value, String currency) {
+/// THE money format of the app (f04 L9: «7.5», «3 USD», «1,046» next to
+/// «37.50 ILS»): thousands grouped, a whole amount without decimals, any
+/// fraction with exactly 2 — «1,046», «7.50», «0.25». Every screen formats
+/// money through this (or [formatWithCurrency]).
+String formatMoneyAmount(num value) {
   final v = value.toDouble();
   // Absurd legacy values (1e308 credit limits, Infinity) are not amounts.
   if (!v.isFinite || v.abs() >= 1e15) return '—';
+  final r = (v * 100).round() / 100;
   final fixed =
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
-  final grouped = _group(fixed);
-  return currency.isEmpty ? grouped : '$grouped $currency';
+      r == r.roundToDouble() ? r.toStringAsFixed(0) : r.toStringAsFixed(2);
+  return _group(fixed == '-0' ? '0' : fixed);
+}
+
+/// «1,234.50 JOD» — [formatMoneyAmount] + the currency code (none when
+/// unknown).
+String formatWithCurrency(num value, String currency) {
+  final grouped = formatMoneyAmount(value);
+  if (grouped == '—') return grouped;
+  final code = currency.trim().toUpperCase();
+  return code.isEmpty ? grouped : '$grouped $code';
 }
 
 String _group(String fixed) {
@@ -120,9 +133,21 @@ List<CurrencyAmount> parseByCurrency(
   return out;
 }
 
-/// «1,200 ILS · 30 USD» for a mixed-currency total.
-String formatByCurrency(List<CurrencyAmount> parts) =>
-    parts.map((p) => formatWithCurrency(p.amount, p.currency)).join(' · ');
+/// «1,200 ILS · 30 USD» for a mixed-currency total. Each «amount CUR» is an
+/// LTR isolate so RTL text does not scramble the order (r09 N7: «ILS ·
+/// 426.31 USD · 420.10 EUR 5,905.48»).
+String formatByCurrency(List<CurrencyAmount> parts) => parts
+    .map((p) => ltrIsolate(formatWithCurrency(p.amount, p.currency)))
+    .join(' · ');
+
+/// One currency → «1,200 ILS»; several → [formatByCurrency]; none → «0».
+String formatCurrencyList(List<CurrencyAmount> parts, {String fallback = ''}) {
+  if (parts.isEmpty) return ltrIsolate(formatWithCurrency(0, fallback));
+  if (parts.length == 1) {
+    return ltrIsolate(formatWithCurrency(parts.single.amount, parts.single.currency));
+  }
+  return formatByCurrency(parts);
+}
 
 /// `system.currency` from /api/admin/me (or the login answer), written by
 /// the auth controller at session restore — available before the settings

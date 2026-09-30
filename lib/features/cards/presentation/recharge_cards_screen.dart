@@ -1,8 +1,11 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/format/currency.dart';
+import '../../../core/format/money_limits.dart';
+import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -13,6 +16,7 @@ import '../../../shared/widgets/status_pill.dart';
 import '../application/recharge_cards_providers.dart';
 import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
+import 'widgets/card_number_field.dart';
 
 class RechargeCardsScreen extends ConsumerStatefulWidget {
   const RechargeCardsScreen({super.key});
@@ -136,8 +140,15 @@ class _RechargeCardsScreenState extends ConsumerState<RechargeCardsScreen> {
     final packageName = _packageName.text.trim();
     final denominations = <RechargeDenomination>[];
     for (final item in _denoms) {
-      final value = num.tryParse(item.value.text.trim());
-      final count = int.tryParse(item.count.text.trim());
+      // A typo is said, not silently dropped (a whole row used to vanish).
+      final error = rechargeRowError(item.value.text, item.count.text);
+      if (error != null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(error)));
+        return;
+      }
+      final value = parseNumberInput(item.value.text);
+      final count = parseIntInput(item.count.text);
       if (value != null && count != null && value > 0 && count > 0) {
         denominations.add(RechargeDenomination(value: value, count: count));
       }
@@ -172,7 +183,7 @@ class _RechargeCardsScreenState extends ConsumerState<RechargeCardsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'تم توليد ${result.insertedCount} كرت شحن بقيمة إجمالية ${_money(result.totalValue, TenantCurrencyScope.of(context))}.',
+            'تم توليد ${arCount(result.insertedCount, arVoucherCard, showOne: true)} شحن بقيمة إجمالية ${_money(result.totalValue, TenantCurrencyScope.of(context))}.',
           ),
         ),
       );
@@ -363,17 +374,16 @@ class _DenominationRow extends StatelessWidget {
       children: [
         SizedBox(
           width: 160,
-          child: TextField(
+          child: CardNumberField.money(
             controller: draft.value,
-            keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'قيمة الشحن'),
           ),
         ),
         SizedBox(
           width: 160,
-          child: TextField(
+          child: CardNumberField(
             controller: draft.count,
-            keyboardType: TextInputType.number,
+            min: 1,
             decoration: const InputDecoration(labelText: 'عدد الكروت'),
           ),
         ),
@@ -627,7 +637,9 @@ class _RechargeDetailDialog extends StatelessWidget {
                     tone: card.used ? PillTone.amber : PillTone.green,
                   ),
                   title: Text(card.username),
-                  subtitle: Text('كلمة المرور: ${card.password}'),
+                  subtitle: Text(
+                    'كلمة المرور: ${cardPasswordDisplay(card.password)}',
+                  ),
                   trailing: Text(
                     _money(card.walletValue, TenantCurrencyScope.of(context)),
                     style: const TextStyle(fontWeight: FontWeight.w900),
@@ -698,7 +710,7 @@ class _RechargePagination extends ConsumerWidget {
     return Row(
       children: [
         Text(
-          'صفحة ${page.page} من ${page.pages} • ${page.total} حزمة',
+          'صفحة ${page.page} من ${page.pages} • ${arCount(page.total, arBatch, showOne: true)}',
           style: const TextStyle(color: AppTokens.textMuted),
         ),
         const Spacer(),
@@ -742,8 +754,29 @@ class _RechargePagination extends ConsumerWidget {
 }
 
 /// Amount + the tenant currency (was a hardcoded «₪»).
-String _money(num value, [String currency = '']) {
-  final text =
-      value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
-  return currency.isEmpty ? text : '$text $currency';
+String _money(num value, [String currency = '']) =>
+    formatWithCurrency(value, currency);
+
+/// A recharge denomination row read strictly: null when it is valid or
+/// empty, else the Arabic reason (value: money up to the cap; count: a
+/// whole number of at least 1).
+String? rechargeRowError(String value, String count) {
+  if (value.trim().isEmpty && count.trim().isEmpty) return null;
+  final v = validateCardNumber(
+    value,
+    decimal: true,
+    required: true,
+    min: 0,
+    minExclusive: true,
+    max: kMaxMoneyAmount,
+    emptyMessage: 'أدخل قيمة الشحن.',
+  );
+  if (v != null) return 'قيمة الشحن: $v';
+  final c = validateCardNumber(
+    count,
+    required: true,
+    min: 1,
+    emptyMessage: 'أدخل عدد الكروت.',
+  );
+  return c == null ? null : 'عدد الكروت: $c';
 }

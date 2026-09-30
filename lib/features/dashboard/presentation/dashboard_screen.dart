@@ -1,7 +1,11 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/ota/ota_banner_card.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
@@ -11,6 +15,39 @@ import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../data/dashboard_repository.dart';
 import '../domain/dashboard_model.dart';
+
+/// Which dashboard tiles / cards the signed-in admin may see: each one
+/// opens a screen, so it follows that screen's permission (p01 D18 — a
+/// viewer saw every total and every shortcut).
+class DashboardVisibility {
+  const DashboardVisibility(this.perms);
+  final AppPermissions perms;
+
+  static const _paths = <String, String>{
+    'subscribers': '/subscribers',
+    'sessions': '/sessions',
+    'plans': '/plans',
+    'plan-new': '/plans/new',
+    'cards': '/cards',
+    'card-batch-new': '/cards/new',
+    'card-batch-detail': '/cards/batches/0',
+    'nas': '/nas',
+    'admin-control': '/admin-control',
+    'router-alerts': '/router-alerts',
+  };
+
+  /// The route (by name) opens for this admin.
+  bool canOpen(String routeName) {
+    final path = _paths[routeName];
+    return path == null || routeAllowed(perms, path);
+  }
+
+  bool get subscribers => canOpen('subscribers');
+  bool get online => canOpen('sessions');
+  bool get plans => canOpen('plans');
+  bool get cards => canOpen('cards');
+  bool get nas => canOpen('nas');
+}
 
 final dashboardFutureProvider =
     FutureProvider.autoDispose<DashboardMetrics>((ref) {
@@ -23,6 +60,7 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final async = ref.watch(dashboardFutureProvider);
+    final vis = DashboardVisibility(ref.watch(permissionsProvider));
     final p = AppPalette.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,7 +90,7 @@ class DashboardScreen extends ConsumerWidget {
             onRetry: () => ref.invalidate(dashboardFutureProvider),
             showToastOnce: true,
           ),
-          data: (m) => _DashboardBody(metrics: m),
+          data: (m) => _DashboardBody(metrics: m, vis: vis),
         ),
       ],
     );
@@ -60,29 +98,34 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _DashboardBody extends StatelessWidget {
-  const _DashboardBody({required this.metrics});
+  const _DashboardBody({required this.metrics, required this.vis});
   final DashboardMetrics metrics;
+  final DashboardVisibility vis;
 
   @override
   Widget build(BuildContext context) {
-    final hasAttention = metrics.expiredSubscribers > 0 ||
-        metrics.expiringSoon > 0 ||
-        metrics.suspendedSubscribers > 0 ||
-        metrics.disabledSubscribers > 0 ||
-        metrics.bannedSubscribers > 0 ||
-        metrics.hasTopPlan;
+    final hasAttention = vis.subscribers &&
+        (metrics.expiredSubscribers > 0 ||
+            metrics.expiringSoon > 0 ||
+            metrics.suspendedSubscribers > 0 ||
+            metrics.disabledSubscribers > 0 ||
+            metrics.bannedSubscribers > 0 ||
+            metrics.otherSubscribers > 0 ||
+            (metrics.hasTopPlan && vis.plans));
     return LayoutBuilder(
       builder: (context, c) {
         final twoCol = c.maxWidth >= 760;
-        final batchesCard = _RecentBatchesCard(batches: metrics.recentBatches);
-        final alertsCard = _AlertsCard(alerts: metrics.alerts);
+        final Widget batchesCard = vis.cards
+            ? _RecentBatchesCard(batches: metrics.recentBatches)
+            : const SizedBox.shrink();
+        final alertsCard = _AlertsCard(alerts: metrics.alerts, vis: vis);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _MetricGrid(metrics: metrics),
+            _MetricGrid(metrics: metrics, vis: vis),
             if (hasAttention) ...[
               const SizedBox(height: AppTokens.s20),
-              _SubscriberAttention(metrics: metrics),
+              _SubscriberAttention(metrics: metrics, vis: vis),
             ],
             const SizedBox(height: AppTokens.s20),
             if (metrics.cpuPct != null ||
@@ -92,7 +135,7 @@ class _DashboardBody extends StatelessWidget {
                 metrics.radiusOk != null)
               _SystemHealth(metrics: metrics),
             const SizedBox(height: AppTokens.s20),
-            if (twoCol)
+            if (twoCol && vis.cards)
               IntrinsicHeight(
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -104,8 +147,10 @@ class _DashboardBody extends StatelessWidget {
                 ),
               )
             else ...[
-              batchesCard,
-              const SizedBox(height: AppTokens.s20),
+              if (vis.cards) ...[
+                batchesCard,
+                const SizedBox(height: AppTokens.s20),
+              ],
               alertsCard,
             ],
           ],
@@ -344,8 +389,9 @@ class _CodeChip extends StatelessWidget {
 
 /// "ما يحتاج انتباه" — actionable alerts, mirrors web `metrics.alerts`.
 class _AlertsCard extends StatelessWidget {
-  const _AlertsCard({required this.alerts});
+  const _AlertsCard({required this.alerts, required this.vis});
   final List<DashboardAlert> alerts;
+  final DashboardVisibility vis;
 
   @override
   Widget build(BuildContext context) {
@@ -367,7 +413,7 @@ class _AlertsCard extends StatelessWidget {
                 for (final a in alerts.take(4))
                   Padding(
                     padding: const EdgeInsets.only(bottom: AppTokens.s8),
-                    child: _AlertTile.fromAlert(context, a),
+                    child: _AlertTile.fromAlert(context, a, vis),
                   ),
               ],
             ),
@@ -388,7 +434,11 @@ class _AlertTile extends StatelessWidget {
   final String message;
   final VoidCallback? onTap;
 
-  factory _AlertTile.fromAlert(BuildContext context, DashboardAlert alert) {
+  factory _AlertTile.fromAlert(
+    BuildContext context,
+    DashboardAlert alert,
+    DashboardVisibility vis,
+  ) {
     final p = AppPalette.of(context);
     final tone = switch (alert.level) {
       DashboardAlertLevel.danger => (bg: p.dangerBg, fg: p.dangerStrong),
@@ -400,7 +450,10 @@ class _AlertTile extends StatelessWidget {
       DashboardAlertLevel.warn => Icons.warning_amber_rounded,
       DashboardAlertLevel.info => Icons.info_outline,
     };
-    final target = _alertRoute(alert.linkEndpoint);
+    final route = _alertRoute(alert.linkEndpoint);
+    // A shortcut to a screen this admin can't open is not tappable.
+    final target =
+        route != null && route.isNotEmpty && !vis.canOpen(route) ? null : route;
     return _AlertTile(
       tone: tone,
       icon: icon,
@@ -495,8 +548,9 @@ void _navigateAlert(
 /// "متابعة المشتركين" — surfaces the subscriber attention counters and top
 /// plan the API already returns (web shows these inline in the module grid).
 class _SubscriberAttention extends StatelessWidget {
-  const _SubscriberAttention({required this.metrics});
+  const _SubscriberAttention({required this.metrics, required this.vis});
   final DashboardMetrics metrics;
+  final DashboardVisibility vis;
 
   @override
   Widget build(BuildContext context) {
@@ -517,7 +571,7 @@ class _SubscriberAttention extends StatelessWidget {
       if (metrics.expiringSoon > 0)
         _StatItem(
           icon: Icons.hourglass_bottom,
-          label: 'ينتهي خلال ٣ أيام',
+          label: 'ينتهي خلال 3 أيام',
           value: '${metrics.expiringSoon}',
           bg: p.warningBg,
           fg: p.warningStrong,
@@ -562,11 +616,20 @@ class _SubscriberAttention extends StatelessWidget {
             queryParameters: const {'status': 'banned'},
           ),
         ),
-      if (metrics.hasTopPlan)
+      if (metrics.otherSubscribers > 0)
+        _StatItem(
+          icon: Icons.more_horiz,
+          label: 'أخرى',
+          value: '${metrics.otherSubscribers}',
+          bg: p.surfaceTinted,
+          fg: p.textSecondary,
+          onTap: () => context.goNamed('subscribers'),
+        ),
+      if (metrics.hasTopPlan && vis.plans)
         _StatItem(
           icon: Icons.star_outline,
           label: 'الأكثر استخدامًا',
-          value: '${metrics.topPlanName} · ${metrics.topPlanSubs} مشترك',
+          value: '${metrics.topPlanName} · ${arCount(metrics.topPlanSubs, arSubscriber, showOne: true)}',
           bg: p.brandSoft,
           fg: p.brandInk,
           full: true,
@@ -707,54 +770,76 @@ class _StatCell extends StatelessWidget {
 enum _MetricTone { brand, success, warning, info }
 
 class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.metrics});
+  const _MetricGrid({required this.metrics, required this.vis});
   final DashboardMetrics metrics;
+  final DashboardVisibility vis;
 
   @override
   Widget build(BuildContext context) {
     final tiles = [
-      _MetricTile(
-        icon: Icons.person_outline,
-        label: 'إجمالي المشتركين',
-        value: '${metrics.subscribers}',
-        tone: _MetricTone.brand,
-        primary: true,
-        onTap: () => context.goNamed('subscribers'),
-      ),
-      _MetricTile(
-        icon: Icons.online_prediction,
-        label: 'متّصلون الآن',
-        value: '${metrics.onlineNow}',
-        tone: _MetricTone.success,
-        onTap: () => context.goNamed('sessions'),
-      ),
-      _MetricTile(
-        icon: Icons.workspace_premium_outlined,
-        label: 'الباقات',
-        value: '${metrics.plans}',
-        sub: metrics.plans > 0
-            ? '${metrics.enabledPlans} مفعّلة · ${metrics.disabledPlans} معطّلة'
-            : null,
-        tone: _MetricTone.brand,
-        onTap: () => context.goNamed('plans'),
-      ),
-      _MetricTile(
-        icon: Icons.credit_card_outlined,
-        label: 'الكروت المُولَّدة',
-        value: '${metrics.totalCards}',
-        sub: '${metrics.usedCards} مُستخدَمة · ${metrics.availableCards} متاح',
-        tone: _MetricTone.warning,
-        onTap: () => context.goNamed('cards'),
-      ),
-      _MetricTile(
-        icon: Icons.router_outlined,
-        label: 'أجهزة الشبكة',
-        value: '${metrics.nasDevices}',
-        sub: metrics.nasDevices > 0 ? '${metrics.nasEnabled} مفعّلة' : null,
-        tone: _MetricTone.info,
-        onTap: () => context.goNamed('nas'),
-      ),
+      if (vis.subscribers)
+        _MetricTile(
+          icon: Icons.person_outline,
+          label: 'إجمالي المشتركين',
+          value: '${metrics.subscribers}',
+          tone: _MetricTone.brand,
+          primary: true,
+          onTap: () => context.goNamed('subscribers'),
+        ),
+      if (vis.online)
+        _MetricTile(
+          icon: Icons.online_prediction,
+          label: 'متّصلون الآن',
+          value: '${metrics.onlineNow}',
+          tone: _MetricTone.success,
+          onTap: () => context.goNamed('sessions'),
+        ),
+      if (vis.plans)
+        _MetricTile(
+          icon: Icons.workspace_premium_outlined,
+          label: 'الباقات',
+          value: '${metrics.plans}',
+          sub: metrics.plans > 0
+              ? '${metrics.enabledPlans} مفعّلة · ${metrics.disabledPlans} معطّلة'
+              : null,
+          tone: _MetricTone.brand,
+          onTap: () => context.goNamed('plans'),
+        ),
+      if (vis.cards)
+        _MetricTile(
+          icon: Icons.credit_card_outlined,
+          label: 'الكروت المُولَّدة',
+          value: '${metrics.totalCards}',
+          sub:
+              '${metrics.usedCards} مُستخدَمة · ${metrics.availableCards} متاح',
+          tone: _MetricTone.warning,
+          onTap: () => context.goNamed('cards'),
+        ),
+      if (vis.nas)
+        _MetricTile(
+          icon: Icons.router_outlined,
+          label: 'أجهزة الشبكة',
+          value: '${metrics.nasDevices}',
+          sub: metrics.nasDevices > 0 ? '${metrics.nasEnabled} مفعّلة' : null,
+          tone: _MetricTone.info,
+          onTap: () => context.goNamed('nas'),
+        ),
+      // fix3 (owner 2026-09-30): «إجمالي مبيعات اليوم» — card sales only,
+      // local panel day. Absent `sales_today` (older server) hides the tile.
+      if (metrics.salesToday != null)
+        _MetricTile(
+          icon: Icons.point_of_sale_outlined,
+          label: 'إجمالي مبيعات اليوم',
+          value: arCount(metrics.salesToday!.cardsCount, arCard, showOne: true),
+          sub: metrics.salesToday!.moneyVisible &&
+                  metrics.salesToday!.byCurrency.isNotEmpty
+              ? formatByCurrency(metrics.salesToday!.byCurrency)
+              : null,
+          tone: _MetricTone.success,
+          onTap: vis.cards ? () => context.goNamed('cards') : null,
+        ),
     ];
+    if (tiles.isEmpty) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (ctx, c) {
         final cols = c.maxWidth >= 1100
@@ -1018,9 +1103,17 @@ class _SystemHealth extends StatelessWidget {
         ),
       if (metrics.dnsOk != null) status('DNS', metrics.dnsOk!, 'سليم', 'فشل'),
       if (metrics.systemUptime.isNotEmpty)
-        info(Icons.power_settings_new, 'تشغيل النظام', metrics.systemUptime),
+        info(
+          Icons.power_settings_new,
+          'تشغيل النظام',
+          formatUptime(metrics.systemUptime),
+        ),
       if (metrics.processUptime.isNotEmpty)
-        info(Icons.timer_outlined, 'تشغيل التطبيق', metrics.processUptime),
+        info(
+          Icons.timer_outlined,
+          'تشغيل التطبيق',
+          formatUptime(metrics.processUptime),
+        ),
     ];
   }
 

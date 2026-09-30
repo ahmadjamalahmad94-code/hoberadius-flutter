@@ -24,6 +24,12 @@ class CardItem {
   final int? id;
   final String username;
   final String password;
+
+  /// permguard: without `scope.view_passwords` / `cards.print` the server
+  /// sends the password masked (`••••••`). Never shown, copied or exported
+  /// as if it were the real password.
+  bool get passwordMasked => isMaskedCardPassword(password);
+
   final int? batchId;
   final int? planId;
   final bool used;
@@ -47,3 +53,14 @@ class CardItem {
         usedByMac: (j['used_by_mac'] ?? '').toString(),
       );
 }
+
+/// A password the server masked (only bullets / asterisks), not a real one.
+bool isMaskedCardPassword(String value) {
+  final v = value.trim();
+  return v.isNotEmpty && RegExp(r'^[•\*●∙·]+$').hasMatch(v);
+}
+
+/// How a card password reads on screen: the value, or «••••» (hidden by the
+/// server — the admin lacks the reveal permission).
+String cardPasswordDisplay(String value) =>
+    isMaskedCardPassword(value) ? '••••' : value;

@@ -1,3 +1,6 @@
+import 'package:hoberadius_app/core/format/currency.dart';
+import 'package:hoberadius_app/core/format/money_limits.dart';
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -526,9 +529,10 @@ Future<VoucherGenerateDraft?> _voucherDialog(
                 controller: amount,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'القيمة لكل كوبون',
-                  helperText: 'يجب أن تكون القيمة أكبر من صفر.',
+                  helperText:
+                      'أكبر من صفر — الحدّ الأعلى $kMaxMoneyAmountLabel.',
                 ),
               ),
               const SizedBox(height: AppTokens.s8),
@@ -554,10 +558,10 @@ Future<VoucherGenerateDraft?> _voucherDialog(
                 onPressed: () async {
                   final picked = await showDatePicker(
                     context: context,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    firstDate: panelNow(),
+                    lastDate: panelNow().add(const Duration(days: 3650)),
                     initialDate: expireAt ??
-                        DateTime.now().add(const Duration(days: 30)),
+                        panelNow().add(const Duration(days: 30)),
                   );
                   if (picked != null) setState(() => expireAt = picked);
                 },
@@ -578,8 +582,12 @@ Future<VoucherGenerateDraft?> _voucherDialog(
           ),
           FilledButton(
             onPressed: () {
-              final parsedAmount =
-                  double.tryParse(amount.text.trim().replaceAll(',', '.')) ?? 0;
+              final money = readMoneyInput(amount.text);
+              if (money.error != null) {
+                _snack(context, money.error!);
+                return;
+              }
+              final parsedAmount = money.value ?? 0;
               final parsedCount = int.tryParse(count.text.trim()) ?? 0;
               if (parsedAmount <= 0 || parsedCount <= 0) {
                 _snack(context, 'أدخل عددًا وقيمة صحيحة قبل التوليد');
@@ -653,9 +661,7 @@ PillTone _statusTone(String status) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

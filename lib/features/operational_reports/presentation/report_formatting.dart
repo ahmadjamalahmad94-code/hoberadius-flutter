@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/l10n/arabic_labels.dart';
@@ -67,12 +68,12 @@ String _formatBool(Object? value) {
   return truthy.contains(text) ? 'نعم' : 'لا';
 }
 
-/// Thousands separators, at most 2 decimals — no float noise
-/// (117.58999999999999) and no 13-digit blobs.
+/// The app's one money format — no float noise (117.58999999999999) and no
+/// 13-digit blobs.
 String _formatAmount(Object? value) {
   final parsed = num.tryParse(value.toString());
   if (parsed == null || !parsed.isFinite) return value.toString();
-  return NumberFormat('#,##0.00').format(parsed);
+  return formatMoneyAmount(parsed);
 }
 
 int _toInt(Object? value) {

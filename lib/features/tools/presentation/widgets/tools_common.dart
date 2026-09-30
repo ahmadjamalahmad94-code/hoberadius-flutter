@@ -179,6 +179,9 @@ class ToolsTextField extends StatelessWidget {
     this.hint,
     this.maxLines = 1,
     this.keyboardType,
+    this.errorText,
+    this.helperText,
+    this.onChanged,
   });
 
   final TextEditingController controller;
@@ -187,13 +190,26 @@ class ToolsTextField extends StatelessWidget {
   final int maxLines;
   final TextInputType? keyboardType;
 
+  /// Arabic validation shown under the field (never a silent 0).
+  final String? errorText;
+  final String? helperText;
+  final ValueChanged<String>? onChanged;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
-      decoration: InputDecoration(labelText: label, hintText: hint),
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        errorText: errorText,
+        helperText: helperText,
+        errorMaxLines: 4,
+        helperMaxLines: 3,
+      ),
     );
   }
 }

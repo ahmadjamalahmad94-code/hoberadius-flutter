@@ -8,6 +8,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../data/revenue_repository.dart';
@@ -35,6 +36,42 @@ class RevenueScreen extends ConsumerStatefulWidget {
 class _RevenueScreenState extends ConsumerState<RevenueScreen> {
   String _status = '';
   String _sourceType = '';
+
+  /// Rows loaded with «تحميل المزيد» beyond the first page.
+  RevenuePage? _paged;
+  bool _loadingMore = false;
+  Object? _moreError;
+
+  Future<void> _loadMore(RevenuePage current) async {
+    if (_loadingMore || !current.hasMore) return;
+    setState(() {
+      _loadingMore = true;
+      _moreError = null;
+    });
+    try {
+      final next = await ref
+          .read(revenueRepositoryProvider)
+          .list(offset: current.items.length);
+      final before = current.items.length;
+      var merged = current.withMore(next.items, hasMore: next.hasMore);
+      // An old server that ignores the offset: nothing new → stop.
+      if (merged.items.length == before) {
+        merged = merged.withMore(const [], hasMore: false);
+      }
+      if (mounted) setState(() => _paged = merged);
+    } catch (e) {
+      if (mounted) setState(() => _moreError = e);
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  /// The page as the stats should read it: the whole server page (with its
+  /// totals) when no filter is set, else only the visible rows.
+  RevenuePage _statsPage(RevenuePage page, List<RevenueRecord> filtered) =>
+      _status.isEmpty && _sourceType.isEmpty
+          ? page
+          : RevenuePage(items: filtered, count: filtered.length);
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +103,8 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
             title: 'تعذر تحميل الإيرادات',
             subtitle: visibleErrorMessage(error),
           ),
-          data: (page) {
+          data: (first) {
+            final page = _paged ?? first;
             final sourceOptions = _sourceOptions(page.items);
             final filtered = page.items.where((item) {
               final statusMatch = _status.isEmpty || item.status == _status;
@@ -100,15 +138,15 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
                 else ...[
                   _RevenueStatsGrid(
                     // Unfiltered: the server's totals of ALL payments (not
-                    // only the loaded rows), split per currency if mixed.
-                    summary: _sourceType.isEmpty
-                        ? page.summary
-                        : RevenueSummary.fromItems(filtered),
+                    // only the loaded rows), one figure per currency, voided
+                    // rows excluded. A filter shows the visible rows only.
+                    collected: _statsPage(page, filtered).collectedPerCurrency,
+                    netProfit: _statsPage(page, filtered).netProfitPerCurrency,
+                    companyShare:
+                        _statsPage(page, filtered).companySharePerCurrency,
+                    partial: _sourceType.isNotEmpty || _status.isNotEmpty,
                     visibleCount: filtered.length,
                     totalCount: page.count,
-                    byCurrency: _sourceType.isEmpty && page.mixedCurrency
-                        ? page.collectedByCurrency
-                        : const [],
                   ),
                   const SizedBox(height: AppTokens.s12),
                   LayoutBuilder(
@@ -126,6 +164,14 @@ class _RevenueScreenState extends ConsumerState<RevenueScreen> {
                       return _RevenueTable(items: filtered);
                     },
                   ),
+                  if (page.hasMore || _moreError != null)
+                    LoadMoreFooter(
+                      hasMore: page.hasMore,
+                      loading: _loadingMore,
+                      error: _moreError,
+                      shown: page.items.length,
+                      onLoadMore: () => _loadMore(page),
+                    ),
                 ],
               ],
             );
@@ -206,16 +252,20 @@ class _RevenueFilters extends StatelessWidget {
 
 class _RevenueStatsGrid extends StatelessWidget {
   const _RevenueStatsGrid({
-    required this.summary,
+    required this.collected,
+    required this.netProfit,
+    required this.companyShare,
     required this.visibleCount,
     required this.totalCount,
-    this.byCurrency = const [],
+    this.partial = false,
   });
 
-  final RevenueSummary summary;
+  final List<CurrencyAmount> collected;
+  final List<CurrencyAmount> netProfit;
+  final List<CurrencyAmount> companyShare;
 
-  /// Non-empty when the tenant mixes currencies (shown instead of a sum).
-  final List<CurrencyAmount> byCurrency;
+  /// A filter is on: the figures cover the visible rows only.
+  final bool partial;
   final int visibleCount;
   final int totalCount;
 
@@ -227,20 +277,18 @@ class _RevenueStatsGrid extends StatelessWidget {
           columns: constraints.maxWidth < 720 ? 2 : 4,
           items: [
             CountItem.text(
-              'إجمالي المحصل',
-              byCurrency.length > 1
-                  ? formatByCurrency(byCurrency)
-                  : _money(summary.totalCollected),
+              partial ? 'المحصل (المعروض)' : 'إجمالي المحصل',
+              formatCurrencyList(collected),
               tone: PillTone.green,
             ),
             CountItem.text(
-              'الربح الصافي',
-              _money(summary.totalNetProfit),
+              partial ? 'الربح الصافي (المعروض)' : 'الربح الصافي',
+              formatCurrencyList(netProfit),
               tone: PillTone.amber,
             ),
             CountItem.text(
-              'حصة الشركة',
-              _money(summary.totalCompanyShare),
+              partial ? 'حصة الشركة (المعروض)' : 'حصة الشركة',
+              formatCurrencyList(companyShare),
               tone: PillTone.brand,
             ),
             CountItem.text(
@@ -431,9 +479,7 @@ PillTone _statusTone(String status) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

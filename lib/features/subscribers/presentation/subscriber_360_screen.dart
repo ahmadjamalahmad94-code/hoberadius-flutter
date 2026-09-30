@@ -1,7 +1,12 @@
+import 'package:hoberadius_app/core/format/currency.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
+import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/hub_error_state.dart';
@@ -37,7 +42,7 @@ class Subscriber360Screen extends ConsumerWidget {
               icon: const Icon(Icons.arrow_back),
             ),
           ),
-          error: (_, __) => Column(
+          error: (e, __) => Column(
             children: [
               PageHeader(
                 title: 'ملف المشترك 360',
@@ -48,8 +53,15 @@ class Subscriber360Screen extends ConsumerWidget {
                 ),
               ),
               HubErrorState(
-                title: 'تعذر جلب ملف المشترك',
-                subtitle: 'تحقق من اتصال التطبيق بالريدياس ثم أعد المحاولة.',
+                title: isAccessRefusal(e)
+                    ? 'لا يمكن فتح ملف المشترك'
+                    : 'تعذر جلب ملف المشترك',
+                // The server's reason («ليست ضمن نطاقك»…); the connection
+                // hint only when the server did not answer.
+                subtitle: loadErrorMessage(
+                  e,
+                  networkHint: 'تحقق من اتصال التطبيق بالخادم ثم أعد المحاولة.',
+                ),
                 onRetry: () => ref.invalidate(subscriber360Provider(username)),
               ),
             ],
@@ -69,6 +81,10 @@ class _Subscriber360Content extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final s = data.subscriber;
+    final editDenied = routeDenial(
+      ref.watch(permissionsProvider),
+      '/subscribers/${s.username}',
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -97,10 +113,14 @@ class _Subscriber360Content extends ConsumerWidget {
               icon: Icons.edit_outlined,
               label: 'تعديل',
               primary: true,
-              onPressed: () => context.goNamed(
-                'subscriber-edit',
-                pathParameters: {'username': s.username},
-              ),
+              // The edit form opens only when its save would be accepted.
+              onPressed: editDenied != null
+                  ? null
+                  : () => context.goNamed(
+                        'subscriber-edit',
+                        pathParameters: {'username': s.username},
+                      ),
+              tooltip: editDenied,
             ),
             ActionItem(
               icon: Icons.account_balance_wallet_outlined,
@@ -253,7 +273,7 @@ class _DetailsCard extends StatelessWidget {
           _InfoRow('الاسم', s.fullName),
           _InfoRow('الجوال', s.mobile),
           _InfoRow('البريد', s.email),
-          _InfoRow('نوع الخدمة', data.serviceType),
+          _InfoRow('نوع الخدمة', _serviceTypeLabel(data.serviceType)),
           _InfoRow('الباقة', data.planName),
           _InfoRow(
             'السعر المخصص',
@@ -376,7 +396,10 @@ class _TimelineCard extends StatelessWidget {
                     dense: true,
                     title: Text(item.label),
                     subtitle: Text(
-                      item.createdAt.isEmpty ? 'بدون وقت' : item.createdAt,
+                      formatServerTimestamp(
+                        item.createdAt,
+                        empty: 'بدون وقت',
+                      ),
                     ),
                     leading: const Icon(
                       Icons.circle,
@@ -487,7 +510,7 @@ String _serviceTypeLabel(String value) {
   };
 }
 
-String _money(num value) => value == 0 ? '0' : value.toStringAsFixed(2);
+String _money(num value) => formatMoneyAmount(value);
 
 /// Left-to-right mark: keeps «0 B» / «1.2 GB» in reading order inside the
 /// RTL layout (it rendered as «B 0»).

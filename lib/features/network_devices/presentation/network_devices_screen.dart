@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -413,7 +415,7 @@ class _NetworkDeviceCard extends StatelessWidget {
               ),
               if (item.lastCheckedAt.isNotEmpty)
                 StatusPill(
-                  text: 'آخر فحص ${item.lastCheckedAt}',
+                  text: 'آخر فحص ${formatServerTimestamp(item.lastCheckedAt)}',
                   tone: PillTone.blue,
                 ),
               if (item.lastLatencyMs != null)
@@ -649,7 +651,7 @@ class _NetworkScanDialogState extends ConsumerState<_NetworkScanDialog> {
           runSpacing: AppTokens.s8,
           children: [
             StatusPill(
-              text: 'تم العثور على ${result.items.length} جهاز',
+              text: 'تم العثور على ${arCount(result.items.length, arDevice, showOne: true)}',
               tone: PillTone.blue,
               dot: true,
             ),
@@ -1197,7 +1199,10 @@ class _RemoteAccessSessionRow extends StatelessWidget {
                   '${session.internalIp}:${session.internalPort}',
                 ),
               if (session.expiresAt.isNotEmpty)
-                _InfoChip(Icons.timer_outlined, 'تنتهي ${session.expiresAt}'),
+                _InfoChip(
+                  Icons.timer_outlined,
+                  'تنتهي ${formatServerTimestamp(session.expiresAt)}',
+                ),
               if (session.requestedBy.isNotEmpty)
                 _InfoChip(Icons.person_outline, session.requestedBy),
               if (session.notes.isNotEmpty)

@@ -1,8 +1,11 @@
+import 'package:hoberadius_app/core/api/api_exception.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -122,7 +125,11 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     });
   }
 
-  int _i(String key) => int.tryParse(_c[key]!.text.trim()) ?? 0;
+  int _i(String key) => parseIntInput(_c[key]!.text) ?? 0;
+
+  /// The server said this router NAME is taken (409 `nas_name_conflict`):
+  /// shown under the name field, cleared when the name is edited.
+  String? _nameError;
   String _s(String key) => _c[key]!.text.trim();
 
   NasDevice _build() {
@@ -171,7 +178,14 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       ref.invalidate(nasListProvider);
       if (mounted) context.goNamed('nas');
     } catch (e) {
-      setState(() => _error = visibleErrorMessage(e));
+      setState(() {
+        if (isNasNameConflict(e)) {
+          _nameError = visibleErrorMessage(e);
+          _error = null;
+        } else {
+          _error = formSaveErrorMessage(e);
+        }
+      });
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -285,12 +299,13 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   label: _testing ? 'جارٍ الاختبار…' : 'اختبار الاتصال',
                   onPressed: (_loading || _testing) ? null : _test,
                 ),
-                ActionItem(
-                  icon: Icons.delete_outline,
-                  label: 'حذف الجهاز',
-                  tone: PillTone.red,
-                  onPressed: _loading ? null : _delete,
-                ),
+                if (ref.watch(permissionsProvider).can('nas.delete'))
+                  ActionItem(
+                    icon: Icons.delete_outline,
+                    label: 'حذف الجهاز',
+                    tone: PillTone.red,
+                    onPressed: _loading ? null : _delete,
+                  ),
               ],
             ),
           ],
@@ -318,6 +333,12 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   required: true,
                   child: TextFormField(
                     controller: _c['name'],
+                    decoration: InputDecoration(errorText: _nameError),
+                    onChanged: (_) {
+                      if (_nameError != null) {
+                        setState(() => _nameError = null);
+                      }
+                    },
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
                   ),
@@ -547,3 +568,10 @@ class _PortsRow extends StatelessWidget {
     );
   }
 }
+
+/// A router-name clash from the server: 409 `nas_name_conflict` (fix2);
+/// older servers answered a 500, so only the explicit code counts.
+bool isNasNameConflict(Object? e) =>
+    e is ApiException &&
+    (e.code == 'nas_name_conflict' ||
+        (e.status == 409 && e.message.contains('اسم الراوتر')));

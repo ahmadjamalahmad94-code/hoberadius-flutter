@@ -194,6 +194,11 @@ ActionAvailability actionAvailability(
       disabledReason: 'يتطلّب تحديث الخادم',
     );
   }
+  if (spec.action == SubscriberAction.quotaReset &&
+      c.dailyResetAvailable == false) {
+    // Nothing to reset (no daily quota / time cap): the server refuses it.
+    return const ActionAvailability(visible: false);
+  }
   switch (spec.action) {
     case SubscriberAction.quota:
     case SubscriberAction.quotaReset:

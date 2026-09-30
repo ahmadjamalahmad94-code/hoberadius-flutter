@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/api/paging.dart';
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
@@ -78,7 +80,7 @@ class SubscribersListController extends AutoDisposeFamilyAsyncNotifier<
       offset: offset,
     );
     final items =
-        _expiring ? filterExpiringSoon(page.items, DateTime.now()) : page.items;
+        _expiring ? filterExpiringSoon(page.items, panelNow()) : page.items;
     return (items, page);
   }
 
@@ -187,6 +189,11 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(subscribersListProvider(_listQuery));
+    final perms = ref.watch(permissionsProvider);
+    // «مشترك جديد» only when the server would SAVE it (users.create + the
+    // action grant + an open section) — never a form refused after filling.
+    final createDenied = subscriberCreateDenial(perms);
+    final atCap = ref.watch(grantLimitProvider('subscribers'))?.atCap ?? false;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -194,17 +201,28 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
           title: 'المشتركون',
           inlineActions: true,
           actions: [
+            // No `tooltip:` on the segments: a Tooltip INSIDE the segmented
+            // button's render object is laid out by the shell navigator's
+            // Overlay during the page transition and read its size mid-
+            // layout — the first error of the debug assertion cascade after
+            // «حفظ» → list (r10 N8 / f07 N-B7). The names stay for screen
+            // readers.
             SegmentedButton<_Density>(
+              key: const ValueKey('subscribers-density'),
               segments: const [
                 ButtonSegment(
                   value: _Density.comfortable,
-                  icon: Icon(Icons.view_agenda_outlined),
-                  tooltip: 'مريح',
+                  icon: Icon(
+                    Icons.view_agenda_outlined,
+                    semanticLabel: 'عرض مريح',
+                  ),
                 ),
                 ButtonSegment(
                   value: _Density.compact,
-                  icon: Icon(Icons.density_small_outlined),
-                  tooltip: 'مكثّف',
+                  icon: Icon(
+                    Icons.density_small_outlined,
+                    semanticLabel: 'عرض مكثّف',
+                  ),
                 ),
               ],
               selected: {_density},
@@ -222,10 +240,10 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
               primary: true,
               // blocked at the provider's subscriber cap (was the guarded
               // create button; the limit banner below explains it)
-              onPressed:
-                  (ref.watch(grantLimitProvider('subscribers'))?.atCap ?? false)
-                      ? null
-                      : () => context.goNamed('subscriber-new'),
+              onPressed: (atCap || createDenied != null)
+                  ? null
+                  : () => context.goNamed('subscriber-new'),
+              tooltip: createDenied,
             ),
           ],
         ),
@@ -319,7 +337,7 @@ class _StatusChips extends StatelessWidget {
     const options = <(String?, String)>[
       (null, 'كل الحالات'),
       ('enabled', 'مفعّل'),
-      (kExpiringSoonFilter, 'ينتهي خلال ٣ أيام'),
+      (kExpiringSoonFilter, 'ينتهي خلال 3 أيام'),
       ('expired', 'منتهي'),
       ('disabled', 'معطّل'),
       ('suspended', 'موقوف'),
@@ -398,7 +416,7 @@ class _Table extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final df = DateFormat('yyyy-MM-dd');
     final p = AppPalette.of(context);
-    final now = DateTime.now();
+    final now = panelNow();
     final compact = density == _Density.compact;
     return ListView.separated(
       shrinkWrap: true,
@@ -594,4 +612,14 @@ class _RowCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Why «مشترك جديد» is refused for [p] (Arabic), or null when the server
+/// would save a new subscriber.
+String? subscriberCreateDenial(AppPermissions p) {
+  if (!p.can('users.create')) return p.deniedReason(perm: 'users.create');
+  if (!p.canAction('subscriber.create')) {
+    return p.deniedReason(action: 'subscriber.create');
+  }
+  return null;
 }

@@ -75,7 +75,7 @@ void main() {
       'direction': 'charge',
       'payment_method': 'cash',
       'status': 'paid',
-      'expiration_at': '2026-06-30T00:00:00.000Z',
+      'expiration_at': '2026-06-30T00:00:00Z',
       'note': 'فاتورة اشتراك شهرية',
     });
   });

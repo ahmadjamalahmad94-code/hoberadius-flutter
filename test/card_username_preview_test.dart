@@ -26,12 +26,18 @@ void main() {
     expect(p.generatedLength, 3);
   });
 
-  test('warns when the affixes fill the length or digits are too few', () {
-    expect(
-      UsernamePreview.of(prefix: '1234', suffix: '5678', totalLength: 8)
-          .warning,
-      isNotNull,
-    );
+  test('affixes filling the length: the server refusal, no promised name',
+      () {
+    // fix3 (cardsnet L3): the server REFUSES this (422) — the preview used to
+    // show a 9-character sample with one random digit.
+    final full =
+        UsernamePreview.of(prefix: '1234', suffix: '5678', totalLength: 8);
+    expect(full.refusal, contains('لا تترك خانةً للأرقام العشوائيّة'));
+    expect(full.refusal, contains('اجعل الطول 9 على الأقلّ (والحدّ 32)'));
+    expect(full.generated, isEmpty);
+  });
+
+  test('warns when the random digits are too few', () {
     final few = UsernamePreview.of(
       prefix: '25',
       suffix: '',

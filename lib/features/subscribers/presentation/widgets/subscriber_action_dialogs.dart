@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
@@ -7,14 +8,25 @@ import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../../../shared/widgets/status_pill.dart';
+import '../../../plans/data/plans_repository.dart';
 import '../../../plans/domain/plan_model.dart';
 import '../../data/subscriber_actions_repository.dart';
 import '../../domain/subscriber_actions_model.dart';
 import '../../domain/subscriber_model.dart';
 import '../../../../core/api/idempotency.dart';
 import '../../../../core/format/money_limits.dart';
+import '../../../../core/format/bidi.dart';
+import '../../../../core/format/number_input.dart';
 import 'action_dialog_kit.dart';
-import 'plan_picker.dart';
+
+/// The change-plan dialog's plan list — the full `/api/v1/profiles` list
+/// (needs `plans.view`): unlike the create-form picker
+/// (`createSubscriberPlanOptionsProvider` in `plan_picker.dart`), this
+/// dialog needs full `Plan` fields (`rate_per_minute`, `enabled`, …) that
+/// the fix3 lite `plans/options` endpoint does not send.
+final plansForPickerProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
+  return ref.watch(plansRepositoryProvider).list();
+});
 
 /// What a finished action reports back to the caller: the toast text, and
 /// whether it is a plain success or an informational outcome (e.g. a loan
@@ -189,7 +201,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
   late DateTime _exact;
 
   SubscriberActionsContext get c => widget.c;
-  DateTime get _now => widget.now ?? DateTime.now();
+  DateTime get _now => widget.now ?? panelNow();
 
   @override
   void initState() {
@@ -219,26 +231,28 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
         mode: _charge,
       );
 
-  String? get _invalid {
-    if (_mode == ExtendMode.duration && _minutes <= 0) {
-      return 'أدخل مدّة أكبر من صفر.';
-    }
-    if (_minutes > kMaxActionMinutes) {
-      return 'المدّة كبيرة جدًا — الحدّ الأعلى 10 سنوات.';
-    }
-    if (_charge != ChargeMode.free && _price > kMaxMoneyAmount) {
-      return 'قيمة الوقت كبيرة جدًا — الحدّ الأعلى '
-          '${kMaxMoneyAmount.toStringAsFixed(0)}.';
-    }
-    return null;
-  }
+  /// The plan has no price/period to price time with: only «مجاني» makes
+  /// sense (a paid 0.00 row used to be recorded, with a misleading hint).
+  bool get _unpriced => c.effectivePrice <= 0 || c.planMinutes <= 0;
+
+  String? get _invalid => extendInvalidReason(
+        mode: _mode,
+        amountText: _amount.text,
+        minutes: _minutes,
+        charge: _charge,
+        price: _price,
+        unpriced: _unpriced,
+        anchor: c.expireAt != null && c.expireAt!.isAfter(_now)
+            ? c.expireAt!
+            : _now,
+      );
 
   Future<void> _pickExact() async {
     final day = await showDatePicker(
       context: context,
       initialDate: _exact,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      lastDate: kLastPickableDate,
       helpText: 'تاريخ الانتهاء',
     );
     if (day == null || !mounted) return;
@@ -260,6 +274,10 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
   String get _chargeHint {
     if (_charge == ChargeMode.free) {
       return 'إضافة وقت مجانية بدون أي قيمة مالية.';
+    }
+    if (_unpriced) {
+      return 'لا يوجد سعر للباقة (أو مدّة) لاحتساب قيمة الوقت — '
+          'اختر «مجاني» أو حدّد سعرًا مخصّصًا للمشترك.';
     }
     if (_price > 0) {
       return 'سعر الوقت المُضاف ${formatMoney(_price, c.currency)} '
@@ -338,13 +356,17 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
           FormFieldPair(
             first: FormFieldRow(
               label: 'المدّة',
+              hint: kExtendCapHint,
               child: TextField(
                 controller: _amount,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
                 inputFormatters: numberInputFormatters,
-                decoration: actionFieldDecoration,
+                decoration: actionFieldDecoration.copyWith(
+                  errorText: numberFieldError(_amount.text),
+                  errorMaxLines: 3,
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -365,7 +387,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
         else
           FormFieldRow(
             label: 'ينتهي في',
-            hint: 'بتوقيتك المحلّي',
+            hint: PanelTimeZone.label(_exact),
             child: _DateTimeTile(value: _exact, onTap: _pickExact),
           ),
         if (_invalid != null) ...[
@@ -376,7 +398,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
         ChoiceTiles<ChargeMode>(
           value: _charge,
           onChanged: (v) => setState(() => _charge = v),
-          options: _chargeOptions(paidEnabled: !legacy),
+          options: _chargeOptions(paidEnabled: !legacy && !_unpriced),
         ),
         const SizedBox(height: 6),
         ActionNote(
@@ -453,6 +475,7 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
   final _notes = TextEditingController();
   int _unitMb = 1024;
   String _target = 'combined';
+  String _window = 'auto';
   ChargeMode _charge = ChargeMode.free;
 
   SubscriberActionsContext get c => widget.c;
@@ -469,8 +492,12 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
   double get _amount => parseLocalizedNumber(_money.text) ?? 0;
 
   String? get _invalid {
+    final sizeErr = numberFieldError(_size.text);
+    if (sizeErr != null) return sizeErr;
     if (_quotaMb <= 0) return 'أدخل حجم الكوتة.';
     if (_charge != ChargeMode.free) {
+      final moneyErr = numberFieldError(_money.text);
+      if (moneyErr != null) return moneyErr;
       if (_amount <= 0) return 'أدخل المبلغ للإضافة المدفوعة.';
       return validateMoneyAmount(_amount);
     }
@@ -485,8 +512,10 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
           charge: _charge,
           amount: _amount,
           notes: _notes.text,
+          window: _window,
           idempotencyKey: idemKey('quota/topup', {
             'q': _quotaMb,
+            'w': _window,
             't': _target,
             'c': _charge.wire,
             'a': _amount,
@@ -520,7 +549,11 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
                 decimal: true,
               ),
               inputFormatters: numberInputFormatters,
-              decoration: actionFieldDecoration.copyWith(hintText: '0'),
+              decoration: actionFieldDecoration.copyWith(
+                hintText: '0',
+                errorText: numberFieldError(_size.text),
+                errorMaxLines: 3,
+              ),
               onChanged: (_) => setState(() {}),
             ),
           ),
@@ -551,6 +584,32 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
             onChanged: (v) => setState(() => _target = v ?? 'combined'),
           ),
         ),
+        if (c.quotaUsage.isNotEmpty) ...[
+          ActionNote(text: c.quotaUsage.join(kNewline)),
+          _gap(AppTokens.s8),
+        ],
+        // Several windows (a total cap and/or the plan's monthly / daily
+        // caps): the operator picks where the top-up goes; «تلقائي» lets the
+        // server choose (total ⇒ monthly ⇒ daily).
+        if (c.quotaWindows.length > 1)
+          FormFieldRow(
+            label: 'تُضاف إلى',
+            child: DropdownButtonFormField<String>(
+              initialValue: _window,
+              isExpanded: true,
+              decoration: actionFieldDecoration,
+              items: [
+                for (final w in ['auto', ...c.quotaWindows])
+                  DropdownMenuItem(value: w, child: Text(quotaWindowLabel(w))),
+              ],
+              onChanged: (v) => setState(() => _window = v ?? 'auto'),
+            ),
+          )
+        else if (c.quotaWindows.length == 1 && c.quotaWindows.single != 'total')
+          ActionNote(
+            text: 'تُضاف إلى ${quotaWindowLabel(c.quotaWindows.single)} '
+                '(الباقة بلا سقف إجمالي).',
+          ),
         const ActionFieldLabel('طريقة الإضافة'),
         ChoiceTiles<ChargeMode>(
           value: _charge,
@@ -579,7 +638,13 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
                   decimal: true,
                 ),
                 inputFormatters: numberInputFormatters,
-                decoration: actionFieldDecoration,
+                decoration: actionFieldDecoration.copyWith(
+                  errorText: numberFieldError(_money.text) ??
+                      (_money.text.trim().isEmpty
+                          ? null
+                          : validateMoneyAmount(_amount)),
+                  errorMaxLines: 3,
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -644,8 +709,10 @@ class _QuotaResetDialogState extends ConsumerState<QuotaResetDialog>
 
   @override
   Widget build(BuildContext context) {
-    final invalid =
-        _charge != ChargeMode.free && validateMoneyAmount(_amount) != null;
+    final moneyError = _charge == ChargeMode.free
+        ? null
+        : (numberFieldError(_money.text) ?? validateMoneyAmount(_amount));
+    final invalid = moneyError != null;
     return ActionDialogFrame(
       icon: Icons.restart_alt,
       tone: PillTone.blue,
@@ -714,7 +781,13 @@ class _QuotaResetDialogState extends ConsumerState<QuotaResetDialog>
                   decimal: true,
                 ),
                 inputFormatters: numberInputFormatters,
-                decoration: actionFieldDecoration,
+                decoration: actionFieldDecoration.copyWith(
+                  errorText: numberFieldError(_money.text) ??
+                      (_money.text.trim().isEmpty
+                          ? null
+                          : validateMoneyAmount(_amount)),
+                  errorMaxLines: 3,
+                ),
                 onChanged: (_) => setState(() {}),
               ),
             ),
@@ -792,8 +865,19 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final amountError =
-        _money.text.trim().isEmpty ? null : validateMoneyAmount(_amount);
+    final amountError = _money.text.trim().isEmpty
+        ? null
+        : (numberFieldError(_money.text) ??
+            validateMoneyAmount(_amount, cap: MoneyCap.subscriberPayment) ??
+            validateExtendSpan(
+              paymentExtendMinutes(
+                amount: _amount,
+                settledLoans: settledTotal(c.openLoans, _choices),
+                debt: _settleBalance ? c.debt : 0.0,
+                effectivePrice: c.effectivePrice,
+                planMinutes: c.planMinutes,
+              ),
+            ));
     final invalid = _amount < 0.01 || amountError != null;
     return ActionDialogFrame(
       icon: Icons.payments_outlined,
@@ -998,10 +1082,16 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
     super.dispose();
   }
 
-  int get _d => (parseLocalizedNumber(_days.text) ?? 0).floor();
-  int get _h => (parseLocalizedNumber(_hours.text) ?? 0).floor();
+  int get _d => parseIntInput(_days.text) ?? 0;
+  int get _h => parseIntInput(_hours.text) ?? 0;
 
-  String? get _invalid => validateLoan(
+  String? get _invalid =>
+      numberFieldError(_days.text, decimal: false) ??
+      numberFieldError(_hours.text, decimal: false) ??
+      (_type == LoanType.debt && _unpriced
+          ? 'لا يمكن تسجيل دين: الباقة بلا سعر أو مدّة — اختر «مجانية».'
+          : null) ??
+      validateLoan(
         type: _type,
         days: _d,
         hours: _h,
@@ -1014,6 +1104,9 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
         planMinutes: c.planMinutes,
         minutes: _d * 1440 + _h * 60,
       );
+
+  /// No price or no plan period: a debt loan would record 0.00.
+  bool get _unpriced => c.effectivePrice <= 0 || c.planMinutes <= 0;
 
   String get _hint {
     if (_type == LoanType.free) {
@@ -1052,7 +1145,10 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
         controller: ctrl,
         keyboardType: TextInputType.number,
         inputFormatters: intInputFormatters,
-        decoration: actionFieldDecoration,
+        decoration: actionFieldDecoration.copyWith(
+          errorText: numberFieldError(ctrl.text, decimal: false),
+          errorMaxLines: 3,
+        ),
         onChanged: (_) => setState(() {}),
       );
 
@@ -1076,8 +1172,8 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
           value: _type,
           onChanged: (v) => setState(() => _type = v),
           tone: PillTone.amber,
-          options: const [
-            ChoiceOption(
+          options: [
+            const ChoiceOption(
               LoanType.free,
               'مجانية',
               icon: Icons.card_giftcard_outlined,
@@ -1087,7 +1183,11 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
               LoanType.debt,
               'تسجيل دين (مدين)',
               icon: Icons.receipt_long_outlined,
-              caption: 'تُسجَّل قيمتها كدين على المشترك.',
+              // No price/period → the debt would be 0.00 (r03): not offered.
+              caption: _unpriced
+                  ? 'غير متاح: الباقة بلا سعر أو مدّة.'
+                  : 'تُسجَّل قيمتها كدين على المشترك.',
+              enabled: !_unpriced,
             ),
           ],
         ),
@@ -1137,14 +1237,79 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
 //  6. تغيير العرض / السرعة
 // ═════════════════════════════════════════════════════════════════════════
 
-String _planOptionLabel(Plan p) {
-  final mins =
-      p.durationMinutes > 0 ? p.durationMinutes : p.validityDays * 1440;
-  final price = formatMoney(p.price.toDouble(), '');
+int _planMinutes(Plan p) =>
+    p.durationMinutes > 0 ? p.durationMinutes : p.validityDays * 1440;
+
+/// «name — 30 ILS · 30 يوم» with the name and the price as bidi isolates:
+/// a Latin name («r04_meta — 302.35 · 30 يوم») was reordered right-to-left.
+String planOptionLabel(Plan p) {
+  final mins = _planMinutes(p);
+  final price = formatMoney(p.price.toDouble(), p.currency);
+  final name = autoIsolate(p.name);
+  final money = price.contains(kLtrIsolate) ? price : ltrIsolate(price);
   return mins > 0
-      ? '${p.name} — $price · ${arDuration(mins)}'
-      : '${p.name} — $price';
+      ? '$name — $money · ${arDuration(mins)}'
+      : '$name — $money';
 }
+
+/// The current plan's price per minute, exactly as the server decides it
+/// (`plan_rate_per_minute`): the server's own `rate_per_minute` when sent;
+/// else the PLAN price (not a custom subscriber price — the server ignores
+/// it for the direction) over the plan period, a plan without a period
+/// being a 30-day month; a free plan or no plan → 0.
+double currentPlanRatePerMinute(SubscriberActionsContext c) {
+  final plan = c.plan;
+  if (plan == null || plan.id == null) return 0;
+  final fromServer = plan.ratePerMinute;
+  if (fromServer != null && fromServer.isFinite && fromServer >= 0) {
+    return fromServer;
+  }
+  if (!(plan.price > 0)) return 0;
+  final period = plan.minutes > 0 ? plan.minutes : kPlanPeriodFallbackMinutes;
+  return plan.price / period;
+}
+
+/// Higher/lower for a change from [c]'s plan to [next] — the server's
+/// `plan_change_direction`, PER MINUTE (a 5 ILS/day plan is dearer than
+/// 120 ILS/30 days), with the server's 30-day default for a plan without a
+/// duration and a free plan as rate 0: free → paid is «higher» (f04 M2:
+/// the dialog offered only «تغيير العرض فقط» and the server refused it).
+/// Uses the server's `rate_per_minute` (actions-context / `/profiles`)
+/// whenever sent instead of recomputing it.
+PlanDirection changePlanDirection(SubscriberActionsContext c, Plan? next) {
+  if (next == null || next.id == null || next.id == c.plan?.id) {
+    return PlanDirection.neutral;
+  }
+  return planDirectionByRate(currentPlanRatePerMinute(c), next.ratePerMinute);
+}
+
+/// The toast after a change-plan: the new plan, the server's `direction`
+/// (fix2) and what happened to the time/money.
+String changePlanDoneMessage(String planName, Map<String, dynamic> res) {
+  final dir = switch ('${res['direction'] ?? ''}') {
+    'higher' => ' (عرض أعلى سعرًا للدقيقة)',
+    'lower' => ' (عرض أرخص للدقيقة)',
+    'neutral' => ' (نفس سعر الدقيقة)',
+    _ => '',
+  };
+  final debt = res['debt_amount'];
+  final d = debt is num ? debt : num.tryParse('${debt ?? ''}');
+  final minutes = res['minute_delta'];
+  final m = minutes is num ? minutes.toInt() : int.tryParse('${minutes ?? ''}');
+  final extra = [
+    if (d != null && d > 0) 'دين ${d.toStringAsFixed(2)}',
+    if (m != null && m > 0) 'أُضيف ${arDuration(m)}',
+    if (m != null && m < 0) 'نقص ${arDuration(-m)}',
+  ];
+  return 'تم تغيير العرض إلى ${autoIsolate(planName)}$dir'
+      '${extra.isEmpty ? '' : ' — ${extra.join('، ')}'}';
+}
+
+/// The change-plan choices: enabled plans other than the current one (a
+/// disabled or the same plan used to be offered — r04 N9).
+List<Plan> changePlanChoices(List<Plan> all, {int? currentPlanId}) => all
+    .where((p) => p.id != null && p.enabled && p.id != currentPlanId)
+    .toList();
 
 class ChangePlanDialog extends ConsumerStatefulWidget {
   const ChangePlanDialog({super.key, required this.c});
@@ -1161,15 +1326,8 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
 
   SubscriberActionsContext get c => widget.c;
 
-  double get _currentPrice =>
-      (c.plan?.price ?? 0) > 0 ? c.plan!.price : c.effectivePrice;
-
-  PlanDirection get _direction => planDirection(
-        currentPlanId: c.plan?.id,
-        currentPrice: _currentPrice,
-        nextPlanId: _next?.id,
-        nextPrice: _next?.price.toDouble() ?? 0,
-      );
+  /// Higher/lower is decided PER MINUTE — see [changePlanDirection].
+  PlanDirection get _direction => changePlanDirection(c, _next);
 
   void _select(Plan? p) {
     setState(() {
@@ -1179,14 +1337,14 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
   }
 
   Future<void> _submit() => run(() async {
-        await repo.changePlan(
+        final res = await repo.changePlan(
           c.username,
           planId: _next!.id!,
           policy: _policy,
           idempotencyKey:
               idemKey('change-plan', {'p': _next!.id, 'x': _policy}),
         );
-        return ActionOutcome('تم تغيير العرض إلى ${_next!.name}');
+        return ActionOutcome(changePlanDoneMessage(_next!.name, res));
       });
 
   @override
@@ -1219,7 +1377,13 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
               tone: PillTone.red,
             ),
             data: (items) {
-              final list = items.where((p) => p.id != null).toList();
+              final list = changePlanChoices(items, currentPlanId: c.plan?.id);
+              if (list.isEmpty) {
+                return const ActionNote(
+                  text: 'لا توجد عروض مفعّلة أخرى للتغيير إليها.',
+                  tone: PillTone.amber,
+                );
+              }
               return DropdownButtonFormField<int>(
                 initialValue: _next?.id,
                 isExpanded: true,
@@ -1230,7 +1394,7 @@ class _ChangePlanDialogState extends ConsumerState<ChangePlanDialog>
                     DropdownMenuItem(
                       value: p.id,
                       child: Text(
-                        _planOptionLabel(p),
+                        planOptionLabel(p),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -1683,3 +1847,9 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
     );
   }
 }
+
+/// A line break for joined notes.
+final String kNewline = String.fromCharCode(10);
+
+/// Shown under «المدّة» of «إضافة وقت»: the owner's one-year rule, up front.
+const kExtendCapHint = 'حتى سنة واحدة في المرة';

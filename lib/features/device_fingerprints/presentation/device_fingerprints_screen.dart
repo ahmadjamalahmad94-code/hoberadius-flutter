@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/format/server_time.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -77,7 +78,8 @@ class _DeviceFingerprintsScreenState
                 decoration: const InputDecoration(
                   prefixIcon: Icon(Icons.search),
                   labelText: 'بحث',
-                  hintText: 'العنوان الفيزيائي، اسم الجهاز، عنوان الشبكة، النظام، الطراز...',
+                  hintText:
+                      'العنوان الفيزيائي، اسم الجهاز، عنوان الشبكة، النظام، الطراز...',
                 ),
                 onChanged: (_) => setState(() {}),
               ),
@@ -330,7 +332,9 @@ class _DeviceCard extends StatelessWidget {
               _InfoChip(icon: Icons.memory, label: item.deviceLabel),
               _InfoChip(
                 icon: Icons.lan_outlined,
-                label: item.ipAddress.isEmpty ? 'عنوان الشبكة غير معروف' : item.ipAddress,
+                label: item.ipAddress.isEmpty
+                    ? 'عنوان الشبكة غير معروف'
+                    : item.ipAddress,
               ),
               _InfoChip(icon: Icons.badge_outlined, label: item.mac),
             ],
@@ -338,9 +342,12 @@ class _DeviceCard extends StatelessWidget {
           const SizedBox(height: AppTokens.s12),
           Text(
             [
-              if (item.firstSeenAt.isNotEmpty) 'أول ظهور: ${item.firstSeenAt}',
-              if (item.lastSeenAt.isNotEmpty) 'آخر ظهور: ${item.lastSeenAt}',
-              if (item.dhcpClassId.isNotEmpty) 'سجل التأجير: ${item.dhcpClassId}',
+              if (item.firstSeenAt.isNotEmpty)
+                'أول ظهور: ${formatServerTimestamp(item.firstSeenAt)}',
+              if (item.lastSeenAt.isNotEmpty)
+                'آخر ظهور: ${formatServerTimestamp(item.lastSeenAt)}',
+              if (item.dhcpClassId.isNotEmpty)
+                'سجل التأجير: ${item.dhcpClassId}',
             ].join(' · '),
             style: const TextStyle(color: AppTokens.textMuted),
           ),

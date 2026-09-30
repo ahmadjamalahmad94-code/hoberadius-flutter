@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -685,7 +686,7 @@ class _MembersDialogState extends ConsumerState<_MembersDialog> {
                             ),
                           ),
                           title: Text(member.displayName),
-                          subtitle: Text('@${member.username}'),
+                          subtitle: Text(ltrIsolate('@${member.username}')),
                           trailing: Wrap(
                             spacing: AppTokens.s8,
                             crossAxisAlignment: WrapCrossAlignment.center,

@@ -12,6 +12,10 @@
 /// Historically this model read `recent`/`audit` for an activity feed, but the
 /// API never returns those keys — it returns `recent_batches` (latest card
 /// batches) and `alerts` (the "ما يحتاج انتباه" panel). Those are now parsed.
+library;
+
+import '../../../core/format/currency.dart' show CurrencyAmount, parseByCurrency;
+
 class DashboardMetrics {
   DashboardMetrics({
     this.subscribers = 0,
@@ -22,6 +26,7 @@ class DashboardMetrics {
     this.suspendedSubscribers = 0,
     this.disabledSubscribers = 0,
     this.bannedSubscribers = 0,
+    this.otherSubscribers = 0,
     this.plans = 0,
     this.enabledPlans = 0,
     this.disabledPlans = 0,
@@ -46,6 +51,7 @@ class DashboardMetrics {
     this.radiusOk,
     this.recentBatches = const [],
     this.alerts = const [],
+    this.salesToday,
   });
 
   final int subscribers;
@@ -56,6 +62,10 @@ class DashboardMetrics {
   final int suspendedSubscribers;
   final int disabledSubscribers;
   final int bannedSubscribers;
+
+  /// `subscribers.other` (fix2 servers): rows in no status group above, so
+  /// the groups add up to the total.
+  final int otherSubscribers;
   final int plans;
   final int enabledPlans;
   final int disabledPlans;
@@ -80,6 +90,9 @@ class DashboardMetrics {
   final bool? radiusOk;
   final List<RecentBatch> recentBatches;
   final List<DashboardAlert> alerts;
+
+  /// `sales_today` (fix3: «إجمالي مبيعات اليوم») — absent on an older server.
+  final SalesToday? salesToday;
 
   bool get hasTopPlan => topPlanName.isNotEmpty;
 
@@ -110,6 +123,7 @@ class DashboardMetrics {
       suspendedSubscribers: _i(subscribersMap?['suspended']),
       disabledSubscribers: _i(subscribersMap?['disabled']),
       bannedSubscribers: _i(subscribersMap?['banned']),
+      otherSubscribers: _i(subscribersMap?['other']),
       plans: plansMap == null
           ? _firstInt([j['plans'], j['plans_total'], j['profiles_total']])
           : _i(plansMap['total']),
@@ -151,6 +165,7 @@ class DashboardMetrics {
           .whereType<Map>()
           .map((e) => DashboardAlert.fromJson(Map<String, dynamic>.from(e)))
           .toList(),
+      salesToday: SalesToday.fromJson(_m(j['sales_today'])),
     );
   }
 
@@ -248,7 +263,7 @@ class DashboardAlert {
     final args = DashboardMetrics._m(j['link_args']);
     return DashboardAlert(
       level: _level((j['level'] ?? '').toString()),
-      message: (j['message'] ?? '').toString(),
+      message: humanizeAlertMessage((j['message'] ?? '').toString()),
       linkEndpoint: (j['link_endpoint'] ?? '').toString(),
       linkArgs: args ?? const {},
     );
@@ -265,4 +280,57 @@ class DashboardAlert {
         return DashboardAlertLevel.info;
     }
   }
+}
+
+/// «إجمالي مبيعات اليوم» (fix3, owner 2026-09-30) — card sales only, on the
+/// local panel day (`GET /api/v1/dashboard.sales_today`). ``null`` when the
+/// server does not send the key at all (older server) — the tile hides then.
+/// ``money_visible: false`` (no `reports.finance`) sends the count only.
+class SalesToday {
+  const SalesToday({
+    required this.date,
+    required this.cardsCount,
+    required this.moneyVisible,
+    this.byCurrency = const [],
+  });
+
+  final String date;
+  final int cardsCount;
+  final bool moneyVisible;
+
+  /// Card sales value per currency (batch price × cards sold today) — the
+  /// owner's decision: card sales only, not subscriber cash payments.
+  final List<CurrencyAmount> byCurrency;
+
+  static SalesToday? fromJson(Map<String, dynamic>? j) {
+    if (j == null) return null;
+    return SalesToday(
+      date: (j['date'] ?? '').toString(),
+      cardsCount: DashboardMetrics._i(j['cards_count']),
+      moneyVisible: DashboardMetrics._b(j['money_visible']) ?? false,
+      byCurrency: parseByCurrency(j['by_currency']),
+    );
+  }
+}
+
+/// The resource words the server leaves in English inside an Arabic alert
+/// («استخدام Disk مرتفع», f07 N-C1). Only whole words inside an Arabic
+/// sentence are replaced.
+String humanizeAlertMessage(String message) {
+  if (!RegExp('[؀-ۿ]').hasMatch(message)) return message;
+  const words = {
+    'Disk': 'القرص',
+    'disk': 'القرص',
+    'CPU': 'المعالج',
+    'cpu': 'المعالج',
+    'RAM': 'الذاكرة',
+    'ram': 'الذاكرة',
+    'Memory': 'الذاكرة',
+    'memory': 'الذاكرة',
+  };
+  var out = message;
+  words.forEach((en, ar) {
+    out = out.replaceAll(RegExp(r'\b' + en + r'\b'), ar);
+  });
+  return out;
 }

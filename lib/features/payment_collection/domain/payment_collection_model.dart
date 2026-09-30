@@ -546,6 +546,7 @@ class PaymentApplyAttempt {
     required this.paymentRequestId,
     required this.status,
     required this.actor,
+    this.actorName = '',
     required this.result,
     required this.errorMessage,
     required this.createdAt,
@@ -555,6 +556,9 @@ class PaymentApplyAttempt {
   final int paymentRequestId;
   final String status;
   final String actor;
+
+  /// fix3: `actor_name` resolved by the server; prefer over [actor].
+  final String actorName;
   final Map<String, dynamic> result;
   final String errorMessage;
   final DateTime? createdAt;
@@ -565,6 +569,7 @@ class PaymentApplyAttempt {
       paymentRequestId: _int(json['payment_request_id']),
       status: _string(json['status']),
       actor: _string(json['actor']),
+      actorName: _string(json['actor_name']),
       result: _map(json['result']),
       errorMessage: _string(json['error_message']),
       createdAt: _date(json['created_at']),

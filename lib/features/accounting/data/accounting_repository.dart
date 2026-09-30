@@ -10,7 +10,15 @@ import '../../../core/api/paging.dart';
 import '../../../core/format/money_limits.dart';
 
 export '../../../core/format/money_limits.dart'
-    show kMaxMoneyAmount, validateMoneyAmount;
+    show
+        AppLimits,
+        MoneyCap,
+        formatNumberBound,
+        kMaxMoneyAmount,
+        kMaxMoneyAmountLabel,
+        moneyTooLargeMessage,
+        validateExtendSpan,
+        validateMoneyAmount;
 import '../domain/accounting_model.dart';
 
 /// The UI slug of each financial report → the `report_type` the snapshot
@@ -66,7 +74,7 @@ class AccountingRepository {
     bool applyToRadius = false,
     String? idempotencyKey,
   }) async {
-    final problem = validateMoneyAmount(amount);
+    final problem = validateMoneyAmount(amount, cap: MoneyCap.subscriberPayment);
     if (problem != null) {
       throw ApiException(code: 'validation_error', message: problem);
     }
@@ -158,12 +166,39 @@ class AccountingRepository {
     bool priceFromDays = false,
     bool applyToRadius = false,
     String? idempotencyKey,
+  }) async =>
+      (await createLoanWithOutcome(
+        username: username,
+        hours: hours,
+        days: days,
+        amount: amount,
+        currency: currency,
+        reason: reason,
+        priceFromDays: priceFromDays,
+        applyToRadius: applyToRadius,
+        idempotencyKey: idempotencyKey,
+      ))
+          .loan;
+
+  /// [createLoan] with the server's full answer: the loan as recorded (its
+  /// amount computed by the server for `price_from_days`), or a 202
+  /// «بانتظار موافقة المالك» with no loan yet.
+  Future<LoanCreateOutcome> createLoanWithOutcome({
+    required String username,
+    int hours = 0,
+    int days = 0,
+    num amount = 0,
+    String? currency,
+    String reason = '',
+    bool priceFromDays = false,
+    bool applyToRadius = false,
+    String? idempotencyKey,
   }) async {
-    if (amount < 0 || amount > kMaxMoneyAmount || !amount.isFinite) {
+    if (amount < 0 || amount > AppLimits.maxLoanAmount || !amount.isFinite) {
       throw ApiException(
         code: 'validation_error',
-        message:
-            'قيمة السلفة غير صحيحة (0 إلى ${kMaxMoneyAmount.toStringAsFixed(0)}).',
+        message: 'قيمة السلفة غير صحيحة '
+            '(0 إلى ${formatNumberBound(AppLimits.maxLoanAmount)}).',
       );
     }
     final res = await _api.post(
@@ -181,7 +216,12 @@ class AccountingRepository {
         'dry_run': false,
       },
     );
-    return LoanEntry.fromJson(_object(res, 'loan'));
+    final data = res['data'] is Map ? res['data'] as Map : const {};
+    return LoanCreateOutcome(
+      loan: LoanEntry.fromJson(_object(res, 'loan')),
+      pendingApproval: data['pending_approval'] == true,
+      message: '${data['message'] ?? ''}'.trim(),
+    );
   }
 
   /// Settles [amount] of the loan (partial settles keep the rest open on
@@ -233,9 +273,14 @@ class AccountingRepository {
     return LedgerEntry.fromJson(_object(res, 'entry'));
   }
 
-  Future<List<Map<String, dynamic>>> financialReport(String slug) async {
+  Future<List<Map<String, dynamic>>> financialReport(String slug) async =>
+      (await financialReportTable(slug)).rows;
+
+  /// A report with the server's Arabic `columns` (fix2; `[]` on older
+  /// servers — the screen then labels the keys itself).
+  Future<FinancialReportTable> financialReportTable(String slug) async {
     final res = await _api.get('/api/v1/reports/$slug');
-    return _items(res);
+    return FinancialReportTable.fromResponse(res);
   }
 
   Future<Uint8List> exportFinancialReportCsv(String slug) async {
@@ -316,6 +361,48 @@ List<Map<String, dynamic>> _items(Map<String, dynamic> res) {
       .whereType<Map>()
       .map((item) => item.map((key, value) => MapEntry(key.toString(), value)))
       .toList();
+}
+
+/// One financial report: its rows and the server's ordered column labels.
+class FinancialReportTable {
+  const FinancialReportTable({this.rows = const [], this.columns = const []});
+
+  final List<Map<String, dynamic>> rows;
+
+  /// `(key, Arabic label)` in the server's order.
+  final List<(String, String)> columns;
+
+  factory FinancialReportTable.fromResponse(Map<String, dynamic> res) {
+    final data = res['data'];
+    final raw = data is Map ? data['columns'] : null;
+    final cols = <(String, String)>[];
+    if (raw is List) {
+      for (final c in raw.whereType<Map>()) {
+        final key = '${c['key'] ?? ''}'.trim();
+        if (key.isEmpty) continue;
+        cols.add((key, '${c['label'] ?? key}'.trim()));
+      }
+    }
+    return FinancialReportTable(rows: _items(res), columns: cols);
+  }
+}
+
+/// What POST /loans answered.
+class LoanCreateOutcome {
+  const LoanCreateOutcome({
+    required this.loan,
+    this.pendingApproval = false,
+    this.message = '',
+  });
+
+  /// The recorded loan (id 0 when it waits for approval).
+  final LoanEntry loan;
+
+  /// 202: the owner must approve it first — nothing was recorded yet.
+  final bool pendingApproval;
+
+  /// The server's Arabic message ('' on older servers).
+  final String message;
 }
 
 Map<String, dynamic> _object(Map<String, dynamic> res, String key) {

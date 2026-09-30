@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/tokens.dart';
@@ -329,12 +330,9 @@ class _NumberField extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.number,
+      inputFormatters: numberFieldFormatters,
       decoration: InputDecoration(labelText: label),
-      validator: (v) {
-        final value = int.tryParse(v ?? '');
-        if (value == null || value < 0) return 'رقم صحيح';
-        return null;
-      },
+      validator: (v) => validateNumberInput(v, decimal: false, min: 0),
     );
   }
 }

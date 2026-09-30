@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/api/paging.dart';
 import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
@@ -8,7 +9,27 @@ class RevenuePage {
     this.serverCollected,
     this.collectedByCurrency = const [],
     this.mixedCurrency = false,
+    this.hasMore = false,
   });
+
+  /// `has_more` (fix2 servers); older servers never page.
+  final bool hasMore;
+
+  /// Stable row key across pages (payments and batch rows share ids).
+  static String rowKey(RevenueRecord r) => '${r.sourceType}:${r.id}';
+
+  /// This page with [more] rows appended (duplicates dropped).
+  RevenuePage withMore(List<RevenueRecord> more, {required bool hasMore}) {
+    final (merged, _) = mergeUniqueBy(items, more, rowKey);
+    return RevenuePage(
+      items: merged,
+      count: merged.length,
+      serverCollected: serverCollected,
+      collectedByCurrency: collectedByCurrency,
+      mixedCurrency: mixedCurrency,
+      hasMore: hasMore,
+    );
+  }
 
   /// `totals.by_currency` (updated servers): payments per currency.
   final List<CurrencyAmount> collectedByCurrency;
@@ -30,6 +51,7 @@ class RevenuePage {
       collectedByCurrency:
           totals is Map ? parseByCurrency(totals['by_currency']) : const [],
       mixedCurrency: totals is Map && totals['mixed_currency'] == true,
+      hasMore: data['has_more'] == true,
       serverCollected: collected is num
           ? collected.toDouble()
           : double.tryParse('${collected ?? ''}'),
@@ -43,6 +65,57 @@ class RevenuePage {
     );
   }
 
+  /// Loaded rows that are NOT subscriber payments (card batches…) and not
+  /// voided — the part the server has no total for.
+  Iterable<RevenueRecord> get _otherLive => items.where(
+        (i) => i.sourceType != 'subscriber_payment' && !i.isVoided,
+      );
+
+  /// Subscriber-payment money per currency: the SERVER's totals over the
+  /// whole ledger (payments − voids); null on servers without totals.
+  List<CurrencyAmount>? get _serverPayments {
+    if (collectedByCurrency.isNotEmpty) return collectedByCurrency;
+    final server = serverCollected;
+    if (server == null) return null;
+    final cur = items
+        .where((i) => i.sourceType == 'subscriber_payment')
+        .map((i) => i.currency)
+        .firstWhere((c) => c.isNotEmpty, orElse: () => '');
+    return [CurrencyAmount(cur, server)];
+  }
+
+  List<CurrencyAmount> _perCurrency(double Function(RevenueRecord r) field) {
+    final server = _serverPayments;
+    final rows = server == null
+        ? items.where((i) => !i.isVoided)
+        : _otherLive;
+    final out = <String, double>{};
+    for (final c in server ?? const <CurrencyAmount>[]) {
+      out[c.currency] = (out[c.currency] ?? 0) + c.amount;
+    }
+    for (final r in rows) {
+      out[r.currency] = (out[r.currency] ?? 0) + field(r);
+    }
+    return [
+      for (final e in out.entries)
+        CurrencyAmount(e.key, (e.value * 100).round() / 100),
+    ];
+  }
+
+  /// «إجمالي المحصل» per currency (never one mixed sum, never voided rows).
+  List<CurrencyAmount> get collectedPerCurrency =>
+      _perCurrency((r) => r.collectedAmount);
+
+  /// «الربح الصافي» per currency. A subscriber payment's profit is its
+  /// amount (server rule), so the server's payment totals are used; voided
+  /// rows (their net_profit stays = amount) are excluded (r09 N7 / r11 M-2).
+  List<CurrencyAmount> get netProfitPerCurrency =>
+      _perCurrency((r) => r.netProfit);
+
+  /// «حصة الشركة» per currency, same rules.
+  List<CurrencyAmount> get companySharePerCurrency =>
+      _perCurrency((r) => r.companyShare);
+
   RevenueSummary get summary {
     final fromRows = RevenueSummary.fromItems(items);
     final server = serverCollected;
@@ -50,7 +123,7 @@ class RevenuePage {
     // Server total covers ALL subscriber payments; other sources (card
     // batches…) are added from the loaded rows.
     final others = items
-        .where((i) => i.sourceType != 'subscriber_payment')
+        .where((i) => i.sourceType != 'subscriber_payment' && !i.isVoided)
         .fold<double>(0, (sum, i) => sum + i.collectedAmount);
     return fromRows.withCollected(server + others);
   }
@@ -73,7 +146,9 @@ class RevenueSummary {
   final double totalDistributorShare;
   final int postedCount;
 
-  factory RevenueSummary.fromItems(List<RevenueRecord> items) {
+  /// Sums of the given rows; voided rows carry no money.
+  factory RevenueSummary.fromItems(List<RevenueRecord> all) {
+    final items = all.where((i) => !i.isVoided).toList();
     return RevenueSummary(
       totalCollected: items.fold(0, (sum, item) => sum + item.collectedAmount),
       totalWholesaleCost:
@@ -162,6 +237,12 @@ class RevenueRecord {
   }
 
   String get statusLabel => revenueStatusLabel(status);
+
+  /// A reversed row: shown, but never summed.
+  bool get isVoided {
+    final v = status.trim().toLowerCase();
+    return v == 'voided' || v == 'reversed' || v == 'cancelled';
+  }
 
   String get sourceLabel {
     final base = revenueSourceLabel(sourceType);

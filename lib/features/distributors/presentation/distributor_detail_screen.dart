@@ -1,8 +1,13 @@
+import 'package:hoberadius_app/shared/widgets/number_text_field.dart';
+import 'package:hoberadius_app/core/format/number_input.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
+import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -14,8 +19,6 @@ import '../../../core/api/idempotency.dart';
 import '../../../core/format/currency.dart';
 import '../../../core/format/money_limits.dart';
 import '../../cards/data/cards_repository.dart';
-import '../../subscribers/domain/subscriber_actions_model.dart'
-    show parseLocalizedNumber;
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
 import 'distributors_list_screen.dart';
@@ -30,6 +33,27 @@ final distributorBatchesProvider =
   return ref.watch(distributorsRepositoryProvider).batches(id);
 });
 
+/// Title of the distributor page's load error.
+String distributorLoadErrorTitle(AppPermissions p, int id, Object? error) =>
+    _ownPageRefused(p, id, error)
+        ? 'صفحتك كموزّع غير متاحة حاليًا'
+        : 'تعذر جلب الموزع';
+
+/// Body of the distributor page's load error: the server's Arabic reason;
+/// for a distributor login refused on ITS OWN page, plus what to expect.
+String distributorLoadErrorText(AppPermissions p, int id, Object? error) {
+  final reason = loadErrorMessage(error);
+  if (!_ownPageRefused(p, id, error)) return reason;
+  return '$reason\nرفض الخادم عرض صفحتك كموزّع لحسابك. ستفتح هنا تلقائيًا '
+      'بمجرد أن يسمح بها الخادم — اضغط «إعادة المحاولة» لاحقًا أو راجع المالك.';
+}
+
+bool _ownPageRefused(AppPermissions p, int id, Object? error) =>
+    p.isDistributor &&
+    p.distributorId == id &&
+    error is ApiException &&
+    error.status == 403;
+
 class DistributorDetailScreen extends ConsumerWidget {
   const DistributorDetailScreen({super.key, required this.distributorId});
 
@@ -37,14 +61,29 @@ class DistributorDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Assign-batch / settle panels = distributor.manage (the server
+    // refuses both without it).
+    final canManage =
+        ref.watch(permissionsProvider).canAction('distributor.manage');
     final summary = ref.watch(distributorSummaryProvider(distributorId));
     final batches = ref.watch(distributorBatchesProvider(distributorId));
     return summary.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
-        title: 'تعذر جلب الموزع',
-        subtitle: visibleErrorMessage(e),
+        title: distributorLoadErrorTitle(
+          ref.watch(permissionsProvider),
+          distributorId,
+          e,
+        ),
+        // The server's own reason (never a generic line); a distributor
+        // login refused on its own page learns it will open once the
+        // server allows it (f07 H2 — server side in the scope stream).
+        subtitle: distributorLoadErrorText(
+          ref.watch(permissionsProvider),
+          distributorId,
+          e,
+        ),
         action: OutlinedButton.icon(
           onPressed: () =>
               ref.invalidate(distributorSummaryProvider(distributorId)),
@@ -57,7 +96,7 @@ class DistributorDetailScreen extends ConsumerWidget {
         children: [
           PageHeader(
             title: item.distributor.title,
-            subtitle: '@${item.distributor.name}',
+            subtitle: ltrIsolate('@${item.distributor.name}'),
             inlineActions: true,
             leading: IconButton(
               tooltip: 'كل الموزعين',
@@ -92,14 +131,16 @@ class DistributorDetailScreen extends ConsumerWidget {
                 direction: wide ? Axis.horizontal : Axis.vertical,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: wide ? 360 : double.infinity,
-                    child: _Actions(distributorId: distributorId),
-                  ),
-                  SizedBox(
-                    width: wide ? AppTokens.s16 : 0,
-                    height: wide ? 0 : AppTokens.s12,
-                  ),
+                  if (canManage) ...[
+                    SizedBox(
+                      width: wide ? 360 : double.infinity,
+                      child: _Actions(distributorId: distributorId),
+                    ),
+                    SizedBox(
+                      width: wide ? AppTokens.s16 : 0,
+                      height: wide ? 0 : AppTokens.s12,
+                    ),
+                  ],
                   if (wide)
                     Expanded(child: batchesWidget)
                   else
@@ -200,6 +241,11 @@ class _ActionsState extends ConsumerState<_Actions> {
   /// default follows the debt: debt > 0 → «خصم من الدين»).
   String? _applyTo;
   bool _busy = false;
+
+  /// Same-click guard: set synchronously, so two or three taps landing in
+  /// the same frame (before `_busy` rebuilds the button) post ONE movement
+  /// (r11 M-1: 3 taps → 3 entries).
+  bool _submitting = false;
   final _idem = IdempotencyKeeper();
 
   @override
@@ -297,9 +343,12 @@ class _ActionsState extends ConsumerState<_Actions> {
                 ],
                 const SizedBox(height: AppTokens.s8),
                 FormFieldPair(
-                  first: TextField(
+                  first: NumberTextField(
                     controller: _amount,
-                    keyboardType: TextInputType.number,
+                    extraError: (v) => validateMoneyAmount(
+                      v,
+                      cap: MoneyCap.distributorBalanceAdd,
+                    ),
                     decoration: const InputDecoration(labelText: 'المبلغ'),
                   ),
                   second: TextField(
@@ -354,8 +403,11 @@ class _ActionsState extends ConsumerState<_Actions> {
   }
 
   Future<void> _settle() async {
-    final amount = parseLocalizedNumber(_amount.text);
-    final problem = validateMoneyAmount(amount);
+    if (_submitting) return;
+    final read = readNumberInput(_amount.text);
+    final amount = read.value?.toDouble();
+    final problem = read.error ??
+        validateMoneyAmount(amount, cap: MoneyCap.distributorBalanceAdd);
     if (problem != null) {
       _message(problem);
       return;
@@ -378,6 +430,9 @@ class _ActionsState extends ConsumerState<_Actions> {
       't': applyTo,
       'n': _settleNotes.text.trim(),
     };
+    // One Idempotency-Key per submission: a retry of the same body reuses
+    // it, the server answers the first result instead of a second entry.
+    final key = _idem.keyFor('distributor-settle', body);
     await _run(() async {
       await ref.read(distributorsRepositoryProvider).settle(
             widget.distributorId,
@@ -385,7 +440,7 @@ class _ActionsState extends ConsumerState<_Actions> {
             direction: _direction,
             applyTo: applyTo,
             notes: _settleNotes.text.trim(),
-            idempotencyKey: _idem.keyFor('distributor-settle', body),
+            idempotencyKey: key,
           );
       _idem.reset();
       _amount.clear();
@@ -396,6 +451,8 @@ class _ActionsState extends ConsumerState<_Actions> {
   }
 
   Future<void> _run(Future<void> Function() action) async {
+    if (_submitting) return;
+    _submitting = true;
     setState(() => _busy = true);
     try {
       await action();
@@ -405,6 +462,7 @@ class _ActionsState extends ConsumerState<_Actions> {
     } catch (e) {
       _message(visibleErrorWithRetryHint(e));
     } finally {
+      _submitting = false;
       if (mounted) setState(() => _busy = false);
     }
   }
@@ -432,26 +490,55 @@ class _PaymentTarget extends StatelessWidget {
   Widget build(BuildContext context) {
     final balance = summary?.balance ?? 0;
     final debt = summary?.debtBalance ?? 0;
+    final balanceLabel = 'إضافة للرصيد (${formatWithCurrency(balance, '')})';
+    final debtLabel = 'خصم من الدين (${formatWithCurrency(debt, '')})';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SegmentedButton<String>(
-          segments: [
-            ButtonSegment(
-              value: 'balance',
-              icon: const Icon(Icons.account_balance_wallet_outlined),
-              label: Text('إضافة للرصيد (${formatWithCurrency(balance, '')})'),
-            ),
-            ButtonSegment(
-              value: 'debt',
-              icon: const Icon(Icons.remove_circle_outline),
-              label: Text('خصم من الدين (${formatWithCurrency(debt, '')})'),
-              enabled: debt > 0,
-            ),
-          ],
-          selected: {value},
-          showSelectedIcon: false,
-          onSelectionChanged: (s) => onChanged(s.first),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            // Two segments side by side leave ~150 px each on a 360 px
+            // phone and «خصم من الدين (39)» broke onto two lines (R11 L-3):
+            // phones get the two choices stacked, one full-width row each.
+            if (constraints.maxWidth < kPaymentTargetStackWidth) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TargetOption(
+                    icon: Icons.account_balance_wallet_outlined,
+                    label: balanceLabel,
+                    selected: value == 'balance',
+                    onTap: () => onChanged('balance'),
+                  ),
+                  const SizedBox(height: AppTokens.s4),
+                  _TargetOption(
+                    icon: Icons.remove_circle_outline,
+                    label: debtLabel,
+                    selected: value == 'debt',
+                    onTap: debt > 0 ? () => onChanged('debt') : null,
+                  ),
+                ],
+              );
+            }
+            return SegmentedButton<String>(
+              segments: [
+                ButtonSegment(
+                  value: 'balance',
+                  icon: const Icon(Icons.account_balance_wallet_outlined),
+                  label: Text(balanceLabel),
+                ),
+                ButtonSegment(
+                  value: 'debt',
+                  icon: const Icon(Icons.remove_circle_outline),
+                  label: Text(debtLabel),
+                  enabled: debt > 0,
+                ),
+              ],
+              selected: {value},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) => onChanged(s.first),
+            );
+          },
         ),
         const SizedBox(height: AppTokens.s4),
         Text(
@@ -461,6 +548,71 @@ class _PaymentTarget extends StatelessWidget {
           style: const TextStyle(color: AppTokens.textMuted, fontSize: 12),
         ),
       ],
+    );
+  }
+}
+
+/// Below this width the payment target is two stacked rows, not segments.
+const double kPaymentTargetStackWidth = 440;
+
+/// One payment-target choice as a full-width selectable row (phones).
+class _TargetOption extends StatelessWidget {
+  const _TargetOption({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final fg = !enabled
+        ? AppTokens.textMuted
+        : selected
+            ? AppTokens.brandInk
+            : AppTokens.sidebarBg;
+    return Material(
+      color: selected ? AppTokens.brandSoft : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        side: BorderSide(
+          color: selected ? AppTokens.brand : AppTokens.border,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppTokens.s12,
+            vertical: AppTokens.s8,
+          ),
+          child: Row(
+            children: [
+              Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 18,
+                color: fg,
+              ),
+              const SizedBox(width: AppTokens.s8),
+              Icon(icon, size: 18, color: fg),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(color: fg, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -534,7 +686,7 @@ class _Batches extends StatelessWidget {
                       ),
                       DataCell(
                         Text(
-                          item.assignedAt.isEmpty ? '—' : item.assignedAt,
+                          formatServerTimestamp(item.assignedAt),
                         ),
                       ),
                     ],

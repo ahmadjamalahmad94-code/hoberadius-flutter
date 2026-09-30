@@ -129,12 +129,25 @@ class ApiClient {
   /// instead of leaving every screen in an error loop.
   void Function(ApiException error)? onUnauthorized;
 
+  /// Called when an authenticated request answers 403: the admin's grants
+  /// may have changed on the server (revoked while signed in). The auth
+  /// controller re-reads `/api/admin/me` so the UI stops offering what the
+  /// server now refuses. The error itself still reaches the caller (its
+  /// Arabic reason is shown, the form keeps its input).
+  void Function(ApiException error)? onForbidden;
+
   static const _loginPath = '/api/admin/login';
 
+  /// [background]: a best-effort read (e.g. the panel time zone after a
+  /// sign-in) whose 401 must not sign the operator out by itself.
   Future<Map<String, dynamic>> get(
     String path, {
     Map<String, dynamic>? query,
+    bool background = false,
   }) {
+    if (background) {
+      return _send('GET', path, query: query, background: true);
+    }
     final key = _requestKey(path, query);
     final existing = _inFlightGets[key];
     if (existing != null) return existing;
@@ -179,6 +192,7 @@ class ApiClient {
     Map<String, dynamic>? query,
     Object? body,
     Map<String, String>? headers,
+    bool background = false,
   }) async {
     final idempotent = _isIdempotent(method);
     final isLogin = path == _loginPath;
@@ -247,7 +261,14 @@ class ApiClient {
       try {
         return _parseResponse(res);
       } on ApiException catch (e) {
-        if (e.status == 401 && !isLogin) onUnauthorized?.call(e);
+        if (e.status == 401 && !isLogin && !background) {
+          onUnauthorized?.call(e);
+        }
+        if (e.status == 403 && !isLogin && path != '/api/admin/me') {
+          try {
+            onForbidden?.call(e);
+          } catch (_) {/* never mask the original error */}
+        }
         rethrow;
       }
     }
