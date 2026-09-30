@@ -87,6 +87,10 @@ class Plan {
     this.metadata = const {},
     this.createdAt,
     this.updatedAt,
+    this.durationValue = 0,
+    this.durationUnit = '',
+    this.serverRatePerMinute,
+    this.serverPeriodMinutes,
   });
 
   final int? id;
@@ -166,6 +170,48 @@ class Plan {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  /// Legacy `duration_value` / `duration_unit` (mins/hours/days/months) —
+  /// the server still prices a plan by them when it has no
+  /// `duration_minutes` / `validity_days`.
+  final int durationValue;
+  final String durationUnit;
+
+  /// `rate_per_minute` / `period_minutes` of `/profiles` (fix2 servers,
+  /// read-only): the change-plan direction uses them as given.
+  final double? serverRatePerMinute;
+  final int? serverPeriodMinutes;
+
+  /// The pricing period in minutes — the server's `plan_period_minutes`:
+  /// duration, else validity, else the legacy value/unit, else a 30-day
+  /// month.
+  int get pricingPeriodMinutes {
+    final fromServer = serverPeriodMinutes;
+    if (fromServer != null && fromServer > 0) return fromServer;
+    if (durationMinutes > 0) return durationMinutes;
+    if (validityDays > 0) return validityDays * 1440;
+    final v = durationValue;
+    if (v > 0) {
+      final u = durationUnit.trim().toLowerCase();
+      if (const {'mins', 'min', 'minute', 'minutes'}.contains(u)) return v;
+      if (const {'hrs', 'hr', 'hour', 'hours'}.contains(u)) return v * 60;
+      if (const {'days', 'day'}.contains(u)) return v * 1440;
+      if (const {'months', 'month'}.contains(u)) return v * 43200;
+    }
+    return 43200;
+  }
+
+  /// Price per minute — the server's `rate_per_minute` when sent, else the
+  /// same rule (0 for a free plan).
+  double get ratePerMinute {
+    final fromServer = serverRatePerMinute;
+    if (fromServer != null && fromServer.isFinite && fromServer >= 0) {
+      return fromServer;
+    }
+    final p = price.toDouble();
+    if (!(p > 0)) return 0;
+    return p / pricingPeriodMinutes;
+  }
+
   factory Plan.fromJson(Map<String, dynamic> j) {
     final meta = (j['metadata'] is Map<String, dynamic>)
         ? j['metadata'] as Map<String, dynamic>
@@ -241,6 +287,10 @@ class Plan {
       metadata: meta,
       createdAt: _dt(j['created_at']),
       updatedAt: _dt(j['updated_at']),
+      durationValue: _int(j['duration_value']) ?? 0,
+      durationUnit: (j['duration_unit'] ?? '').toString(),
+      serverRatePerMinute: _num(j['rate_per_minute'])?.toDouble(),
+      serverPeriodMinutes: _int(j['period_minutes']),
     );
   }
 

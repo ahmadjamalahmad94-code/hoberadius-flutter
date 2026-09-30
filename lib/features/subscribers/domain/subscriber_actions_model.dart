@@ -642,23 +642,50 @@ Map<String, dynamic> paymentPayload({
 
 enum PlanDirection { lower, higher, neutral }
 
-/// Same rule as the web's updatePlanPolicy(): same plan, a missing price on
-/// either side, or equal prices → neutral.
+/// A plan with no duration is priced as a 30-day month on the server
+/// (`users.PLAN_PERIOD_FALLBACK_MINUTES` — same basis as payments, extend
+/// and loans).
+const int kPlanPeriodFallbackMinutes = 43200;
+
+/// The server's `plan_change_direction` on two prices PER MINUTE: a free
+/// plan (rate 0) → any paid plan is «higher» (free → paid used to offer only
+/// «تغيير العرض فقط» and the server refused it — f04 M2), paid → free is
+/// «lower», both free is «neutral»; equal rates (1e-9 relative) are
+/// «neutral».
+PlanDirection planDirectionByRate(double oldRate, double newRate) {
+  final o = oldRate.isFinite && oldRate > 0 ? oldRate : 0.0;
+  final n = newRate.isFinite && newRate > 0 ? newRate : 0.0;
+  if (o <= 0 && n <= 0) return PlanDirection.neutral;
+  if (o <= 0) return PlanDirection.higher;
+  if (n <= 0) return PlanDirection.lower;
+  if ((n - o).abs() <= 1e-9 * (o > n ? o : n)) return PlanDirection.neutral;
+  return n < o ? PlanDirection.lower : PlanDirection.higher;
+}
+
+/// The server's `direction` token → [PlanDirection] (null when unknown).
+PlanDirection? planDirectionFromServer(Object? raw) =>
+    switch ('${raw ?? ''}'.trim().toLowerCase()) {
+      'lower' => PlanDirection.lower,
+      'higher' => PlanDirection.higher,
+      'neutral' => PlanDirection.neutral,
+      _ => null,
+    };
+
+/// Direction between two plans given their [currentPrice]/[nextPrice]
+/// (each already per minute, or both totals over the same period). The
+/// same plan or no choice → neutral; otherwise the server rule of
+/// [planDirectionByRate] (a free plan counts as rate 0 — no longer
+/// «neutral» for a missing price).
 PlanDirection planDirection({
   required int? currentPlanId,
   required double currentPrice,
   required int? nextPlanId,
   required double nextPrice,
 }) {
-  if (nextPlanId == null ||
-      nextPlanId == currentPlanId ||
-      currentPrice <= 0 ||
-      nextPrice <= 0) {
+  if (nextPlanId == null || nextPlanId == currentPlanId) {
     return PlanDirection.neutral;
   }
-  if (nextPrice < currentPrice) return PlanDirection.lower;
-  if (nextPrice > currentPrice) return PlanDirection.higher;
-  return PlanDirection.neutral;
+  return planDirectionByRate(currentPrice, nextPrice);
 }
 
 class PlanPolicyOption {

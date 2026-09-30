@@ -1243,24 +1243,35 @@ String planOptionLabel(Plan p) {
       : '$name — $money';
 }
 
-/// Higher/lower for a change from [c]'s plan to [next], PER MINUTE (the
-/// server rule: a 5 ILS/day plan is dearer than 120 ILS/30 days — it was
-/// shown as «أرخص» by total price). Total prices when a period is unknown.
+/// The current plan's price per minute, exactly as the server decides it
+/// (`plan_rate_per_minute`): the server's own `rate_per_minute` when sent;
+/// else the PLAN price (not a custom subscriber price — the server ignores
+/// it for the direction) over the plan period, a plan without a period
+/// being a 30-day month; a free plan or no plan → 0.
+double currentPlanRatePerMinute(SubscriberActionsContext c) {
+  final plan = c.plan;
+  if (plan == null || plan.id == null) return 0;
+  final fromServer = plan.ratePerMinute;
+  if (fromServer != null && fromServer.isFinite && fromServer >= 0) {
+    return fromServer;
+  }
+  if (!(plan.price > 0)) return 0;
+  final period = plan.minutes > 0 ? plan.minutes : kPlanPeriodFallbackMinutes;
+  return plan.price / period;
+}
+
+/// Higher/lower for a change from [c]'s plan to [next] — the server's
+/// `plan_change_direction`, PER MINUTE (a 5 ILS/day plan is dearer than
+/// 120 ILS/30 days), with the server's 30-day default for a plan without a
+/// duration and a free plan as rate 0: free → paid is «higher» (f04 M2:
+/// the dialog offered only «تغيير العرض فقط» and the server refused it).
+/// Uses the server's `rate_per_minute` (actions-context / `/profiles`)
+/// whenever sent instead of recomputing it.
 PlanDirection changePlanDirection(SubscriberActionsContext c, Plan? next) {
-  final currentPrice =
-      (c.plan?.price ?? 0) > 0 ? c.plan!.price : c.effectivePrice;
-  final curRate =
-      c.plan?.ratePerMinute ?? planRatePerMinute(currentPrice, c.planMinutes);
-  final nextRate = next == null
-      ? null
-      : planRatePerMinute(next.price.toDouble(), _planMinutes(next));
-  final byRate = curRate != null && nextRate != null;
-  return planDirection(
-    currentPlanId: c.plan?.id,
-    currentPrice: byRate ? curRate : currentPrice,
-    nextPlanId: next?.id,
-    nextPrice: byRate ? nextRate : (next?.price.toDouble() ?? 0),
-  );
+  if (next == null || next.id == null || next.id == c.plan?.id) {
+    return PlanDirection.neutral;
+  }
+  return planDirectionByRate(currentPlanRatePerMinute(c), next.ratePerMinute);
 }
 
 /// The toast after a change-plan: the new plan, the server's `direction`

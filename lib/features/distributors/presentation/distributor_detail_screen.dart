@@ -33,6 +33,27 @@ final distributorBatchesProvider =
   return ref.watch(distributorsRepositoryProvider).batches(id);
 });
 
+/// Title of the distributor page's load error.
+String distributorLoadErrorTitle(AppPermissions p, int id, Object? error) =>
+    _ownPageRefused(p, id, error)
+        ? 'صفحتك كموزّع غير متاحة حاليًا'
+        : 'تعذر جلب الموزع';
+
+/// Body of the distributor page's load error: the server's Arabic reason;
+/// for a distributor login refused on ITS OWN page, plus what to expect.
+String distributorLoadErrorText(AppPermissions p, int id, Object? error) {
+  final reason = loadErrorMessage(error);
+  if (!_ownPageRefused(p, id, error)) return reason;
+  return '$reason\nرفض الخادم عرض صفحتك كموزّع لحسابك. ستفتح هنا تلقائيًا '
+      'بمجرد أن يسمح بها الخادم — اضغط «إعادة المحاولة» لاحقًا أو راجع المالك.';
+}
+
+bool _ownPageRefused(AppPermissions p, int id, Object? error) =>
+    p.isDistributor &&
+    p.distributorId == id &&
+    error is ApiException &&
+    error.status == 403;
+
 class DistributorDetailScreen extends ConsumerWidget {
   const DistributorDetailScreen({super.key, required this.distributorId});
 
@@ -50,8 +71,19 @@ class DistributorDetailScreen extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => EmptyState(
         icon: Icons.error_outline,
-        title: 'تعذر جلب الموزع',
-        subtitle: visibleErrorMessage(e),
+        title: distributorLoadErrorTitle(
+          ref.watch(permissionsProvider),
+          distributorId,
+          e,
+        ),
+        // The server's own reason (never a generic line); a distributor
+        // login refused on its own page learns it will open once the
+        // server allows it (f07 H2 — server side in the scope stream).
+        subtitle: distributorLoadErrorText(
+          ref.watch(permissionsProvider),
+          distributorId,
+          e,
+        ),
         action: OutlinedButton.icon(
           onPressed: () =>
               ref.invalidate(distributorSummaryProvider(distributorId)),

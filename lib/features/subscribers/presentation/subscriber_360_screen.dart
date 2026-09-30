@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/visible_error_message.dart';
 import '../../../core/auth/permissions.dart';
 import '../../../core/auth/route_permissions.dart';
 import '../../../core/theme/tokens.dart';
@@ -40,7 +41,7 @@ class Subscriber360Screen extends ConsumerWidget {
               icon: const Icon(Icons.arrow_back),
             ),
           ),
-          error: (_, __) => Column(
+          error: (e, __) => Column(
             children: [
               PageHeader(
                 title: 'ملف المشترك 360',
@@ -51,8 +52,15 @@ class Subscriber360Screen extends ConsumerWidget {
                 ),
               ),
               HubErrorState(
-                title: 'تعذر جلب ملف المشترك',
-                subtitle: 'تحقق من اتصال التطبيق بالريدياس ثم أعد المحاولة.',
+                title: isAccessRefusal(e)
+                    ? 'لا يمكن فتح ملف المشترك'
+                    : 'تعذر جلب ملف المشترك',
+                // The server's reason («ليست ضمن نطاقك»…); the connection
+                // hint only when the server did not answer.
+                subtitle: loadErrorMessage(
+                  e,
+                  networkHint: 'تحقق من اتصال التطبيق بالخادم ثم أعد المحاولة.',
+                ),
                 onRetry: () => ref.invalidate(subscriber360Provider(username)),
               ),
             ],

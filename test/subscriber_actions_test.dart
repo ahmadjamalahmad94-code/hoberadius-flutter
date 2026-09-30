@@ -244,7 +244,12 @@ void main() {
       expect(dir(30, 20), PlanDirection.lower);
       expect(dir(30, 40), PlanDirection.higher);
       expect(dir(30, 30), PlanDirection.neutral);
-      expect(dir(0, 40), PlanDirection.neutral);
+      // fix3 (f04 M2) — the server rule: a free plan is rate 0, so
+      // free → paid is «higher» and paid → free «lower» (was «neutral»,
+      // which offered only «تغيير العرض فقط» and the server refused it).
+      expect(dir(0, 40), PlanDirection.higher);
+      expect(dir(40, 0), PlanDirection.lower);
+      expect(dir(0, 0), PlanDirection.neutral);
       expect(dir(30, 40, nextId: 3), PlanDirection.neutral);
       expect(dir(30, 40, nextId: null), PlanDirection.neutral);
     });

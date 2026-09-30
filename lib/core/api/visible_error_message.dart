@@ -31,6 +31,23 @@ String visibleErrorMessage(
   return _safeMessage(error?.toString() ?? '', fallback);
 }
 
+/// A screen that failed to LOAD: the server's own Arabic reason when the
+/// server answered (403 «ليست ضمن نطاقك», 404 «غير موجود»…), and the
+/// connectivity hint [networkHint] only when nothing came back (network
+/// error / timeout). f07 N-B4: the 360 page said «تحقق من اتصال التطبيق
+/// بالريدياس» for a 403 the server explained.
+String loadErrorMessage(Object? error, {String networkHint = ''}) {
+  final text = visibleErrorMessage(error);
+  final answered = error is ApiException && error.status != null;
+  if (answered || networkHint.isEmpty) return text;
+  return '$text — $networkHint';
+}
+
+/// The server answered that this item is outside the manager's scope or
+/// not visible to him (403 / 404) — nothing to retry.
+bool isAccessRefusal(Object? error) =>
+    error is ApiException && (error.status == 403 || error.status == 404);
+
 /// The permission a 403 names, in Arabic: `details.permission` (permmodel)
 /// or `details.requires` (permguard: `users.create`, `a|b`, `__super__`;
 /// a `web:`/`mt:`/`grant:` spec names no key and gives null).
@@ -149,6 +166,19 @@ const _knownEnglishMessages = <String, String>{
   'backup failed': 'فشلت النسخة الاحتياطية',
 };
 
+/// Drops raw API field / code names in parentheses from an ARABIC server
+/// message: «قيمة المبلغ (amount) يجب ألا تقل عن 0.01.» → «قيمة المبلغ يجب
+/// ألا تقل عن 0.01.» (r11 L-6 / f07 N-C12), «(router_not_configured)».
+/// Only lower-case snake_case tokens are removed — «(SSTP)», «(0.00)» and
+/// «(ILS)» stay.
+String stripRawFieldNames(String message) {
+  if (!_containsArabic(message)) return message;
+  return message
+      .replaceAll(RegExp(r'\s*\((?:[a-z][a-z0-9]*_)*[a-z][a-z0-9]*\)'), '')
+      .replaceAll(RegExp(r'\s{2,}'), ' ')
+      .trim();
+}
+
 String _safeMessage(String value, String fallback) {
   var message = humanizeTechnicalError(value.trim());
   if (message.isEmpty) return fallback;
@@ -165,7 +195,7 @@ String _safeMessage(String value, String fallback) {
     }
   }
 
-  if (_containsArabic(message)) return message;
+  if (_containsArabic(message)) return stripRawFieldNames(message);
 
   final lower = message.toLowerCase();
   if (lower.contains('csrf')) {
