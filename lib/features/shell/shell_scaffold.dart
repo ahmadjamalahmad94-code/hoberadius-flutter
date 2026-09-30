@@ -20,6 +20,7 @@ import '../notifications/push/desktop_toast_bridge.dart';
 import '../notifications/push/push_service.dart';
 import '../provider_grants/application/nav_visibility.dart';
 import 'navigation_schema.dart';
+import 'session_gate.dart';
 import 'visible_nav_sections.dart';
 
 /// Adaptive shell. The full web-style sidebar persists on desktop AND
@@ -46,7 +47,15 @@ class _ShellScaffoldState extends ConsumerState<ShellScaffold> {
     // Back from the background: the owner may have changed this admin's
     // grants meanwhile — re-read them (throttled) so the menus follow.
     _lifecycle = AppLifecycleListener(
-      onResume: () => ref.read(permissionsProvider.notifier).refresh(),
+      onResume: () {
+        // Offline at start-up: try /me again now that the app is back.
+        final auth = ref.read(authControllerProvider);
+        if (auth.offline) {
+          ref.read(authControllerProvider.notifier).retrySession();
+          return;
+        }
+        ref.read(permissionsProvider.notifier).refresh();
+      },
     );
   }
 
@@ -721,6 +730,7 @@ class _ContentAreaState extends State<_ContentArea> {
       child: Column(
         children: [
           if (widget.showTopBar) const _DesktopTopBar(),
+          const SessionOfflineBanner(),
           Expanded(
             child: NotificationListener<ScrollNotification>(
               onNotification: _onUserScroll,
@@ -741,7 +751,9 @@ class _ContentAreaState extends State<_ContentArea> {
                         code: ref.watch(tenantCurrencyProvider),
                         child: child!,
                       ),
-                      child: ShellContentScope(child: widget.child),
+                      child: ShellContentScope(
+                        child: SessionContentGate(child: widget.child),
+                      ),
                     ),
                   ),
                 ),

@@ -7,6 +7,7 @@ import '../api/api_exception.dart';
 import '../format/currency.dart';
 import '../format/panel_time.dart';
 import 'permissions.dart';
+import 'permissions_cache.dart';
 import 'security_key_storage.dart';
 import 'session_reset.dart';
 import 'system_settings.dart';
@@ -49,7 +50,28 @@ class AuthState {
     this.loading = false,
     this.error,
     this.systemCurrency = '',
+    this.bootstrapping = false,
+    this.restoring = false,
+    this.offline = false,
+    this.offlineMessage = '',
   });
+
+  /// App start: the saved token has not been read yet. The router keeps
+  /// the location (a reload / deep link survives) and the shell shows a
+  /// neutral loading state — no screen is built, no request is sent.
+  final bool bootstrapping;
+
+  /// A saved session is being checked with `/api/admin/me`.
+  final bool restoring;
+
+  /// `/api/admin/me` could not be reached at start-up (no network, 5xx,
+  /// busy server): the session is KEPT — only a real 401 signs out — and
+  /// the app runs on this admin's last saved grants, with a banner and a
+  /// retry.
+  final bool offline;
+
+  /// Why [offline] (the server's / network's Arabic message).
+  final String offlineMessage;
 
   /// `data.system.currency` of /api/admin/me or the login answer — the
   /// tenant's effective currency (empty on older servers).
@@ -88,6 +110,9 @@ class AuthState {
               loading: loading ?? this.loading,
               error: clearError ? null : (error ?? this.error),
               systemCurrency: systemCurrency ?? this.systemCurrency,
+              restoring: restoring,
+              offline: offline,
+              offlineMessage: offlineMessage,
             );
 }
 
@@ -137,8 +162,17 @@ bool applyPanelTimeZoneFromSettings(Map<String, dynamic> data) {
   return true;
 }
 
+/// The banner text when `/api/admin/me` is unreachable at start-up.
+const String kSessionOfflineMessage =
+    'تعذّر الاتصال بالخادم — تعمل الآن بآخر صلاحيات محفوظة.';
+
+/// Only a REAL «this session is dead» answer signs the operator out: HTTP
+/// 401 (revoked / expired / unknown token). A network error, a timeout, a
+/// 5xx, a 429 or a 403 keeps the saved session.
+bool isSessionRejected(ApiException e) => e.status == 401;
+
 class AuthController extends StateNotifier<AuthState> {
-  AuthController(this._ref) : super(const AuthState()) {
+  AuthController(this._ref) : super(const AuthState(bootstrapping: true)) {
     _ref.listen<ApiClient>(
       apiClientProvider,
       (_, client) => client
@@ -159,6 +193,7 @@ class AuthController extends StateNotifier<AuthState> {
     if (!state.isAuthenticated || state.loading) return;
     final serverBaseUrl = state.serverBaseUrl;
     await _ref.read(tokenStorageProvider).clear();
+    await _ref.read(permissionsCacheProvider).clear();
     _resetSession();
     final msg = e.message.trim();
     state = AuthState(
@@ -251,46 +286,139 @@ class AuthController extends StateNotifier<AuthState> {
   }
 
   Future<void> _restore() async {
-    final stored = await _ref.read(tokenStorageProvider).read();
-    final serverBaseUrl =
-        await _ref.read(apiEndpointStorageProvider).readBaseUrl();
+    String? stored;
+    try {
+      stored = await _ref.read(tokenStorageProvider).read();
+    } catch (_) {
+      // Unreadable storage: the login screen, never an endless start-up.
+      stored = null;
+    }
     if (stored == null || stored.isEmpty) {
-      state = AuthState(serverBaseUrl: serverBaseUrl);
+      state = const AuthState();
+      try {
+        final url = await _ref.read(apiEndpointStorageProvider).readBaseUrl();
+        if (!state.isAuthenticated && state.serverBaseUrl == null) {
+          state = state.copyWith(serverBaseUrl: url);
+        }
+      } catch (_) {/* the login screen asks for it */}
       return;
     }
-    state = state.copyWith(
+    String? serverBaseUrl;
+    try {
+      serverBaseUrl = await _ref.read(apiEndpointStorageProvider).readBaseUrl();
+    } catch (_) {/* the API client reads it itself */}
+    // Until /me answers: this admin's last saved grants (same token), or —
+    // with no saved copy — nothing at all. Never «everything» (f07 N-B1:
+    // a limited manager saw the full «المزيد» and opened forbidden forms).
+    final cached = await _ref.read(permissionsCacheProvider).read(stored);
+    if (cached != null) {
+      _permissions?.applyCached(cached);
+      _publishCurrency(systemCurrencyOf(cached));
+      applyPanelTimeZoneFrom(cached);
+      publishCreateWithoutExpiry(_ref, cached);
+    } else {
+      _permissions?.markRestoring();
+    }
+    state = AuthState(
       token: stored,
+      admin: _adminOf(cached),
+      tenantId: cached?['tenant_id'] as int?,
+      permissions: _permissionKeys(cached),
       serverBaseUrl: serverBaseUrl,
+      systemCurrency: cached == null ? '' : systemCurrencyOf(cached),
       loading: true,
+      restoring: true,
     );
+    await _checkSession(stored, serverBaseUrl);
+  }
+
+  /// Retries `/api/admin/me` after a start-up failure (the banner's
+  /// «إعادة المحاولة», app resume). No-op when the session is fine.
+  Future<void> retrySession() async {
+    final token = state.token;
+    if (token == null || token.isEmpty || !state.offline || state.loading) {
+      return;
+    }
+    state = AuthState(
+      token: token,
+      admin: state.admin,
+      tenantId: state.tenantId,
+      permissions: state.permissions,
+      serverBaseUrl: state.serverBaseUrl,
+      systemCurrency: state.systemCurrency,
+      loading: true,
+      restoring: true,
+      offline: true,
+      offlineMessage: state.offlineMessage,
+    );
+    await _checkSession(token, state.serverBaseUrl);
+  }
+
+  /// Reads `/api/admin/me` for the saved [token]. Only a real 401 signs
+  /// out; a network error, a timeout, a 5xx or any other refusal KEEPS the
+  /// session (offline banner + retry) on the last saved grants — before,
+  /// opening the app with no connectivity deleted the saved login (f03 N3).
+  Future<void> _checkSession(String token, String? serverBaseUrl) async {
     try {
       final res = await _ref.read(apiClientProvider).get('/api/admin/me');
       final d = (res['data'] ?? {}) as Map<String, dynamic>;
+      if (state.token != token) return; // signed out / switched meanwhile
       // Grants first: the router's first redirect must already see them.
       _permissions?.apply(d);
       state = AuthState(
-        token: stored,
-        admin: d['admin'] is Map<String, dynamic>
-            ? AuthAdmin.fromJson(d['admin'] as Map<String, dynamic>)
-            : null,
+        token: token,
+        admin: _adminOf(d),
         tenantId: d['tenant_id'] as int?,
-        permissions: ((d['permissions'] as List?) ?? const [])
-            .map((e) => e.toString())
-            .toList(),
+        permissions: _permissionKeys(d),
         serverBaseUrl: serverBaseUrl,
         systemCurrency: systemCurrencyOf(d),
       );
       _publishCurrency(state.systemCurrency);
+      await _ref.read(permissionsCacheProvider).write(token, d);
       await _loadPanelTimeZone(d);
-    } on ApiException {
-      await _ref.read(tokenStorageProvider).clear();
-      _permissions?.clear();
-      state = AuthState(serverBaseUrl: serverBaseUrl);
-    } catch (_) {
-      // Network glitch: keep the token so the next refresh can recover.
-      state = state.copyWith(loading: false);
+    } on ApiException catch (e) {
+      if (state.token != token) return;
+      if (isSessionRejected(e)) {
+        await _ref.read(tokenStorageProvider).clear();
+        await _ref.read(permissionsCacheProvider).clear();
+        _permissions?.clear();
+        final msg = e.message.trim();
+        state = AuthState(
+          serverBaseUrl: serverBaseUrl,
+          error: msg.isEmpty ? null : msg,
+        );
+        return;
+      }
+      _keepOffline(e.message);
+    } catch (e) {
+      if (state.token != token) return;
+      _keepOffline('');
     }
   }
+
+  void _keepOffline(String message) {
+    final msg = message.trim();
+    state = AuthState(
+      token: state.token,
+      admin: state.admin,
+      tenantId: state.tenantId,
+      permissions: state.permissions,
+      serverBaseUrl: state.serverBaseUrl,
+      systemCurrency: state.systemCurrency,
+      offline: true,
+      offlineMessage: msg.isEmpty ? kSessionOfflineMessage : msg,
+    );
+  }
+
+  static AuthAdmin? _adminOf(Map<String, dynamic>? d) =>
+      d != null && d['admin'] is Map<String, dynamic>
+          ? AuthAdmin.fromJson(d['admin'] as Map<String, dynamic>)
+          : null;
+
+  static List<String> _permissionKeys(Map<String, dynamic>? d) =>
+      ((d?['permissions'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .toList();
 
   Future<void> login({
     required String baseUrl,
@@ -305,6 +433,7 @@ class AuthController extends StateNotifier<AuthState> {
     );
     try {
       await _ref.read(tokenStorageProvider).clear();
+      await _ref.read(permissionsCacheProvider).clear();
       _resetSession();
       await _ref.read(apiEndpointStorageProvider).writeBaseUrl(baseUrl);
       // Persist the per-deployment security key BEFORE the login call so the
@@ -349,16 +478,17 @@ class AuthController extends StateNotifier<AuthState> {
       }
       state = AuthState(
         token: token,
-        admin: d['admin'] is Map<String, dynamic>
-            ? AuthAdmin.fromJson(d['admin'] as Map<String, dynamic>)
-            : null,
+        admin: _adminOf(d),
         tenantId: d['tenant_id'] as int?,
-        permissions: ((d['permissions'] as List?) ?? const [])
-            .map((e) => e.toString())
-            .toList(),
+        permissions: _permissionKeys(d),
         serverBaseUrl: baseUrl,
         systemCurrency: systemCurrencyOf(session),
       );
+      await _ref.read(permissionsCacheProvider).write(token, {
+        ...d,
+        ...?meData,
+        if (session['system'] is Map) 'system': session['system'],
+      });
       _publishCurrency(state.systemCurrency);
       await _loadPanelTimeZone(session);
     } on ApiException catch (e) {
@@ -381,6 +511,7 @@ class AuthController extends StateNotifier<AuthState> {
       await _ref.read(apiClientProvider).post('/api/admin/logout');
     } catch (_) {/* best-effort */}
     await _ref.read(tokenStorageProvider).clear();
+    await _ref.read(permissionsCacheProvider).clear();
     _resetSession();
     PanelTimeZone.reset();
     final serverBaseUrl =

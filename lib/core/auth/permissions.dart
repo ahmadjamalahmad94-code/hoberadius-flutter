@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/admins/domain/permission_labels.dart';
 import '../api/api_client.dart';
+import 'permissions_cache.dart';
 import 'system_settings.dart';
+import 'token_storage.dart';
 
 /// Section states of the server's per-manager grants (`grants.sections`).
 const kSectionOpen = 'open';
@@ -149,10 +151,18 @@ class AppPermissions {
     this.viewAllSubscribers = true,
     this.tools,
     this.subscriberFields,
+    this.pending = false,
+    this.provisional = false,
   });
 
   /// Nothing known yet (signed out / before the first /me): permissive.
   static const unknown = AppPermissions();
+
+  /// A saved session is being restored and this admin's grants are not
+  /// known yet (no cached copy): NOTHING is allowed. The shell shows a
+  /// neutral «جارٍ التحقق من صلاحياتك» state instead of any screen, and the
+  /// router keeps the location (a reload / deep link is not lost).
+  static const restoring = AppPermissions(legacy: false, pending: true);
 
   /// Parses an `/api/admin/me` or `/api/admin/login` `data` payload.
   factory AppPermissions.fromMe(Map<String, dynamic> data) {
@@ -215,6 +225,27 @@ class AppPermissions {
     );
   }
 
+  /// The same grants marked as coming from the saved copy.
+  AppPermissions asProvisional() => AppPermissions(
+        legacy: legacy,
+        loaded: loaded,
+        isOwner: isOwner,
+        isCoOwner: isCoOwner,
+        isOriginalOwner: isOriginalOwner,
+        isSuperAdmin: isSuperAdmin,
+        isDistributor: isDistributor,
+        distributorId: distributorId,
+        distributorName: distributorName,
+        adminId: adminId,
+        permissions: permissions,
+        actions: actions,
+        sections: sections,
+        viewAllSubscribers: viewAllSubscribers,
+        tools: tools,
+        subscriberFields: subscriberFields,
+        provisional: true,
+      );
+
   static int? _int(Object? v) =>
       v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
 
@@ -227,6 +258,14 @@ class AppPermissions {
 
   /// A /me (or login) payload has been applied.
   final bool loaded;
+
+  /// Session restore without any known grants yet ([restoring]).
+  final bool pending;
+
+  /// The grants come from this admin's last saved copy (cold start, reload,
+  /// or /me unreachable) — the server's answer replaces them as soon as it
+  /// arrives, and any screen no longer allowed is then closed.
+  final bool provisional;
 
   /// Owner or co-owner (`admin.is_owner`) — bypasses every check.
   final bool isOwner;
@@ -389,6 +428,19 @@ class PermissionsController extends StateNotifier<AppPermissions> {
     _lastRefresh = DateTime.now();
   }
 
+  /// Session restore: this admin's last saved grants, until the server's
+  /// answer replaces them ([AppPermissions.provisional]).
+  void applyCached(Map<String, dynamic> meData) {
+    state = AppPermissions.fromMe(meData).asProvisional();
+  }
+
+  /// Session restore without a saved copy: nothing is allowed until the
+  /// server answers ([AppPermissions.restoring]).
+  void markRestoring() {
+    state = AppPermissions.restoring;
+    _lastRefresh = null;
+  }
+
   /// Tests: pretend the last refresh is older than [minInterval].
   @visibleForTesting
   void debugExpireThrottle() => _lastRefresh = null;
@@ -429,8 +481,18 @@ class PermissionsController extends StateNotifier<AppPermissions> {
         }
         state = next;
         publishCreateWithoutExpiry(_ref, d);
+        await _saveCopy(d);
       }
     } catch (_) {/* keep the last known grants */}
+  }
+
+  /// Keeps the fresh grants for the next cold start (bound to the token).
+  Future<void> _saveCopy(Map<String, dynamic> me) async {
+    try {
+      final token = await _ref.read(tokenStorageProvider).read();
+      if (token == null || token.isEmpty) return;
+      await _ref.read(permissionsCacheProvider).write(token, me);
+    } catch (_) {/* best-effort */}
   }
 }
 

@@ -4,11 +4,17 @@ import 'route_permissions.dart';
 /// Router-side permission gate.
 ///
 /// A screen the admin may not open redirects to `/no-access` — BEFORE its
-/// form is built. It never evicts the screen already on display: when the
-/// grants are re-read (after a 403, on resume) the router re-runs its
-/// redirect for the current location, and throwing the admin out of a
-/// half-filled form would lose the typed input. That form shows the
-/// server's Arabic refusal instead and keeps its fields.
+/// form is built. The router re-runs this check whenever the grants change
+/// (session restore, a refresh after a 403, app resume), so a screen opened
+/// on the provisional (saved) grants — or one the owner revoked meanwhile —
+/// is closed as soon as the server's grants say so (f07 N-B1: forbidden
+/// forms stayed open after /me arrived). A screen that is STILL allowed is
+/// not touched: the router keeps the same page, so a half-filled form keeps
+/// its input.
+///
+/// While the grants are unknown ([AppPermissions.pending], a session
+/// restore without a saved copy) nothing is redirected: the location is
+/// kept and the shell shows a neutral loading state instead of the screen.
 class PermissionRouteGate {
   String? _current;
 
@@ -16,7 +22,7 @@ class PermissionRouteGate {
   String? get current => _current;
 
   String? redirect(AppPermissions perms, String location) {
-    if (location == _current) return null;
+    if (perms.pending) return null;
     final own = distributorOwnPageRedirect(perms, location);
     if (own != null) return own;
     final denied = routeDenial(perms, location);

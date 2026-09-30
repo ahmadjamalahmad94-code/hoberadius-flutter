@@ -331,12 +331,18 @@ void main() {
       expect(gate.redirect(viewer, '/no-access'), isNull);
     });
 
-    test('never evicts the screen on display (a half-filled form)', () {
+    // fix3 (f07 N-B1): the screen on display is re-checked when the grants
+    // change — a form opened on provisional grants (or revoked meanwhile)
+    // is closed; one still allowed stays (same page → its input is kept).
+    test('re-checks the screen on display when the grants change', () {
       final gate = PermissionRouteGate();
       expect(gate.redirect(creator, '/subscribers/new'), isNull);
-      // A 403 re-read the grants: users.create was revoked meanwhile. The
-      // router re-runs redirect for the SAME location — it must stay.
-      expect(gate.redirect(viewer, '/subscribers/new'), isNull);
+      // Grants re-read with the SAME rights: the form stays.
+      expect(gate.redirect(creator, '/subscribers/new'), isNull);
+      // users.create revoked meanwhile: the form is closed.
+      final to = gate.redirect(viewer, '/subscribers/new');
+      expect(to, startsWith('/no-access'));
+      expect(Uri.parse(to!).queryParameters['from'], '/subscribers/new');
       // A NEW navigation is refused.
       expect(gate.redirect(viewer, '/cards'), isNotNull);
     });
