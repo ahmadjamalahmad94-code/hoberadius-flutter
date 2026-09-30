@@ -7,7 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../shared/widgets/auto_height_grid.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
@@ -196,38 +198,59 @@ class _InvoiceStatsGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return InvoiceStatsGrid(
+      stats: stats,
+      visibleCount: visibleCount,
+      currency: TenantCurrencyScope.of(context),
+    );
+  }
+}
+
+/// The invoices KPI tiles. Content-sized rows ([AutoHeightGrid]) — the
+/// fixed aspect ratio overflowed by 11 px at 360 (f07 N-B6) — and every
+/// amount carries the currency (it showed a bare «650»).
+class InvoiceStatsGrid extends StatelessWidget {
+  const InvoiceStatsGrid({
+    super.key,
+    required this.stats,
+    required this.visibleCount,
+    required this.currency,
+  });
+
+  final InvoiceStats stats;
+  final int visibleCount;
+  final String currency;
+
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth < 720 ? 2 : 4;
-        return GridView.count(
-          crossAxisCount: columns,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: AppTokens.s8,
-          crossAxisSpacing: AppTokens.s8,
-          childAspectRatio: constraints.maxWidth < 720 ? 2.35 : 2.8,
+        return AutoHeightGrid(
+          columns: columns,
+          spacing: AppTokens.s8,
           children: [
             _StatCard(
               icon: Icons.summarize_outlined,
               title: 'إجمالي القيمة',
-              value: _money(stats.total),
+              value: invoiceMoney(stats.total, currency),
               tone: PillTone.green,
             ),
             _StatCard(
               icon: Icons.check_circle_outline,
               title: 'مدفوعة',
-              value: _money(stats.paid),
+              value: invoiceMoney(stats.paid, currency),
               tone: PillTone.brand,
             ),
             _StatCard(
               icon: Icons.schedule_outlined,
               title: 'معلقة',
-              value: _money(stats.pending),
+              value: invoiceMoney(stats.pending, currency),
               tone: PillTone.amber,
             ),
             _StatCard(
               icon: Icons.receipt_long_outlined,
-              title: 'النتائج المعروضة',
+              title: 'المعروض',
               value: '$visibleCount من ${stats.count}',
               tone: PillTone.blue,
             ),
@@ -237,6 +260,10 @@ class _InvoiceStatsGrid extends StatelessWidget {
     );
   }
 }
+
+/// An invoice amount with the tenant currency, as one LTR run.
+String invoiceMoney(num value, String currency) =>
+    ltrIsolate(formatWithCurrency(value, currency));
 
 class _StatCard extends StatelessWidget {
   const _StatCard({
@@ -265,21 +292,24 @@ class _StatCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppTokens.textMuted,
                     fontSize: 12,
                   ),
                 ),
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTokens.sidebarBg,
-                    fontWeight: FontWeight.w900,
-                    fontSize: 17,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: AppTokens.sidebarBg,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 17,
+                    ),
                   ),
                 ),
               ],
@@ -330,7 +360,14 @@ class _InvoicesTable extends StatelessWidget {
                       tone: _directionTone(invoice.direction),
                     ),
                   ),
-                  DataCell(Text(_money(invoice.amount))),
+                  DataCell(
+                    Text(
+                      invoiceMoney(
+                        invoice.amount,
+                        TenantCurrencyScope.of(context),
+                      ),
+                    ),
+                  ),
                   DataCell(Text(invoice.paymentMethodLabel)),
                   DataCell(Text(_fmt(invoice.createdAt))),
                   DataCell(
@@ -417,7 +454,13 @@ class _InvoiceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppTokens.s12),
-          _InfoLine(label: 'المبلغ', value: _money(invoice.amount)),
+          _InfoLine(
+            label: 'المبلغ',
+            value: invoiceMoney(
+              invoice.amount,
+              TenantCurrencyScope.of(context),
+            ),
+          ),
           _InfoLine(label: 'الباقة', value: _orUnset(invoice.planName)),
           _InfoLine(label: 'التاريخ', value: _fmt(invoice.createdAt)),
           if (invoice.note.trim().isNotEmpty)
@@ -758,7 +801,7 @@ Future<InvoiceDraft?> _invoiceDialog(
                     final picked = await showDatePicker(
                       context: context,
                       firstDate: DateTime(2020),
-                      lastDate: DateTime(2100),
+                      lastDate: kLastPickableDate,
                       initialDate: expirationAt ?? panelNow(),
                     );
                     if (picked != null) {
@@ -876,8 +919,6 @@ PillTone _directionTone(String direction) {
     _ => PillTone.neutral,
   };
 }
-
-String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

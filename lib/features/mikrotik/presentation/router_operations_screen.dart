@@ -2,6 +2,8 @@ import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
+import '../../../core/format/bidi.dart';
+import '../../../core/l10n/arabic_labels.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -157,22 +159,22 @@ class _RouterOperationsScreenState
                   ),
                   // MikroTik-domain pages: owner / co-owner (mt:* keys).
                   if (ref.watch(permissionsProvider).isOwnerLike)
-                  ActionItem(
-                    icon: Icons.tune_outlined,
-                    label: 'برمجة',
-                    onPressed: () => context.go(
-                      '/router-programming/${selected.id!}',
+                    ActionItem(
+                      icon: Icons.tune_outlined,
+                      label: 'برمجة',
+                      onPressed: () => context.go(
+                        '/router-programming/${selected.id!}',
+                      ),
                     ),
-                  ),
                   // «سياسات الشبكة» تعيش الآن داخل لوحة عمليات الراوتر (مطابقةً
                   // للويب الذي دمجها هنا) بدل بند مستقل في القائمة — حظر
                   // المواقع والمواقع المسموحة لكل راوتر.
                   if (ref.watch(permissionsProvider).isOwnerLike)
-                  ActionItem(
-                    icon: Icons.policy_outlined,
-                    label: 'سياسات الشبكة',
-                    onPressed: () => context.go('/network-policy'),
-                  ),
+                    ActionItem(
+                      icon: Icons.policy_outlined,
+                      label: 'سياسات الشبكة',
+                      onPressed: () => context.go('/network-policy'),
+                    ),
                 ],
               ),
             ],
@@ -651,9 +653,9 @@ class _RouterBackupsPanel extends ConsumerWidget {
           icon: Icons.restore_outlined,
           actions: [
             StatusPill(
-                text: arCount(page.count, arCopy, showOne: true),
-                tone: PillTone.blue,
-              ),
+              text: arCount(page.count, arCopy, showOne: true),
+              tone: PillTone.blue,
+            ),
           ],
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2207,13 +2209,50 @@ String _fieldLabel(String key) {
     'manifest_summary' => 'ملخص النسخة',
     'count' => 'العدد',
     'total' => 'الإجمالي',
-    _ => key.replaceAll('_', ' ').replaceAll('-', ' '),
+    'backups' => 'النسخ',
+    'router_id' => 'رقم الراوتر',
+    'router_name' => 'اسم الراوتر',
+    'status' => 'الحالة',
+    'state' => 'الحالة',
+    'health' => 'الصحة',
+    'level' => 'المستوى',
+    'items' => 'العناصر',
+    'rows' => 'الصفوف',
+    'message' || 'detail' => 'التفاصيل',
+    'version' => 'الإصدار',
+    'board-name' || 'model' => 'الطراز',
+    'cpu-load' => 'حمل المعالج',
+    'free-memory' => 'الذاكرة الحرة',
+    'free-hdd-space' => 'مساحة القرص الحرة',
+    _ => routerFieldFallbackLabel(key),
   };
 }
+
+/// A router field the app has no Arabic name for: shown as ONE isolated
+/// left-to-right token (RouterOS names like `mac-address`), never mixed
+/// raw into the Arabic line.
+String routerFieldFallbackLabel(String key) =>
+    ltrIsolate(key.replaceAll('_', ' ').replaceAll('-', ' ').trim());
+
+/// A router value in Arabic: a list → its count («لا شيء» when empty, was
+/// «backups []»), a map → its size, status tokens (attention, ok…) →
+/// Arabic, the rest unchanged.
+String routerDisplayValue(Object? value, {String key = ''}) =>
+    _displayValue(value, key: key);
 
 String _displayValue(Object? value, {String key = ''}) {
   if (value == null) return '';
   if (value is bool) return value ? 'نعم' : 'لا';
+  if (value is List) {
+    return value.isEmpty
+        ? 'لا شيء'
+        : arCount(value.length, arItem, showOne: true);
+  }
+  if (value is Map) {
+    return value.isEmpty
+        ? 'لا شيء'
+        : arCount(value.length, arItem, showOne: true);
+  }
   final text = value.toString().trim();
   if (text.isEmpty) return '';
   if (key == 'router_status') {
@@ -2230,6 +2269,9 @@ String _displayValue(Object? value, {String key = ''}) {
       'false' || 'no' => 'لا',
       _ => text,
     };
+  }
+  if (key == 'status' || key == 'state' || key == 'health' || key == 'level') {
+    return rawTokenLabel(text);
   }
   return text;
 }

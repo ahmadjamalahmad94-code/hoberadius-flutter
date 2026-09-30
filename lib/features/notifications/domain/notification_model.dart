@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
+
 /// Dart mirror of a `panel_notifications` row as returned by
 /// `GET /api/v1/notifications` (radius-module api/v1/notifications.py).
 class AppNotification {
@@ -59,8 +61,9 @@ class AppNotification {
       id: _int(json['id']),
       type: (json['type'] ?? 'system').toString(),
       severity: (json['severity'] ?? 'info').toString(),
-      title: (json['title'] ?? '').toString(),
-      body: (json['body'] ?? '').toString(),
+      title: humanizeActorsInText((json['title'] ?? '').toString()),
+      // «أضافه: api-token:119» → «أضافه: التطبيق / مفتاح ربط #119».
+      body: humanizeActorsInText((json['body'] ?? '').toString()),
       link: (json['link'] ?? '').toString(),
       source: (json['source'] ?? 'local').toString(),
       readAt: (json['read_at'] ?? '').toString(),

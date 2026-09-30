@@ -56,7 +56,7 @@ void main() {
       expect(noDuration.pricingPeriodMinutes, 43200);
       expect(noDuration.ratePerMinute, closeTo(60 / 43200, 1e-12));
       expect(Plan(id: 3, name: 'd', price: 5, validityDays: 1).ratePerMinute,
-          closeTo(5 / 1440, 1e-12));
+          closeTo(5 / 1440, 1e-12),);
       expect(
         Plan.fromJson({
           'id': 4,
@@ -106,8 +106,7 @@ void main() {
       );
     });
 
-    test('to a plan WITHOUT a duration: 30-day default (server: cheaper)',
-        () {
+    test('to a plan WITHOUT a duration: 30-day default (server: cheaper)', () {
       // 5 / day vs 100 with no duration → 100 / 30 days is cheaper per
       // minute; the old app compared totals (5 < 100) and said «higher».
       final c = ctx(price: 5, minutes: 1440);
@@ -180,7 +179,8 @@ void main() {
     });
 
     test('no answer (network) → the connection hint is added', () {
-      final net = ApiException(code: 'connectionError', message: 'تعذّر الوصول');
+      final net =
+          ApiException(code: 'connectionError', message: 'تعذّر الوصول');
       expect(
         loadErrorMessage(net, networkHint: 'تحقق من الاتصال'),
         contains('تحقق من الاتصال'),
@@ -227,7 +227,7 @@ void main() {
 
     test('refused own page: the server reason + what to expect', () {
       expect(distributorLoadErrorTitle(dist, 4, refused),
-          'صفحتك كموزّع غير متاحة حاليًا');
+          'صفحتك كموزّع غير متاحة حاليًا',);
       final text = distributorLoadErrorText(dist, 4, refused);
       expect(text, contains('ليس لديك صلاحية'));
       expect(text, contains('بمجرد أن يسمح بها الخادم'));
@@ -235,8 +235,8 @@ void main() {
 
     test('another page / another error: the plain server reason', () {
       expect(distributorLoadErrorTitle(dist, 5, refused), 'تعذر جلب الموزع');
-      expect(distributorLoadErrorText(dist, 5, refused),
-          isNot(contains('بمجرد')));
+      expect(
+          distributorLoadErrorText(dist, 5, refused), isNot(contains('بمجرد')),);
       final net = ApiException(code: 'x', message: 'انتهت المهلة');
       expect(distributorLoadErrorTitle(dist, 4, net), 'تعذر جلب الموزع');
     });
@@ -257,7 +257,7 @@ void main() {
       );
       // not an API field name: kept
       expect(stripRawFieldNames('الرصيد (0.00) لا يكفي (SSTP).'),
-          'الرصيد (0.00) لا يكفي (SSTP).');
+          'الرصيد (0.00) لا يكفي (SSTP).',);
     });
   });
 }

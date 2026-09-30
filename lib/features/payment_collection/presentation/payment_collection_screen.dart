@@ -1117,7 +1117,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
                       child: TextFormField(
                         controller: amount,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           labelText: 'المبلغ',
                           helperText: kMaxMoneyHelper,
                         ),

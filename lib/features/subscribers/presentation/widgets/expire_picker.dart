@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
 import '../../../../core/auth/permissions.dart';
+import '../../../../core/format/money_limits.dart';
 import '../../../../core/auth/system_settings.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../application/new_subscriber_expiry.dart';
@@ -20,9 +21,13 @@ class ExpirePicker extends StatelessWidget {
     this.error,
     this.allowClear = true,
     this.emptyText = kExplicitNoExpiryLabel,
+    this.lastDate,
   });
 
   final DateTime? value;
+
+  /// The last day offered (a new subscriber: now + the extend cap).
+  final DateTime? lastDate;
 
   /// Offer the ✕ (clear the date) button — on the edit form only to admins
   /// allowed to set the expiry ([AppPermissions.canSetExpiry]).
@@ -36,12 +41,14 @@ class ExpirePicker extends StatelessWidget {
   final ValueChanged<DateTime?> onChange;
 
   Future<void> _pick(BuildContext context) async {
-    final base = value ?? panelNow().add(const Duration(days: 30));
+    final last = lastDate ?? kLastPickableDate;
+    var base = value ?? panelNow().add(const Duration(days: 30));
+    if (base.isAfter(last)) base = last;
     final day = await showDatePicker(
       context: context,
       initialDate: base,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      lastDate: last,
       helpText: 'تاريخ الانتهاء',
     );
     if (day == null || !context.mounted) return;
@@ -183,10 +190,21 @@ class SubscriberExpiryField extends ConsumerWidget {
         allowClear: canSet,
       );
     }
+    // Create: the one-extension cap (`max_extend_days`, a year by default)
+    // applies to a new subscriber's expiry too — said live under the field
+    // and the picker offers no later day.
+    final now = panelNow();
+    final capError = error ?? validateNewSubscriberExpiry(value, now);
+    final lastDay = now.add(Duration(days: kMaxExtendDays));
     final mode = ref.watch(newSubscriberExpiryModeProvider).valueOrNull;
     if (mode == null) {
       // Older server: an omitted expiry already means «no expiry».
-      return ExpirePicker(value: value, onChange: onChange, error: error);
+      return ExpirePicker(
+        value: value,
+        onChange: onChange,
+        error: capError,
+        lastDate: lastDay,
+      );
     }
     final explicit = explicitNoExpiry && canSet && value == null;
     final hint = value == null
@@ -205,7 +223,8 @@ class SubscriberExpiryField extends ConsumerWidget {
             }
             onChange(d);
           },
-          error: error,
+          error: capError,
+          lastDate: lastDay,
           // ✕ on a chosen date = back to «not chosen» (the server rule).
           emptyText: explicit ? kExplicitNoExpiryLabel : kExpiryNotChosen,
         ),

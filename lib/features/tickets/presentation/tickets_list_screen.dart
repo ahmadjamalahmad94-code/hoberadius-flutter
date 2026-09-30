@@ -565,7 +565,7 @@ Future<void> _showServiceRequestDialog(
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'المبلغ',
                               helperText: kMaxMoneyHelper,
                             ),

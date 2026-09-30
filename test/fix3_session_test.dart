@@ -149,8 +149,7 @@ void main() {
   });
 
   group('restore while /api/admin/me is pending', () {
-    test('no saved copy → NOTHING allowed (not the old «allow all»)',
-        () async {
+    test('no saved copy → NOTHING allowed (not the old «allow all»)', () async {
       final hold = Completer<void>();
       final adapter = RecordingAdapter((_) => FakeResponse.ok(support))
         ..beforeRespond = (_) => hold.future;
@@ -168,7 +167,12 @@ void main() {
       expect(auth.isAuthenticated, isTrue);
       expect(auth.restoring, isTrue);
       // the full «المزيد» of f07: none of it while unknown
-      for (final path in ['/admins/new', '/subscribers/new', '/nas', '/tools']) {
+      for (final path in [
+        '/admins/new',
+        '/subscribers/new',
+        '/nas',
+        '/tools',
+      ]) {
         expect(routeAllowed(p, path), isFalse, reason: path);
       }
       expect(
@@ -252,8 +256,7 @@ void main() {
           reason: 'offline',
         );
 
-    test('network error: session KEPT on the saved grants + banner',
-        () async {
+    test('network error: session KEPT on the saved grants + banner', () async {
       final tokens = _Tokens('t4');
       final adapter = RecordingAdapter((_) => FakeResponse.ok(support))
         ..beforeRespond = (r) async => throw offline(r);
@@ -408,12 +411,8 @@ void main() {
       return (container, hold);
     }
 
-    String location(ProviderContainer c) => c
-        .read(appRouterProvider)
-        .routerDelegate
-        .currentConfiguration
-        .uri
-        .path;
+    String location(ProviderContainer c) =>
+        c.read(appRouterProvider).routerDelegate.currentConfiguration.uri.path;
 
     testWidgets('a forbidden deep link never builds its form; closed on /me',
         (tester) async {

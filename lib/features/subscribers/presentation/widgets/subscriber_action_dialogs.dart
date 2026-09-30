@@ -243,7 +243,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
       context: context,
       initialDate: _exact,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
+      lastDate: kLastPickableDate,
       helpText: 'تاريخ الانتهاء',
     );
     if (day == null || !mounted) return;
@@ -859,7 +859,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
     final amountError = _money.text.trim().isEmpty
         ? null
         : (numberFieldError(_money.text) ??
-            validateMoneyAmount(_amount) ??
+            validateMoneyAmount(_amount, cap: MoneyCap.subscriberPayment) ??
             validateExtendSpan(
               paymentExtendMinutes(
                 amount: _amount,

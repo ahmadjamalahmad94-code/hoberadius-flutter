@@ -186,7 +186,7 @@ class _SubscriberFinanceScreenState
     final amount = read.value?.toDouble();
     final ctx = data.context;
     final problem = read.error ??
-        validateMoneyAmount(amount) ??
+        validateMoneyAmount(amount, cap: MoneyCap.subscriberPayment) ??
         (_applyPayment && ctx != null && amount != null
             ? validateExtendSpan(
                 paymentExtendMinutes(
@@ -555,12 +555,12 @@ String? validateFinanceLoanInput({
 }
 
 /// Finance-page loan guard: a positive number of hours and a value between
-/// 0 and [kMaxMoneyAmount].
+/// 0 and the configured loan cap (`max_loan_amount`).
 String? validateFinanceLoan({required int hours, required num amount}) {
   if (hours <= 0) return 'أدخل مدة السلفة بالساعات.';
   if (!amount.isFinite || amount < 0) return 'قيمة السلفة لا تكون سالبة.';
-  if (amount > kMaxMoneyAmount) {
-    return 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.';
+  if (amount > AppLimits.maxLoanAmount) {
+    return 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى ${formatNumberBound(AppLimits.maxLoanAmount)}.';
   }
   return null;
 }

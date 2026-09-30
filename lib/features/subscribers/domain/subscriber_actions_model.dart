@@ -453,7 +453,7 @@ enum ExtendMode { duration, exact }
 
 /// Why the extend dialog cannot be confirmed (Arabic), or null.
 ///
-/// FIX2 caps: at most a year ([kMaxExtendDays]) per operation, a price ≤ 100,000 and no
+/// Caps (`system.limits`): at most [kMaxExtendDays] per operation, a price ≤ the payment cap and no
 /// expiry past [kMaxExpiryYear]; a typed «1e9» / «-5» is an error, never a
 /// silently rewritten number; a paid/debt extension needs a real price.
 String? extendInvalidReason({
@@ -479,8 +479,9 @@ String? extendInvalidReason({
     if (unpriced || price < kMinMoneyAmount) {
       return 'لا يمكن احتساب قيمة لهذا الوقت (الباقة بلا سعر) — اختر «مجاني».';
     }
-    if (price > kMaxMoneyAmount) {
-      return 'قيمة الوقت كبيرة جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.';
+    if (price > AppLimits.maxSubscriberPayment) {
+      return 'قيمة الوقت كبيرة جدًا — الحدّ الأعلى '
+          '${formatNumberBound(AppLimits.maxSubscriberPayment)}.';
     }
   }
   return null;

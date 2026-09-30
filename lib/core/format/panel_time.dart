@@ -28,6 +28,7 @@ class PanelTimeZone {
   static String _label = '';
   static Duration? _fixedOffset;
   static tz.Location? _location;
+  static List<PanelTzTransition> _transitions = const [];
   static bool _dbLoaded = false;
 
   /// Bumped on every change (widgets/tests can compare).
@@ -36,13 +37,20 @@ class PanelTimeZone {
   /// The IANA name in use ('' when only an offset — or nothing — is known).
   static String get name => _location != null ? _name : '';
 
-  /// A zone (name or offset) came from the server.
-  static bool get isConfigured => _location != null || _fixedOffset != null;
+  /// A zone (name, offset or transition table) came from the server.
+  static bool get isConfigured =>
+      _location != null || _fixedOffset != null || _transitions.isNotEmpty;
 
   /// Sets the panel zone from the server's values. An unknown [name] falls
   /// back to [offsetHours] (the server's legacy `billing.timezone_offset`);
   /// neither → the phone's zone.
-  static void configure({String? name, num? offsetHours, String? label}) {
+  static void configure({
+    String? name,
+    num? offsetHours,
+    String? label,
+    List<PanelTzTransition>? transitions,
+  }) {
+    _transitions = [...?transitions]..sort((a, b) => a.at.compareTo(b.at));
     _label = (label ?? '').trim();
     final n = (name ?? '').trim();
     tz.Location? loc;
@@ -69,6 +77,7 @@ class PanelTimeZone {
 
   /// Back to the phone's zone (sign-out, tests).
   static void reset() {
+    _transitions = const [];
     _location = null;
     _name = '';
     _label = '';
@@ -90,12 +99,29 @@ class PanelTimeZone {
         milliseconds: loc.timeZone(instant.millisecondsSinceEpoch).offset,
       );
     }
+    // No zone database entry: the server's own transition table
+    // (`system.tz_transitions`) still gives DST right.
+    final t = _transitions;
+    if (t.isNotEmpty) {
+      final at = instant.toUtc();
+      if (at.isBefore(t.first.at)) return t.first.offsetBefore;
+      var off = t.first.offsetAfter;
+      for (final x in t) {
+        if (x.at.isAfter(at)) break;
+        off = x.offsetAfter;
+      }
+      return off;
+    }
     return _fixedOffset ?? instant.toLocal().timeZoneOffset;
   }
 
-  /// «UTC+03:00» at [at] (now by default).
+  /// «UTC+03:00» at [at] (now by default). A non-UTC [at] is a PANEL wall
+  /// time (the pickers pass the chosen time): it is resolved to its instant
+  /// first — «01:30 on 24 Oct» is +03:00 (first occurrence), not +02:00.
   static String offsetLabel([DateTime? at]) {
-    final off = offsetAt(at ?? DateTime.now());
+    final instant =
+        at == null ? DateTime.now() : (at.isUtc ? at : panelWallToInstant(at));
+    final off = offsetAt(instant);
     final sign = off.isNegative ? '-' : '+';
     final m = off.inMinutes.abs();
     String two(int v) => v.toString().padLeft(2, '0');
@@ -149,13 +175,58 @@ DateTime panelWallToInstant(DateTime wall) {
     wall.millisecond,
     wall.microsecond,
   );
-  // First guess with the offset at that moment, then correct once for a
-  // DST change between the guess and the answer.
-  final off = PanelTimeZone.offsetAt(asUtc);
-  var instant = asUtc.subtract(off);
-  final off2 = PanelTimeZone.offsetAt(instant);
-  if (off2 != off) instant = asUtc.subtract(off2);
-  return instant;
+  // The server's rule (`system.local_time_rule`, zoneinfo fold=0): a
+  // REPEATED wall time (the autumn hour) is its FIRST occurrence — the
+  // pre-transition offset; a SKIPPED one (the spring gap) is read with the
+  // pre-transition offset too, landing after the jump. Candidates are the
+  // offsets around that day; the earliest instant that really shows [wall]
+  // wins. (The app used to take the second occurrence: 2026-10-24 01:30 →
+  // 23:30Z where the web wrote 22:30Z — f03 N7.)
+  const day = Duration(hours: 26);
+  final before = PanelTimeZone.offsetAt(asUtc.subtract(day));
+  final after = PanelTimeZone.offsetAt(asUtc.add(day));
+  final offsets = {before, PanelTimeZone.offsetAt(asUtc), after};
+  DateTime? best;
+  for (final off in offsets) {
+    final candidate = asUtc.subtract(off);
+    if (PanelTimeZone.offsetAt(candidate) != off) continue;
+    if (best == null || candidate.isBefore(best)) best = candidate;
+  }
+  return best ?? asUtc.subtract(before);
+}
+
+/// One DST switch of the panel zone (`system.tz_transitions`).
+class PanelTzTransition {
+  const PanelTzTransition({
+    required this.at,
+    required this.offsetBefore,
+    required this.offsetAfter,
+  });
+
+  /// The UTC instant of the switch.
+  final DateTime at;
+  final Duration offsetBefore;
+  final Duration offsetAfter;
+
+  static List<PanelTzTransition> listFrom(Object? raw) {
+    if (raw is! List) return const [];
+    final out = <PanelTzTransition>[];
+    for (final m in raw.whereType<Map>()) {
+      final at = DateTime.tryParse('${m['at'] ?? ''}');
+      num? n(Object? v) => v is num ? v : num.tryParse('${v ?? ''}');
+      final b = n(m['offset_before_minutes']);
+      final a = n(m['offset_after_minutes']);
+      if (at == null || b == null || a == null) continue;
+      out.add(
+        PanelTzTransition(
+          at: at.toUtc(),
+          offsetBefore: Duration(minutes: b.round()),
+          offsetAfter: Duration(minutes: a.round()),
+        ),
+      );
+    }
+    return out;
+  }
 }
 
 /// «Now» on the panel's wall clock — compare it with parsed server times.

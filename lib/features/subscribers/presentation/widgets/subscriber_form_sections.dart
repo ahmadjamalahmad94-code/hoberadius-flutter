@@ -290,7 +290,7 @@ class SubscriberMtSection extends StatelessWidget {
       child: Column(
         children: [
           FormFieldRow(
-            label: 'الـ profile',
+            label: 'ملف الراوتر (Profile)',
             child: TextFormField(controller: controllers['mt_profile']),
           ),
           FormFieldRow(

@@ -273,7 +273,7 @@ class _DetailsCard extends StatelessWidget {
           _InfoRow('الاسم', s.fullName),
           _InfoRow('الجوال', s.mobile),
           _InfoRow('البريد', s.email),
-          _InfoRow('نوع الخدمة', data.serviceType),
+          _InfoRow('نوع الخدمة', _serviceTypeLabel(data.serviceType)),
           _InfoRow('الباقة', data.planName),
           _InfoRow(
             'السعر المخصص',

@@ -473,7 +473,7 @@ class _ServiceRequestPanelState extends ConsumerState<_ServiceRequestPanel> {
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'المبلغ',
                               helperText: kMaxMoneyHelper,
                             ),

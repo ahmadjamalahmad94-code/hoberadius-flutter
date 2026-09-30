@@ -345,7 +345,10 @@ class _ActionsState extends ConsumerState<_Actions> {
                 FormFieldPair(
                   first: NumberTextField(
                     controller: _amount,
-                    extraError: (v) => validateMoneyAmount(v),
+                    extraError: (v) => validateMoneyAmount(
+                      v,
+                      cap: MoneyCap.distributorBalanceAdd,
+                    ),
                     decoration: const InputDecoration(labelText: 'المبلغ'),
                   ),
                   second: TextField(
@@ -403,7 +406,8 @@ class _ActionsState extends ConsumerState<_Actions> {
     if (_submitting) return;
     final read = readNumberInput(_amount.text);
     final amount = read.value?.toDouble();
-    final problem = read.error ?? validateMoneyAmount(amount);
+    final problem = read.error ??
+        validateMoneyAmount(amount, cap: MoneyCap.distributorBalanceAdd);
     if (problem != null) {
       _message(problem);
       return;

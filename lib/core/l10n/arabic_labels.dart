@@ -173,10 +173,134 @@ const Map<String, String> kRawTokenLabels = {
   'opted_out': 'ألغى المستلم الاشتراك',
   'duplicate': 'مكرّر',
   'rate_limited': 'تجاوز حدّ الإرسال',
+  // Audit / report ACTION codes (the web's reports._ACTION_LABELS +
+  // audit_format) — «الإجراء create», «extend_time» were shown raw (f07
+  // N-C1).
+  'create': 'إنشاء',
+  'update': 'تعديل',
+  'delete': 'حذف',
+  'disable': 'تعطيل',
+  'enable': 'تفعيل',
+  'extend_time': 'إضافة وقت / تمديد',
+  'extend': 'تمديد',
+  'change_plan': 'تجديد / تغيير الباقة',
+  'archive': 'أرشفة',
+  'restore': 'استعادة',
+  'rename': 'إعادة تسمية',
+  'reset_password': 'إعادة تعيين كلمة المرور',
+  'bulk_set_speeds': 'تحديث جماعي للسرعات',
+  'temporary_speed.apply': 'فتح سرعة',
+  'temporary_speed.revert': 'إرجاع السرعة',
+  'subscriber.cash_balance_add': 'إضافة رصيد',
+  'subscriber.quota_topup': 'إضافة كوتة',
+  'subscriber.daily_quota_reset': 'تصفير الكوتة اليوميّة',
+  'subscriber.debt_settled_from_payment': 'تسوية دين من دفعة',
+  'notification.manual_queued': 'رسالة يدوية',
+  'payment_collection.settings_saved': 'حفظ إعدادات التحصيل',
+  'payment_collection.request_approved': 'اعتماد طلب دفع',
+  'payment_collection.request_rejected': 'رفض طلب دفع',
+  'auth_login_failed': 'فشل تسجيل الدخول',
+  'auth_login': 'تسجيل الدخول',
+  'auth_logout': 'تسجيل الخروج',
+  'login': 'تسجيل الدخول',
+  'logout': 'تسجيل الخروج',
+  'page_visit': 'زيارة صفحة',
+  'manager_activity': 'نشاط مدير',
+  'disconnect': 'فصل',
+  'lock_mac': 'تثبيت MAC',
+  'lock_ip': 'تثبيت IP',
+  // Audit TARGET types.
+  'user': 'مشترك',
+  'router': 'راوتر',
+  'nas': 'جهاز شبكة',
+  'service': 'خدمة',
+  'role': 'دور',
+  'session': 'جلسة',
+  'notification_campaign': 'حملة رسائل',
+  'payment_request': 'طلب دفع',
+  'card_print_template': 'قالب طباعة بطاقات',
+  'bandwidth_profile': 'ملف عرض النطاق',
+  'demo-seed': 'بيانات تجريبية',
+  'demo_seed': 'بيانات تجريبية',
+  // Service types / health metrics.
+  'hotspot': 'هوتسبوت',
+  'pppoe': 'PPPoE',
+  'both': 'هوتسبوت و PPPoE',
+  'disk': 'القرص',
+  'cpu': 'المعالج',
+  'ram': 'الذاكرة',
+  'memory': 'الذاكرة',
+  'attention': 'يحتاج انتباهًا',
+  'warning': 'تحذير',
+  'critical': 'حرج',
+  'healthy': 'سليم',
+  'degraded': 'متدهور',
+  'offline': 'غير متصل',
+  'online': 'متصل',
+};
+
+/// Arabic for an audit ACTOR written by the server: `api-token:N` (every
+/// app / API write — f07 N-C2 «بواسطة api-token:20»), `system:<job>`,
+/// `system`, `ui`. Anything else (an admin name) is returned unchanged.
+/// The server's resolved name (`actor_label` / `*_name`) always wins over
+/// this — see [actorDisplay].
+String actorLabel(String raw) {
+  final a = raw.trim();
+  if (a.isEmpty) return '—';
+  final lower = a.toLowerCase();
+  if (lower == 'system') return 'النظام';
+  if (lower == 'ui') return 'عملية واجهة (تلقائي)';
+  if (lower.startsWith('system:')) {
+    final job = a.substring(7).trim();
+    final known = kSystemActorLabels[job.toLowerCase()];
+    final tail = known ?? job.replaceAll('-', ' ').replaceAll('_', ' ');
+    return tail.isEmpty ? 'النظام' : 'النظام: $tail';
+  }
+  final token = RegExp(r'^api[-_]token(?:\s*[:#-]\s*(\w+))?$', caseSensitive: false)
+      .firstMatch(a);
+  if (token != null) {
+    final id = token.group(1);
+    return id == null || id.toLowerCase() == 'env'
+        ? 'التطبيق / مفتاح ربط'
+        : 'التطبيق / مفتاح ربط #$id';
+  }
+  return a;
+}
+
+/// The actor to show for a row: the server's resolved name when it sent
+/// one (`actor_label`, `actor_name`, `created_by_label`, `created_by_name`),
+/// else [actorLabel] of the raw value.
+String actorDisplay(Map<String, dynamic> row, {String key = 'actor'}) {
+  for (final k in ['${key}_label', '${key}_name', '${key}_display']) {
+    final v = '${row[k] ?? ''}'.trim();
+    if (v.isNotEmpty) return v;
+  }
+  return actorLabel('${row[key] ?? ''}');
+}
+
+/// Replaces raw actor tokens inside a server sentence («أضافه: api-token:119»).
+String humanizeActorsInText(String text) => text.replaceAllMapped(
+      RegExp(r'api[-_]token(?:\s*[:#-]\s*\w+)?', caseSensitive: false),
+      (m) => actorLabel(m.group(0)!),
+    );
+
+/// `system:<job>` actors (the web's _SYSTEM_ACTOR_AR).
+const kSystemActorLabels = <String, String>{
+  'backup-scheduler': 'مجدول النسخ الاحتياطي',
+  'temp-speed': 'السرعة المؤقتة',
+  'notifications': 'الإشعارات',
+  'policy-reconciler': 'مُصالِح السياسات',
+  'log-retention': 'الاحتفاظ بالسجلّات',
+  'lifecycle': 'دورة الحياة',
 };
 
 String rawTokenLabel(String value) {
   final key = value.trim().toLowerCase();
+  if (key.startsWith('api-token') ||
+      key.startsWith('api_token') ||
+      key.startsWith('system:')) {
+    return actorLabel(value);
+  }
   final known = kRawTokenLabels[key];
   if (known != null) return known;
   // «wallet:4» / «distributor #1» (business-ops ledger parties).

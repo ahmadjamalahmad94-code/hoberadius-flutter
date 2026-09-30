@@ -1,5 +1,6 @@
 // ignore_for_file: require_trailing_commas
 
+import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
 import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -300,7 +301,7 @@ class _BatchSummary extends StatelessWidget {
         InfoItem(
           icon: Icons.person_outline,
           label: 'بواسطة',
-          value: batch.createdBy,
+          value: actorLabel(batch.createdBy),
         ),
     ];
     return AppCard(

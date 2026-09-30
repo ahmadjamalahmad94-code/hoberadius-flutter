@@ -11,8 +11,12 @@ import '../../../core/format/money_limits.dart';
 
 export '../../../core/format/money_limits.dart'
     show
+        AppLimits,
+        MoneyCap,
+        formatNumberBound,
         kMaxMoneyAmount,
         kMaxMoneyAmountLabel,
+        moneyTooLargeMessage,
         validateExtendSpan,
         validateMoneyAmount;
 import '../domain/accounting_model.dart';
@@ -70,7 +74,7 @@ class AccountingRepository {
     bool applyToRadius = false,
     String? idempotencyKey,
   }) async {
-    final problem = validateMoneyAmount(amount);
+    final problem = validateMoneyAmount(amount, cap: MoneyCap.subscriberPayment);
     if (problem != null) {
       throw ApiException(code: 'validation_error', message: problem);
     }
@@ -190,11 +194,11 @@ class AccountingRepository {
     bool applyToRadius = false,
     String? idempotencyKey,
   }) async {
-    if (amount < 0 || amount > kMaxMoneyAmount || !amount.isFinite) {
+    if (amount < 0 || amount > AppLimits.maxLoanAmount || !amount.isFinite) {
       throw ApiException(
         code: 'validation_error',
-        message:
-            'قيمة السلفة غير صحيحة (0 إلى $kMaxMoneyAmountLabel).',
+        message: 'قيمة السلفة غير صحيحة '
+            '(0 إلى ${formatNumberBound(AppLimits.maxLoanAmount)}).',
       );
     }
     final res = await _api.post(

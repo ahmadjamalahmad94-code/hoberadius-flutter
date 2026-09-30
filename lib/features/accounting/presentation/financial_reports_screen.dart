@@ -177,7 +177,7 @@ class _FinancialReportsScreenState
       children: [
         PageHeader(
           title: 'التقارير المالية',
-          subtitle: 'مبنية من Ledger؛ التصحيح قيد عكسي ولا يحذف الأصل.',
+          subtitle: 'مبنية من دفتر القيود؛ التصحيح قيد عكسي ولا يحذف الأصل.',
           leading: const Icon(
             Icons.insert_chart_outlined,
             color: AppTokens.brand,

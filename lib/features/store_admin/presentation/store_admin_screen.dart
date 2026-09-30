@@ -231,7 +231,7 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'المبلغ المؤكَّد (اختياري)',
                   helperText: 'اتركه فارغًا لاعتماد المبلغ المطلوب — '
                       '$kMaxMoneyHelper.',

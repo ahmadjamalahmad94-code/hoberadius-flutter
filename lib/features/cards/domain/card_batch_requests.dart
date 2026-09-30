@@ -1,10 +1,12 @@
 /// Request DTOs for card-batch create / update endpoints.
 library;
 
+import '../../../core/format/money_limits.dart';
+
 /// Most cards one generation may create — the server's hard cap
 /// (`CARDS_HARD_MAX_PER_BATCH`); 1,000,000 used to be accepted and loaded
 /// the server for minutes.
-const int kMaxCardsPerBatch = 10000;
+int get kMaxCardsPerBatch => AppLimits.maxCardsPerBatch;
 
 /// Above this many cards the form asks for confirmation first.
 const int kConfirmCardsAbove = 1000;

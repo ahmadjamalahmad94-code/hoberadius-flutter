@@ -529,7 +529,7 @@ Future<VoucherGenerateDraft?> _voucherDialog(
                 controller: amount,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'القيمة لكل كوبون',
                   helperText:
                       'أكبر من صفر — الحدّ الأعلى $kMaxMoneyAmountLabel.',

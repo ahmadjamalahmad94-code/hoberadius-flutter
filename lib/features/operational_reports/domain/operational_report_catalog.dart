@@ -139,7 +139,7 @@ const List<OperationalReportDef> operationalReportCatalog = [
   OperationalReportDef(
     slug: 'failed-logins',
     title: 'محاولات فاشلة',
-    subtitle: 'رفض الدخول من radpostauth بدون كشف كلمة المرور.',
+    subtitle: 'محاولات الدخول المرفوضة من سجل الريدياس بدون كشف كلمة المرور.',
     icon: Icons.gpp_bad_outlined,
     category: 'الدخول والمصادقة',
     dateKey: 'authdate',

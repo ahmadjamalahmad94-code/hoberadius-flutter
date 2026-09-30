@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/admins/domain/permission_labels.dart';
 import '../api/api_client.dart';
+import '../format/money_limits.dart';
 import 'permissions_cache.dart';
 import 'system_settings.dart';
 import 'token_storage.dart';
@@ -481,6 +482,7 @@ class PermissionsController extends StateNotifier<AppPermissions> {
         }
         state = next;
         publishCreateWithoutExpiry(_ref, d);
+        AppLimits.configureFrom(d);
         await _saveCopy(d);
       }
     } catch (_) {/* keep the last known grants */}

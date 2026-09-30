@@ -209,7 +209,8 @@ class PaymentFormCard extends StatelessWidget {
         FormFieldPair(
           first: NumberTextField(
             controller: amount,
-            extraError: (v) => validateMoneyAmount(v),
+            extraError: (v) =>
+                validateMoneyAmount(v, cap: MoneyCap.subscriberPayment),
             decoration: InputDecoration(
               labelText: currency.isEmpty ? 'المبلغ' : 'المبلغ ($currency)',
             ),
@@ -301,8 +302,8 @@ class LoanFormCard extends StatelessWidget {
           ),
           second: NumberTextField(
             controller: amount,
-            extraError: (v) => v > kMaxMoneyAmount
-                ? 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.'
+            extraError: (v) => v > AppLimits.maxLoanAmount
+                ? 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى ${formatNumberBound(AppLimits.maxLoanAmount)}.'
                 : null,
             decoration: InputDecoration(
               labelText:

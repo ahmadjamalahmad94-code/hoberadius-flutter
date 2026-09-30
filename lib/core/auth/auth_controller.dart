@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../api/api_endpoint_storage.dart';
 import '../api/api_exception.dart';
 import '../format/currency.dart';
+import '../format/money_limits.dart';
 import '../format/panel_time.dart';
 import 'permissions.dart';
 import 'permissions_cache.dart';
@@ -140,11 +141,13 @@ bool applyPanelTimeZoneFrom(Map<String, dynamic> data) {
       read(system['tz_offset_minutes']) ??
       read(system['offset_minutes']);
   final hours = minutes != null ? minutes / 60 : read(system['tz_offset']);
-  if (name.isEmpty && hours == null) return false;
+  final transitions = PanelTzTransition.listFrom(system['tz_transitions']);
+  if (name.isEmpty && hours == null && transitions.isEmpty) return false;
   PanelTimeZone.configure(
     name: name,
     offsetHours: hours,
     label: '${system['timezone_label'] ?? ''}',
+    transitions: transitions,
   );
   return true;
 }
@@ -195,6 +198,7 @@ class AuthController extends StateNotifier<AuthState> {
     await _ref.read(tokenStorageProvider).clear();
     await _ref.read(permissionsCacheProvider).clear();
     _resetSession();
+    AppLimits.reset();
     final msg = e.message.trim();
     state = AuthState(
       serverBaseUrl: serverBaseUrl,
@@ -234,6 +238,10 @@ class AuthController extends StateNotifier<AuthState> {
   /// settings API (older servers); never fatal.
   Future<void> _loadPanelTimeZone(Map<String, dynamic> data) async {
     publishCreateWithoutExpiry(_ref, data);
+    // The server's configurable caps (`system.limits`); none → defaults.
+    final hasLimits = AppLimits.configureFrom(data);
+    // /me sends `system` (zone + limits) on every current server; only an
+    // older one without a zone falls back to /api/v1/settings.
     if (applyPanelTimeZoneFrom(data)) return;
     // Settings need «عرض الإعدادات»: don't ask for a known 403.
     final perms = _ref.read(permissionsProvider);
@@ -245,6 +253,7 @@ class AuthController extends StateNotifier<AuthState> {
       final d = res['data'];
       if (d is Map<String, dynamic>) {
         applyPanelTimeZoneFromSettings(d);
+        if (!hasLimits) AppLimits.configureFrom(d);
         publishCreateWithoutExpiry(_ref, d);
       }
     } catch (_) {/* keep the phone's zone */}
@@ -315,6 +324,7 @@ class AuthController extends StateNotifier<AuthState> {
       _permissions?.applyCached(cached);
       _publishCurrency(systemCurrencyOf(cached));
       applyPanelTimeZoneFrom(cached);
+      AppLimits.configureFrom(cached);
       publishCreateWithoutExpiry(_ref, cached);
     } else {
       _permissions?.markRestoring();
@@ -514,6 +524,7 @@ class AuthController extends StateNotifier<AuthState> {
     await _ref.read(permissionsCacheProvider).clear();
     _resetSession();
     PanelTimeZone.reset();
+    AppLimits.reset();
     final serverBaseUrl =
         await _ref.read(apiEndpointStorageProvider).readBaseUrl();
     state = AuthState(serverBaseUrl: serverBaseUrl);

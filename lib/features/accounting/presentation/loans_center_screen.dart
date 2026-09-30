@@ -685,8 +685,8 @@ Future<LoanCreateOutcome?> _loanDialog(
                       child: NumberTextField(
                         controller: amount,
                         enabled: !priceFromDays,
-                        extraError: (v) => v > kMaxMoneyAmount
-                            ? 'المبلغ كبير جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.'
+                        extraError: (v) => v > AppLimits.maxLoanAmount
+                            ? moneyTooLargeMessage(AppLimits.maxLoanAmount)
                             : null,
                         decoration: InputDecoration(
                           labelText: 'المبلغ',
@@ -889,8 +889,8 @@ String? validateLoanCenterInput({
     return '«احتساب الدين من عدد الأيام» يحتاج عدد أيام.';
   }
   final amount = a.value ?? 0;
-  if (amount > kMaxMoneyAmount) {
-    return 'المبلغ كبير جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.';
+  if (amount > AppLimits.maxLoanAmount) {
+    return moneyTooLargeMessage(AppLimits.maxLoanAmount);
   }
   return null;
 }

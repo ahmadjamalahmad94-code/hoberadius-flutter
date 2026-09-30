@@ -20,9 +20,10 @@ class CardNumberField extends StatelessWidget {
     this.decoration,
     this.onChanged,
     this.serverError,
-  });
+  }) : _moneyCap = false;
 
-  /// A money field: decimals allowed, at most [kMaxMoneyAmount].
+  /// A money field: decimals allowed, at most the configured generic cap
+  /// ([kMaxMoneyAmount], read when the field builds).
   const CardNumberField.money({
     super.key,
     required this.controller,
@@ -33,7 +34,8 @@ class CardNumberField extends StatelessWidget {
     this.serverError,
   })  : decimal = true,
         min = null,
-        max = kMaxMoneyAmount,
+        max = null,
+        _moneyCap = true,
         check = null;
 
   final TextEditingController controller;
@@ -42,6 +44,9 @@ class CardNumberField extends StatelessWidget {
   final num? min;
   final num? max;
   final String? emptyMessage;
+
+  /// [max] is the configured generic money cap.
+  final bool _moneyCap;
 
   /// Extra rule on a valid value (null = the field is empty).
   final String? Function(num? value)? check;
@@ -66,7 +71,7 @@ class CardNumberField extends StatelessWidget {
         decimal: decimal,
         required: required,
         min: min,
-        max: max,
+        max: _moneyCap ? kMaxMoneyAmount : max,
         emptyMessage: emptyMessage,
         check: check,
       ),

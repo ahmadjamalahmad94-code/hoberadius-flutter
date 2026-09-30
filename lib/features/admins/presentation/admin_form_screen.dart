@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/auth/permissions.dart';
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -277,7 +278,8 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                 ),
                 FormFieldRow(
                   label: 'رابط الصورة الرمزية',
-                  hint: 'https://…',
+                  // LTR isolate: in RTL «https://…» read «…//:https» (f07 N-C8).
+                  hint: kAvatarUrlHint,
                   child: TextFormField(
                     controller: _avatar,
                     textDirection: TextDirection.ltr,
@@ -465,3 +467,6 @@ class _OwnerNote extends StatelessWidget {
     );
   }
 }
+
+/// The avatar-URL example, one left-to-right run inside the Arabic form.
+final String kAvatarUrlHint = ltrIsolate('https://…');

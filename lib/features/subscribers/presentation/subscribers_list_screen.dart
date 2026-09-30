@@ -201,17 +201,28 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
           title: 'المشتركون',
           inlineActions: true,
           actions: [
+            // No `tooltip:` on the segments: a Tooltip INSIDE the segmented
+            // button's render object is laid out by the shell navigator's
+            // Overlay during the page transition and read its size mid-
+            // layout — the first error of the debug assertion cascade after
+            // «حفظ» → list (r10 N8 / f07 N-B7). The names stay for screen
+            // readers.
             SegmentedButton<_Density>(
+              key: const ValueKey('subscribers-density'),
               segments: const [
                 ButtonSegment(
                   value: _Density.comfortable,
-                  icon: Icon(Icons.view_agenda_outlined),
-                  tooltip: 'مريح',
+                  icon: Icon(
+                    Icons.view_agenda_outlined,
+                    semanticLabel: 'عرض مريح',
+                  ),
                 ),
                 ButtonSegment(
                   value: _Density.compact,
-                  icon: Icon(Icons.density_small_outlined),
-                  tooltip: 'مكثّف',
+                  icon: Icon(
+                    Icons.density_small_outlined,
+                    semanticLabel: 'عرض مكثّف',
+                  ),
                 ),
               ],
               selected: {_density},

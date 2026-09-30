@@ -1046,8 +1046,7 @@ String? _optionalNonNegative(String? value) => validateNumberInput(
 String? _optionalId(String? value) =>
     validateNumberInput(value, required: false, decimal: false, min: 1);
 
-const _kMoneyCapMessage =
-    'المبلغ كبير جدًا — الحدّ الأعلى $kMaxMoneyAmountLabel.';
+String get _kMoneyCapMessage => moneyTooLargeMessage(kMaxMoneyAmount);
 
 String _dash(String value) =>
     value.trim().isEmpty ? '—' : businessAccountLabel(value);

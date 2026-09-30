@@ -254,7 +254,7 @@ class DashboardAlert {
     final args = DashboardMetrics._m(j['link_args']);
     return DashboardAlert(
       level: _level((j['level'] ?? '').toString()),
-      message: (j['message'] ?? '').toString(),
+      message: humanizeAlertMessage((j['message'] ?? '').toString()),
       linkEndpoint: (j['link_endpoint'] ?? '').toString(),
       linkArgs: args ?? const {},
     );
@@ -271,4 +271,26 @@ class DashboardAlert {
         return DashboardAlertLevel.info;
     }
   }
+}
+
+/// The resource words the server leaves in English inside an Arabic alert
+/// («استخدام Disk مرتفع», f07 N-C1). Only whole words inside an Arabic
+/// sentence are replaced.
+String humanizeAlertMessage(String message) {
+  if (!RegExp('[؀-ۿ]').hasMatch(message)) return message;
+  const words = {
+    'Disk': 'القرص',
+    'disk': 'القرص',
+    'CPU': 'المعالج',
+    'cpu': 'المعالج',
+    'RAM': 'الذاكرة',
+    'ram': 'الذاكرة',
+    'Memory': 'الذاكرة',
+    'memory': 'الذاكرة',
+  };
+  var out = message;
+  words.forEach((en, ar) {
+    out = out.replaceAll(RegExp(r'\b' + en + r'\b'), ar);
+  });
+  return out;
 }

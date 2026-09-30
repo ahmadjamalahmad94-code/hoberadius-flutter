@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -322,9 +323,8 @@ class _AuditTile extends StatelessWidget {
 
 String _actorLabel(String value) {
   if (value.isEmpty) return '-';
-  if (value.startsWith('api-token')) return 'رمز تكامل';
   if (value == 'admin') return 'المدير';
-  return value.replaceAll('actor:', '').trim();
+  return actorLabel(value.replaceAll('actor:', '').trim());
 }
 
 String _targetLabel(String value) => switch (value) {
