@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
@@ -649,7 +650,10 @@ class _RouterBackupsPanel extends ConsumerWidget {
           title: 'نسخ الراوتر المحفوظة',
           icon: Icons.restore_outlined,
           actions: [
-            StatusPill(text: '${page.count} نسخة', tone: PillTone.blue),
+            StatusPill(
+                text: arCount(page.count, arCopy, showOne: true),
+                tone: PillTone.blue,
+              ),
           ],
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1038,7 +1042,7 @@ class _LiveSnapshotPanel extends StatelessWidget {
           runSpacing: AppTokens.s8,
           children: [
             StatusPill(
-              text: '${snapshot.totalRows} عنصر',
+              text: arCount(snapshot.totalRows, arItem, showOne: true),
               tone: snapshot.anyOk ? PillTone.blue : PillTone.neutral,
             ),
             if (snapshot.failedSections > 0)
@@ -1158,7 +1162,7 @@ class _LiveSectionCard extends StatelessWidget {
                 ],
                 if (section.rows.length > rows.length)
                   Text(
-                    'يعرض أول ${rows.length} من أصل ${section.rows.length} عنصر.',
+                    'يعرض أول ${rows.length} من أصل ${arCount(section.rows.length, arItem, showOne: true)}.',
                     style: const TextStyle(
                       color: AppTokens.textMuted,
                       fontSize: 12,

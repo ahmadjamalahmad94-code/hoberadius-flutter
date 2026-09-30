@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -152,7 +153,7 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
               if (widget.selectedCount > 0 && canBulk) ...[
                 const SizedBox(height: AppTokens.s12),
                 Text(
-                  'محدد: ${widget.selectedCount} حزمة',
+                  'محدد: ${arCount(widget.selectedCount, arBatch, showOne: true)}',
                   style: const TextStyle(
                     color: AppTokens.sidebarBg,
                     fontWeight: FontWeight.w800,

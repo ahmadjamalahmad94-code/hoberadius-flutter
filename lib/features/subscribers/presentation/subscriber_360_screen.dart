@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -509,7 +510,7 @@ String _serviceTypeLabel(String value) {
   };
 }
 
-String _money(num value) => value == 0 ? '0' : value.toStringAsFixed(2);
+String _money(num value) => formatMoneyAmount(value);
 
 /// Left-to-right mark: keeps «0 B» / «1.2 GB» in reading order inside the
 /// RTL layout (it rendered as «B 0»).

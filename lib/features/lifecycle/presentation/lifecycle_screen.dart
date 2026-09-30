@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -141,7 +142,7 @@ class _LifecycleScreenState extends ConsumerState<LifecycleScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'تمت أرشفة ${result.changed} عنصر، تخطي ${result.skipped}، فشل ${result.failed}.',
+            'تمت أرشفة ${arCount(result.changed, arItem, showOne: true)}، تخطي ${result.skipped}، فشل ${result.failed}.',
           ),
         ),
       );

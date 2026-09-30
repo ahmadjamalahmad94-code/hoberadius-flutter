@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/format/currency.dart';
 import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/status_pill.dart';
 import '../../../subscribers/domain/subscriber_actions_model.dart'
@@ -26,9 +27,15 @@ class FinanceSummaryFigures {
     required this.settledTotal,
     required this.forgivenTotal,
     required this.balance,
+    this.paidByCurrency = const [],
   });
 
   final double paidTotal;
+
+  /// «مدفوعات» per currency when the subscriber has payments in more than
+  /// one currency (a 7 USD payment was shown as «7 ILS» — f07 N-C3). Empty
+  /// when every payment is in the system currency.
+  final List<CurrencyAmount> paidByCurrency;
 
   /// `false`: the server gave no total — [paidTotal] covers only the loaded
   /// rows (older servers) and is labelled as such.
@@ -51,11 +58,31 @@ class FinanceSummaryFigures {
     double? serverTotalPaid,
     double? serverOpenOutstanding,
     int? serverOpenCount,
+    String currency = '',
   }) {
+    final live = payments.where((p) => p.status != 'voided').toList();
     final paid = serverTotalPaid ??
-        payments
-            .where((p) => p.status != 'voided')
-            .fold<double>(0, (s, p) => s + p.amount.toDouble());
+        live.fold<double>(0, (s, p) => s + p.amount.toDouble());
+    // Rows in another currency than the system one: never labelled with
+    // the system currency. The server's total adds every row whatever its
+    // currency, so the system-currency share is that total minus the
+    // foreign rows.
+    final system = currency.trim().toUpperCase();
+    final foreign = <String, double>{};
+    for (final p in live) {
+      final code = p.currency.trim().toUpperCase();
+      if (code.isEmpty || code == system) continue;
+      foreign[code] = (foreign[code] ?? 0) + p.amount.toDouble();
+    }
+    final byCurrency = <CurrencyAmount>[];
+    if (foreign.isNotEmpty && system.isNotEmpty) {
+      final foreignSum = foreign.values.fold<double>(0, (s, v) => s + v);
+      final own = _r2(paid - foreignSum);
+      if (own > 0) byCurrency.add(CurrencyAmount(system, own));
+      for (final e in foreign.entries) {
+        byCurrency.add(CurrencyAmount(e.key, _r2(e.value)));
+      }
+    }
     final open = loans.where((l) => l.status == 'open').toList();
     final openOutstanding = serverOpenOutstanding ??
         open.fold<double>(0, (s, l) => s + l.outstanding.toDouble());
@@ -77,6 +104,7 @@ class FinanceSummaryFigures {
     }
     return FinanceSummaryFigures(
       paidTotal: _r2(paid),
+      paidByCurrency: byCurrency,
       paidIsServerTotal: serverTotalPaid != null,
       openCount: serverOpenCount ?? open.length,
       openOutstanding: _r2(openOutstanding),
@@ -108,6 +136,7 @@ class FinanceSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final f = figures;
     String money(double v) => formatMoney(v, currency);
+    String money2(CurrencyAmount a) => formatMoney(a.amount, a.currency);
     final net = f.net;
     return LayoutBuilder(
       builder: (context, c) => CountGrid(
@@ -115,7 +144,11 @@ class FinanceSummaryCard extends StatelessWidget {
         items: [
           CountItem.text(
             f.paidIsServerTotal ? 'مدفوعات (الكل)' : 'مدفوعات (المعروضة)',
-            money(f.paidTotal),
+            f.paidByCurrency.length > 1
+                ? formatByCurrency(f.paidByCurrency)
+                : f.paidByCurrency.length == 1
+                    ? money2(f.paidByCurrency.single)
+                    : money(f.paidTotal),
             tone: f.paidTotal > 0 ? PillTone.green : PillTone.neutral,
           ),
           CountItem.text(

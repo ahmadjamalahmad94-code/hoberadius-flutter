@@ -946,10 +946,10 @@ void main() {
       };
       await tester.tap(find.text('توليد'));
       await settle(tester, 4);
-      expect(find.text('جاري توليد 10 بطاقة…'), findsOneWidget);
+      expect(find.text('جاري توليد 10 بطاقات…'), findsOneWidget);
       gate.complete();
       await settle(tester);
-      expect(find.text('تم توليد 10 بطاقة'), findsOneWidget);
+      expect(find.text('تم توليد 10 بطاقات'), findsOneWidget);
       expect(find.textContaining('B-000077'), findsOneWidget);
       expect(find.text('عرض الحزمة'), findsOneWidget);
       expect(find.text('رجوع للحزم'), findsOneWidget);
@@ -1003,7 +1003,7 @@ void main() {
       );
       expect(posts[0].headers['Idempotency-Key'], isNotNull);
       expect(jsonEncode(posts[1].body), jsonEncode(posts[0].body));
-      expect(find.text('تم توليد 10 بطاقة'), findsOneWidget);
+      expect(find.text('تم توليد 10 بطاقات'), findsOneWidget);
     });
 
     testWidgets('closing an error keeps the form and shows it at the field',

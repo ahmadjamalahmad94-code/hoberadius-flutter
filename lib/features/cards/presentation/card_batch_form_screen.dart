@@ -1,5 +1,6 @@
 // ignore_for_file: require_trailing_commas, deprecated_member_use
 
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -154,7 +155,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       builder: (ctx) => AlertDialog(
         title: const Text('توليد عدد كبير من الكروت؟'),
         content: Text(
-          'سيتم توليد $count بطاقة في دفعة واحدة. قد يستغرق ذلك وقتًا '
+          'سيتم توليد ${arCount(count, arCard, showOne: true)} في دفعة واحدة. قد يستغرق ذلك وقتًا '
           'ويضغط الخادم. هل أنت متأكد؟',
         ),
         actions: [

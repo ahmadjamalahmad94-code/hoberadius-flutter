@@ -25,6 +25,7 @@ class SubscriberFinanceData {
         serverTotalPaid: totals?.hasTotals == true ? totals!.totalPaid : null,
         serverOpenOutstanding:
             totals?.hasTotals == true ? totals!.openLoanAmount : null,
+        currency: currency,
       );
 
   final Subscriber subscriber;

@@ -1,3 +1,5 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
+import '../../../core/format/bidi.dart';
 import '../../../core/format/currency.dart';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -415,7 +417,7 @@ class _SnapshotStrip extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  Text('${_snapshotCount(item)} صف'),
+                  Text(arCount(_snapshotCount(item), arRow, showOne: true)),
                 ],
               ),
             ),
@@ -482,7 +484,16 @@ String reportCell(Map<String, dynamic> row, String column) {
     );
     if (parts.isNotEmpty) return formatByCurrency(parts);
   }
-  return _cell(row[column]);
+  // A money cell carries ITS ROW's currency («3 USD», not a bare «3» —
+  // f04 L9), in the app's one money format.
+  final value = row[column];
+  final code = '${row['currency'] ?? ''}'.trim();
+  if (_moneyColumns.contains(column) && value is num && value.isFinite) {
+    return code.isEmpty
+        ? formatMoneyAmount(value)
+        : ltrIsolate(formatWithCurrency(value, code));
+  }
+  return _cell(value);
 }
 
 String _cell(Object? value) {
@@ -490,10 +501,10 @@ String _cell(Object? value) {
   if (value is String && _isoStamp.hasMatch(value.trim())) {
     return formatReportTimestamp(value);
   }
-  // Amounts: grouped, 2 decimals, no float noise (117.58999999999999).
+  // Amounts: the app's one money format, no float noise.
   if (value is double) {
     if (!value.isFinite) return '—';
-    return NumberFormat('#,##0.##').format(value);
+    return formatMoneyAmount(value);
   }
   if (value is int && value.abs() >= 10000) {
     return NumberFormat('#,##0').format(value);

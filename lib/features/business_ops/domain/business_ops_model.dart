@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
 /// Business OS console models — finance ledger corrections, pricing snapshots,
@@ -190,7 +191,9 @@ String _string(Object? value, {String fallback = ''}) {
 
 String _money(Object? value) {
   final text = value?.toString().trim() ?? '';
-  return text.isEmpty ? '0.00' : text;
+  if (text.isEmpty) return '0';
+  final n = num.tryParse(text);
+  return n == null ? text : formatMoneyAmount(n);
 }
 
 int? _int(Object? value) {

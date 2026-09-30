@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -182,7 +183,7 @@ class _RechargeCardsScreenState extends ConsumerState<RechargeCardsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'تم توليد ${result.insertedCount} كرت شحن بقيمة إجمالية ${_money(result.totalValue, TenantCurrencyScope.of(context))}.',
+            'تم توليد ${arCount(result.insertedCount, arVoucherCard, showOne: true)} شحن بقيمة إجمالية ${_money(result.totalValue, TenantCurrencyScope.of(context))}.',
           ),
         ),
       );
@@ -709,7 +710,7 @@ class _RechargePagination extends ConsumerWidget {
     return Row(
       children: [
         Text(
-          'صفحة ${page.page} من ${page.pages} • ${page.total} حزمة',
+          'صفحة ${page.page} من ${page.pages} • ${arCount(page.total, arBatch, showOne: true)}',
           style: const TextStyle(color: AppTokens.textMuted),
         ),
         const Spacer(),
@@ -753,11 +754,8 @@ class _RechargePagination extends ConsumerWidget {
 }
 
 /// Amount + the tenant currency (was a hardcoded «₪»).
-String _money(num value, [String currency = '']) {
-  final text =
-      value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
-  return currency.isEmpty ? text : '$text $currency';
-}
+String _money(num value, [String currency = '']) =>
+    formatWithCurrency(value, currency);
 
 /// A recharge denomination row read strictly: null when it is valid or
 /// empty, else the Arabic reason (value: money up to the cap; count: a

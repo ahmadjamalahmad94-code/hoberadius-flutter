@@ -98,7 +98,7 @@ void main() {
   });
 
   test('M4: money shows the tenant currency, never a hardcoded ₪', () {
-    expect(formatMoney(1234.5, 'JOD'), '1,234.5 JOD');
+    expect(formatMoney(1234.5, 'JOD'), '1,234.50 JOD');
     expect(formatMoney(10), '10');
     expect(formatMoney(10, 'ILS').contains('₪'), isFalse);
     expect(formatWithCurrency(1234567.891, 'USD'), '1,234,567.89 USD');

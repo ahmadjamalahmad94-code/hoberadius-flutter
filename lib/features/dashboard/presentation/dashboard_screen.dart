@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -569,7 +570,7 @@ class _SubscriberAttention extends StatelessWidget {
       if (metrics.expiringSoon > 0)
         _StatItem(
           icon: Icons.hourglass_bottom,
-          label: 'ينتهي خلال ٣ أيام',
+          label: 'ينتهي خلال 3 أيام',
           value: '${metrics.expiringSoon}',
           bg: p.warningBg,
           fg: p.warningStrong,
@@ -627,7 +628,7 @@ class _SubscriberAttention extends StatelessWidget {
         _StatItem(
           icon: Icons.star_outline,
           label: 'الأكثر استخدامًا',
-          value: '${metrics.topPlanName} · ${metrics.topPlanSubs} مشترك',
+          value: '${metrics.topPlanName} · ${arCount(metrics.topPlanSubs, arSubscriber, showOne: true)}',
           bg: p.brandSoft,
           fg: p.brandInk,
           full: true,
@@ -1087,9 +1088,17 @@ class _SystemHealth extends StatelessWidget {
         ),
       if (metrics.dnsOk != null) status('DNS', metrics.dnsOk!, 'سليم', 'فشل'),
       if (metrics.systemUptime.isNotEmpty)
-        info(Icons.power_settings_new, 'تشغيل النظام', metrics.systemUptime),
+        info(
+          Icons.power_settings_new,
+          'تشغيل النظام',
+          formatUptime(metrics.systemUptime),
+        ),
       if (metrics.processUptime.isNotEmpty)
-        info(Icons.timer_outlined, 'تشغيل التطبيق', metrics.processUptime),
+        info(
+          Icons.timer_outlined,
+          'تشغيل التطبيق',
+          formatUptime(metrics.processUptime),
+        ),
     ];
   }
 

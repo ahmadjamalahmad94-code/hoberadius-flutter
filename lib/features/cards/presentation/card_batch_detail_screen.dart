@@ -1,5 +1,6 @@
 // ignore_for_file: require_trailing_commas
 
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -293,7 +294,7 @@ class _BatchSummary extends StatelessWidget {
         InfoItem(
           icon: Icons.devices,
           label: 'الأجهزة',
-          value: '${batch.deviceCount} جهاز',
+          value: arCount(batch.deviceCount, arDevice, showOne: true),
         ),
       if (batch.createdBy.isNotEmpty)
         InfoItem(

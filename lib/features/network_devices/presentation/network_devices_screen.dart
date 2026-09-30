@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -650,7 +651,7 @@ class _NetworkScanDialogState extends ConsumerState<_NetworkScanDialog> {
           runSpacing: AppTokens.s8,
           children: [
             StatusPill(
-              text: 'تم العثور على ${result.items.length} جهاز',
+              text: 'تم العثور على ${arCount(result.items.length, arDevice, showOne: true)}',
               tone: PillTone.blue,
               dot: true,
             ),

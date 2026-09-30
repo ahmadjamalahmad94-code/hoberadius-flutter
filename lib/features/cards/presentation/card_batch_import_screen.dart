@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -433,7 +434,7 @@ class _ImportResultCard extends StatelessWidget {
               const SizedBox(width: AppTokens.s8),
               Expanded(
                 child: Text(
-                  'تم استيراد ${result.insertedCount} بطاقة',
+                  'تم استيراد ${arCount(result.insertedCount, arCard, showOne: true)}',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: AppTokens.sidebarBg,

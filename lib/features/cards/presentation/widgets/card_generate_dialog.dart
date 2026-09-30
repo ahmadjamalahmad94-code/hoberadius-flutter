@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -122,7 +123,7 @@ class _CardGenerateDialogState extends State<CardGenerateDialog> {
           const Center(child: CircularProgressIndicator()),
           const SizedBox(height: AppTokens.s16),
           Text(
-            'جاري توليد ${widget.count} بطاقة…',
+            'جاري توليد ${arCount(widget.count, arCard, showOne: true)}…',
             textAlign: TextAlign.center,
             style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
@@ -152,7 +153,7 @@ class _CardGenerateDialogState extends State<CardGenerateDialog> {
           ),
           const SizedBox(height: AppTokens.s12),
           Text(
-            'تم توليد $made بطاقة',
+            'تم توليد ${arCount(made, arCard, showOne: true)}',
             textAlign: TextAlign.center,
             style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),

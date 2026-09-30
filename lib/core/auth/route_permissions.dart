@@ -6,6 +6,7 @@ import 'permissions.dart';
 class RouteRequirement {
   const RouteRequirement({
     this.anyOf = const [],
+    this.alsoAnyOf = const [],
     this.section,
     this.writeSection = false,
     this.action,
@@ -16,6 +17,11 @@ class RouteRequirement {
 
   /// RBAC keys — at least one is needed (empty = none).
   final List<String> anyOf;
+
+  /// A SECOND group of which one key is also needed (both groups must be
+  /// met) — e.g. the loans list: the API guard wants `users.view` and the
+  /// handler `users.loans` or `reports.finance`.
+  final List<String> alsoAnyOf;
 
   /// Manager section (`grants.sections`) that must not be hidden.
   final String? section;
@@ -58,6 +64,9 @@ class RouteRequirement {
     }
     if (anyOf.isNotEmpty && !p.canAny(anyOf)) {
       return p.deniedReason(anyOf: anyOf);
+    }
+    if (alsoAnyOf.isNotEmpty && !p.canAny(alsoAnyOf)) {
+      return p.deniedReason(anyOf: alsoAnyOf);
     }
     final act = action;
     if (act != null && !p.canAction(act)) {
@@ -197,8 +206,11 @@ const kRouteRequirements = <String, RouteRequirement>{
   '/router-programming/:id': RouteRequirement(ownerOnly: true),
   '/device-fingerprints':
       RouteRequirement(anyOf: ['nas.view'], section: 'network'),
-  '/network-devices':
-      RouteRequirement(anyOf: ['nas.view'], section: 'network'),
+  // «أجهزة الشبكة» (web:network_devices_list) sits in the server's
+  // «network_ops_legacy» section, hidden by default for everyone but the
+  // owner — the page opened for nas.view and the server refused it (f07
+  // N-C5).
+  '/network-devices': RouteRequirement(ownerOnly: true),
   '/router-alerts': RouteRequirement(ownerOnly: true),
   '/network-policy': RouteRequirement(ownerOnly: true),
   '/radius-resources':
@@ -211,8 +223,12 @@ const kRouteRequirements = <String, RouteRequirement>{
   '/ledger': RouteRequirement(anyOf: ['reports.finance'], section: 'finance'),
   '/wallets': RouteRequirement(anyOf: ['reports.finance'], section: 'finance'),
   '/invoices': RouteRequirement(anyOf: ['reports.finance'], section: 'finance'),
+  // GET /loans: the permission guard wants users.view and the handler
+  // users.loans or reports.finance (loans._LOAN_READ_PERMS) — the screen
+  // opened for users.view alone and answered 403 (f01).
   '/loans': RouteRequirement(
     anyOf: ['users.view'],
+    alsoAnyOf: ['users.loans', 'reports.finance'],
     section: 'subscribers',
     distributorAllowed: true,
   ),

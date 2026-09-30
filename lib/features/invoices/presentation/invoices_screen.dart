@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/panel_time.dart';
@@ -876,9 +877,7 @@ PillTone _directionTone(String direction) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

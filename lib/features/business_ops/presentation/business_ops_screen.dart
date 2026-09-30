@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -172,7 +173,7 @@ class _SummaryHero extends StatelessWidget {
         value: amountWithCurrency(summary.ledgerTotal, currency),
         icon: Icons.menu_book_outlined,
         variant: KpiVariant.brand,
-        subtitle: '${summary.ledgerEntries} قيد',
+        subtitle: arCount(summary.ledgerEntries, arEntry, showOne: true),
       ),
       HubKpi(
         label: 'أرصدة المحافظ',

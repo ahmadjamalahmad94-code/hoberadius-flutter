@@ -2,6 +2,8 @@ import '../../../../core/format/bidi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/api/visible_error_message.dart';
+import '../../../../core/auth/permissions.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../plans/data/plans_repository.dart';
 import '../../../plans/domain/plan_model.dart';
@@ -20,6 +22,13 @@ class PlanPicker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // The plan list (/api/v1/profiles) needs «عرض الباقات»; the server has
+    // no lighter list for a manager who may only create subscribers (f01).
+    // Say so plainly instead of a failed load and a retry that fails again.
+    final canList = ref.watch(
+      permissionsProvider.select((p) => p.can('plans.view')),
+    );
+    if (!canList) return _NoPlanList(controller: controller);
     final async = ref.watch(plansForPickerProvider);
     return async.when(
       loading: () => const Padding(
@@ -45,10 +54,12 @@ class PlanPicker extends ConsumerWidget {
                 color: AppTokens.amber,
               ),
               const SizedBox(width: 4),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'تعذّر جلب قائمة الباقات — أدخل المعرّف يدويًا',
-                  style: TextStyle(color: AppTokens.textMuted, fontSize: 12),
+                  'تعذّر جلب قائمة الباقات — أدخل المعرّف يدويًا. '
+                  '${visibleErrorMessage(e)}',
+                  style:
+                      const TextStyle(color: AppTokens.textMuted, fontSize: 12),
                 ),
               ),
               TextButton(
@@ -95,6 +106,47 @@ class PlanPicker extends ConsumerWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// Message shown by [PlanPicker] to a manager without «عرض الباقات».
+const String kNoPlanListMessage =
+    'لا تملك صلاحية «عرض الباقات»، لذلك لا تظهر قائمة الباقات هنا. '
+    'اكتب رقم الباقة إن كنت تعرفه، أو احفظ المشترك بدون باقة ثم اطلب من '
+    'المالك منحك «عرض الباقات».';
+
+class _NoPlanList extends StatelessWidget {
+  const _NoPlanList({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextFormField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'رقم الباقة (اختياري)',
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.info_outline, size: 14, color: AppTokens.textMuted),
+            SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                kNoPlanListMessage,
+                style: TextStyle(color: AppTokens.textMuted, fontSize: 12),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -144,8 +145,8 @@ class CardsListScreen extends ConsumerWidget {
           title: Text('$label الحزم المحددة'),
           content: Text(
             destructive
-                ? 'سيتم نقل ${ids.length} حزمة إلى الأرشيف بدون حذف البطاقات.'
-                : 'سيتم تنفيذ الإجراء على ${ids.length} حزمة.',
+                ? 'سيتم نقل ${arCount(ids.length, arBatch, showOne: true)} إلى الأرشيف بدون حذف البطاقات.'
+                : 'سيتم تنفيذ الإجراء على ${arCount(ids.length, arBatch, showOne: true)}.',
           ),
           actions: [
             TextButton(

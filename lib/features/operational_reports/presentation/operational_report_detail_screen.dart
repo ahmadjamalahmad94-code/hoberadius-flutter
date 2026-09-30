@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -252,8 +253,8 @@ class _ReportTable extends StatelessWidget {
       ),
       child: Text(
         dateFiltered
-            ? '${rows.length} سجل ضمن النطاق (من أصل $totalFetched)'
-            : '${rows.length} سجل',
+            ? '${arCount(rows.length, arRecord, showOne: true)} ضمن النطاق (من أصل $totalFetched)'
+            : arCount(rows.length, arRecord, showOne: true),
         style: const TextStyle(
           color: AppTokens.textMuted,
           fontWeight: FontWeight.w700,

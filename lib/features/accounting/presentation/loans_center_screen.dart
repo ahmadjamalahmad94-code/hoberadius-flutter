@@ -1027,9 +1027,7 @@ PillTone _statusTone(String status) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _duration(int minutes) {
   final days = minutes ~/ 1440;

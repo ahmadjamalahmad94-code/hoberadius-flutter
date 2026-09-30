@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,8 +13,6 @@ import '../../../shared/widgets/page_header.dart';
 import '../application/notifications_providers.dart';
 import '../domain/notification_presentation.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
-import 'package:hoberadius_app/features/subscribers/domain/subscriber_actions_model.dart'
-    show arDays, arHours, arMinutes;
 
 final _kindFilterProvider =
     StateProvider.autoDispose<NotificationKind?>((_) => null);
@@ -37,7 +36,9 @@ class NotificationCenterScreen extends ConsumerWidget {
       children: [
         PageHeader(
           title: 'الإشعارات',
-          subtitle: unread > 0 ? '$unread إشعار غير مقروء' : 'لا إشعارات جديدة',
+          subtitle: unread > 0
+              ? '${arCount(unread, arNotification, showOne: true)} غير مقروء'
+              : 'لا إشعارات جديدة',
           inlineActions: true,
           actions: [
             // «تعليم الكل كمقروء» lives up here, away from the filter chips
@@ -154,7 +155,7 @@ class NotificationCenterScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('تعليم الكل كمقروء؟'),
         content: Text(
-          'سيُعلَّم $unread إشعارًا غير مقروء كمقروء لكل الشبكة. '
+          'سيُعلَّم ${arCount(unread, arNotification, showOne: true)} غير مقروء كمقروء لكل الشبكة. '
           'لا يمكن التراجع عن ذلك.',
         ),
         actions: [
@@ -602,11 +603,12 @@ String notificationTimeAgo(String iso) {
   if (dt == null) return iso;
   final diff = panelNow().difference(dt);
   if (diff.inSeconds < 60) return 'الآن';
-  // Arabic number agreement («منذ 3 ساعات», not «منذ 3 ساعة»).
-  if (diff.inMinutes < 60) return 'منذ ${arMinutes(diff.inMinutes)}';
-  if (diff.inHours < 24) return 'منذ ${arHours(diff.inHours)}';
-  if (diff.inDays < 30) return 'منذ ${arDays(diff.inDays)}';
+  // Arabic number agreement («منذ 3 ساعات», «منذ دقيقتين» — was
+  // «منذ دقيقتان»).
+  if (diff.inMinutes < 60) return arSince(diff.inMinutes, arMinute);
+  if (diff.inHours < 24) return arSince(diff.inHours, arHour);
+  if (diff.inDays < 30) return arSince(diff.inDays, arDay);
   final months = diff.inDays ~/ 30;
-  if (months < 12) return 'منذ $months شهر';
-  return 'منذ ${diff.inDays ~/ 365} سنة';
+  if (months < 12) return arSince(months, arMonth);
+  return arSince(diff.inDays ~/ 365, arYear);
 }

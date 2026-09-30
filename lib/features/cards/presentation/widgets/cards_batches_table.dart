@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -288,7 +289,7 @@ class _PlanAndSpeed extends StatelessWidget {
           [
             if (speed.isNotEmpty) speed,
             if (batch.activeSpeedRules > 0)
-              '${batch.activeSpeedRules} قاعدة سرعة',
+              '${arCount(batch.activeSpeedRules, arRule, showOne: true)} سرعة',
           ].join(' • '),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -307,7 +308,7 @@ class _Activity extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       [
-        '${batch.sessionsCount} جلسة',
+        arCount(batch.sessionsCount, arSession, showOne: true),
         '${batch.uniqueMacs} MAC',
         if (batch.onlineSessions > 0) '${batch.onlineSessions} متصل',
       ].join(' • '),

@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
@@ -660,9 +661,7 @@ PillTone _statusTone(String status) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

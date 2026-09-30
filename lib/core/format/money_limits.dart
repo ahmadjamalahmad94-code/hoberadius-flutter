@@ -49,9 +49,10 @@ const int kMaxExtendDays = 365;
 const String kMaxExtendMessage =
     'أقصى تمديد في المرة الواحدة سنة — كرّر التمديد إن احتجت أكثر';
 
-/// [kMaxExtendMessage] when [minutes] (added in one go) pass a year.
+/// [kMaxExtendMessage] — the owner's exact text, no added «.» (f03 N5) —
+/// when [minutes] (added in one go) pass a year.
 String? validateExtendSpan(int minutes) =>
-    minutes > kMaxActionMinutes ? '$kMaxExtendMessage.' : null;
+    minutes > kMaxActionMinutes ? kMaxExtendMessage : null;
 
 /// [kMaxExtendDays] in minutes.
 const int kMaxActionMinutes = kMaxExtendDays * 1440;

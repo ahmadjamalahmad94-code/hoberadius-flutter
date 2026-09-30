@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -363,7 +364,12 @@ class _SendPanelState extends ConsumerState<_SendPanel> {
             audience: _audience(),
           );
       _refresh(ref);
-      if (mounted) _snack(context, 'تمت إضافة $count رسالة للطابور');
+      if (mounted) {
+        _snack(
+          context,
+          'تمت إضافة ${arCount(count, arMessage, showOne: true)} للطابور',
+        );
+      }
     } catch (error) {
       if (mounted) _snack(context, visibleErrorMessage(error));
     } finally {

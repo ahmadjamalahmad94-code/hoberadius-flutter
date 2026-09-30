@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'dart:typed_data';
 
 import 'package:file_saver/file_saver.dart';
@@ -93,7 +94,7 @@ class CardsListController {
       _ref.invalidate(batchesListProvider);
       final message = action == 'refresh'
           ? 'تم تحديث العرض'
-          : 'تم تنفيذ $label على ${result.changed} من ${result.requested} حزمة';
+          : 'تم تنفيذ $label على ${result.changed} من ${arCount(result.requested, arBatch, showOne: true)}';
       return BulkActionResult(message: message);
     } catch (e) {
       return BulkActionResult(error: visibleErrorMessage(e));

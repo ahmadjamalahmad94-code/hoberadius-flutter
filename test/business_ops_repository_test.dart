@@ -161,20 +161,20 @@ void main() {
 
     expect(summary.wallets, 3);
     expect(summary.walletBalance, '120.50');
-    expect(summary.ledgerTotal, '880.00');
+    expect(summary.ledgerTotal, '880'); // fix3: the app's one money format
     expect(summary.priceSnapshots, 4);
 
     expect(ledger.single.id, 42);
     expect(ledger.single.isCorrection, isTrue);
-    expect(ledger.single.amount, '15.00');
+    expect(ledger.single.amount, '15');
     expect(ledger.single.targetId, 18);
 
     expect(correction.id, 43);
     expect(correction.entryType, 'correction');
 
     expect(snapshots.single.id, 7);
-    expect(snapshots.single.retailPrice, '20.00');
-    expect(snapshots.single.effectivePrice, '18.00');
+    expect(snapshots.single.retailPrice, '20');
+    expect(snapshots.single.effectivePrice, '18');
 
     expect(captured.id, 8);
 

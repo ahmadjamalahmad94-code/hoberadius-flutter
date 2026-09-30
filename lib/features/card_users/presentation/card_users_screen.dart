@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
@@ -277,12 +278,12 @@ class _UserCard extends StatelessWidget {
                   InfoItem(
                     icon: Icons.credit_card_outlined,
                     label: 'الكروت',
-                    value: '${user.ownedCardsCount} كرت',
+                    value: arCount(user.ownedCardsCount, arVoucherCard, showOne: true),
                   ),
                   InfoItem(
                     icon: Icons.shopping_bag_outlined,
                     label: 'المشتريات',
-                    value: '${user.purchaseCount} عملية',
+                    value: arCount(user.purchaseCount, arOperation, showOne: true),
                   ),
                 ],
               ),

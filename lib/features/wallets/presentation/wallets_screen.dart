@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -915,9 +916,7 @@ PillTone _statusTone(String status) {
   };
 }
 
-String _money(num value) {
-  return NumberFormat('#,##0.##').format(value);
-}
+String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

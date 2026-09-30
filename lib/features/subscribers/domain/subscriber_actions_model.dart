@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/money_limits.dart';
 import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
@@ -570,11 +571,15 @@ String? validateLoan({
   if (type == LoanType.free && minutes > maxFreeHours * 60) {
     return 'السلفة المجانية لا تتجاوز $maxFreeHours ساعة.';
   }
+  // Owner rule first: one operation adds at most a year — with the
+  // owner's exact wording (the dialog used its own «سلفة الدين لا تتجاوز
+  // 365 يومًا.» — f03 N5).
+  final span = validateExtendSpan(minutes);
+  if (span != null) return span;
   if (type == LoanType.debt && minutes > maxDebtDays * 1440) {
     return 'سلفة الدين لا تتجاوز $maxDebtDays يومًا.';
   }
-  // Owner rule: one operation adds at most a year.
-  return validateExtendSpan(minutes);
+  return null;
 }
 
 Map<String, dynamic> loanPayload({
@@ -871,10 +876,10 @@ int paymentExtendMinutes({
 }
 
 String formatMoney(double v, String currency) {
-  final fixed =
-      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+  // The app's one money format (grouped, 0 or 2 decimals).
+  final text = formatWithCurrency(v, currency);
   // LRI…PDI: keep «50 ILS» in reading order inside an Arabic sentence.
-  return currency.isEmpty ? fixed : '\u2066$fixed $currency\u2069';
+  return currency.isEmpty ? text : '\u2066$text\u2069';
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────

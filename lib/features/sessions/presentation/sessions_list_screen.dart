@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/auth/permissions.dart';
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
@@ -54,6 +55,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
 
   void _refresh() {
     ref.invalidate(onlineSessionsProvider(_query));
+    ref.invalidate(onlineTotalsProvider);
     ref.invalidate(accountingHistoryProvider);
   }
 
@@ -89,13 +91,22 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
   Future<void> _runAction({
     required OnlineSession session,
     required String successMessage,
-    required Future<void> Function(SessionsRepository repo) action,
+    required Future<Object?> Function(SessionsRepository repo) action,
+    SessionActionOutcome Function(Object? result)? outcome,
   }) async {
     try {
-      await action(ref.read(sessionsRepositoryProvider));
+      final result = await action(ref.read(sessionsRepositoryProvider));
       if (!mounted) return;
+      final o = outcome?.call(result) ??
+          SessionActionOutcome(message: successMessage);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
+        SnackBar(
+          content: Text(o.message),
+          backgroundColor: o.warning ? AppTokens.warningFg : null,
+          duration: o.warning
+              ? const Duration(seconds: 8)
+              : const Duration(milliseconds: 4000),
+        ),
       );
       _refresh();
     } catch (error) {
@@ -170,8 +181,14 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     await _runAction(
       session: session,
       successMessage: 'تم طلب تطبيق السرعة المؤقتة على ${session.username}.',
+      // The router's answer decides the message: «saved but NOT applied»
+      // is a warning, never a plain success (f06 L5).
+      outcome: (res) => tempSpeedOutcome(
+        session.username,
+        res is Map<String, dynamic> ? res : const {},
+      ),
       action: (repo) async {
-        await repo.applyTemporarySpeed(
+        return repo.applyTemporarySpeed(
           username: session.username,
           sessionId: session.sessionId,
           downloadKbps: draft.downloadKbps,
@@ -194,12 +211,10 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     await _runAction(
       session: session,
       successMessage: 'تم طلب إلغاء السرعة المؤقتة لـ ${session.username}.',
-      action: (repo) async {
-        await repo.cancelTemporarySpeed(
-          username: session.username,
-          sessionId: session.sessionId,
-        );
-      },
+      action: (repo) => repo.cancelTemporarySpeed(
+        username: session.username,
+        sessionId: session.sessionId,
+      ),
     );
   }
 
@@ -274,9 +289,17 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _SummaryStrip(
-                  items: items,
-                  total: loaded.list.total,
-                  typeCounts: loaded.typeCounts,
+                  counts: onlineSummaryCounts(
+                    filtered: _query,
+                    items: items,
+                    total: loaded.list.total,
+                    typeCounts: loaded.typeCounts,
+                    // A tab / search is on: the tiles still show the WHOLE
+                    // network (f06 L7 «كل المتصلين 6» with 602 cards on).
+                    overall: _query == const OnlineSessionsQuery()
+                        ? null
+                        : ref.watch(onlineTotalsProvider).valueOrNull,
+                  ),
                 ),
                 const SizedBox(height: AppTokens.s12),
                 for (final session in items)
@@ -472,21 +495,109 @@ class _FiltersCard extends StatelessWidget {
   }
 }
 
+/// What a live-session action reports to the operator.
+class SessionActionOutcome {
+  const SessionActionOutcome({required this.message, this.warning = false});
+  final String message;
+
+  /// Done on the server but NOT confirmed by the router.
+  final bool warning;
+}
+
+/// Arabic reason of a CoA / PoD failure code (`coa.code`).
+String coaFailureReason(String code) => switch (code.trim().toLowerCase()) {
+      'router_not_configured' =>
+        'الراوتر غير مهيّأ لاستقبال الأوامر (لا يوجد سرّ RADIUS أو الراوتر معطّل)',
+      'no_active_session' => 'لم تُعثر على جلسة نشطة على الراوتر',
+      'timeout' || 'timed_out' => 'لم يردّ الراوتر في الوقت المحدد',
+      'nak' || 'coa_nak' || 'disconnect_nak' => 'رفض الراوتر الأمر',
+      'exception' || 'error' || '' => 'تعذّر إرسال الأمر إلى الراوتر',
+      final other => rawTokenLabel(other),
+    };
+
+/// The message after «سرعة مؤقتة»: the server saved the window, and the
+/// response's `temporary_speed.coa` says whether the ROUTER applied it.
+/// An older server without `coa` keeps the neutral «تم طلب…» line.
+SessionActionOutcome tempSpeedOutcome(
+  String username,
+  Map<String, dynamic> data,
+) {
+  final ts = data['temporary_speed'];
+  final coa = ts is Map ? ts['coa'] : null;
+  final who = ltrIsolate(username);
+  if (coa is! Map) {
+    return SessionActionOutcome(
+      message: 'تم طلب تطبيق السرعة المؤقتة على $who.',
+    );
+  }
+  final reauth = ts is Map && '${ts['mode'] ?? ''}' == 'disconnect_reauth';
+  if (coa['ok'] == true) {
+    return SessionActionOutcome(
+      message: reauth
+          ? 'طُبّقت السرعة المؤقتة على $who (بفصل الجلسة وإعادة اتصالها).'
+          : 'طُبّقت السرعة المؤقتة على $who.',
+    );
+  }
+  final reason = coaFailureReason('${coa['code'] ?? ''}');
+  return SessionActionOutcome(
+    warning: true,
+    message: 'حُفظت السرعة المؤقتة لـ $who، لكن الراوتر لم يؤكّد تطبيقها: '
+        '$reason. ستُطبَّق عند اتصاله التالي — أو افصل الجلسة ليعيد الاتصال.',
+  );
+}
+
+/// The three counters of «المتصلون».
+class OnlineSummaryCounts {
+  const OnlineSummaryCounts({
+    required this.allLabel,
+    required this.all,
+    required this.subscribers,
+    required this.cards,
+  });
+  final String allLabel;
+  final int all;
+  final int subscribers;
+  final int cards;
+}
+
+/// «كل المتصلين» is the whole network, whatever tab or search is on: under
+/// a filter the tiles use [overall] (an unfiltered count); while it is not
+/// known the first tile says «المعروض» instead of claiming «كل المتصلين».
+OnlineSummaryCounts onlineSummaryCounts({
+  required OnlineSessionsQuery filtered,
+  required List<OnlineSession> items,
+  int? total,
+  Map<String, int>? typeCounts,
+  OnlineTotals? overall,
+}) {
+  final isFiltered = filtered != const OnlineSessionsQuery();
+  if (isFiltered && overall != null) {
+    return OnlineSummaryCounts(
+      allLabel: 'كل المتصلين',
+      all: overall.total,
+      subscribers: overall.subscribers,
+      cards: overall.cards,
+    );
+  }
+  final subscribers = typeCounts?['subscriber'] ??
+      items.where((item) => item.isSubscriber).length;
+  final cards =
+      typeCounts?['card'] ?? items.where((item) => item.isCard).length;
+  return OnlineSummaryCounts(
+    allLabel: isFiltered ? 'المعروض' : 'كل المتصلين',
+    all: total ?? items.length,
+    subscribers: subscribers,
+    cards: cards,
+  );
+}
+
 class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip({required this.items, this.total, this.typeCounts});
+  const _SummaryStrip({required this.counts});
 
-  final List<OnlineSession> items;
-
-  /// Server counters of the WHOLE result (not only the loaded pages).
-  final int? total;
-  final Map<String, int>? typeCounts;
+  final OnlineSummaryCounts counts;
 
   @override
   Widget build(BuildContext context) {
-    final subscribers = typeCounts?['subscriber'] ??
-        items.where((item) => item.isSubscriber).length;
-    final cards =
-        typeCounts?['card'] ?? items.where((item) => item.isCard).length;
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 640 ? 3 : 2;
@@ -498,18 +609,18 @@ class _SummaryStrip extends StatelessWidget {
           children: [
             _SummaryTile(
               icon: Icons.wifi_tethering,
-              label: 'كل المتصلين',
-              value: '${total ?? items.length}',
+              label: counts.allLabel,
+              value: '${counts.all}',
             ),
             _SummaryTile(
               icon: Icons.person_outline,
               label: 'مشتركون',
-              value: '$subscribers',
+              value: '${counts.subscribers}',
             ),
             _SummaryTile(
               icon: Icons.credit_card,
               label: 'كروت',
-              value: '$cards',
+              value: '${counts.cards}',
             ),
           ],
         );

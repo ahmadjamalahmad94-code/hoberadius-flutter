@@ -230,7 +230,7 @@ void main() {
       expect(balances, findsOneWidget);
       final p = tester.renderObject<RenderParagraph>(balances);
       expect(p.didExceedMaxLines, isFalse);
-      expect(p.text.toPlainText(), contains('12.5 دولار أمريكي'));
+      expect(p.text.toPlainText(), contains('12.50 دولار أمريكي'));
       _expectOneLineWhole(tester, find.text('الأرصدة المعروضة'));
     });
 

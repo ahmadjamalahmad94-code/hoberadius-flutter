@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -19,7 +20,7 @@ class CardsListPagination extends ConsumerWidget {
     return Row(
       children: [
         Text(
-          'صفحة ${page.page} من ${page.pages} • ${page.total} حزمة',
+          'صفحة ${page.page} من ${page.pages} • ${arCount(page.total, arBatch, showOne: true)}',
           style: const TextStyle(color: AppTokens.textMuted),
         ),
         const Spacer(),

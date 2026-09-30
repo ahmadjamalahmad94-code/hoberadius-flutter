@@ -1,5 +1,5 @@
+import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../../shared/widgets/status_pill.dart';
 import '../data/cards_repository.dart';
@@ -85,7 +85,5 @@ PillTone batchStatusTone(String status) => switch (status) {
     };
 
 /// Amount + the tenant currency (was a hardcoded «₪»).
-String formatMoney(num value, [String currency = '']) {
-  final formatted = NumberFormat('#,##0.##').format(value);
-  return currency.isEmpty ? formatted : '$formatted $currency';
-}
+String formatMoney(num value, [String currency = '']) =>
+    formatWithCurrency(value, currency);

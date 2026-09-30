@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -153,7 +154,7 @@ class _RecordsList extends ConsumerWidget {
               const Icon(Icons.dataset_outlined, color: AppTokens.brand),
               const SizedBox(width: AppTokens.s8),
               Text(
-                '${snapshot.count} عنصر',
+                arCount(snapshot.count, arItem, showOne: true),
                 style: const TextStyle(fontWeight: FontWeight.w800),
               ),
               const Spacer(),

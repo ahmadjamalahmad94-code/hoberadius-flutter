@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -145,7 +146,9 @@ class _ToolsMaintenancePanelState extends ConsumerState<ToolsMaintenancePanel> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('تم التنفيذ: ${result['affected_rows'] ?? 0} صف'),
+          content: Text(
+          'تم التنفيذ: ${arCount(num.tryParse('${result['affected_rows'] ?? 0}') ?? 0, arRow, showOne: true)}',
+        ),
         ),
       );
       setState(() => _preview = null);
