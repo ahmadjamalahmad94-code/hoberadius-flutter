@@ -60,14 +60,17 @@ class PlansRepository {
     }
   }
 
-  /// A 404 from Flask's router (no such endpoint) carries no envelope and
-  /// no Arabic message — that is an old server, not a real denial.
-  static bool _looksLikeMissingRoute(ApiException e) {
-    if (e.status != 404) return false;
-    final msg = e.message.trim();
-    return e.details == null &&
-        (msg.isEmpty || !msg.runes.any((r) => r >= 0x0600 && r <= 0x06FF));
-  }
+  /// `/api/v1/plans/options` is a collection route with no path parameter,
+  /// so it has no record that could be "not found": the only thing a 404
+  /// from it can mean is that the server does not have the fix3 route yet.
+  /// A denial is 403 and a failure is 5xx — both still surface as-is.
+  ///
+  /// Do NOT try to recognise an old server by the body: HobeRadius installs
+  /// answer an unknown `/api/v1/...` path with the very same Arabic error
+  /// envelope they use for a missing record (`not_found` + `details: {}`),
+  /// and [ApiClient] localises a bodyless 404 to that same Arabic sentence —
+  /// so any body/message test here is never true in the field.
+  static bool _looksLikeMissingRoute(ApiException e) => e.status == 404;
 
   Future<Plan> get(int id) async {
     final res = await _api.get('/api/v1/profiles/$id');
