@@ -2,6 +2,7 @@ import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -9,17 +10,21 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/api/paging.dart';
 import '../../../core/auth/permissions.dart';
+import '../../../core/format/bidi.dart';
 import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/even_choice_bar.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../provider_grants/application/provider_grants_provider.dart';
 import '../../provider_grants/presentation/limit_usage_banner.dart';
+import '../../sessions/presentation/sessions_list_screen.dart'
+    show compactSessionDuration;
 import '../data/subscribers_repository.dart';
 import '../domain/subscriber_model.dart';
 import 'widgets/subscriber_actions_sheet.dart';
@@ -29,21 +34,28 @@ import 'widgets/subscriber_actions_sheet.dart';
 /// the dashboard «expiring_soon» counter.
 const kExpiringSoonFilter = 'expiring_3d';
 
-/// What the list asks the server for: a status chip + the search box.
+/// What the list asks the server for: a status chip, the access chip
+/// (hotspot / broadband) and the search box.
 class SubscribersQuery {
-  const SubscribersQuery({this.status, this.search = ''});
+  const SubscribersQuery({
+    this.status,
+    this.search = '',
+    this.access = AccessKind.all,
+  });
 
   final String? status;
   final String search;
+  final AccessKind access;
 
   @override
   bool operator ==(Object other) =>
       other is SubscribersQuery &&
       other.status == status &&
-      other.search == search;
+      other.search == search &&
+      other.access == access;
 
   @override
-  int get hashCode => Object.hash(status, search);
+  int get hashCode => Object.hash(status, search, access);
 }
 
 /// Server-side search + paging (infinite scroll). The list used to fetch the
@@ -76,6 +88,7 @@ class SubscribersListController extends AutoDisposeFamilyAsyncNotifier<
       // below keeps older servers (param ignored) showing only the right rows.
       expiringWithinDays: _expiring ? 3 : null,
       search: arg.search,
+      access: arg.access.apiValue,
       limit: pageSize,
       offset: offset,
     );
@@ -154,12 +167,13 @@ class SubscribersListScreen extends ConsumerStatefulWidget {
 
 class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
   late String? _status = widget.initialStatus;
+  AccessKind _access = AccessKind.all;
   String _query = '';
   Timer? _debounce;
   _Density _density = _Density.comfortable;
 
   SubscribersQuery get _listQuery =>
-      SubscribersQuery(status: _status, search: _query);
+      SubscribersQuery(status: _status, search: _query, access: _access);
 
   @override
   void dispose() {
@@ -273,6 +287,11 @@ class _SubscribersListScreenState extends ConsumerState<SubscribersListScreen> {
                 value: _status,
                 onChanged: (next) => setState(() => _status = next),
               ),
+              const SizedBox(height: AppTokens.s8),
+              AccessFilterBar(
+                value: _access,
+                onChanged: (next) => setState(() => _access = next),
+              ),
             ],
           ),
         ),
@@ -343,43 +362,28 @@ class _StatusChips extends StatelessWidget {
       ('suspended', 'موقوف'),
       ('banned', 'محظور'),
     ];
-    // All seven chips stay visible (they wrap onto a second row on phones);
-    // the old single scrolling row hid 4 of 7 off-screen with no hint. A dot
-    // in each status's own colour ties the filter to the badges in the list.
-    return Wrap(
-      spacing: AppTokens.s8,
-      runSpacing: AppTokens.s8,
-      children: [
+    // All seven stay visible in even, equal-width rows (4 + 3 on a phone):
+    // the old Wrap left ragged rows and uneven gaps, the scrolling row hid
+    // most chips. A dot in each status's own colour ties the filter to the
+    // badges in the list.
+    return EvenChoiceBar<String?>(
+      key: const ValueKey('status-filter'),
+      selected: value,
+      onChanged: onChanged,
+      options: [
         for (final (code, label) in options)
-          ChoiceChip(
-            avatar: code == null
+          EvenChoice<String?>(
+            code,
+            label,
+            dot: code == null
                 ? null
-                : _ToneDot(
-                    tone: code == kExpiringSoonFilter
+                : pillToneColors(
+                    code == kExpiringSoonFilter
                         ? PillTone.amber
                         : toneForStatus(code),
-                  ),
-            label: Text(label),
-            selected: value == code,
-            visualDensity: VisualDensity.compact,
-            onSelected: (_) => onChanged(code),
+                  ).$2,
           ),
       ],
-    );
-  }
-}
-
-class _ToneDot extends StatelessWidget {
-  const _ToneDot({required this.tone});
-  final PillTone tone;
-
-  @override
-  Widget build(BuildContext context) {
-    final (_, fg, _) = pillToneColors(tone);
-    return Container(
-      width: 10,
-      height: 10,
-      decoration: BoxDecoration(color: fg, shape: BoxShape.circle),
     );
   }
 }
@@ -542,6 +546,8 @@ class _Table extends ConsumerWidget {
                           ),
                         ),
                       ),
+                    SizedBox(height: compact ? 6 : AppTokens.s8),
+                    SubscriberLiveStrip(subscriber: s, now: now),
                     if (!compact) ...[
                       const SizedBox(height: AppTokens.s12),
                       ActionBar(
@@ -583,6 +589,175 @@ class _Table extends ConsumerWidget {
         'banned' => 'محظور',
         _ => s,
       };
+}
+
+/// The same small strip on EVERY subscriber row (online or not): تحميل ·
+/// رفع · IP · المدة of the open session, else of the last one; «—» when the
+/// server sent none, so all rows keep one shape. 2×2 when the row is narrow.
+class SubscriberLiveStrip extends StatelessWidget {
+  const SubscriberLiveStrip({
+    super.key,
+    required this.subscriber,
+    required this.now,
+  });
+
+  final Subscriber subscriber;
+  final DateTime now;
+
+  static const _dash = '—';
+
+  static String bytesLabel(int bytes) {
+    if (bytes <= 0) return '0';
+    const units = ['ب', 'ك.ب', 'م.ب', 'ج.ب', 'ت.ب'];
+    var value = bytes.toDouble();
+    var i = 0;
+    while (value >= 1024 && i < units.length - 1) {
+      value /= 1024;
+      i++;
+    }
+    return '${value.toStringAsFixed(value < 10 ? 1 : 0)} ${units[i]}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final live = subscriber.live;
+    final online = subscriber.online || (live?.online ?? false);
+    final ip = live?.framedIp ?? '';
+    final secs = live?.durationSeconds(now) ?? 0;
+    // RFC 2866 (as «المتصلون»): bytes_out = DOWNLOAD, bytes_in = UPLOAD.
+    final cells = <Widget>[
+      _MiniBox(
+        label: 'تحميل',
+        value: live == null ? _dash : bytesLabel(live.bytesOut),
+      ),
+      _MiniBox(
+        label: 'رفع',
+        value: live == null ? _dash : bytesLabel(live.bytesIn),
+      ),
+      _MiniBox(
+        label: 'IP',
+        value: ip.isEmpty ? _dash : ltrIsolate(ip),
+        link: ip.isNotEmpty,
+        onTap: ip.isEmpty
+            ? null
+            : () async {
+                final messenger = ScaffoldMessenger.of(context);
+                await Clipboard.setData(ClipboardData(text: 'http://$ip'));
+                messenger.showSnackBar(
+                  SnackBar(content: Text('نُسخ العنوان: http://$ip')),
+                );
+              },
+      ),
+      _MiniBox(
+        label: 'المدة',
+        value: live == null || secs <= 0 ? _dash : compactSessionDuration(secs),
+        dot: online ? AppTokens.successStrong : null,
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (context, c) {
+        final cols = c.maxWidth < 280 ? 2 : 4;
+        final rows = <Widget>[];
+        for (var i = 0; i < cells.length; i += cols) {
+          if (rows.isNotEmpty) rows.add(const SizedBox(height: 6));
+          rows.add(
+            Row(
+              children: [
+                for (var j = i; j < i + cols; j++) ...[
+                  if (j > i) const SizedBox(width: 6),
+                  Expanded(child: cells[j]),
+                ],
+              ],
+            ),
+          );
+        }
+        return Column(
+          key: ValueKey('live-strip:${subscriber.username}'),
+          mainAxisSize: MainAxisSize.min,
+          children: rows,
+        );
+      },
+    );
+  }
+}
+
+class _MiniBox extends StatelessWidget {
+  const _MiniBox({
+    required this.label,
+    required this.value,
+    this.dot,
+    this.link = false,
+    this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final Color? dot;
+  final bool link;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final box = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTokens.slate100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              if (dot != null) ...[
+                Container(
+                  width: 6,
+                  height: 6,
+                  decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+                ),
+                const SizedBox(width: 3),
+              ],
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppTokens.slate500,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerStart,
+            child: Text(
+              value,
+              maxLines: 1,
+              softWrap: false,
+              style: TextStyle(
+                color: link ? AppTokens.brandInk : AppTokens.sidebarBg,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+                decoration: link ? TextDecoration.underline : null,
+                decorationColor: AppTokens.brand3,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (onTap == null) return box;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: onTap,
+      child: box,
+    );
+  }
 }
 
 /// One subscriber = one white card (rounded, border, soft shadow) — clear

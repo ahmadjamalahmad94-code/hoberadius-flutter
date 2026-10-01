@@ -114,6 +114,9 @@ class Subscriber {
     this.createdAt,
     this.updatedAt,
     this.rawMetadata = const <String, dynamic>{},
+    this.live,
+    this.online = false,
+    this.accessType = '',
   });
 
   final int? id;
@@ -222,6 +225,16 @@ class Subscriber {
   /// as a whole by PATCH, so a partial save merges the form's sections into
   /// this instead of dropping keys the app does not edit.
   final Map<String, dynamic> rawMetadata;
+
+  /// The current session when [online], else the LAST one (`live`); null
+  /// when the server has none or is older (the list keeps an empty strip).
+  final SubscriberLive? live;
+
+  /// Has an open session now (`online`; false on older servers).
+  final bool online;
+
+  /// `hotspot` | `broadband` | `both` | '' (unknown / older server).
+  final String accessType;
 
   /// Helper for forms — split/join the CSV.
   List<String> get workingDays => workingDaysCsv.isEmpty
@@ -332,6 +345,10 @@ class Subscriber {
       createdAt: _parseDt(j['created_at']),
       updatedAt: _parseDt(j['updated_at']),
       rawMetadata: meta,
+      live: SubscriberLive.tryParse(j['live']),
+      online: j['online'] == true ||
+          (j['live'] is Map && (j['live'] as Map)['online'] == true),
+      accessType: (j['access_type'] ?? '').toString().trim().toLowerCase(),
     );
   }
 
@@ -781,4 +798,66 @@ String? validateNewSubscriberPassword(String value) {
     return 'كلمة المرور $kSubscriberPasswordMax حرفًا على الأكثر.';
   }
   return null;
+}
+
+/// The `live` block of a subscriber row: the open session, or the last one.
+/// `bytesIn` = the user's UPLOAD (رفع), `bytesOut` = DOWNLOAD (تنزيل) —
+/// RFC 2866 octets, the same mapping as «المتصلون».
+class SubscriberLive {
+  const SubscriberLive({
+    required this.online,
+    this.bytesIn = 0,
+    this.bytesOut = 0,
+    this.framedIp = '',
+    this.startedAt,
+    this.stoppedAt,
+    this.sessionTime = 0,
+    this.accessType = '',
+  });
+
+  final bool online;
+  final int bytesIn;
+  final int bytesOut;
+  final String framedIp;
+  final DateTime? startedAt;
+  final DateTime? stoppedAt;
+  final int sessionTime;
+  final String accessType;
+
+  static SubscriberLive? tryParse(Object? raw) {
+    if (raw is! Map) return null;
+    int n(Object? v) => v is num ? v.toInt() : int.tryParse('${v ?? ''}') ?? 0;
+    DateTime? dt(Object? v) {
+      if (v == null || '$v'.trim().isEmpty) return null;
+      try {
+        return parseServerDateTime(v);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    final ip = raw['framed_ip'] ?? raw['framed_ip_address'];
+    return SubscriberLive(
+      online: raw['online'] == true,
+      bytesIn: n(raw['bytes_in']),
+      bytesOut: n(raw['bytes_out']),
+      framedIp: ip == null ? '' : '$ip'.trim(),
+      startedAt: dt(raw['started_at']),
+      stoppedAt: dt(raw['stopped_at']),
+      sessionTime: n(raw['session_time']),
+      accessType: '${raw['access_type'] ?? ''}'.trim().toLowerCase(),
+    );
+  }
+
+  /// Seconds to show: an open session counts up from its start (the stored
+  /// session_time only moves on each interim update); a closed one shows
+  /// its recorded length.
+  int durationSeconds(DateTime now) {
+    final start = startedAt;
+    if (online && start != null) {
+      final live = now.difference(start).inSeconds;
+      if (live > sessionTime) return live;
+    }
+    return sessionTime;
+  }
 }

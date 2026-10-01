@@ -38,6 +38,7 @@ class SubscribersRepository {
     String? status,
     int? expiringWithinDays,
     String search = '',
+    String? access,
     int limit = 50,
     int offset = 0,
   }) async {
@@ -51,6 +52,8 @@ class SubscribersRepository {
           'expiring_within_days': expiringWithinDays,
         if (q.isNotEmpty) 'q': q,
         if (q.isNotEmpty) 'search': q,
+        // hotspot | broadband (older servers ignore it)
+        if (access != null && access.isNotEmpty) 'access': access,
         'limit': limit,
         'offset': offset,
       },

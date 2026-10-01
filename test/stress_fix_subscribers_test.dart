@@ -283,7 +283,7 @@ void main() {
   });
 
   group('item 11 — status chips at 360×640', () {
-    testWidgets('all 7 chips are on screen (wrapped, none hidden)',
+    testWidgets('all 7 chips are on screen (even rows, none hidden)',
         (tester) async {
       tester.view.physicalSize = const Size(360, 640);
       tester.view.devicePixelRatio = 1;
@@ -311,7 +311,10 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 500));
-      final chips = find.byType(ChoiceChip);
+      final chips = find.descendant(
+        of: find.byKey(const ValueKey('status-filter')),
+        matching: find.byType(InkWell),
+      );
       expect(chips, findsNWidgets(7));
       for (final e in chips.evaluate()) {
         final box = e.renderObject! as RenderBox;
