@@ -336,6 +336,12 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
           SessionMoreAction.deleteCard => () => _deleteCard(session),
         };
     return showModalBottomSheet<void>(
+      // Above the whole app: the shell's pages live inside one scroll view, so
+      // a sheet on the inner navigator is drawn off-screen (same as the
+      // subscriber actions sheet) — caught by a real tap on «المزيد».
+      useRootNavigator: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
       context: context,
       showDragHandle: true,
       builder: (sheetCtx) => SafeArea(
@@ -1650,7 +1656,7 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 2,
+                    // 1:1 (was 2:1) — at 390 px the unit read «دقا…».
                     child: TextField(
                       controller: duration,
                       keyboardType: TextInputType.number,

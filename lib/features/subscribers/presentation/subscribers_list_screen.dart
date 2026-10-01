@@ -356,7 +356,7 @@ class _StatusChips extends StatelessWidget {
     const options = <(String?, String)>[
       (null, 'كل الحالات'),
       ('enabled', 'مفعّل'),
-      (kExpiringSoonFilter, 'ينتهي خلال 3 أيام'),
+      (kExpiringSoonFilter, 'قرب الانتهاء'),  // خلال 3 أيام — قصير كي لا يُصغَّر خطّه
       ('expired', 'منتهي'),
       ('disabled', 'معطّل'),
       ('suspended', 'موقوف'),
