@@ -187,6 +187,7 @@ void main() {
     await _frames(tester, 6);
     // the sheet carries router / start time + the card rows
     expect(find.text('فحص الكرت'), findsOneWidget);
+    expect(find.text('تصفير الاستخدام'), findsOneWidget);
     expect(find.text('إلغاء السرعة'), findsOneWidget);
     expect(find.text('تثبيت IP'), findsNothing);
     await tester.tap(find.text('حذف نهائي'));

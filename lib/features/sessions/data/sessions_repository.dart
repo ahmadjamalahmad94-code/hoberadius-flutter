@@ -109,6 +109,11 @@ class SessionsRepository {
       hasMore: info.hasMore,
       typeCounts: types,
       accessCounts: readAccessCounts(data['accesses']),
+      speedCounts: data['speeds'] is Map
+          ? (data['speeds'] as Map).map(
+              (k, v) => MapEntry(k.toString(), v is num ? v.toInt() : 0),
+            )
+          : null,
     );
   }
 
@@ -214,6 +219,7 @@ class OnlineSessionsPage {
     this.total,
     this.typeCounts,
     this.accessCounts,
+    this.speedCounts,
   });
 
   final List<OnlineSession> items;
@@ -227,6 +233,9 @@ class OnlineSessionsPage {
 
   /// `accesses` counters ({hotspot, broadband}); null on older servers.
   final Map<String, int>? accessCounts;
+
+  /// `speeds` counters ({temporary, custom, normal}) of the whole result.
+  final Map<String, int>? speedCounts;
 }
 
 /// Loaded online sessions + the server's whole-result counters.
@@ -334,10 +343,14 @@ class OnlineTotals {
     required this.total,
     required this.subscribers,
     required this.cards,
+    this.temporarySpeed,
   });
   final int total;
   final int subscribers;
   final int cards;
+
+  /// Sessions with an active temporary speed (null when not reported).
+  final int? temporarySpeed;
 }
 
 /// One unfiltered `/sessions/online?limit=1` read: `total` + `types`.
@@ -352,6 +365,7 @@ final onlineTotalsProvider =
     total: page.total ?? (subs + cards),
     subscribers: subs,
     cards: cards,
+    temporarySpeed: page.speedCounts?['temporary'],
   );
 });
 

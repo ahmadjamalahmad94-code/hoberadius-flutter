@@ -278,6 +278,23 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     );
   }
 
+  Future<void> _resetCardUsage(OnlineSession session) async {
+    final id = session.cardId;
+    if (id == null) return;
+    final ok = await _confirm(
+      title: 'تصفير استخدام الكرت',
+      message: 'تصفير استخدام «${session.username}»؟ يُصفَّر وقت بداية '
+          'الاستخدام والجهاز المرصود.',
+      action: 'تصفير',
+      actionColor: AppTokens.brand,
+    );
+    if (!ok) return;
+    await _runTask(
+      success: 'تم تصفير استخدام ${session.username}.',
+      task: () => ref.read(cardsRepositoryProvider).resetCardUsage(id),
+    );
+  }
+
   Future<void> _disableCard(OnlineSession session) async {
     final id = session.cardId;
     if (id == null) return;
@@ -332,6 +349,7 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               ),
           SessionMoreAction.disableSubscriber => () =>
               _disableSubscriber(session),
+          SessionMoreAction.resetCardUsage => () => _resetCardUsage(session),
           SessionMoreAction.disableCard => () => _disableCard(session),
           SessionMoreAction.deleteCard => () => _deleteCard(session),
         };
@@ -497,6 +515,11 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _SummaryStrip(
+                  // 4th tile (owner: no lonely 3rd tile) — the WHOLE network.
+                  temporarySpeed: ref
+                      .watch(onlineTotalsProvider)
+                      .valueOrNull
+                      ?.temporarySpeed,
                   counts: onlineSummaryCounts(
                     filtered: _query,
                     items: items,
@@ -657,8 +680,10 @@ class _FiltersCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SegmentedButton<OnlineSessionKind>(
-            // Text-only: icon + label per segment wrapped «المشتركو/ن» on
-            // phones. Selected state still shows via the fill + checkmark.
+            // Text-only AND no checkmark: the ✓ alone still wrapped
+            // «المشتركو/ن» on a selected segment (owner, 2026-10-01). The
+            // fill colour shows the selection.
+            showSelectedIcon: false,
             segments: const [
               ButtonSegment(
                 value: OnlineSessionKind.all,
@@ -861,15 +886,18 @@ OnlineSummaryCounts onlineSummaryCounts({
 }
 
 class _SummaryStrip extends StatelessWidget {
-  const _SummaryStrip({required this.counts});
+  const _SummaryStrip({required this.counts, this.temporarySpeed});
 
   final OnlineSummaryCounts counts;
+  final int? temporarySpeed;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 640 ? 3 : 2;
+        // Four tiles: 2×2 on a phone, one row of 4 on a wide screen — never
+        // a lonely tile with empty space beside it (owner 2026-10-01).
+        final columns = constraints.maxWidth >= 640 ? 4 : 2;
         // Content-sized tiles: a fixed aspect ratio clipped the value by
         // 33–51 px at 360×640.
         return AutoHeightGrid(
@@ -890,6 +918,11 @@ class _SummaryStrip extends StatelessWidget {
               icon: Icons.credit_card,
               label: 'كروت',
               value: '${counts.cards}',
+            ),
+            _SummaryTile(
+              icon: Icons.speed,
+              label: 'سرعة مؤقتة',
+              value: temporarySpeed == null ? '—' : '$temporarySpeed',
             ),
           ],
         );
@@ -1194,6 +1227,7 @@ enum SessionMoreAction {
   subscriberProfile(Icons.account_circle_outlined, 'ملف المشترك'),
   cancelSpeed(Icons.restore_outlined, 'إلغاء السرعة'),
   cardChecker(Icons.manage_search_outlined, 'فحص الكرت'),
+  resetCardUsage(Icons.restart_alt, 'تصفير الاستخدام'),
   disableSubscriber(Icons.pause_circle_outline, 'تعطيل', danger: true),
   disableCard(Icons.pause_circle_outline, 'تعطيل', danger: true),
   deleteCard(Icons.delete_forever_outlined, 'حذف نهائي', danger: true);
@@ -1246,6 +1280,7 @@ List<SessionMoreAction> sessionMoreActions(
     return [
       if (perms.acts.tempSpeed) SessionMoreAction.cancelSpeed,
       if (perms.cardCheck) SessionMoreAction.cardChecker,
+      if (hasCard && perms.cardOps) SessionMoreAction.resetCardUsage,
       if (hasCard && perms.cardOps) SessionMoreAction.disableCard,
       if (hasCard && perms.cardDelete) SessionMoreAction.deleteCard,
     ];
