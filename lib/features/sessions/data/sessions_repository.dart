@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/api/paging.dart';
+import '../../../shared/widgets/even_choice_bar.dart';
 import '../domain/session_model.dart';
 
 enum OnlineSessionKind { all, subscribers, cards }
@@ -24,14 +25,19 @@ class OnlineSessionsQuery {
   const OnlineSessionsQuery({
     this.kind = OnlineSessionKind.all,
     this.search = '',
+    this.access = AccessKind.all,
   });
 
   final OnlineSessionKind kind;
   final String search;
 
+  /// Hotspot / broadband filter (`access=`); `all` sends nothing.
+  final AccessKind access;
+
   Map<String, String> toApiQuery() => {
         'type': kind.apiValue,
         if (search.trim().isNotEmpty) 'q': search.trim(),
+        if (access.apiValue != null) 'access': access.apiValue!,
       };
 
   @override
@@ -39,10 +45,11 @@ class OnlineSessionsQuery {
       identical(this, other) ||
       other is OnlineSessionsQuery &&
           other.kind == kind &&
-          other.search == search;
+          other.search == search &&
+          other.access == access;
 
   @override
-  int get hashCode => Object.hash(kind, search);
+  int get hashCode => Object.hash(kind, search, access);
 }
 
 class SessionsRepository {
@@ -53,8 +60,9 @@ class SessionsRepository {
   Future<List<OnlineSession>> listOnline({
     OnlineSessionKind kind = OnlineSessionKind.all,
     String search = '',
+    AccessKind access = AccessKind.all,
   }) async =>
-      (await listOnlinePage(kind: kind, search: search)).items;
+      (await listOnlinePage(kind: kind, search: search, access: access)).items;
 
   /// One page of `/sessions/online`. Updated servers page the WHOLE open
   /// set (limit/offset → total, has_more, types); older ones return up to
@@ -63,13 +71,15 @@ class SessionsRepository {
   Future<OnlineSessionsPage> listOnlinePage({
     OnlineSessionKind kind = OnlineSessionKind.all,
     String search = '',
+    AccessKind access = AccessKind.all,
     int limit = 100,
     int offset = 0,
   }) async {
     final res = await _api.get(
       '/api/v1/sessions/online',
       query: {
-        ...OnlineSessionsQuery(kind: kind, search: search).toApiQuery(),
+        ...OnlineSessionsQuery(kind: kind, search: search, access: access)
+            .toApiQuery(),
         'limit': '$limit',
         'offset': '$offset',
       },
@@ -98,6 +108,7 @@ class SessionsRepository {
       total: info.total,
       hasMore: info.hasMore,
       typeCounts: types,
+      accessCounts: readAccessCounts(data['accesses']),
     );
   }
 
@@ -202,6 +213,7 @@ class OnlineSessionsPage {
     required this.hasMore,
     this.total,
     this.typeCounts,
+    this.accessCounts,
   });
 
   final List<OnlineSession> items;
@@ -212,6 +224,9 @@ class OnlineSessionsPage {
 
   /// `types` counters of the whole filtered result ({subscriber, card}).
   final Map<String, int>? typeCounts;
+
+  /// `accesses` counters ({hotspot, broadband}); null on older servers.
+  final Map<String, int>? accessCounts;
 }
 
 /// Loaded online sessions + the server's whole-result counters.
@@ -219,10 +234,12 @@ class OnlineSessionsState {
   const OnlineSessionsState({
     required this.list,
     this.typeCounts,
+    this.accessCounts,
   });
 
   final PagedList<OnlineSession> list;
   final Map<String, int>? typeCounts;
+  final Map<String, int>? accessCounts;
 
   List<OnlineSession> get items => list.items;
 }
@@ -240,6 +257,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
     final page = await ref.watch(sessionsRepositoryProvider).listOnlinePage(
           kind: arg.kind,
           search: arg.search,
+          access: arg.access,
           limit: pageSize,
         );
     return OnlineSessionsState(
@@ -250,6 +268,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
         nextOffset: page.items.length,
       ),
       typeCounts: page.typeCounts,
+      accessCounts: page.accessCounts,
     );
   }
 
@@ -262,12 +281,14 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
       OnlineSessionsState(
         list: current.list.copyWith(loadingMore: true, loadMoreError: null),
         typeCounts: current.typeCounts,
+        accessCounts: current.accessCounts,
       ),
     );
     try {
       final page = await ref.read(sessionsRepositoryProvider).listOnlinePage(
             kind: arg.kind,
             search: arg.search,
+            access: arg.access,
             limit: pageSize,
             offset: current.list.nextOffset,
           );
@@ -283,6 +304,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
             loadingMore: false,
           ),
           typeCounts: page.typeCounts ?? current.typeCounts,
+          accessCounts: page.accessCounts ?? current.accessCounts,
         ),
       );
     } catch (e) {
@@ -290,6 +312,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
         OnlineSessionsState(
           list: current.list.copyWith(loadingMore: false, loadMoreError: e),
           typeCounts: current.typeCounts,
+          accessCounts: current.accessCounts,
         ),
       );
     }

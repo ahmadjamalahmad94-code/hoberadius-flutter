@@ -25,6 +25,11 @@ class OnlineSession {
     this.cardId,
     this.cardBatchId,
     this.expiresAt,
+    this.accessType = '',
+    this.cardTimeKnown = false,
+    this.cardUsedSeconds,
+    this.cardRemainingSeconds,
+    this.cardBudgetSeconds,
   });
 
   final int? id;
@@ -50,6 +55,18 @@ class OnlineSession {
   final int? cardId;
   final int? cardBatchId;
   final DateTime? expiresAt;
+
+  /// `hotspot` | `broadband` | '' (unknown / older server).
+  final String accessType;
+
+  /// The server sent the card time fields (`card_used_seconds` …). Older
+  /// servers do not — the tile then keeps its router / start-time row.
+  final bool cardTimeKnown;
+  final int? cardUsedSeconds;
+
+  /// Null with [cardTimeKnown] = an unlimited card.
+  final int? cardRemainingSeconds;
+  final int? cardBudgetSeconds;
 
   bool get isCard => userType == 'card';
   bool get isSubscriber => userType == 'subscriber';
@@ -80,6 +97,13 @@ class OnlineSession {
         cardId: _int(j['card_id']),
         cardBatchId: _int(j['card_batch_id']),
         expiresAt: _dt(j['expires_at']),
+        accessType: _s(j['access_type']).trim().toLowerCase(),
+        cardTimeKnown: _normalizeType(j['user_type']) == 'card' &&
+            (j.containsKey('card_used_seconds') ||
+                j.containsKey('card_remaining_seconds')),
+        cardUsedSeconds: _int(j['card_used_seconds']),
+        cardRemainingSeconds: _int(j['card_remaining_seconds']),
+        cardBudgetSeconds: _int(j['card_budget_seconds']),
       );
 
   static DateTime? _dt(Object? v) {
@@ -92,7 +116,7 @@ class OnlineSession {
   }
 
   static int? _int(Object? v) =>
-      v == null ? null : (v is int ? v : int.tryParse(v.toString()));
+      v == null ? null : (v is num ? v.toInt() : int.tryParse(v.toString()));
 
   static String _s(Object? v) => v == null ? '' : v.toString();
 

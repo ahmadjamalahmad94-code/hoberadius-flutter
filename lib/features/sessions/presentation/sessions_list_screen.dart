@@ -2,6 +2,7 @@ import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
@@ -14,7 +15,10 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/load_more_footer.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/hub_layout.dart';
+import '../../../shared/widgets/even_choice_bar.dart';
 import '../../../shared/widgets/status_pill.dart';
+import '../../cards/data/cards_repository.dart';
+import '../../subscribers/data/subscriber_actions_repository.dart';
 import '../data/sessions_repository.dart';
 import '../domain/session_model.dart';
 
@@ -28,10 +32,11 @@ class SessionsListScreen extends ConsumerStatefulWidget {
 class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
   final _searchController = TextEditingController();
   OnlineSessionKind _kind = OnlineSessionKind.all;
+  AccessKind _access = AccessKind.all;
   String _search = '';
 
   OnlineSessionsQuery get _query =>
-      OnlineSessionsQuery(kind: _kind, search: _search);
+      OnlineSessionsQuery(kind: _kind, search: _search, access: _access);
 
   @override
   void dispose() {
@@ -218,12 +223,203 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     );
   }
 
+  /// Runs a non-session action (card / subscriber API), shows the server's
+  /// message on failure and refreshes the list on success.
+  Future<void> _runTask({
+    required String success,
+    required Future<Object?> Function() task,
+  }) async {
+    try {
+      await task();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(success)),
+      );
+      _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(visibleErrorMessage(error))),
+      );
+    }
+  }
+
+  Future<void> _disableSubscriber(OnlineSession session) async {
+    final ok = await _confirm(
+      title: 'تعطيل المشترك',
+      message: 'تعطيل «${session.username}»؟ لن يتمكّن من الاتصال حتى يُفعَّل.',
+      action: 'تعطيل',
+      actionColor: AppTokens.red,
+    );
+    if (!ok) return;
+    await _runTask(
+      success: 'تم تعطيل ${session.username}.',
+      task: () => ref
+          .read(subscriberActionsRepositoryProvider)
+          .disable(session.username),
+    );
+  }
+
+  Future<void> _changeCardTime(OnlineSession session) async {
+    final id = session.cardId;
+    if (id == null) return;
+    final draft = await showCardTimeDialog(context, username: session.username);
+    if (draft == null) return;
+    await _runTask(
+      success: draft.subtract
+          ? 'تم خصم ${draft.label} من ${session.username}.'
+          : 'تمت إضافة ${draft.label} إلى ${session.username}.',
+      task: () => ref.read(cardsRepositoryProvider).adjustCardTime(
+            id,
+            amount: draft.amount,
+            unit: draft.unit,
+            subtract: draft.subtract,
+          ),
+    );
+  }
+
+  Future<void> _disableCard(OnlineSession session) async {
+    final id = session.cardId;
+    if (id == null) return;
+    final ok = await _confirm(
+      title: 'تعطيل الكرت',
+      message: 'تعطيل الكرت «${session.username}»؟ لن يتمكّن من الاتصال '
+          'حتى يُفعَّل من فحص الكرت.',
+      action: 'تعطيل',
+      actionColor: AppTokens.red,
+    );
+    if (!ok) return;
+    await _runTask(
+      success: 'تم تعطيل الكرت ${session.username}.',
+      task: () => ref.read(cardsRepositoryProvider).disableCard(id),
+    );
+  }
+
+  Future<void> _deleteCard(OnlineSession session) async {
+    final id = session.cardId;
+    if (id == null) return;
+    final ok = await _confirm(
+      title: 'حذف الكرت نهائيًا',
+      message: 'سيُحذف الكرت «${session.username}» نهائيًا ولا يمكن التراجع '
+          'عن ذلك. متابعة؟',
+      action: 'حذف نهائي',
+      actionColor: AppTokens.red,
+    );
+    if (!ok) return;
+    await _runTask(
+      success: 'تم حذف الكرت ${session.username} نهائيًا.',
+      task: () => ref.read(cardsRepositoryProvider).deleteCardPermanently(
+            id,
+            username: session.username,
+          ),
+    );
+  }
+
+  /// «المزيد ⋯»: the less frequent actions + the router / start time.
+  Future<void> _showMore(OnlineSession session, SessionMorePermissions perms) {
+    final items = sessionMoreActions(session, perms);
+    final df = DateFormat('yyyy-MM-dd HH:mm');
+    VoidCallback run(SessionMoreAction a) => switch (a) {
+          SessionMoreAction.lockIp => () => _lockIp(session),
+          SessionMoreAction.subscriberProfile => () => context.goNamed(
+                'subscriber-360',
+                pathParameters: {'username': session.username},
+              ),
+          SessionMoreAction.cancelSpeed => () => _cancelTemporarySpeed(session),
+          SessionMoreAction.cardChecker => () => context.goNamed(
+                'card-checker',
+                queryParameters: {'q': session.username},
+              ),
+          SessionMoreAction.disableSubscriber => () =>
+              _disableSubscriber(session),
+          SessionMoreAction.disableCard => () => _disableCard(session),
+          SessionMoreAction.deleteCard => () => _deleteCard(session),
+        };
+    return showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetCtx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            AppTokens.s16,
+            0,
+            AppTokens.s16,
+            AppTokens.s12,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                session.username,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppTokens.sidebarBg,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: AppTokens.s8),
+              InfoGrid(
+                columns: 2,
+                items: [
+                  InfoItem(
+                    icon: Icons.router,
+                    label: 'الراوتر',
+                    value: session.nasIpAddress.isEmpty
+                        ? '—'
+                        : ltrIsolate(session.nasIpAddress),
+                  ),
+                  InfoItem(
+                    icon: Icons.play_circle_outline,
+                    label: 'بدأت',
+                    value: session.startedAt == null
+                        ? '—'
+                        : df.format(session.startedAt!.toLocal()),
+                  ),
+                ],
+              ),
+              if (items.isNotEmpty) const SizedBox(height: AppTokens.s4),
+              for (final item in items)
+                ListTile(
+                  key: ValueKey('more-${item.name}'),
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  leading: Icon(
+                    item.icon,
+                    color: item.danger ? AppTokens.red : AppTokens.brand,
+                  ),
+                  title: Text(
+                    item.label,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: item.danger
+                          ? AppTokens.dangerFg
+                          : AppTokens.sidebarBg,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    run(item)();
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final onlineAsync = ref.watch(onlineSessionsProvider(_query));
     final historyAsync = ref.watch(accountingHistoryProvider);
     // Each live action follows its own server grant (online.* keys).
-    final acts = SessionActionPermissions(ref.watch(permissionsProvider));
+    final permissions = ref.watch(permissionsProvider);
+    final acts = SessionActionPermissions(permissions);
+    final perms = SessionMorePermissions.of(permissions);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -245,10 +441,16 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
         const SizedBox(height: AppTokens.s12),
         _FiltersCard(
           kind: _kind,
+          access: _access,
+          accessCounts: onlineAsync.valueOrNull?.accessCounts,
           searchController: _searchController,
           onKindChanged: (kind) {
             if (_kind == kind) return;
             setState(() => _kind = kind);
+          },
+          onAccessChanged: (access) {
+            if (_access == access) return;
+            setState(() => _access = access);
           },
           onSearch: () {
             final next = _searchController.text.trim();
@@ -312,16 +514,21 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
                       onDisconnect:
                           acts.disconnect ? () => _disconnect(session) : null,
                       onLockMac: acts.lockMac ? () => _lockMac(session) : null,
-                      onLockIp: session.isSubscriber && acts.lockIp
-                          ? () => _lockIp(session)
-                          : null,
-                      onTemporarySpeed: session.isSubscriber && acts.tempSpeed
+                      onMore: () => _showMore(session, perms),
+                      // Cards too: updated servers apply a card's temp speed;
+                      // an older one answers with its own message (422).
+                      onTemporarySpeed: acts.tempSpeed
                           ? () => _applyTemporarySpeed(session)
                           : null,
                       onCancelTemporarySpeed:
                           session.isSubscriber && acts.tempSpeed
                               ? () => _cancelTemporarySpeed(session)
                               : null,
+                      onChangeTime: session.isCard &&
+                              session.cardId != null &&
+                              perms.cardOps
+                          ? () => _changeCardTime(session)
+                          : null,
                     ),
                   ),
                 LoadMoreFooter(
@@ -421,14 +628,20 @@ class _LivePulseChipState extends State<_LivePulseChip>
 class _FiltersCard extends StatelessWidget {
   const _FiltersCard({
     required this.kind,
+    required this.access,
     required this.searchController,
     required this.onKindChanged,
+    required this.onAccessChanged,
     required this.onSearch,
+    this.accessCounts,
   });
 
   final OnlineSessionKind kind;
+  final AccessKind access;
+  final Map<String, int>? accessCounts;
   final TextEditingController searchController;
   final ValueChanged<OnlineSessionKind> onKindChanged;
+  final ValueChanged<AccessKind> onAccessChanged;
   final VoidCallback onSearch;
 
   @override
@@ -456,6 +669,12 @@ class _FiltersCard extends StatelessWidget {
             ],
             selected: {kind},
             onSelectionChanged: (selection) => onKindChanged(selection.first),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          AccessFilterBar(
+            value: access,
+            counts: accessCounts,
+            onChanged: onAccessChanged,
           ),
           const SizedBox(height: AppTokens.s12),
           Row(
@@ -740,26 +959,75 @@ class _SessionTile extends StatelessWidget {
     required this.session,
     required this.formatBytes,
     required this.formatDuration,
+    required this.onMore,
     this.onDisconnect,
     this.onLockMac,
-    this.onLockIp,
     this.onTemporarySpeed,
     this.onCancelTemporarySpeed,
+    this.onChangeTime,
   });
 
   final OnlineSession session;
   final String Function(int) formatBytes;
   final String Function(int) formatDuration;
+  final VoidCallback onMore;
   final VoidCallback? onDisconnect;
   final VoidCallback? onLockMac;
-  final VoidCallback? onLockIp;
   final VoidCallback? onTemporarySpeed;
+
+  /// Subscribers' second-row action.
   final VoidCallback? onCancelTemporarySpeed;
+
+  /// Cards' second-row action («تغيير الوقت»).
+  final VoidCallback? onChangeTime;
 
   @override
   Widget build(BuildContext context) {
     final df = DateFormat('yyyy-MM-dd HH:mm');
     final state = _stateLabel(session);
+    // A card whose time the server sent: «مُستخدَم / متبقّي» take the third
+    // row; router + start time move to «المزيد».
+    final cardTime = session.isCard && session.cardTimeKnown;
+    final row1 = <ActionItem>[
+      if (onDisconnect != null)
+        ActionItem(
+          icon: Icons.power_settings_new,
+          label: 'طرد',
+          tone: PillTone.red,
+          onPressed: onDisconnect,
+        ),
+      if (onLockMac != null)
+        ActionItem(
+          icon: Icons.phonelink_lock_outlined,
+          label: 'تثبيت MAC',
+          onPressed: onLockMac,
+        ),
+      ActionItem(
+        icon: Icons.more_horiz,
+        label: 'المزيد',
+        onPressed: onMore,
+      ),
+    ];
+    final row2 = <ActionItem>[
+      if (onTemporarySpeed != null)
+        ActionItem(
+          icon: Icons.speed_outlined,
+          label: 'سرعة مؤقتة',
+          onPressed: onTemporarySpeed,
+        ),
+      if (session.isSubscriber && onCancelTemporarySpeed != null)
+        ActionItem(
+          icon: Icons.restore_outlined,
+          label: 'إلغاء السرعة',
+          onPressed: onCancelTemporarySpeed,
+        ),
+      if (session.isCard && onChangeTime != null)
+        ActionItem(
+          icon: Icons.more_time_outlined,
+          label: 'تغيير الوقت',
+          onPressed: onChangeTime,
+        ),
+    ];
     return AppCard(
       padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
@@ -791,7 +1059,11 @@ class _SessionTile extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      session.isCard ? 'كرت' : 'مشترك',
+                      [
+                        session.isCard ? 'كرت' : 'مشترك',
+                        if (accessTypeLabel(session.accessType).isNotEmpty)
+                          accessTypeLabel(session.accessType),
+                      ].join(' · '),
                       style: const TextStyle(
                         color: AppTokens.textMuted,
                         fontSize: 12,
@@ -843,13 +1115,13 @@ class _SessionTile extends StatelessWidget {
                   label: 'MAC',
                   value: ltrIsolate(session.callingStationId),
                 ),
-              if (session.nasIpAddress.isNotEmpty)
+              if (!cardTime && session.nasIpAddress.isNotEmpty)
                 InfoItem(
                   icon: Icons.router,
                   label: 'الراوتر',
                   value: ltrIsolate(session.nasIpAddress),
                 ),
-              if (session.startedAt != null)
+              if (!cardTime && session.startedAt != null)
                 InfoItem(
                   icon: Icons.play_circle_outline,
                   label: 'بدأت',
@@ -857,46 +1129,276 @@ class _SessionTile extends StatelessWidget {
                 ),
             ],
           ),
+          if (cardTime) ...[
+            const SizedBox(height: AppTokens.s8),
+            InfoGrid(
+              key: const ValueKey('card-time-row'),
+              columns: 2,
+              items: [
+                InfoItem(
+                  icon: Icons.hourglass_bottom,
+                  label: 'مُستخدَم',
+                  value: cardTimeLabel(session.cardUsedSeconds ?? 0),
+                  background: AppTokens.dangerBg,
+                  foreground: AppTokens.dangerFg,
+                ),
+                InfoItem(
+                  icon: Icons.hourglass_top,
+                  label: 'متبقّي',
+                  value: session.cardRemainingSeconds == null
+                      ? 'غير محدود'
+                      : cardTimeLabel(session.cardRemainingSeconds!),
+                  background: AppTokens.successBg,
+                  foreground: AppTokens.successFg,
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: AppTokens.s12),
-          ActionBar(
-            items: [
-              if (onDisconnect != null)
-                ActionItem(
-                  icon: Icons.power_settings_new,
-                  label: 'طرد',
-                  tone: PillTone.red,
-                  onPressed: onDisconnect,
-                ),
-              if (onLockMac != null)
-                ActionItem(
-                  icon: Icons.phonelink_lock_outlined,
-                  label: 'تثبيت MAC',
-                  onPressed: onLockMac,
-                ),
-              if (onLockIp != null)
-                ActionItem(
-                  icon: Icons.pin_outlined,
-                  label: 'تثبيت IP',
-                  onPressed: onLockIp,
-                ),
-              if (onTemporarySpeed != null)
-                ActionItem(
-                  icon: Icons.speed_outlined,
-                  label: 'سرعة مؤقتة',
-                  onPressed: onTemporarySpeed,
-                ),
-              if (onCancelTemporarySpeed != null)
-                ActionItem(
-                  icon: Icons.restore_outlined,
-                  label: 'إلغاء السرعة',
-                  onPressed: onCancelTemporarySpeed,
-                ),
-            ],
-          ),
+          // Two fixed rows, the same shape for a card and a subscriber; a
+          // button the admin may not use is left out and the rest of its
+          // row share the width evenly.
+          ActionBar(items: row1),
+          if (row2.isNotEmpty) ...[
+            const SizedBox(height: AppTokens.s8),
+            ActionBar(items: row2),
+          ],
         ],
       ),
     );
   }
+}
+
+/// «هوت سبوت» / «برود باند» for a session's `access_type` ('' = unknown).
+String accessTypeLabel(String accessType) => switch (accessType) {
+      'hotspot' => 'هوت سبوت',
+      'broadband' => 'برود باند',
+      'both' => 'هوت سبوت + برود باند',
+      _ => '',
+    };
+
+/// A card's used / remaining time in the duration box's format («2 س 10 د»);
+/// nothing left is «0 د», never «غير معروف».
+String cardTimeLabel(int seconds) =>
+    seconds <= 0 ? '0 د' : compactSessionDuration(seconds);
+
+/// The rows of «المزيد ⋯».
+enum SessionMoreAction {
+  lockIp(Icons.pin_outlined, 'تثبيت IP'),
+  subscriberProfile(Icons.account_circle_outlined, 'ملف المشترك'),
+  cancelSpeed(Icons.restore_outlined, 'إلغاء السرعة'),
+  cardChecker(Icons.manage_search_outlined, 'فحص الكرت'),
+  disableSubscriber(Icons.pause_circle_outline, 'تعطيل', danger: true),
+  disableCard(Icons.pause_circle_outline, 'تعطيل', danger: true),
+  deleteCard(Icons.delete_forever_outlined, 'حذف نهائي', danger: true);
+
+  const SessionMoreAction(this.icon, this.label, {this.danger = false});
+  final IconData icon;
+  final String label;
+  final bool danger;
+}
+
+/// What «المزيد» may offer this admin.
+class SessionMorePermissions {
+  const SessionMorePermissions({
+    required this.acts,
+    this.subscriberStatus = false,
+    this.cardCheck = false,
+    this.cardOps = false,
+    this.cardDelete = false,
+  });
+
+  factory SessionMorePermissions.of(AppPermissions p) {
+    // Single-card operations = cards.verify (the web checker); a permanent
+    // delete is owner / co-owner / super-user only on the server.
+    final cardOps = p.can('cards.verify');
+    return SessionMorePermissions(
+      acts: SessionActionPermissions(p),
+      subscriberStatus: p.canAction('subscriber.status'),
+      cardCheck: p.canAny(const ['cards.view', 'cards.verify']),
+      cardOps: cardOps,
+      cardDelete: cardOps && (p.isOwnerLike || p.isSuperAdmin),
+    );
+  }
+
+  final SessionActionPermissions acts;
+  final bool subscriberStatus;
+  final bool cardCheck;
+  final bool cardOps;
+  final bool cardDelete;
+}
+
+/// «المزيد» rows for [session]: a subscriber gets IP lock, profile and
+/// disable; a card gets cancel-speed, the checker, disable and delete (IP
+/// lock is subscriber-only on the server).
+List<SessionMoreAction> sessionMoreActions(
+  OnlineSession session,
+  SessionMorePermissions perms,
+) {
+  final hasCard = session.cardId != null;
+  if (session.isCard) {
+    return [
+      if (perms.acts.tempSpeed) SessionMoreAction.cancelSpeed,
+      if (perms.cardCheck) SessionMoreAction.cardChecker,
+      if (hasCard && perms.cardOps) SessionMoreAction.disableCard,
+      if (hasCard && perms.cardDelete) SessionMoreAction.deleteCard,
+    ];
+  }
+  return [
+    if (perms.acts.lockIp) SessionMoreAction.lockIp,
+    SessionMoreAction.subscriberProfile,
+    if (perms.subscriberStatus) SessionMoreAction.disableSubscriber,
+  ];
+}
+
+/// «تغيير الوقت» of a card: add or subtract [amount] [unit].
+class CardTimeDraft {
+  const CardTimeDraft({
+    required this.amount,
+    required this.unit,
+    required this.subtract,
+  });
+
+  final int amount;
+
+  /// `minutes` | `hours` | `days` (the adjust-time API units).
+  final String unit;
+  final bool subtract;
+
+  String get label => '$amount ${switch (unit) {
+        'days' => 'يوم',
+        'hours' => 'ساعة',
+        _ => 'دقيقة',
+      }}';
+}
+
+/// Card time dialog guard: a whole positive amount, at most a year per
+/// operation (the owner's cap; the server checks it too).
+String? validateCardTimeInput(String amountText, String unit) {
+  final err = validateNumberInput(amountText, decimal: false, min: 1);
+  if (err != null) return 'المدة: $err';
+  final v = parseIntInput(amountText) ?? 0;
+  final minutes = switch (unit) {
+    'days' => v * 1440,
+    'hours' => v * 60,
+    _ => v,
+  };
+  if (minutes > 365 * 1440) return 'المدة: الحدّ الأعلى سنة في المرّة.';
+  return null;
+}
+
+Future<CardTimeDraft?> showCardTimeDialog(
+  BuildContext context, {
+  required String username,
+}) {
+  final amount = TextEditingController(text: '30');
+  var unit = 'minutes';
+  var subtract = false;
+  return showDialog<CardTimeDraft>(
+    context: context,
+    builder: (ctx) {
+      String? error;
+      return StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: const Text('تغيير وقت الكرت'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                ltrIsolate(username),
+                style: const TextStyle(
+                  color: AppTokens.textMuted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              SegmentedButton<bool>(
+                key: const ValueKey('card-time-op'),
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: false,
+                    icon: Icon(Icons.add),
+                    label: Text('إضافة'),
+                  ),
+                  ButtonSegment(
+                    value: true,
+                    icon: Icon(Icons.remove),
+                    label: Text('خصم'),
+                  ),
+                ],
+                selected: {subtract},
+                onSelectionChanged: (s) => setState(() => subtract = s.first),
+              ),
+              const SizedBox(height: AppTokens.s12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      key: const ValueKey('card-time-amount'),
+                      controller: amount,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'المدة',
+                        prefixIcon: Icon(Icons.timer_outlined),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: unit,
+                      isExpanded: true,
+                      decoration: const InputDecoration(labelText: 'الوحدة'),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'minutes',
+                          child: Text('دقائق'),
+                        ),
+                        DropdownMenuItem(value: 'hours', child: Text('ساعات')),
+                        DropdownMenuItem(value: 'days', child: Text('أيام')),
+                      ],
+                      onChanged: (v) => setState(() => unit = v ?? 'minutes'),
+                    ),
+                  ),
+                ],
+              ),
+              if (error != null) ...[
+                const SizedBox(height: AppTokens.s8),
+                Text(error!, style: const TextStyle(color: AppTokens.red)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final problem = validateCardTimeInput(amount.text, unit);
+                if (problem != null) {
+                  setState(() => error = problem);
+                  return;
+                }
+                Navigator.pop(
+                  ctx,
+                  CardTimeDraft(
+                    amount: parseIntInput(amount.text) ?? 0,
+                    unit: unit,
+                    subtract: subtract,
+                  ),
+                );
+              },
+              child: Text(subtract ? 'خصم' : 'إضافة'),
+            ),
+          ],
+        ),
+      );
+    },
+  ).whenComplete(amount.dispose);
 }
 
 class _HistorySection extends StatelessWidget {
