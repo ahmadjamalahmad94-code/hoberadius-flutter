@@ -315,6 +315,25 @@ class CardsRepository {
         body: {'confirm': 'DELETE:$username'},
       );
 
+  /// «تغيير الوقت»: add or subtract [amount] [unit] (`minutes|hours|days`)
+  /// from the card's time — the web checker's set_time, enforced by the
+  /// authenticator. [subtract] beyond the remaining time ends the card.
+  Future<CardCheckResult> adjustCardTime(
+    int cardId, {
+    required int amount,
+    required String unit,
+    bool subtract = false,
+  }) =>
+      _cardAction(
+        cardId,
+        'adjust-time',
+        body: {
+          'amount': amount,
+          'unit': unit,
+          'op': subtract ? 'subtract' : 'add',
+        },
+      );
+
   Future<CardCheckResult> _cardAction(
     int cardId,
     String action, {

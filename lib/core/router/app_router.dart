@@ -239,7 +239,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: 'checker',
                 name: 'card-checker',
-                builder: (ctx, st) => const CardCheckerScreen(),
+                builder: (ctx, st) => CardCheckerScreen(
+                  key: ValueKey(
+                    'card-checker:${st.uri.queryParameters['q'] ?? ''}',
+                  ),
+                  initialQuery: st.uri.queryParameters['q'],
+                ),
               ),
               GoRoute(
                 path: 'batches/:id',

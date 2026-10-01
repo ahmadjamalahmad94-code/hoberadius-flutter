@@ -309,10 +309,17 @@ class InfoItem {
     required this.icon,
     required this.label,
     required this.value,
+    this.background,
+    this.foreground,
   });
   final IconData icon;
   final String label;
   final String value;
+
+  /// Optional soft tint (e.g. a card's used / remaining time): same cell
+  /// size and type, only the colours change.
+  final Color? background;
+  final Color? foreground;
 }
 
 /// Even grid of detail values (duration, download, upload, IP, MAC…): equal
@@ -365,15 +372,19 @@ class _InfoCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fg = item.foreground;
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: AppTokens.s8,
         vertical: AppTokens.s8,
       ),
       decoration: BoxDecoration(
-        color: AppTokens.slate100,
+        color: item.background ?? AppTokens.slate100,
         borderRadius: BorderRadius.circular(AppTokens.s8 + 2),
-        border: Border.all(color: AppTokens.slate200.withValues(alpha: 0.7)),
+        border: Border.all(
+          color: (fg ?? AppTokens.slate200)
+              .withValues(alpha: fg == null ? 0.7 : 0.18),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,15 +392,15 @@ class _InfoCell extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(item.icon, size: 13, color: AppTokens.slate500),
+              Icon(item.icon, size: 13, color: fg ?? AppTokens.slate500),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
                   item.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppTokens.slate500,
+                  style: TextStyle(
+                    color: fg ?? AppTokens.slate500,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                   ),
@@ -406,8 +417,8 @@ class _InfoCell extends StatelessWidget {
               item.value,
               maxLines: 1,
               softWrap: false,
-              style: const TextStyle(
-                color: AppTokens.sidebarBg,
+              style: TextStyle(
+                color: fg ?? AppTokens.sidebarBg,
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
               ),

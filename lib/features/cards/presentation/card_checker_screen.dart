@@ -17,7 +17,11 @@ import 'widgets/card_checker_summary.dart';
 /// Card-checker screen. Owns just the local search-text controller and
 /// delegates state + actions to [cardCheckerControllerProvider].
 class CardCheckerScreen extends ConsumerStatefulWidget {
-  const CardCheckerScreen({super.key});
+  const CardCheckerScreen({super.key, this.initialQuery});
+
+  /// Card to check on open (`/cards/checker?q=<username>`, e.g. from
+  /// «فحص الكرت» on «المتصلون»).
+  final String? initialQuery;
 
   @override
   ConsumerState<CardCheckerScreen> createState() => _CardCheckerScreenState();
@@ -25,6 +29,18 @@ class CardCheckerScreen extends ConsumerStatefulWidget {
 
 class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
   final _query = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    final q = widget.initialQuery?.trim() ?? '';
+    if (q.isNotEmpty) {
+      _query.text = q;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _search();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -40,12 +56,11 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
     Future<dynamic> Function(CardsRepository repo) call, {
     required String success,
   }) async {
-    final outcome = await ref
-        .read(cardCheckerControllerProvider.notifier)
-        .runAction(
-          (repo) async => await call(repo) as dynamic,
-          success: success,
-        );
+    final outcome =
+        await ref.read(cardCheckerControllerProvider.notifier).runAction(
+              (repo) async => await call(repo) as dynamic,
+              success: success,
+            );
     if (!mounted) return;
     final message = outcome.error ?? outcome.success;
     if (message != null) {
@@ -68,9 +83,8 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
           actions: [
             IconButton(
               tooltip: 'تحديث',
-              onPressed: state.loading || _query.text.trim().isEmpty
-                  ? null
-                  : _search,
+              onPressed:
+                  state.loading || _query.text.trim().isEmpty ? null : _search,
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],
@@ -103,89 +117,91 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
           const SizedBox(height: AppTokens.s12),
           // Single-card operations = cards.verify (web cards_checker POST).
           if (ref.watch(permissionsProvider).can('cards.verify'))
-          CardCheckerOperations(
-            card: result,
-            busy: state.actionLoading,
-            onEnable: () => _runAction(
-              (repo) => repo.enableCard(result.id!),
-              success: 'تم تفعيل البطاقة.',
-            ),
-            onDisable: () async {
-              final reason = await cardCheckerAskText(
-                context,
-                title: 'تعطيل البطاقة',
-                label: 'سبب التعطيل',
-              );
-              if (!mounted || reason == null) return;
-              await _runAction(
-                (repo) => repo.disableCard(result.id!, reason: reason),
-                success: 'تم تعطيل البطاقة بدون حذفها.',
-              );
-            },
-            onLockMac: () async {
-              final mac = await cardCheckerAskText(
-                context,
-                title: 'تثبيت MAC',
-                label: 'عنوان الجهاز',
-                initial: result.macAddress ?? '',
-              );
-              if (!mounted || mac == null || mac.isEmpty) return;
-              await _runAction(
-                (repo) => repo.lockCardMac(result.id!, mac),
-                success: 'تم تثبيت الجهاز على البطاقة.',
-              );
-            },
-            onUnlockMac: () => _runAction(
-              (repo) => repo.unlockCardMac(result.id!),
-              success: 'تم فك تثبيت الجهاز.',
-            ),
-            onResetUsage: () async {
-              final ok = await cardCheckerConfirm(
-                context,
-                title: 'تصفير استخدام البطاقة',
-                body: 'سيتم تصفير وقت بداية الاستخدام والجهاز المرصود. متابعة؟',
-              );
-              if (!mounted || !ok) return;
-              await _runAction(
-                (repo) => repo.resetCardUsage(result.id!),
-                success: 'تم تصفير استخدام البطاقة.',
-              );
-            },
-            onDisconnect: () async {
-              final ok = await cardCheckerConfirm(
-                context,
-                title: 'طرد الجلسة',
-                body: 'سيتم إرسال طلب طرد الجلسة النشطة لهذه البطاقة.',
-              );
-              if (!mounted || !ok) return;
-              var sessionId = '';
-              for (final session in result.accountingSummary.latestSessions) {
-                if (session.online && session.sessionId.isNotEmpty) {
-                  sessionId = session.sessionId;
-                  break;
+            CardCheckerOperations(
+              card: result,
+              busy: state.actionLoading,
+              onEnable: () => _runAction(
+                (repo) => repo.enableCard(result.id!),
+                success: 'تم تفعيل البطاقة.',
+              ),
+              onDisable: () async {
+                final reason = await cardCheckerAskText(
+                  context,
+                  title: 'تعطيل البطاقة',
+                  label: 'سبب التعطيل',
+                );
+                if (!mounted || reason == null) return;
+                await _runAction(
+                  (repo) => repo.disableCard(result.id!, reason: reason),
+                  success: 'تم تعطيل البطاقة بدون حذفها.',
+                );
+              },
+              onLockMac: () async {
+                final mac = await cardCheckerAskText(
+                  context,
+                  title: 'تثبيت MAC',
+                  label: 'عنوان الجهاز',
+                  initial: result.macAddress ?? '',
+                );
+                if (!mounted || mac == null || mac.isEmpty) return;
+                await _runAction(
+                  (repo) => repo.lockCardMac(result.id!, mac),
+                  success: 'تم تثبيت الجهاز على البطاقة.',
+                );
+              },
+              onUnlockMac: () => _runAction(
+                (repo) => repo.unlockCardMac(result.id!),
+                success: 'تم فك تثبيت الجهاز.',
+              ),
+              onResetUsage: () async {
+                final ok = await cardCheckerConfirm(
+                  context,
+                  title: 'تصفير استخدام البطاقة',
+                  body:
+                      'سيتم تصفير وقت بداية الاستخدام والجهاز المرصود. متابعة؟',
+                );
+                if (!mounted || !ok) return;
+                await _runAction(
+                  (repo) => repo.resetCardUsage(result.id!),
+                  success: 'تم تصفير استخدام البطاقة.',
+                );
+              },
+              onDisconnect: () async {
+                final ok = await cardCheckerConfirm(
+                  context,
+                  title: 'طرد الجلسة',
+                  body: 'سيتم إرسال طلب طرد الجلسة النشطة لهذه البطاقة.',
+                );
+                if (!mounted || !ok) return;
+                var sessionId = '';
+                for (final session in result.accountingSummary.latestSessions) {
+                  if (session.online && session.sessionId.isNotEmpty) {
+                    sessionId = session.sessionId;
+                    break;
+                  }
                 }
-              }
-              await _runAction(
-                (repo) => repo.disconnectCard(result.id!, sessionId: sessionId),
-                success: 'تم إرسال طلب الطرد إلى الخادم.',
-              );
-            },
-            onDeletePermanent: () async {
-              final typed = await cardCheckerAskText(
-                context,
-                title: 'حذف نهائي شديد الحساسية',
-                label: 'اكتب اسم البطاقة للتأكيد: ${result.username}',
-              );
-              if (!mounted || typed != result.username) return;
-              await _runAction(
-                (repo) => repo.deleteCardPermanently(
-                  result.id!,
-                  username: result.username,
-                ),
-                success: 'تم حذف البطاقة نهائيًا.',
-              );
-            },
-          ),
+                await _runAction(
+                  (repo) =>
+                      repo.disconnectCard(result.id!, sessionId: sessionId),
+                  success: 'تم إرسال طلب الطرد إلى الخادم.',
+                );
+              },
+              onDeletePermanent: () async {
+                final typed = await cardCheckerAskText(
+                  context,
+                  title: 'حذف نهائي شديد الحساسية',
+                  label: 'اكتب اسم البطاقة للتأكيد: ${result.username}',
+                );
+                if (!mounted || typed != result.username) return;
+                await _runAction(
+                  (repo) => repo.deleteCardPermanently(
+                    result.id!,
+                    username: result.username,
+                  ),
+                  success: 'تم حذف البطاقة نهائيًا.',
+                );
+              },
+            ),
           const SizedBox(height: AppTokens.s12),
           CardCheckerDetails(card: result),
           const SizedBox(height: AppTokens.s12),
