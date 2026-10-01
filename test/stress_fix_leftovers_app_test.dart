@@ -94,6 +94,12 @@ void main() {
       final sub = c.listen(tenantCurrencyProvider, (_, __) {});
       expect(c.read(tenantCurrencyProvider), 'USD');
       sub.close();
+      // Let the failing settings read settle BEFORE dispose — on a slow CI
+      // runner its 500 landed after the test ended («failed after test
+      // completion», patch #11 run).
+      for (var i = 0; i < 50; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 2));
+      }
     });
   });
 
