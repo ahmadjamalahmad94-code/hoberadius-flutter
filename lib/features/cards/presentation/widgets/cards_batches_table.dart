@@ -223,15 +223,10 @@ class _Counts extends StatelessWidget {
         CountItem('مستخدم', batch.used, tone: PillTone.brand),
         CountItem('منتهي', batch.expiredCount, tone: PillTone.amber),
         CountItem('ملغى', batch.revokedCount, tone: PillTone.red),
-        // secondary — only when they carry information
-        CountItem('مؤرشف', batch.archivedCount, hideWhenZero: true),
-        CountItem(
-          'بانتظار الأرشفة',
-          batch.pendingArchiveCount,
-          hideWhenZero: true,
-        ),
-        if (batch.originalCount != total)
-          CountItem('الأصلي', batch.originalCount),
+        // Six fixed tiles (two rows of three). The secondary counts
+        // (مؤرشف / بانتظار الأرشفة / الأصلي) made a lonely 7th tile —
+        // owner 2026-10-01: they live in the small grey line below
+        // (_Activity), only when non-zero.
       ],
     );
   }
@@ -311,6 +306,11 @@ class _Activity extends StatelessWidget {
         arCount(batch.sessionsCount, arSession, showOne: true),
         '${batch.uniqueMacs} MAC',
         if (batch.onlineSessions > 0) '${batch.onlineSessions} متصل',
+        if (batch.archivedCount > 0) 'مؤرشف ${batch.archivedCount}',
+        if (batch.pendingArchiveCount > 0)
+          'بانتظار الأرشفة ${batch.pendingArchiveCount}',
+        if (batch.originalCount != batch.generated)
+          'الأصلي ${batch.originalCount}',
       ].join(' • '),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
