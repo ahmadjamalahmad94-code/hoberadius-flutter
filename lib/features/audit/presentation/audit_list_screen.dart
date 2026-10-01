@@ -414,7 +414,10 @@ String _targetLabel(String value) => switch (value) {
       _ => _auditSegment(value, emptyLabel: 'عنصر'),
     };
 
-String _shortActionLabel(String action) {
+String _shortActionLabel(String rawAction) {
+  // The pill shows the verb only: «card_print_template.export_pdf» is
+  // «تصدير PDF», not the whole dotted code.
+  final action = rawAction.split('.').last;
   final a = action.toLowerCase();
   if (a.contains('create')) return 'إنشاء';
   if (a.contains('update') || a.contains('patch')) return 'تعديل';

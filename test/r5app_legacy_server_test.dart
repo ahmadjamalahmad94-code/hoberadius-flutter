@@ -150,6 +150,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('extend time'), findsNothing);
       expect(find.textContaining('card print template'), findsNothing);
+      expect(find.textContaining('template.export'), findsNothing);
       expect(find.textContaining('تمديد'), findsWidgets);
       expect(find.textContaining('تصدير'), findsWidgets);
     });
