@@ -37,7 +37,8 @@ class NotificationCenterScreen extends ConsumerWidget {
         PageHeader(
           title: 'الإشعارات',
           subtitle: unread > 0
-              ? '${arCount(unread, arNotification, showOne: true)} غير مقروء'
+              ? '${arCount(unread, arNotification, showOne: true)} '
+                  '${arAgree(unread, one: 'غير مقروء', two: 'غير مقروءين', many: 'غير مقروءة')}'
               : 'لا إشعارات جديدة',
           inlineActions: true,
           actions: [
@@ -155,7 +156,9 @@ class NotificationCenterScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('تعليم الكل كمقروء؟'),
         content: Text(
-          'سيُعلَّم ${arCount(unread, arNotification, showOne: true)} غير مقروء كمقروء لكل الشبكة. '
+          'سيُعلَّم ${arCount(unread, arNotification, showOne: true)} '
+          '${arAgree(unread, one: 'غير مقروء', two: 'غير مقروءين', many: 'غير مقروءة')} '
+          'كمقروء لكل الشبكة. '
           'لا يمكن التراجع عن ذلك.',
         ),
         actions: [

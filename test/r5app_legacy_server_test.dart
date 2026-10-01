@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/core/api/api_exception.dart';
+import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/features/dashboard/domain/dashboard_model.dart';
 import 'package:hoberadius_app/features/audit/data/audit_repository.dart';
 import 'package:hoberadius_app/features/audit/domain/audit_model.dart';
@@ -149,6 +150,20 @@ void main() {
       expect(find.textContaining('card print template'), findsNothing);
       expect(find.textContaining('تمديد'), findsWidgets);
       expect(find.textContaining('تصدير'), findsWidgets);
+    });
+  });
+
+  group('r5app: Arabic adjective agreement', () {
+    String unread(int n) =>
+        '${arCount(n, arNotification, showOne: true)} '
+        '${arAgree(n, one: 'غير مقروء', two: 'غير مقروءين', many: 'غير مقروءة')}';
+
+    test('the adjective follows the count, not one fixed form', () {
+      expect(unread(1), '1 إشعار غير مقروء');
+      expect(unread(2), 'إشعاران غير مقروءين');
+      expect(unread(7), '7 إشعارات غير مقروءة');
+      expect(unread(11), '11 إشعارًا غير مقروء');
+      expect(unread(100), '100 إشعار غير مقروء');
     });
   });
 }

@@ -228,3 +228,22 @@ String formatUptime(String raw) {
   }
   return parts.join(' و');
 }
+
+/// The adjective that agrees with a count rendered by [arCount]. Arabic
+/// adjective agreement does NOT follow the noun's own number: after 3–10 the
+/// noun is a non-human plural, which takes a FEMININE SINGULAR adjective
+/// («7 إشعارات غير مقروءة»), while 11–99 and 100+ keep the singular noun and
+/// so the singular adjective («11 إشعارًا غير مقروء»). Writing one fixed
+/// adjective next to [arCount] is wrong for most counts.
+String arAgree(
+  num n, {
+  required String one,
+  required String two,
+  required String many,
+}) {
+  final abs = n.round().abs();
+  if (abs == 2) return two;
+  final lastTwo = abs % 100;
+  if (abs > 2 && lastTwo >= 3 && lastTwo <= 10) return many;
+  return one;
+}
