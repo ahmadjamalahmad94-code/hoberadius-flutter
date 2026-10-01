@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../router/app_page_transitions.dart';
 import 'dark_tokens.dart';
@@ -9,12 +8,18 @@ import 'tokens.dart';
 ///
 /// Single light theme — no dark mode (RTL admin is light-only by spec).
 /// All component themes route their accent through [AppTokens.brand].
+/// خطُّ الواجهة — عائلةٌ مُضمَّنةٌ في pubspec.yaml (assets/fonts/Cairo-*.ttf).
+const String kAppFontFamily = 'Cairo';
+
 class AppTheme {
   AppTheme._();
 
   static ThemeData light() {
     final base = ThemeData.light(useMaterial3: true);
-    final textTheme = GoogleFonts.cairoTextTheme(base.textTheme).apply(
+    // Cairo المُضمَّن في الأصول (pubspec) لا GoogleFonts: الجلبُ وقتَ التشغيل من
+    // fonts.gstatic.com كان يترك بناءَ الويب بلا أيِّ نصٍّ إن تعذّر الوصول إليه.
+    final textTheme = base.textTheme.apply(
+      fontFamily: kAppFontFamily,
       bodyColor: AppTokens.textPrimary,
       displayColor: AppTokens.textPrimary,
     );
@@ -379,7 +384,10 @@ class AppTheme {
   /// J4 (per-feature redesign). See FLUTTER_REDESIGN_PLAN.md §J1.5.
   static ThemeData dark() {
     final base = ThemeData.dark(useMaterial3: true);
-    final textTheme = GoogleFonts.cairoTextTheme(base.textTheme).apply(
+    // Cairo المُضمَّن في الأصول (pubspec) لا GoogleFonts: الجلبُ وقتَ التشغيل من
+    // fonts.gstatic.com كان يترك بناءَ الويب بلا أيِّ نصٍّ إن تعذّر الوصول إليه.
+    final textTheme = base.textTheme.apply(
+      fontFamily: kAppFontFamily,
       bodyColor: DarkTokens.textPrimary,
       displayColor: DarkTokens.textPrimary,
     );
