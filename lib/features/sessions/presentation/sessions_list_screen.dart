@@ -515,11 +515,15 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _SummaryStrip(
-                  // 4th tile (owner: no lonely 3rd tile) — the WHOLE network.
-                  temporarySpeed: ref
-                      .watch(onlineTotalsProvider)
-                      .valueOrNull
-                      ?.temporarySpeed,
+                  // 4th tile (owner: no lonely 3rd tile) — the WHOLE network:
+                  // the page's own `speeds` when nothing is filtered (no extra
+                  // request), the unfiltered totals read otherwise.
+                  temporarySpeed: _query == const OnlineSessionsQuery()
+                      ? (loaded.speedCounts ?? const <String, int>{})['temporary']
+                      : ref
+                          .watch(onlineTotalsProvider)
+                          .valueOrNull
+                          ?.temporarySpeed,
                   counts: onlineSummaryCounts(
                     filtered: _query,
                     items: items,

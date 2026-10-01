@@ -244,9 +244,11 @@ class OnlineSessionsState {
     required this.list,
     this.typeCounts,
     this.accessCounts,
+    this.speedCounts,
   });
 
   final PagedList<OnlineSession> list;
+  final Map<String, int>? speedCounts;
   final Map<String, int>? typeCounts;
   final Map<String, int>? accessCounts;
 
@@ -278,6 +280,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
       ),
       typeCounts: page.typeCounts,
       accessCounts: page.accessCounts,
+      speedCounts: page.speedCounts,
     );
   }
 
@@ -291,6 +294,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
         list: current.list.copyWith(loadingMore: true, loadMoreError: null),
         typeCounts: current.typeCounts,
         accessCounts: current.accessCounts,
+        speedCounts: current.speedCounts,
       ),
     );
     try {
@@ -314,6 +318,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
           ),
           typeCounts: page.typeCounts ?? current.typeCounts,
           accessCounts: page.accessCounts ?? current.accessCounts,
+          speedCounts: page.speedCounts ?? current.speedCounts,
         ),
       );
     } catch (e) {
@@ -322,6 +327,7 @@ class OnlineSessionsController extends AutoDisposeFamilyAsyncNotifier<
           list: current.list.copyWith(loadingMore: false, loadMoreError: e),
           typeCounts: current.typeCounts,
           accessCounts: current.accessCounts,
+          speedCounts: current.speedCounts,
         ),
       );
     }
