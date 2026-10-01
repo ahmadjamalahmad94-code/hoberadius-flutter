@@ -1,9 +1,14 @@
 // r5app (round 5) — old-server regressions: the fix3 contracts must degrade
 // gracefully on a panel that has not been updated yet.
 
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/core/api/api_exception.dart';
 import 'package:hoberadius_app/features/dashboard/domain/dashboard_model.dart';
+import 'package:hoberadius_app/features/audit/data/audit_repository.dart';
+import 'package:hoberadius_app/features/audit/domain/audit_model.dart';
+import 'package:hoberadius_app/features/audit/presentation/audit_list_screen.dart';
 import 'package:hoberadius_app/features/plans/data/plans_repository.dart';
 
 import 'support/fake_api.dart';
@@ -102,6 +107,48 @@ void main() {
       });
       expect(m.salesToday, isNotNull);
       expect(m.salesToday!.cardsCount, 3);
+    });
+  });
+
+  group('r5app: audit log action names are Arabic', () {
+    testWidgets('an unknown server action code is not shown raw in English',
+        (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            auditListProvider.overrideWith((ref) async => [
+                  AuditEvent.fromJson(const {
+                    'id': 1,
+                    'actor': 'admin',
+                    'action': 'card_print_template.export_pdf',
+                    'target_type': 'card_print_template',
+                    'target_id': '3',
+                    'created_at': '2026-09-28T11:45:25Z',
+                  }),
+                  AuditEvent.fromJson(const {
+                    'id': 2,
+                    'actor': 'admin',
+                    'action': 'extend_time',
+                    'target_type': 'subscriber',
+                    'target_id': '7',
+                    'created_at': '2026-09-28T12:54:43Z',
+                  }),
+                ]),
+          ],
+          child: const MaterialApp(
+            locale: Locale('ar'),
+            home: Directionality(
+              textDirection: TextDirection.rtl,
+              child: AuditListScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('extend time'), findsNothing);
+      expect(find.textContaining('card print template'), findsNothing);
+      expect(find.textContaining('تمديد'), findsWidgets);
+      expect(find.textContaining('تصدير'), findsWidgets);
     });
   });
 }

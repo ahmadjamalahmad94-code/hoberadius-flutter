@@ -1,3 +1,4 @@
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -327,20 +328,90 @@ String _actorLabel(String value) {
   return actorLabel(value.replaceAll('actor:', '').trim());
 }
 
+/// The audit vocabulary word by word. The server logs well over a hundred
+/// action codes (`card_print_template.export_pdf`, `bandwidth_schedule.
+/// apply_live`, …) and no fixed list can cover them, so both the domain and
+/// the verb are translated token by token and only a token the app has
+/// never seen is left alone.
+const Map<String, String> _auditWords = {
+  // domains / nouns
+  'admin': 'مدير', 'admins': 'المدراء', 'role': 'دور', 'roles': 'الأدوار',
+  'user': 'مستفيد', 'users': 'المستفيدين', 'subscriber': 'مستفيد',
+  'subscribers': 'المستفيدين', 'plan': 'باقة', 'plans': 'الباقات',
+  'profile': 'ملف', 'card': 'بطاقة', 'cards': 'البطاقات', 'batch': 'حزمة',
+  'nas': 'جهاز شبكة', 'session': 'جلسة', 'sessions': 'الجلسات',
+  'payment': 'دفعة', 'payments': 'الدفعات', 'loan': 'سلفة',
+  'ledger': 'قيد مالي', 'invoice': 'فاتورة', 'wallet': 'محفظة',
+  'voucher': 'قسيمة', 'distributor': 'موزّع', 'store': 'متجر',
+  'template': 'قالب', 'print': 'طباعة', 'backup': 'نسخة احتياطية',
+  'bandwidth': 'السرعة', 'schedule': 'جدول', 'speed': 'سرعة',
+  'speeds': 'السرعات', 'policy': 'سياسة', 'device': 'جهاز',
+  'devices': 'الأجهزة', 'router': 'راوتر', 'mac': 'عنوان MAC',
+  'password': 'كلمة المرور', 'username': 'اسم المستخدم', 'time': 'الوقت',
+  'quota': 'الحصة', 'usage': 'الاستهلاك', 'data': 'البيانات',
+  'notification': 'إشعار', 'notifications': 'الإشعارات', 'ticket': 'تذكرة',
+  'license': 'الترخيص', 'settings': 'الإعدادات', 'hotspot': 'هوتسبوت',
+  'access': 'الوصول', 'control': 'التحكّم', 'remote': 'عن بُعد',
+  'member': 'عضو', 'expense': 'مصروف', 'inventory': 'المخزون',
+  'item': 'عنصر', 'company': 'الشركة', 'offer': 'عرض', 'page': 'صفحة',
+  'auth': 'المصادقة', 'fixtures': 'بيانات تجريبية', 'demo': 'تجريبي',
+  'accounting': 'المحاسبة', 'messages': 'الرسائل', 'error': 'خطأ',
+  'local': 'محليّة', 'live': 'مباشرةً', 'planned': 'المجدولة',
+  'permanent': 'نهائيّ', 'default': 'الافتراضيّ', 'pdf': 'PDF',
+  'panel': 'اللوحة', 'bridge': 'الجسر', 'link': 'الربط', 'mode': 'الوضع',
+  'clone': 'الاستنساخ', 'anti': 'منع',
+  // verbs
+  'create': 'إنشاء', 'created': 'إنشاء', 'add': 'إضافة', 'update': 'تعديل',
+  'updated': 'تعديل', 'patch': 'تعديل', 'edit': 'تعديل', 'set': 'ضبط',
+  'save': 'حفظ', 'delete': 'حذف', 'deleted': 'حذف', 'remove': 'إزالة',
+  'archive': 'أرشفة', 'restore': 'استعادة', 'purge': 'حذف نهائيّ',
+  'disable': 'تعطيل', 'deactivate': 'تعطيل', 'enable': 'تفعيل',
+  'activate': 'تفعيل', 'disconnect': 'طرد', 'login': 'دخول',
+  'logout': 'خروج', 'export': 'تصدير', 'import': 'استيراد',
+  'upload': 'رفع', 'uploaded': 'رفع', 'download': 'تنزيل',
+  'generate': 'توليد', 'assign': 'إسناد', 'revoke': 'سحب',
+  'reset': 'تصفير', 'apply': 'تطبيق', 'applied': 'تطبيق',
+  'engage': 'تشغيل', 'extend': 'تمديد', 'adjust': 'تعديل',
+  'change': 'تغيير', 'lock': 'قفل', 'unlock': 'فكّ القفل',
+  'reveal': 'إظهار', 'send': 'إرسال', 'cancel': 'إلغاء',
+  'accept': 'قبول', 'deny': 'رفض', 'reject': 'رفض', 'allow': 'سماح',
+  'forgive': 'مسامحة', 'settle': 'تسديد', 'post': 'ترحيل',
+  'reconcile': 'مطابقة', 'cleanup': 'تنظيف', 'pruned': 'تقليم',
+  'prune': 'تقليم', 'run': 'تشغيل', 'close': 'إغلاق', 'open': 'فتح',
+  'expire': 'إنهاء', 'visit': 'زيارة', 'failed': 'فشل',
+  'aborted': 'أُلغيت', 'toggle': 'تبديل', 'upsert': 'حفظ',
+  'bulk': 'جماعيّ', 'issued': 'إصدار', 'clear': 'مسح', 'copy': 'نسخ',
+  'migrate': 'ترحيل', 'connect': 'ربط', 'config': 'إعداد',
+  'count': 'عدد', 'health': 'فحص', 'drop': 'إسقاط', 'split': 'تقسيم',
+};
+
+/// One `snake_case` segment in Arabic. An untranslatable remainder is kept
+/// as a single left-to-right run so RTL never reorders it.
+String _auditSegment(String value, {required String emptyLabel}) {
+  final raw = value.trim();
+  if (raw.isEmpty) return emptyLabel;
+  final tokens = raw.toLowerCase().split(RegExp(r'[_\s-]+'))
+    ..removeWhere((t) => t.isEmpty);
+  if (tokens.isEmpty) return emptyLabel;
+  final out = <String>[];
+  final unknown = <String>[];
+  for (final t in tokens) {
+    final w = _auditWords[t];
+    if (w != null) {
+      out.add(w);
+    } else {
+      unknown.add(t);
+    }
+  }
+  if (out.isEmpty) return ltrIsolate(raw);
+  if (unknown.isEmpty) return out.join(' ');
+  return '${out.join(' ')} ${ltrIsolate(unknown.join(' '))}';
+}
+
 String _targetLabel(String value) => switch (value) {
-      'admin' => 'مدير',
-      'role' => 'دور',
-      'user' => 'مستفيد',
-      'subscriber' => 'مستفيد',
-      'plan' => 'باقة',
       'card_batch' => 'حزمة بطاقات',
-      'card' => 'بطاقة',
-      'nas' => 'جهاز شبكة',
-      'session' => 'جلسة',
-      'payment' => 'دفعة',
-      'loan' => 'سلفة',
       'ledger' => 'قيد مالي',
-      _ => value.isEmpty ? 'عنصر' : value.replaceAll('_', ' '),
+      _ => _auditSegment(value, emptyLabel: 'عنصر'),
     };
 
 String _shortActionLabel(String action) {
@@ -355,7 +426,7 @@ String _shortActionLabel(String action) {
   if (a.contains('delete')) return 'حذف';
   if (a.contains('login')) return 'دخول';
   if (a.contains('logout')) return 'خروج';
-  return action.replaceAll('_', ' ');
+  return _auditSegment(action, emptyLabel: 'عملية');
 }
 
 String _actionLabel(String action) {
