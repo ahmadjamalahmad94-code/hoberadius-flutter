@@ -411,6 +411,9 @@ String _auditSegment(String value, {required String emptyLabel}) {
 String _targetLabel(String value) => switch (value) {
       'card_batch' => 'حزمة بطاقات',
       'ledger' => 'قيد مالي',
+      // نشاطُ المدير (زيارةُ صفحةٍ/محاولةٌ محجوبة) — كان يظهر «manager_activity» خامًّا
+      // في كلِّ صفٍّ من «سجل التدقيق» لأنّ لا كلمةَ من مقطعَيه في _auditWords (r6ui).
+      'manager_activity' => 'نشاط مدير',
       _ => _auditSegment(value, emptyLabel: 'عنصر'),
     };
 
@@ -419,6 +422,8 @@ String _shortActionLabel(String rawAction) {
   // «تصدير PDF», not the whole dotted code.
   final action = rawAction.split('.').last;
   final a = action.toLowerCase();
+  // «page_visit» كانت تُركَّب كلمةً بكلمة فتصير «صفحة زيارة» (ترتيبٌ مقلوب).
+  if (a == 'page_visit') return 'زيارة صفحة';
   if (a.contains('create')) return 'إنشاء';
   if (a.contains('update') || a.contains('patch')) return 'تعديل';
   if (a.contains('archive')) return 'أرشفة';
