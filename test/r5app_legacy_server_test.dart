@@ -117,24 +117,26 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            auditListProvider.overrideWith((ref) async => [
-                  AuditEvent.fromJson(const {
-                    'id': 1,
-                    'actor': 'admin',
-                    'action': 'card_print_template.export_pdf',
-                    'target_type': 'card_print_template',
-                    'target_id': '3',
-                    'created_at': '2026-09-28T11:45:25Z',
-                  }),
-                  AuditEvent.fromJson(const {
-                    'id': 2,
-                    'actor': 'admin',
-                    'action': 'extend_time',
-                    'target_type': 'subscriber',
-                    'target_id': '7',
-                    'created_at': '2026-09-28T12:54:43Z',
-                  }),
-                ]),
+            auditListProvider.overrideWith(
+              (ref) async => [
+                AuditEvent.fromJson(const {
+                  'id': 1,
+                  'actor': 'admin',
+                  'action': 'card_print_template.export_pdf',
+                  'target_type': 'card_print_template',
+                  'target_id': '3',
+                  'created_at': '2026-09-28T11:45:25Z',
+                }),
+                AuditEvent.fromJson(const {
+                  'id': 2,
+                  'actor': 'admin',
+                  'action': 'extend_time',
+                  'target_type': 'subscriber',
+                  'target_id': '7',
+                  'created_at': '2026-09-28T12:54:43Z',
+                }),
+              ],
+            ),
           ],
           child: const MaterialApp(
             locale: Locale('ar'),
@@ -154,8 +156,7 @@ void main() {
   });
 
   group('r5app: Arabic adjective agreement', () {
-    String unread(int n) =>
-        '${arCount(n, arNotification, showOne: true)} '
+    String unread(int n) => '${arCount(n, arNotification, showOne: true)} '
         '${arAgree(n, one: 'غير مقروء', two: 'غير مقروءين', many: 'غير مقروءة')}';
 
     test('the adjective follows the count, not one fixed form', () {
