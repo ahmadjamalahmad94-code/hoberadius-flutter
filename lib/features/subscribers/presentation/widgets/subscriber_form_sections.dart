@@ -293,22 +293,9 @@ class SubscriberMtSection extends StatelessWidget {
             label: 'ملف الراوتر (Profile)',
             child: TextFormField(controller: controllers['mt_profile']),
           ),
-          FormFieldRow(
-            label: 'الخدمة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: mtService,
-              items: const [
-                DropdownMenuItem(value: 'pppoe', child: Text('اتصال PPPoE')),
-                DropdownMenuItem(value: 'hotspot', child: Text('هوتسبوت')),
-                DropdownMenuItem(value: 'l2tp', child: Text('L2TP')),
-                DropdownMenuItem(value: 'pptp', child: Text('PPTP')),
-                DropdownMenuItem(value: 'sstp', child: Text('SSTP')),
-                DropdownMenuItem(value: 'static', child: Text('عنوان ثابت')),
-              ],
-              onChanged: (v) => onMtServiceChanged(v ?? 'pppoe'),
-            ),
-          ),
+          // «الخدمة» (pppoe/hotspot/l2tp…) removed — it duplicated «نوع الخدمة»
+          // above and the server never reads it (owner 2026-10-02). The stored
+          // value is kept untouched in the payload.
           FormFieldRow(
             label: 'حد السرعة على الراوتر',
             hint: 'مثال: 5M/10M أو 5M/10M 6M/12M 4M/8M 30/30',
