@@ -16,27 +16,26 @@ class BackupsRepository {
     );
   }
 
-  Future<BackupRun?> runLocalBackup() async {
-    final res = await _api.post('/api/v1/backups/run');
+  /// The web «تشغيل نسخة» (run-all): local copy → license panel (paid
+  /// service) → Google Drive, as one list of steps. [full] = full archive
+  /// (with the log tables) instead of the lean core copy.
+  Future<BackupRunAllResult> runAll({bool full = false}) async {
+    final res = await _api.post(
+      '/api/v1/backups/run-all',
+      body: {'mode': full ? 'full' : 'lean'},
+    );
     final data = res['data'];
-    if (data is! Map<String, dynamic>) return null;
-    final run = data['run'];
-    return run is Map<String, dynamic> ? BackupRun.fromJson(run) : null;
+    return BackupRunAllResult.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
   }
 
-  /// Starts the Google Drive limited-input device flow. Returns
-  /// {user_code, verification_url, expires_in, interval}.
-  Future<Map<String, dynamic>> connectGoogleDrive() async {
-    final res = await _api.post('/api/v1/backups/google-drive/connect');
+  /// Google Drive is linked in the customer portal (like the web button):
+  /// a short-lived SSO link into it.
+  Future<String> drivePortalLink() async {
+    final res = await _api.post('/api/v1/backups/google-drive/portal-link');
     final data = res['data'];
-    return data is Map<String, dynamic> ? data : const {};
-  }
-
-  /// Polls the pending device flow. Returns {connected, pending, email, ...}.
-  Future<Map<String, dynamic>> pollGoogleDrive() async {
-    final res = await _api.post('/api/v1/backups/google-drive/poll');
-    final data = res['data'];
-    return data is Map<String, dynamic> ? data : const {};
+    return data is Map ? (data['url'] ?? '').toString() : '';
   }
 }
 

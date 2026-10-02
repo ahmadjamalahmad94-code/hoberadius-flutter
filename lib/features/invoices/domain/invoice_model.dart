@@ -141,6 +141,7 @@ class InvoiceRecord {
     required this.note,
     required this.createdAt,
     required this.updatedAt,
+    this.currency = '',
   });
 
   final int id;
@@ -165,6 +166,14 @@ class InvoiceRecord {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  /// The currency the invoice was written in (server `currency`, migration
+  /// 194). Empty on older servers → the tenant currency.
+  final String currency;
+
+  /// Per-row rule: the row's own currency, else [tenantCurrency].
+  String currencyOr(String tenantCurrency) =>
+      currency.trim().isEmpty ? tenantCurrency : currency.trim().toUpperCase();
+
   factory InvoiceRecord.fromJson(Map<String, dynamic> json) {
     return InvoiceRecord(
       id: _int(json['id']),
@@ -188,6 +197,7 @@ class InvoiceRecord {
       note: _string(json['note']),
       createdAt: _date(json['created_at']),
       updatedAt: _date(json['updated_at']),
+      currency: _string(json['currency']),
     );
   }
 

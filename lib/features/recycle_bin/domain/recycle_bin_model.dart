@@ -90,3 +90,21 @@ bool _asBool(Object? value, {bool fallback = false}) {
   if (value == null) return fallback;
   return value == true || value == 1 || value == '1' || value == 'true';
 }
+
+/// The phrase the operator types to confirm a permanent delete (zero-w3).
+const recyclePurgeConfirmPhrase = 'حذف نهائي';
+
+/// Typed confirmation: the phrase, tashkeel and extra spaces ignored.
+bool recyclePurgeConfirmMatches(String typed) {
+  final t = typed
+      .trim()
+      .replaceAll(RegExp('[\u064B-\u0652]'), '')
+      .replaceAll(RegExp(r'\s+'), ' ');
+  return t == recyclePurgeConfirmPhrase;
+}
+
+/// «حذف نهائي» exists only where the web has it: card batches already in the
+/// bin, owner / co-owner only (web `recycle_bin_purge`). The old
+/// «أرشفة نهائية» button called `/archive` on archived rows — always a 404.
+bool canPurgeRecycleItem(RecycleBinItem item, {required bool ownerLike}) =>
+    ownerLike && item.entityType == 'card_batches';

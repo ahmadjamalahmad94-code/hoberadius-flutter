@@ -58,12 +58,29 @@ class _SaasCreateDialogState extends State<SaasCreateDialog> {
     );
   }
 
-  Map<String, dynamic> _body() {
-    return {
-      for (final field in widget.def.fields)
-        field.key: field.number
-            ? num.tryParse(_controllers[field.key]!.text.trim()) ?? 0
-            : _controllers[field.key]!.text.trim(),
-    };
+  Map<String, dynamic> _body() => saasCreateBody(widget.def, {
+        for (final field in widget.def.fields)
+          field.key: _controllers[field.key]!.text,
+      });
+}
+
+/// The create body for a SaaS module form. A BLANK numeric field is left out
+/// (the server applies its own default / «none») — it used to be sent as 0:
+/// voucher `plan_id` 0 was a FOREIGN KEY 500. Text that is not a number is
+/// sent as typed so the server answers with its Arabic 422.
+Map<String, dynamic> saasCreateBody(
+  SaasModuleDef def,
+  Map<String, String> values,
+) {
+  final body = <String, dynamic>{};
+  for (final field in def.fields) {
+    final raw = (values[field.key] ?? '').trim();
+    if (!field.number) {
+      body[field.key] = raw;
+      continue;
+    }
+    if (raw.isEmpty) continue;
+    body[field.key] = num.tryParse(raw) ?? raw;
   }
+  return body;
 }

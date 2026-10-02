@@ -27,10 +27,17 @@ class RecycleBinRepository {
         .post('/api/v1/recycle-bin/${item.entityType}/${item.id}/restore');
   }
 
-  /// Permanently archives a soft-deleted item (web recycle_bin archive).
-  Future<void> archive(RecycleBinItem item) async {
-    await _api
-        .post('/api/v1/recycle-bin/${item.entityType}/${item.id}/archive');
+  /// PERMANENT delete of a card batch already in the bin — the web
+  /// «حذف نهائيّ» (`recycle_bin_purge`, owner only). Returns the number of
+  /// erased cards.
+  Future<int> purge(RecycleBinItem item) async {
+    final res = await _api
+        .post('/api/v1/recycle-bin/${item.entityType}/${item.id}/purge');
+    final data = res['data'];
+    if (data is Map && data['cards'] is num) {
+      return (data['cards'] as num).toInt();
+    }
+    return 0;
   }
 }
 

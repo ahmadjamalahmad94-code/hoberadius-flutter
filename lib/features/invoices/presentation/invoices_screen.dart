@@ -364,7 +364,7 @@ class _InvoicesTable extends StatelessWidget {
                     Text(
                       invoiceMoney(
                         invoice.amount,
-                        TenantCurrencyScope.of(context),
+                        invoice.currencyOr(TenantCurrencyScope.of(context)),
                       ),
                     ),
                   ),
@@ -458,7 +458,7 @@ class _InvoiceCard extends StatelessWidget {
             label: 'المبلغ',
             value: invoiceMoney(
               invoice.amount,
-              TenantCurrencyScope.of(context),
+              invoice.currencyOr(TenantCurrencyScope.of(context)),
             ),
           ),
           _InfoLine(label: 'الباقة', value: _orUnset(invoice.planName)),

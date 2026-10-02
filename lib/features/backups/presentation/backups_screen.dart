@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
@@ -62,18 +63,19 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
             status: status,
             running: _running,
             onRun: _runBackup,
-            onConnectDrive: _connectDrive,
+            onConnectDrive: _openDrivePortal,
           ),
         ),
       ],
     );
   }
 
-  Future<void> _connectDrive() async {
-    final repo = ref.read(backupsRepositoryProvider);
-    Map<String, dynamic> info;
+  /// Drive is linked in the customer portal, exactly like the web button:
+  /// ask the server for the SSO link and hand it to the operator.
+  Future<void> _openDrivePortal() async {
+    String url;
     try {
-      info = await repo.connectGoogleDrive();
+      url = await ref.read(backupsRepositoryProvider).drivePortalLink();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
@@ -81,52 +83,37 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
       return;
     }
     if (!mounted) return;
-    final code = (info['user_code'] ?? '').toString();
-    final url = (info['verification_url'] ?? '').toString();
-    final done = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => _DriveConnectDialog(
-        userCode: code,
-        verificationUrl: url,
-        onPoll: () => repo.pollGoogleDrive(),
-      ),
-    );
-    if (done == true && mounted) {
-      ref.invalidate(backupStatusProvider);
+    if (url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم ربط جوجل درايف')),
+        const SnackBar(
+          content: Text('تعذّر فتح بوابة العميل: لم يصل رابط الدخول.'),
+        ),
       );
+      return;
     }
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => _DrivePortalDialog(url: url),
+    );
+    ref.invalidate(backupStatusProvider);
   }
 
   Future<void> _runBackup() async {
-    final ok = await showDialog<bool>(
+    final full = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تشغيل نسخة محلية'),
-        content: const Text(
-          'سيتم إنشاء نسخة محلية من قاعدة SQLite والتحقق من وجود الملف. تبقى الاستعادة والحذف ضمن إجراءات مستقلة تحتاج تأكيدًا منفصلًا.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('تشغيل'),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _RunBackupDialog(),
     );
-    if (ok != true) return;
+    if (full == null) return;
     setState(() => _running = true);
     try {
-      final run = await ref.read(backupsRepositoryProvider).runLocalBackup();
+      final result =
+          await ref.read(backupsRepositoryProvider).runAll(full: full);
       ref.invalidate(backupStatusProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(run?.message ?? 'تم تشغيل النسخة المحلية')),
+      setState(() => _running = false);
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => _RunStepsDialog(result: result),
       );
     } catch (e) {
       if (!mounted) return;
@@ -135,6 +122,109 @@ class _BackupsScreenState extends ConsumerState<BackupsScreen> {
     } finally {
       if (mounted) setState(() => _running = false);
     }
+  }
+}
+
+/// The web run-all confirmation: lean core copy (default) or a full archive.
+class _RunBackupDialog extends StatefulWidget {
+  const _RunBackupDialog();
+
+  @override
+  State<_RunBackupDialog> createState() => _RunBackupDialogState();
+}
+
+class _RunBackupDialogState extends State<_RunBackupDialog> {
+  bool _full = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('تشغيل نسخة'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'نسخة محلية مُتحقَّق منها، ثم رفعها إلى لوحة التراخيص (إن كانت '
+            'الخدمة مفعّلة) ومنها إلى جوجل درايف المربوط — كزر الويب.',
+            style: TextStyle(height: 1.6),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          SwitchListTile(
+            key: const Key('backup-full-mode'),
+            contentPadding: EdgeInsets.zero,
+            value: _full,
+            onChanged: (v) => setState(() => _full = v),
+            title: const Text('أرشيف كامل (يشمل السجلّات)'),
+            subtitle: const Text(
+              'أكبر حجمًا؛ الافتراضي نسخة أساسية لبيانات العمل.',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('إلغاء'),
+        ),
+        ElevatedButton(
+          key: const Key('backup-run-confirm'),
+          onPressed: () => Navigator.pop(context, _full),
+          child: const Text('تشغيل'),
+        ),
+      ],
+    );
+  }
+}
+
+/// The run-all steps (local / panel / drive), each with its own outcome.
+class _RunStepsDialog extends StatelessWidget {
+  const _RunStepsDialog({required this.result});
+
+  final BackupRunAllResult result;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(result.ok ? 'تمت النسخة' : 'تعذّرت النسخة'),
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final step in result.steps)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppTokens.s8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StatusPill(
+                      text: step.statusLabel,
+                      tone: _backupRunTone(step.status),
+                    ),
+                    const SizedBox(width: AppTokens.s8),
+                    Expanded(
+                      child: Text(
+                        step.message.isEmpty
+                            ? step.label
+                            : '${step.label}: ${step.message}',
+                        style: const TextStyle(height: 1.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('تم'),
+        ),
+      ],
+    );
   }
 }
 
@@ -214,14 +304,16 @@ class _Body extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.download),
-                label: Text(running ? 'جاري النسخ...' : 'تشغيل نسخة محلية'),
+                label: Text(running ? 'جاري النسخ...' : 'تشغيل نسخة'),
               ),
+              // Like the web: linking and managing Drive both happen in the
+              // customer portal (SSO link) — never a dead button.
               OutlinedButton.icon(
-                onPressed: status.googleDrive.connected ? null : onConnectDrive,
+                onPressed: onConnectDrive,
                 icon: const Icon(Icons.cloud_sync_outlined),
                 label: Text(
                   status.googleDrive.connected
-                      ? 'جوجل درايف مربوط'
+                      ? 'إدارة الربط من بوابة العميل'
                       : 'ربط جوجل درايف',
                 ),
               ),
@@ -439,49 +531,12 @@ String _fmt(DateTime? value) {
 /// panel clock instead of raw UTC ISO.
 String _fmtRaw(String value) => formatServerTimestamp(value);
 
-/// Google Drive limited-input device-flow dialog: shows the user_code +
-/// verification URL, and polls until the operator authorises (or cancels).
-class _DriveConnectDialog extends StatefulWidget {
-  const _DriveConnectDialog({
-    required this.userCode,
-    required this.verificationUrl,
-    required this.onPoll,
-  });
+/// The customer-portal SSO link (where Drive is linked) — copy it into a
+/// browser. Short-lived, like the web redirect.
+class _DrivePortalDialog extends StatelessWidget {
+  const _DrivePortalDialog({required this.url});
 
-  final String userCode;
-  final String verificationUrl;
-  final Future<Map<String, dynamic>> Function() onPoll;
-
-  @override
-  State<_DriveConnectDialog> createState() => _DriveConnectDialogState();
-}
-
-class _DriveConnectDialogState extends State<_DriveConnectDialog> {
-  bool _polling = false;
-  String _message = '';
-
-  Future<void> _poll() async {
-    setState(() {
-      _polling = true;
-      _message = '';
-    });
-    try {
-      final res = await widget.onPoll();
-      if (res['connected'] == true) {
-        if (mounted) Navigator.of(context).pop(true);
-        return;
-      }
-      setState(
-        () => _message = (res['pending'] == true)
-            ? 'بانتظار موافقتك على جوجل... أكمل في المتصفح ثم تحقق مجددًا.'
-            : (res['detail'] ?? 'لم يكتمل الربط بعد.').toString(),
-      );
-    } catch (e) {
-      setState(() => _message = visibleErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _polling = false);
-    }
-  }
+  final String url;
 
   @override
   Widget build(BuildContext context) {
@@ -494,39 +549,30 @@ class _DriveConnectDialogState extends State<_DriveConnectDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'افتح الرابط التالي على أي جهاز وأدخل الرمز للموافقة، ثم اضغط '
-              '«تحقّق من الربط».',
+              'يُربط جوجل درايف من بوابة العميل (صلاحية محدودة drive.file). '
+              'افتح الرابط في المتصفح خلال دقائق — صالح لمرّة واحدة.',
               style: TextStyle(height: 1.6),
             ),
             const SizedBox(height: AppTokens.s12),
-            _CopyRow(label: 'الرابط', value: widget.verificationUrl),
-            const SizedBox(height: AppTokens.s8),
-            _CopyRow(label: 'الرمز', value: widget.userCode),
-            if (_message.isNotEmpty) ...[
-              const SizedBox(height: AppTokens.s12),
-              Text(
-                _message,
-                style: const TextStyle(color: AppTokens.textSecondary),
-              ),
-            ],
+            _CopyRow(label: 'الرابط', value: url),
           ],
         ),
       ),
       actions: [
         TextButton(
-          onPressed: _polling ? null : () => Navigator.of(context).pop(false),
-          child: const Text('إلغاء'),
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('إغلاق'),
         ),
         FilledButton.icon(
-          onPressed: _polling ? null : _poll,
-          icon: _polling
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.verified_outlined),
-          label: const Text('تحقّق من الربط'),
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: url));
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('تم نسخ الرابط')),
+            );
+          },
+          icon: const Icon(Icons.copy),
+          label: const Text('نسخ الرابط'),
         ),
       ],
     );

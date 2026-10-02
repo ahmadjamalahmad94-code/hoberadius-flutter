@@ -43,6 +43,7 @@ class BackupGoogleDriveStatus {
     required this.lastUploadAt,
     required this.lastError,
     required this.messageAr,
+    this.linkVia = '',
   });
 
   final bool configured;
@@ -54,6 +55,10 @@ class BackupGoogleDriveStatus {
   final String lastUploadAt;
   final String lastError;
   final String messageAr;
+
+  /// `customer_portal` on servers where Drive is linked through the customer
+  /// portal SSO (the web button); empty on older servers.
+  final String linkVia;
 
   factory BackupGoogleDriveStatus.fromJson(Map<String, dynamic> json) {
     return BackupGoogleDriveStatus(
@@ -67,6 +72,7 @@ class BackupGoogleDriveStatus {
       lastError: (json['last_error'] ?? '').toString(),
       messageAr:
           (json['message_ar'] ?? 'جوجل درايف غير مفعل حاليًا').toString(),
+      linkVia: (json['link_via'] ?? '').toString(),
     );
   }
 }
@@ -148,6 +154,60 @@ class BackupRun {
   String get statusLabel => serverStatusLabel.isNotEmpty
       ? serverStatusLabel
       : backupStatusLabel(status);
+}
+
+/// One step of the run-all backup (`local` / `panel` / `drive`).
+class BackupRunStep {
+  const BackupRunStep({
+    required this.key,
+    required this.label,
+    required this.status,
+    required this.message,
+  });
+
+  final String key;
+  final String label;
+
+  /// `success` / `failed` / `skipped`.
+  final String status;
+  final String message;
+
+  factory BackupRunStep.fromJson(Map<String, dynamic> json) => BackupRunStep(
+        key: (json['key'] ?? '').toString(),
+        label: (json['label'] ?? '').toString(),
+        status: (json['status'] ?? '').toString(),
+        message: (json['message'] ?? '').toString(),
+      );
+
+  String get statusLabel => backupStatusLabel(status);
+}
+
+/// `POST /api/v1/backups/run-all` — the web «تشغيل نسخة» (local → panel →
+/// Drive). [ok] follows the local copy, like the web.
+class BackupRunAllResult {
+  const BackupRunAllResult({
+    required this.ok,
+    required this.mode,
+    required this.steps,
+  });
+
+  final bool ok;
+  final String mode;
+  final List<BackupRunStep> steps;
+
+  factory BackupRunAllResult.fromJson(Map<String, dynamic> json) {
+    final raw = json['steps'];
+    return BackupRunAllResult(
+      ok: _asBool(json['ok']),
+      mode: (json['mode'] ?? 'lean').toString(),
+      steps: raw is List
+          ? raw
+              .whereType<Map<String, dynamic>>()
+              .map(BackupRunStep.fromJson)
+              .toList()
+          : const [],
+    );
+  }
 }
 
 /// Arabic for a backup job / run status (`never_run` was shown raw, R11 L-2).

@@ -64,24 +64,10 @@ class SupportTicket {
         _ => 'أولوية غير معروفة',
       };
 
+  /// The server's label, else the web's map (one list, one set of labels).
   String get categoryLabel => serverCategoryLabel.isNotEmpty
       ? serverCategoryLabel
-      : switch (category) {
-          'general' => 'عام',
-          'service' => 'خدمة',
-          'service_request' => 'طلب خدمة',
-          'complaint' => 'شكوى',
-          'payment' => 'دفع',
-          'billing' => 'حسابات وفواتير',
-          'connection' => 'اتصال',
-          'hardware' => 'معدات',
-          'technical' => 'فني',
-          'network' => 'الشبكة',
-          'installation' => 'تركيب',
-          'account' => 'الحساب',
-          'cards' => 'البطاقات',
-          _ => 'عام',
-        };
+      : ticketCategoryLabel(category);
 }
 
 class TicketReply {
@@ -304,3 +290,39 @@ String _dateLabel(DateTime? value) {
   String two(int item) => item.toString().padLeft(2, '0');
   return '${value.year}-${two(value.month)}-${two(value.day)} ${two(value.hour)}:${two(value.minute)}';
 }
+
+/// The categories the GENERIC ticket form offers — the web list
+/// (`tickets_repo.TICKET_CREATE_CATEGORIES`, the web modal and form).
+/// «طلب خدمة» is not here: a service request carries its own data and is
+/// created only through the service-request flow; from the generic form it
+/// was a request without its data (approve worked, status edits 409'd).
+const ticketCreateCategories = <String, String>{
+  'general': 'عام',
+  'billing': 'الفواتير والدفع',
+  'connection': 'الاتصال والخدمة',
+  'hardware': 'الأجهزة والمعدّات',
+  'complaint': 'شكوى',
+};
+
+/// Labels for every stored category (the web `category_labels` map and the
+/// API `TICKET_CATEGORY_LABELS`).
+const ticketCategoryLabels = <String, String>{
+  ...ticketCreateCategories,
+  'service_request': 'طلب خدمة',
+  // an old app-only key (tickets created by earlier app versions).
+  'service': 'خدمة',
+  'network': 'الشبكة',
+  'installation': 'التركيب',
+  'account': 'الحساب',
+  'cards': 'الكروت',
+  'technical': 'دعم فنّي',
+  'support': 'دعم فنّي',
+  'payment': 'الدفع',
+  'internet': 'الإنترنت',
+  'speed': 'السرعة',
+  'other': 'أخرى',
+};
+
+String ticketCategoryLabel(String category) =>
+    ticketCategoryLabels[category.trim().toLowerCase()] ??
+    (category.trim().isEmpty ? '—' : category);
