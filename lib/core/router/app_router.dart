@@ -442,6 +442,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   distributorId:
                       int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
                 ),
+                routes: [
+                  GoRoute(
+                    path: 'edit',
+                    name: 'distributor-edit',
+                    builder: (ctx, st) => DistributorFormScreen(
+                      distributorId:
+                          int.tryParse(st.pathParameters['id'] ?? '') ?? 0,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

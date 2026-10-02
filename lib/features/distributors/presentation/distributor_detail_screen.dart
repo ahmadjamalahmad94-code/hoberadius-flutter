@@ -104,6 +104,16 @@ class DistributorDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.arrow_back),
             ),
             actions: [
+              if (canManage)
+                TextButton.icon(
+                  key: const ValueKey('distributor-edit'),
+                  onPressed: () => context.goNamed(
+                    'distributor-edit',
+                    pathParameters: {'id': '$distributorId'},
+                  ),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('تعديل'),
+                ),
               IconButton(
                 tooltip: 'تحديث',
                 onPressed: () {
@@ -327,7 +337,7 @@ class _ActionsState extends ConsumerState<_Actions> {
                   items: const [
                     DropdownMenuItem(
                       value: 'credit',
-                      child: Text('تسديد / إنقاص الدين'),
+                      child: Text('دفعة من الموزّع'),
                     ),
                     DropdownMenuItem(value: 'debit', child: Text('إضافة دين')),
                   ],
@@ -632,6 +642,10 @@ Future<int?> resolveBatchId(CardsRepository cards, String raw) async {
   return null;
 }
 
+/// The assignment note of an assigned batch, «—» when none.
+String distributorAssignmentNote(DistributorBatch b) =>
+    b.assignmentNotes.trim().isEmpty ? '—' : b.assignmentNotes.trim();
+
 class _Batches extends StatelessWidget {
   const _Batches({required this.async, required this.distributorId});
 
@@ -670,6 +684,7 @@ class _Batches extends StatelessWidget {
                 DataColumn(label: Text('المتاح')),
                 DataColumn(label: Text('الحالة')),
                 DataColumn(label: Text('تاريخ الربط')),
+                DataColumn(label: Text('ملاحظة الربط')),
               ],
               rows: [
                 for (final item in items)
@@ -687,6 +702,16 @@ class _Batches extends StatelessWidget {
                       DataCell(
                         Text(
                           formatServerTimestamp(item.assignedAt),
+                        ),
+                      ),
+                      DataCell(
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 260),
+                          child: Text(
+                            distributorAssignmentNote(item),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],

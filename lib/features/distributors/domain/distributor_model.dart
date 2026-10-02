@@ -15,9 +15,13 @@ class Distributor {
     this.debtBalance = 0,
     this.notes = '',
     this.createdAt,
+    this.adminId,
   });
 
   final int? id;
+
+  /// «المدير المالك»: the manager this distributor belongs to (null = none).
+  final int? adminId;
   final String name;
   final String displayName;
   final String email;
@@ -34,6 +38,10 @@ class Distributor {
   String get title => displayName.isEmpty ? name : displayName;
   bool get isActive => status == 'active';
 
+  /// «نطاق الفحص»: `all` = any card; anything else = assigned batches only.
+  bool get checksAllBatches =>
+      '${scope['card_batches'] ?? ''}'.trim().toLowerCase() == 'all';
+
   factory Distributor.fromJson(Map<String, dynamic> j) => Distributor(
         id: _int(j['id']),
         name: (j['name'] ?? '').toString(),
@@ -48,6 +56,7 @@ class Distributor {
         debtBalance: _num(j['debt_balance']) ?? 0,
         notes: (j['notes'] ?? '').toString(),
         createdAt: _dt(j['created_at']),
+        adminId: _int(j['admin_id']),
       );
 
   Map<String, dynamic> toBody() => {
@@ -62,8 +71,47 @@ class Distributor {
         'credit_limit': creditLimit,
         'debt_balance': debtBalance,
         'notes': notes,
+        if (adminId != null) 'admin_id': adminId,
       };
 }
+
+/// `scope` payload of the distributor form (web radios «حزم معيّنة فقط» /
+/// «كل الحزم»): `{"card_batches": "assigned"|"all"}`; other keys of an
+/// existing scope are kept.
+Map<String, dynamic> distributorScopePayload({
+  required bool all,
+  Map<String, dynamic> existing = const {},
+}) =>
+    {...existing, 'card_batches': all ? 'all' : 'assigned'};
+
+/// PATCH /api/v1/distributors/<id> body of the edit form — never name,
+/// balance or debt. [portalPassword] empty = keep the current one;
+/// [includeAdmin] only when the «المدير المالك» picker was offered.
+Map<String, dynamic> distributorPatchBody({
+  required String displayName,
+  required String phone,
+  required String email,
+  required String status,
+  required num creditLimit,
+  required String notes,
+  required List<String> permissions,
+  required Map<String, dynamic> scope,
+  bool includeAdmin = false,
+  int? adminId,
+  String portalPassword = '',
+}) =>
+    {
+      'display_name': displayName,
+      'phone': phone,
+      'email': email,
+      'status': status,
+      'credit_limit': creditLimit,
+      'notes': notes,
+      'permissions': permissions,
+      'scope': scope,
+      if (includeAdmin) 'admin_id': adminId,
+      if (portalPassword.isNotEmpty) 'portal_password': portalPassword,
+    };
 
 class DistributorSummary {
   const DistributorSummary({

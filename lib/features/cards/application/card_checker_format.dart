@@ -1,6 +1,18 @@
 import 'package:intl/intl.dart';
 
 import '../../../shared/widgets/status_pill.dart';
+import '../domain/card_model.dart';
+
+/// Every online session id of [card] (deduplicated) — «فصل كل الأجهزة
+/// المتصلة» kicks them all, not just the first.
+List<String> cardOnlineSessionIds(CardCheckResult card) {
+  final ids = <String>[];
+  for (final s in card.accountingSummary.latestSessions) {
+    final id = s.sessionId.trim();
+    if (s.online && id.isNotEmpty && !ids.contains(id)) ids.add(id);
+  }
+  return ids;
+}
 
 String cardCheckStatusLabel(String status) => switch (status) {
       'available' => 'متاحة',

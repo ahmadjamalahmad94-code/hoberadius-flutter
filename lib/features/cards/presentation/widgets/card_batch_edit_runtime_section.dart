@@ -6,18 +6,23 @@ import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/form_field_row.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
+import 'card_device_limit_fields.dart';
 import 'card_number_field.dart';
 
+/// «الصلاحية والسلوك» of the batch editor. `phone_only_login` and
+/// «وضع المدة» are gone (no server reader / derived from «العد من أول
+/// اتصال», like the web editor).
 class CardBatchRuntimeSection extends StatelessWidget {
   const CardBatchRuntimeSection({
     super.key,
     required this.timeVal,
     required this.devices,
+    required this.onDevices,
+    required this.deviceLimitMode,
+    required this.onDeviceLimitMode,
     required this.notes,
     required this.timeUnit,
     required this.onTimeUnit,
-    required this.durationMode,
-    required this.onDurationMode,
     required this.quotaAction,
     required this.onQuotaAction,
     required this.countFromFirstConnect,
@@ -30,17 +35,20 @@ class CardBatchRuntimeSection extends StatelessWidget {
     required this.onSwitchMac,
     required this.lockMac,
     required this.onLockMac,
-    required this.phoneOnly,
-    required this.onPhoneOnly,
+    required this.loginWithoutPassword,
+    required this.onLoginWithoutPassword,
   });
 
   final TextEditingController timeVal;
-  final TextEditingController devices;
+
+  /// 0 = the global card setting.
+  final int devices;
+  final ValueChanged<int> onDevices;
+  final String deviceLimitMode;
+  final ValueChanged<String> onDeviceLimitMode;
   final TextEditingController notes;
   final String timeUnit;
   final ValueChanged<String?> onTimeUnit;
-  final String durationMode;
-  final ValueChanged<String?> onDurationMode;
   final String quotaAction;
   final ValueChanged<String?> onQuotaAction;
   final bool countFromFirstConnect;
@@ -53,8 +61,8 @@ class CardBatchRuntimeSection extends StatelessWidget {
   final ValueChanged<bool> onSwitchMac;
   final bool lockMac;
   final ValueChanged<bool> onLockMac;
-  final bool phoneOnly;
-  final ValueChanged<bool> onPhoneOnly;
+  final bool loginWithoutPassword;
+  final ValueChanged<bool> onLoginWithoutPassword;
 
   Widget _switch(String label, bool value, ValueChanged<bool> onChanged) =>
       HubSwitchRow(
@@ -91,26 +99,14 @@ class CardBatchRuntimeSection extends StatelessWidget {
               ),
             ),
           ),
-          FormFieldPair(
-            first: FormFieldRow(
-              label: 'عدد الأجهزة',
-              child: CardNumberField(controller: devices, min: 1),
-            ),
-            second: FormFieldRow(
-              label: 'وضع المدة',
-              child: DropdownButtonFormField<String>(
-                isExpanded: true,
-                value: durationMode,
-                items: const [
-                  DropdownMenuItem(
-                    value: 'time_unit',
-                    child: Text('حسب الوحدة'),
-                  ),
-                  DropdownMenuItem(value: 'seconds', child: Text('بالثواني')),
-                ],
-                onChanged: onDurationMode,
-              ),
-            ),
+          CardDeviceCountField(
+            label: 'عدد الأجهزة',
+            value: devices,
+            onChanged: onDevices,
+          ),
+          CardDeviceLimitModeField(
+            value: deviceLimitMode,
+            onChanged: onDeviceLimitMode,
           ),
           FormFieldRow(
             label: 'عند انتهاء الحصة',
@@ -137,7 +133,15 @@ class CardBatchRuntimeSection extends StatelessWidget {
           _switch('تجديد تلقائي', autoRenew, onAutoRenew),
           _switch('ربط MAC عند الاتصال', switchMac, onSwitchMac),
           _switch('قفل MAC عند الإغلاق', lockMac, onLockMac),
-          _switch('دخول برقم الجوال فقط', phoneOnly, onPhoneOnly),
+          HubSwitchRow(
+            dense: true,
+            label: 'الدخول برقم البطاقة فقط (بلا كلمة مرور)',
+            subtitle: loginWithoutPassword
+                ? 'مفعَّل: يكفي رقم البطاقة للدخول'
+                : 'معطّل: كلمة المرور مطلوبة',
+            value: loginWithoutPassword,
+            onChanged: onLoginWithoutPassword,
+          ),
           const SizedBox(height: AppTokens.s8),
           FormFieldRow(
             label: 'ملاحظات',

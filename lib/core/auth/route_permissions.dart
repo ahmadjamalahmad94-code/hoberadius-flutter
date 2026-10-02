@@ -249,6 +249,12 @@ const kRouteRequirements = <String, RouteRequirement>{
     section: 'distributors',
     distributorAllowed: true,
   ),
+  '/distributors/:id/edit': RouteRequirement(
+    anyOf: ['reports.finance'],
+    section: 'distributors',
+    writeSection: true,
+    action: 'distributor.manage',
+  ),
   '/business-ops': RouteRequirement(anyOf: ['admins.view']),
   // ── reports / events ──
   '/operational-reports':

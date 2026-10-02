@@ -8,6 +8,7 @@ import 'package:hoberadius_app/core/api/visible_error_message.dart';
 import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../admin_control/application/admin_control_providers.dart';
 import '../application/card_batch_edit_provider.dart';
 import '../application/cards_list_providers.dart';
 import '../data/cards_repository.dart';
@@ -28,36 +29,28 @@ class CardBatchEditScreen extends ConsumerStatefulWidget {
 class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _packageName = TextEditingController();
-  final _plan = TextEditingController();
-  final _count = TextEditingController();
   final _pricePerCard = TextEditingController();
   final _priceBulk = TextEditingController();
   final _totalPrice = TextEditingController();
   final _totalQuota = TextEditingController();
   final _serviceName = TextEditingController();
   final _managerId = TextEditingController();
-  final _prefix = TextEditingController();
-  final _suffix = TextEditingController();
-  final _ulen = TextEditingController();
-  final _plen = TextEditingController();
   final _timeVal = TextEditingController();
-  final _devices = TextEditingController();
   final _notes = TextEditingController();
 
   int? _loadedId;
+  int? _planId;
   String _status = 'active';
-  String _passwordType = 'medium';
-  String _affixMode = '';
   String _timeUnit = 'days';
-  String _durationMode = 'time_unit';
   String _quotaAction = 'stop';
-  bool _includeBatchNumber = false;
+  int _devices = 0;
+  String _deviceLimitMode = '';
   bool _countFromFirstConnect = true;
   bool _countBySeconds = false;
   bool _autoRenew = false;
   bool _switchMac = false;
   bool _lockMac = false;
-  bool _phoneOnly = false;
+  bool _loginWithoutPassword = false;
   bool _saving = false;
   String? _error;
 
@@ -65,20 +58,13 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
   void dispose() {
     for (final c in [
       _packageName,
-      _plan,
-      _count,
       _pricePerCard,
       _priceBulk,
       _totalPrice,
       _totalQuota,
       _serviceName,
       _managerId,
-      _prefix,
-      _suffix,
-      _ulen,
-      _plen,
       _timeVal,
-      _devices,
       _notes,
     ]) {
       c.dispose();
@@ -90,38 +76,35 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
     if (_loadedId == batch.id) return;
     _loadedId = batch.id;
     _packageName.text = batch.packageName;
-    _plan.text = '${batch.planId ?? ''}';
-    _count.text = '${batch.count}';
+    _planId = batch.planId;
     _pricePerCard.text = '${batch.pricePerCard}';
     _priceBulk.text = '${batch.priceBulk}';
     _totalPrice.text = '${batch.totalPrice}';
     _totalQuota.text = '${batch.totalQuotaMb}';
     _serviceName.text = batch.serviceName;
     _managerId.text = '${batch.managerId}';
-    _prefix.text = batch.usernamePrefix;
-    _suffix.text = batch.usernameSuffix;
-    _ulen.text = '${batch.usernameLength}';
-    _plen.text = '${batch.passwordLength}';
     _timeVal.text = '${batch.timeValue}';
-    _devices.text = '${batch.deviceCount}';
     _notes.text = batch.notes;
     _status = batch.status;
-    _passwordType = batch.passwordGenerationType;
-    _affixMode = batch.startsWithOrEndsWith;
     _timeUnit = batch.timeUnit;
-    _durationMode = batch.durationMode;
     _quotaAction = batch.onQuotaExhaust;
-    _includeBatchNumber = batch.includeBatchNumber;
+    _devices = normalizeCardDeviceCount(batch.deviceCount);
+    _deviceLimitMode = batch.deviceLimitMode;
     _countFromFirstConnect = batch.countFromFirstConnect;
     _countBySeconds = batch.countBySeconds;
     _autoRenew = batch.autoRenewAfterFirstUse;
     _switchMac = batch.switchToMacOnConnect;
     _lockMac = batch.lockToMacOnClose;
-    _phoneOnly = batch.phoneOnlyLogin;
+    _loginWithoutPassword = batch.loginWithoutPassword;
   }
 
   Future<void> _save(CardBatch batch) async {
     if (!_formKey.currentState!.validate()) return;
+    final planId = _planId ?? batch.planId;
+    if (planId == null || planId <= 0) {
+      setState(() => _error = 'اختر الباقة');
+      return;
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -130,8 +113,7 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
       final updated = await ref.read(cardsRepositoryProvider).updateBatch(
             widget.batchId,
             UpdateBatchRequest(
-              planId: parseIntInput(_plan.text)!,
-              count: parseIntInput(_count.text)!,
+              planId: planId,
               packageName: _packageName.text.trim(),
               status: _status,
               pricePerCard: parseNumberInput(_pricePerCard.text) ?? 0,
@@ -140,29 +122,19 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
               totalQuotaMb: parseIntInput(_totalQuota.text) ?? 0,
               serviceName: _serviceName.text.trim(),
               managerId: parseIntInput(_managerId.text) ?? 0,
-              usernamePrefix: _prefix.text.trim(),
-              usernameSuffix: _suffix.text.trim(),
-              usernameLength: parseIntInput(_ulen.text) ?? 8,
-              passwordLength: parseIntInput(_plen.text) ?? 6,
-              passwordGenerationType: _passwordType,
-              includeBatchNumber: _includeBatchNumber,
-              startsWithOrEndsWith: _affixMode,
-              prefixOrSuffixValue: _affixMode == 'suffix'
-                  ? _suffix.text.trim()
-                  : _affixMode == 'prefix'
-                      ? _prefix.text.trim()
-                      : '',
               timeValue: parseIntInput(_timeVal.text) ?? 0,
               timeUnit: _timeUnit,
-              deviceCount: parseIntInput(_devices.text) ?? 1,
-              durationMode: _durationMode,
+              deviceCount: _devices,
+              deviceLimitMode: _deviceLimitMode,
+              // Not editable here — sent back unchanged (was reset to 0).
+              validityAfterFirstLoginDays: batch.validityAfterFirstLoginDays,
               countBySeconds: _countBySeconds,
               countFromFirstConnect: _countFromFirstConnect,
               onQuotaExhaust: _quotaAction,
               autoRenewAfterFirstUse: _autoRenew,
               switchToMacOnConnect: _switchMac,
               lockToMacOnClose: _lockMac,
-              phoneOnlyLogin: _phoneOnly,
+              loginWithoutPassword: _loginWithoutPassword,
               notes: _notes.text.trim(),
             ),
           );
@@ -228,11 +200,13 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
               const SizedBox(height: AppTokens.s12),
               CardBatchCoreSection(
                 packageName: _packageName,
-                plan: _plan,
-                count: _count,
+                planId: _planId,
+                planName: batch.planName,
+                onPlan: (p) => setState(() => _planId = p.id),
+                count: batch.count,
                 status: _status,
                 onStatus: (v) => setState(() => _status = v ?? 'active'),
-                minCount: batch.generated <= 0 ? 1 : batch.generated,
+                currency: ref.watch(tenantCurrencyProvider),
               ),
               const SizedBox(height: AppTokens.s12),
               CardBatchMoneySection(
@@ -244,30 +218,17 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 managerId: _managerId,
               ),
               const SizedBox(height: AppTokens.s12),
-              CardBatchGenerationSection(
-                prefix: _prefix,
-                suffix: _suffix,
-                ulen: _ulen,
-                plen: _plen,
-                passwordType: _passwordType,
-                onPasswordType: (v) =>
-                    setState(() => _passwordType = v ?? 'medium'),
-                affixMode: _affixMode,
-                onAffixMode: (v) => setState(() => _affixMode = v ?? ''),
-                includeBatchNumber: _includeBatchNumber,
-                onIncludeBatchNumber: (v) =>
-                    setState(() => _includeBatchNumber = v),
-              ),
+              CardBatchGenerationSection(batch: batch),
               const SizedBox(height: AppTokens.s12),
               CardBatchRuntimeSection(
                 timeVal: _timeVal,
                 devices: _devices,
+                onDevices: (v) => setState(() => _devices = v),
+                deviceLimitMode: _deviceLimitMode,
+                onDeviceLimitMode: (v) => setState(() => _deviceLimitMode = v),
                 notes: _notes,
                 timeUnit: _timeUnit,
                 onTimeUnit: (v) => setState(() => _timeUnit = v ?? 'days'),
-                durationMode: _durationMode,
-                onDurationMode: (v) =>
-                    setState(() => _durationMode = v ?? 'time_unit'),
                 quotaAction: _quotaAction,
                 onQuotaAction: (v) =>
                     setState(() => _quotaAction = v ?? 'stop'),
@@ -282,8 +243,9 @@ class _CardBatchEditScreenState extends ConsumerState<CardBatchEditScreen> {
                 onSwitchMac: (v) => setState(() => _switchMac = v),
                 lockMac: _lockMac,
                 onLockMac: (v) => setState(() => _lockMac = v),
-                phoneOnly: _phoneOnly,
-                onPhoneOnly: (v) => setState(() => _phoneOnly = v),
+                loginWithoutPassword: _loginWithoutPassword,
+                onLoginWithoutPassword: (v) =>
+                    setState(() => _loginWithoutPassword = v),
               ),
               const SizedBox(height: AppTokens.s40),
             ],

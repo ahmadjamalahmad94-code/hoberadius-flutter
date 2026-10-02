@@ -74,7 +74,7 @@ class CardCheckerOperations extends StatelessWidget {
           ),
           ActionItem(
             icon: Icons.power_settings_new,
-            label: 'طرد الجلسة',
+            label: 'فصل كل الأجهزة المتصلة',
             onPressed: enabled && card.operations.canDisconnect
                 ? onDisconnect
                 : null,

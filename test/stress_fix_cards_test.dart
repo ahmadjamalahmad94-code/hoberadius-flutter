@@ -42,7 +42,8 @@ void main() {
     expect(body['login_without_password'], isTrue);
     expect(body['password_length'], 0);
     final normal = GenerateBatchRequest(planId: 3, count: 5).toBody();
-    expect(normal.containsKey('login_without_password'), isFalse);
+    // Always explicit now: a «أرقام فقط» network default no longer wins.
+    expect(normal['login_without_password'], isFalse);
   });
 
   test('generate carries an Idempotency-Key', () async {

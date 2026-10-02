@@ -1,3 +1,4 @@
+import 'card_batch_requests.dart' show normalizeDeviceLimitMode;
 import 'card_parsing.dart';
 
 /// Core card-batch entity returned by the cards repository for list
@@ -31,7 +32,9 @@ class CardBatch {
     this.prefixOrSuffixValue = '',
     this.timeValue = 0,
     this.timeUnit = 'days',
-    this.deviceCount = 1,
+    this.deviceCount = 0,
+    this.deviceLimitMode = '',
+    this.loginWithoutPassword = false,
     this.durationMode = 'time_unit',
     this.validityAfterFirstLoginDays = 0,
     this.countBySeconds = false,
@@ -106,7 +109,14 @@ class CardBatch {
   final String prefixOrSuffixValue;
   final int timeValue;
   final String timeUnit;
+  /// 0 = the global card setting (mig154); 1..50 an explicit limit.
   final int deviceCount;
+
+  /// «عند بلوغ حدّ الأجهزة»: '' (global setting) | `reject` | `replace`.
+  final String deviceLimitMode;
+
+  /// «الدخول برقم البطاقة فقط (بلا كلمة مرور)».
+  final bool loginWithoutPassword;
   final String durationMode;
   final int validityAfterFirstLoginDays;
   final bool countBySeconds;
@@ -197,7 +207,10 @@ class CardBatch {
         prefixOrSuffixValue: (j['prefix_or_suffix_value'] ?? '').toString(),
         timeValue: cardParseInt(j['time_value']) ?? 0,
         timeUnit: (j['time_unit'] ?? 'days').toString(),
-        deviceCount: cardParseInt(j['device_count']) ?? 1,
+        // Missing → 0 (the global setting), never a silent 1.
+        deviceCount: cardParseInt(j['device_count']) ?? 0,
+        deviceLimitMode: normalizeDeviceLimitMode(j['device_limit_mode']),
+        loginWithoutPassword: cardParseBool(j['login_without_password']),
         durationMode: (j['duration_mode'] ?? 'time_unit').toString(),
         validityAfterFirstLoginDays:
             cardParseInt(j['validity_after_first_login_days']) ?? 0,

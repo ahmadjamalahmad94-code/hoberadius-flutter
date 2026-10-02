@@ -4,26 +4,39 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
-import '../../../../shared/widgets/hub_switch_row.dart';
+import '../../../plans/domain/plan_option.dart';
+import '../../domain/card_model.dart';
 import 'card_number_field.dart';
+import 'card_plan_picker.dart';
 
 class CardBatchCoreSection extends StatelessWidget {
   const CardBatchCoreSection({
     super.key,
     required this.packageName,
-    required this.plan,
+    required this.planId,
+    required this.planName,
+    required this.onPlan,
     required this.count,
     required this.status,
     required this.onStatus,
-    required this.minCount,
+    this.currency = '',
   });
 
   final TextEditingController packageName;
-  final TextEditingController plan;
-  final TextEditingController count;
+
+  /// The batch's plan (kept as is unless another plan is picked).
+  final int? planId;
+
+  /// Name of the batch's current plan (shown when it is not in the active
+  /// plans list).
+  final String planName;
+  final ValueChanged<PlanOption> onPlan;
+
+  /// Cards in the batch — locked after generation (server 422), display only.
+  final int count;
   final String status;
   final ValueChanged<String?> onStatus;
-  final int minCount;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -38,23 +51,22 @@ class CardBatchCoreSection extends StatelessWidget {
             child: TextFormField(controller: packageName),
           ),
           FormFieldRow(
-            label: 'معرّف العرض',
+            label: 'الباقة',
             required: true,
-            hint: 'تغيير العرض يطبّق على الكروت المتاحة فقط',
-            child: CardNumberField(controller: plan, required: true, min: 1),
+            hint: 'تغيير الباقة يطبّق على الكروت المتاحة فقط',
+            child: CardPlanPicker(
+              selectedId: planId,
+              onChanged: onPlan,
+              currency: currency,
+              keepLabel: planName.trim().isNotEmpty
+                  ? '${planName.trim()} (الحالية)'
+                  : 'الباقة الحالية #${planId ?? ''}',
+            ),
           ),
           FormFieldPair(
-            first: FormFieldRow(
+            first: CardReadOnlyField(
               label: 'عدد الباقة',
-              required: true,
-              hint: 'لا يقلّ عن $minCount',
-              child: CardNumberField(
-                controller: count,
-                required: true,
-                emptyMessage: 'لا يقلّ عن $minCount',
-                check: (n) =>
-                    n == null || n < minCount ? 'لا يقلّ عن $minCount' : null,
-              ),
+              value: '$count',
             ),
             second: FormFieldRow(
               label: 'الحالة',
@@ -134,94 +146,115 @@ class CardBatchMoneySection extends StatelessWidget {
   }
 }
 
-class CardBatchGenerationSection extends StatelessWidget {
-  const CardBatchGenerationSection({
-    super.key,
-    required this.prefix,
-    required this.suffix,
-    required this.ulen,
-    required this.plen,
-    required this.passwordType,
-    required this.onPasswordType,
-    required this.affixMode,
-    required this.onAffixMode,
-    required this.includeBatchNumber,
-    required this.onIncludeBatchNumber,
-  });
+/// «نمط كلمة المرور» of a stored batch.
+String cardPasswordTypeLabel(String type) => switch (type) {
+      'digits' => 'أرقام فقط',
+      'weak' => 'حروف',
+      'medium' => 'متوسط',
+      'strong' => 'قوي',
+      '' => '—',
+      _ => type,
+    };
 
-  final TextEditingController prefix;
-  final TextEditingController suffix;
-  final TextEditingController ulen;
-  final TextEditingController plen;
-  final String passwordType;
-  final ValueChanged<String?> onPasswordType;
-  final String affixMode;
-  final ValueChanged<String?> onAffixMode;
-  final bool includeBatchNumber;
-  final ValueChanged<bool> onIncludeBatchNumber;
+/// «موضع الإضافة» of a stored batch.
+String cardAffixModeLabel(String mode) => switch (mode) {
+      'prefix' => 'قبل الاسم',
+      'suffix' => 'بعد الاسم',
+      _ => 'بدون',
+    };
+
+/// The generation settings of a batch — DISPLAY ONLY: the server locks the
+/// card structure once the cards exist (422 on any change), so the editor
+/// shows them and never sends them.
+class CardBatchGenerationSection extends StatelessWidget {
+  const CardBatchGenerationSection({super.key, required this.batch});
+
+  final CardBatch batch;
 
   @override
   Widget build(BuildContext context) {
+    String orDash(String v) => v.trim().isEmpty ? '—' : v.trim();
     return CollapsibleSection(
       storageKey: 'batch.edit.generation',
       icon: Icons.dialpad_outlined,
-      title: 'إعدادات التوليد المستقبلية',
+      title: 'إعدادات التوليد (للعرض فقط)',
       child: Column(
         children: [
-          FormFieldRow(
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              'بنية الكروت مقفلة بعد التوليد — الكروت مولّدة/مطبوعة بالفعل.',
+              style: TextStyle(fontSize: 12.5),
+            ),
+          ),
+          CardReadOnlyField(
             label: 'موضع الإضافة',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              value: affixMode.isEmpty ? 'none' : affixMode,
-              items: const [
-                DropdownMenuItem(value: 'none', child: Text('بدون')),
-                DropdownMenuItem(value: 'prefix', child: Text('قبل الاسم')),
-                DropdownMenuItem(value: 'suffix', child: Text('بعد الاسم')),
-              ],
-              onChanged: (v) => onAffixMode(v == 'none' ? '' : v),
-            ),
+            value: cardAffixModeLabel(batch.startsWithOrEndsWith),
           ),
           FormFieldPair(
-            first: FormFieldRow(
+            first: CardReadOnlyField(
               label: 'البادئة',
-              child: TextFormField(controller: prefix),
+              value: orDash(batch.usernamePrefix),
+              ltr: true,
             ),
-            second: FormFieldRow(
+            second: CardReadOnlyField(
               label: 'اللاحقة',
-              child: TextFormField(controller: suffix),
+              value: orDash(batch.usernameSuffix),
+              ltr: true,
             ),
           ),
           FormFieldPair(
-            first: FormFieldRow(
+            first: CardReadOnlyField(
               label: 'طول اسم الدخول',
-              child: CardNumberField(controller: ulen),
+              value: '${batch.usernameLength}',
             ),
-            second: FormFieldRow(
+            second: CardReadOnlyField(
               label: 'طول كلمة المرور',
-              child: CardNumberField(controller: plen),
+              value: '${batch.passwordLength}',
             ),
           ),
-          FormFieldRow(
-            label: 'نمط كلمة المرور',
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              value: passwordType,
-              items: const [
-                DropdownMenuItem(value: 'digits', child: Text('أرقام فقط')),
-                DropdownMenuItem(value: 'weak', child: Text('حروف')),
-                DropdownMenuItem(value: 'medium', child: Text('متوسط')),
-                DropdownMenuItem(value: 'strong', child: Text('قوي')),
-              ],
-              onChanged: onPasswordType,
+          FormFieldPair(
+            first: CardReadOnlyField(
+              label: 'نمط كلمة المرور',
+              value: cardPasswordTypeLabel(batch.passwordGenerationType),
             ),
-          ),
-          HubSwitchRow(
-            dense: true,
-            label: 'تضمين رقم الباقة',
-            value: includeBatchNumber,
-            onChanged: onIncludeBatchNumber,
+            second: CardReadOnlyField(
+              label: 'تضمين رقم الباقة',
+              value: batch.includeBatchNumber ? 'نعم' : 'لا',
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// A locked value shown like a disabled field.
+class CardReadOnlyField extends StatelessWidget {
+  const CardReadOnlyField({
+    super.key,
+    required this.label,
+    required this.value,
+    this.ltr = false,
+  });
+
+  final String label;
+  final String value;
+  final bool ltr;
+
+  @override
+  Widget build(BuildContext context) {
+    return FormFieldRow(
+      label: label,
+      child: TextFormField(
+        key: ValueKey('ro-$label-$value'),
+        initialValue: value,
+        readOnly: true,
+        enabled: false,
+        textDirection: ltr ? TextDirection.ltr : null,
+        decoration: const InputDecoration(
+          suffixIcon: Icon(Icons.lock_outline, size: 16),
+        ),
       ),
     );
   }

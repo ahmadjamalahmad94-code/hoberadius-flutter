@@ -3,18 +3,56 @@ import 'package:hoberadius_app/core/format/input_rules.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/api/api_exception.dart';
 import '../../../core/api/visible_error_message.dart';
+import '../../../core/auth/permissions.dart';
+import '../../../core/format/number_input.dart';
 import '../../../core/theme/tokens.dart';
+import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/form_field_row.dart';
 import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/hub_switch_row.dart';
 import '../../../shared/widgets/page_header.dart';
+import '../../admins/data/admins_repository.dart';
+import '../../admins/domain/admin_model.dart';
+import '../../subscribers/presentation/widgets/subscriber_form_sections.dart'
+    show canPickResponsibleManager;
 import '../data/distributors_repository.dart';
 import '../domain/distributor_model.dart';
+import 'distributor_detail_screen.dart';
 import 'distributors_list_screen.dart';
 
+/// Largest «حد الائتمان» the form accepts.
+const num kDistributorCreditLimitMax = 1000000000;
+
+/// «حد الائتمان» validator — the SAME strict reader the save uses («1,5» is
+/// refused with the reason; it used to pass here and save as 0).
+String? validateDistributorCreditLimit(String? raw) {
+  final r = readNumberInput(raw);
+  if (r.isEmpty) return null;
+  if (r.error != null) return r.error;
+  if (r.value! > kDistributorCreditLimitMax) return 'حد الائتمان كبير جدًا.';
+  return null;
+}
+
+/// «حد الائتمان» as saved (empty → 0; Arabic digits and «٫» read too).
+num parseDistributorCreditLimit(String? raw) => parseDecimalInput(raw) ?? 0;
+
+/// «المدير المالك» is offered only to a login that sees every distributor
+/// (owner / co-owner / «مدير عام») and may read the managers list — the
+/// same rule as the subscriber form's «المدير المسؤول».
+bool canPickDistributorOwner(AppPermissions p) =>
+    (p.isOwnerLike || p.isSuperAdmin) && canPickResponsibleManager(p);
+
+/// Credit-limit hint: the server enforces it as a hard debt cap.
+const kDistributorCreditLimitHint =
+    'أقصى دين مسموح للموزّع؛ يُمنع تسجيل دين يتجاوزه. 0 = بلا حدّ';
+
 class DistributorFormScreen extends ConsumerStatefulWidget {
-  const DistributorFormScreen({super.key});
+  const DistributorFormScreen({super.key, this.distributorId});
+
+  /// Null = «إضافة موزع»; an id = «تعديل الموزع» (PATCH).
+  final int? distributorId;
 
   @override
   ConsumerState<DistributorFormScreen> createState() =>
@@ -29,10 +67,22 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
   final _phone = TextEditingController();
   final _creditLimit = TextEditingController(text: '0');
   final _notes = TextEditingController();
+  final _portalPassword = TextEditingController();
 
   final Set<String> _permissions = {'cards.read', 'cards.sell'};
   String _status = 'active';
+  bool _scopeAll = false;
+  Map<String, dynamic> _existingScope = const {};
+  int? _adminId;
+
+  /// Edit: the owner was picked by hand (only then is `admin_id` sent — a
+  /// summary without `admin_id` must never wipe the current owner).
+  bool _adminTouched = false;
+  int? _loadedId;
   bool _saving = false;
+  bool _obscurePortal = true;
+
+  bool get _isEdit => widget.distributorId != null;
 
   static const _permissionOptions = [
     _PermissionOption(
@@ -45,6 +95,12 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
       label: 'بيع الكروت',
       description: 'يسمح بتنفيذ عمليات البيع ضمن الحزم المسموحة فقط.',
     ),
+    _PermissionOption(
+      key: 'cards.check',
+      label: 'فحص كروت (بوابة الموزّع)',
+      description: 'بوابة قراءة فقط على /portal/distributor — يدخل الموزّع '
+          'باسم الدخول وكلمة مرور البوابة، يفحص حالة الكروت دون أي تعديل.',
+    ),
   ];
 
   @override
@@ -55,63 +111,175 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
     _phone.dispose();
     _creditLimit.dispose();
     _notes.dispose();
+    _portalPassword.dispose();
     super.dispose();
   }
 
+  void _fill(Distributor d) {
+    if (_loadedId == d.id) return;
+    _loadedId = d.id;
+    _name.text = d.name;
+    _displayName.text = d.displayName;
+    _email.text = d.email;
+    _phone.text = d.phone;
+    _creditLimit.text = _plainNumber(d.creditLimit);
+    _notes.text = d.notes;
+    _status = d.status.trim().isEmpty ? 'active' : d.status.trim();
+    _permissions
+      ..clear()
+      ..addAll(d.permissions);
+    _existingScope = d.scope;
+    _scopeAll = d.checksAllBatches;
+    _adminId = d.adminId;
+  }
+
+  static String _plainNumber(num v) =>
+      v == v.roundToDouble() ? '${v.toInt()}' : '$v';
+
   @override
   Widget build(BuildContext context) {
+    if (!_isEdit) return _form(context);
+    final id = widget.distributorId!;
+    return ref.watch(distributorSummaryProvider(id)).when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => EmptyState(
+            icon: Icons.error_outline,
+            title: 'تعذر جلب الموزع',
+            subtitle: visibleErrorMessage(e),
+            action: OutlinedButton.icon(
+              onPressed: () => ref.invalidate(distributorSummaryProvider(id)),
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+            ),
+          ),
+          data: (summary) {
+            _fill(summary.distributor);
+            return _form(context);
+          },
+        );
+  }
+
+  /// The managers list when the «المدير المالك» picker is offered and
+  /// readable; null = no picker (and `admin_id` is never sent).
+  AsyncValue<List<Admin>>? _ownerList() {
+    if (!canPickDistributorOwner(ref.watch(permissionsProvider))) return null;
+    final admins = ref.watch(adminsListProvider);
+    if (admins.hasError &&
+        admins.error is ApiException &&
+        (admins.error as ApiException).status == 403) {
+      return null;
+    }
+    return admins;
+  }
+
+  Widget _form(BuildContext context) {
+    final owners = _ownerList();
+    final checks = _permissions.contains('cards.check');
     final nameField = TextFormField(
       controller: _name,
-      decoration: const InputDecoration(
+      enabled: !_isEdit,
+      maxLength: 80,
+      decoration: InputDecoration(
         labelText: 'اسم الدخول',
-        helperText: 'اسم قصير تستخدمه الإدارة لتتبع الموزع داخليًا.',
+        counterText: '',
+        helperText: _isEdit
+            ? 'اسم الدخول لا يتغيّر بعد الإنشاء.'
+            : 'اسم قصير تستخدمه الإدارة لتتبع الموزع داخليًا.',
       ),
       validator: (value) =>
           (value ?? '').trim().isEmpty ? 'اكتب اسم الدخول' : null,
     );
     final displayNameField = TextFormField(
       controller: _displayName,
-      decoration: const InputDecoration(labelText: 'الاسم الظاهر'),
+      maxLength: 120,
+      decoration: const InputDecoration(
+        labelText: 'الاسم الظاهر',
+        counterText: '',
+      ),
     );
     final phoneField = TextFormField(
       controller: _phone,
-      decoration: const InputDecoration(labelText: 'رقم الهاتف'),
+      maxLength: 40,
+      keyboardType: TextInputType.phone,
+      decoration: const InputDecoration(
+        labelText: 'رقم الهاتف',
+        counterText: '',
+      ),
     );
     final emailField = TextFormField(
       controller: _email,
+      maxLength: 160,
       keyboardType: TextInputType.emailAddress,
-      decoration: const InputDecoration(labelText: 'البريد الإلكتروني'),
+      decoration: const InputDecoration(
+        labelText: 'البريد الإلكتروني',
+        counterText: '',
+      ),
       validator: validateOptionalEmail,
     );
+    const knownStatuses = ['active', 'inactive', 'blocked'];
     final statusField = DropdownButtonFormField<String>(
       isExpanded: true,
       initialValue: _status,
       decoration: const InputDecoration(labelText: 'الحالة'),
-      items: const [
-        DropdownMenuItem(value: 'active', child: Text('مفعّل')),
-        DropdownMenuItem(value: 'inactive', child: Text('غير مفعّل')),
-        DropdownMenuItem(value: 'blocked', child: Text('محظور')),
+      items: [
+        const DropdownMenuItem(value: 'active', child: Text('مفعّل')),
+        const DropdownMenuItem(value: 'inactive', child: Text('غير مفعّل')),
+        const DropdownMenuItem(value: 'blocked', child: Text('محظور')),
+        // A stored status the form does not offer (e.g. suspended) stays.
+        if (!knownStatuses.contains(_status))
+          DropdownMenuItem(
+            value: _status,
+            child: Text(distributorStatusLabel(_status)),
+          ),
       ],
       onChanged: (value) => setState(() => _status = value ?? 'active'),
     );
     final creditField = TextFormField(
       controller: _creditLimit,
-      keyboardType: TextInputType.number,
+      keyboardType: decimalKeyboard,
+      inputFormatters: numberFieldFormatters,
       decoration: const InputDecoration(labelText: 'حد الائتمان'),
-      validator: (v) {
-        final t = (v ?? '').trim();
-        if (t.isEmpty) return null;
-        final n = num.tryParse(t.replaceAll(',', '.'));
-        if (n == null || !n.isFinite || n < 0) {
-          return 'حد الائتمان رقم صفر أو أكثر.';
-        }
-        if (n > 1000000000) return 'حد الائتمان كبير جدًا.';
-        return null;
-      },
+      validator: validateDistributorCreditLimit,
     );
     const creditHint = Text(
-      'حد الائتمان قيمة مرجعية للتحكم المالي، وليست فاتورة كاملة.',
+      kDistributorCreditLimitHint,
       style: TextStyle(color: AppTokens.textMuted, fontSize: 12),
+    );
+    final ownerField = owners?.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (e, _) => Text(
+        'تعذّر جلب قائمة المدراء: ${visibleErrorMessage(e)}',
+        style: const TextStyle(color: AppTokens.redInk, fontSize: 12.5),
+      ),
+      data: (list) => DropdownButtonFormField<int?>(
+        key: const ValueKey('distributor-owner'),
+        isExpanded: true,
+        initialValue: _adminId,
+        decoration: const InputDecoration(
+          labelText: 'المدير المالك',
+          helperText: 'الموزع يتبع لهذا المدير ويظهر ضمن نطاقه فقط.',
+        ),
+        items: [
+          const DropdownMenuItem<int?>(
+            value: null,
+            child: Text('— بدون مالك —'),
+          ),
+          for (final a in list)
+            DropdownMenuItem<int?>(
+              value: a.id,
+              child: Text(a.fullName.isEmpty ? a.username : a.fullName),
+            ),
+          if (_adminId != null && !list.any((a) => a.id == _adminId))
+            DropdownMenuItem<int?>(
+              value: _adminId,
+              child: Text('مدير #$_adminId'),
+            ),
+        ],
+        onChanged: (v) => setState(() {
+          _adminId = v;
+          _adminTouched = true;
+        }),
+      ),
     );
     final permissions = _ChoiceSection(
       title: 'صلاحيات الموزع',
@@ -135,53 +303,118 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
           ),
       ],
     );
-    const scope = _ChoiceSection(
-      title: 'نطاق البيانات',
-      subtitle: 'النظام يعرض للموزع الحزم التي تربطها به الإدارة فقط.',
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              Icons.verified_user_outlined,
-              size: 20,
-              color: AppTokens.brandInk,
-            ),
-            SizedBox(width: AppTokens.s8),
-            Expanded(
-              child: Column(
+    final Widget scope = checks
+        ? _ChoiceSection(
+            title: 'نطاق الفحص',
+            subtitle: 'يُطبَّق النطاق فورًا على بوابة الفحص الخاصة بالموزع.',
+            children: [
+              _ScopeOption(
+                key: const ValueKey('scope-assigned'),
+                title: 'حزم معيّنة فقط',
+                description: 'يفحص فقط كروت الحزم المربوطة به — اربط الحزم '
+                    'من صفحة تفاصيل الموزع.',
+                selected: !_scopeAll,
+                onTap: () => setState(() => _scopeAll = false),
+              ),
+              const SizedBox(height: AppTokens.s4),
+              _ScopeOption(
+                key: const ValueKey('scope-all'),
+                title: 'كل الحزم',
+                description:
+                    'يفحص أي كرت في النظام دون التقيد بالحزم المربوطة به.',
+                selected: _scopeAll,
+                onTap: () => setState(() => _scopeAll = true),
+              ),
+            ],
+          )
+        : const _ChoiceSection(
+            title: 'نطاق البيانات',
+            subtitle: 'النظام يعرض للموزع الحزم التي تربطها به الإدارة فقط.',
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'الحزم المعيّنة فقط',
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                  Icon(
+                    Icons.verified_user_outlined,
+                    size: 20,
+                    color: AppTokens.brandInk,
                   ),
-                  Text(
-                    'لتوسيع وصول الموزع، اربط حزمًا إضافية من صفحة تفاصيل الموزع.',
-                    style: TextStyle(
-                      color: AppTokens.textMuted,
-                      fontSize: 12.5,
+                  SizedBox(width: AppTokens.s8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'الحزم المعيّنة فقط',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          'لتوسيع وصول الموزع، اربط حزمًا إضافية من صفحة تفاصيل الموزع.',
+                          style: TextStyle(
+                            color: AppTokens.textMuted,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
+            ],
+          );
+    final portalField = checks
+        ? TextFormField(
+            key: const ValueKey('portal-password'),
+            controller: _portalPassword,
+            obscureText: _obscurePortal,
+            maxLength: 120,
+            autofillHints: const [AutofillHints.newPassword],
+            decoration: InputDecoration(
+              labelText: 'كلمة مرور بوابة الفحص',
+              counterText: '',
+              hintText: _isEdit
+                  ? 'اتركها فارغة للإبقاء على الحالية — املأها لضبطها أو تغييرها'
+                  : null,
+              helperText: 'تُستخدم مع اسم الدخول أعلاه لدخول بوابة الفحص. '
+                  'لا تُعرض الكلمة الحالية أبدًا.',
+              helperMaxLines: 2,
+              suffixIcon: IconButton(
+                tooltip: _obscurePortal ? 'إظهار' : 'إخفاء',
+                onPressed: () =>
+                    setState(() => _obscurePortal = !_obscurePortal),
+                icon: Icon(
+                  _obscurePortal
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+              ),
             ),
-          ],
-        ),
-      ],
-    );
+          )
+        : null;
     final notesField = TextFormField(
       controller: _notes,
       minLines: 2,
       maxLines: 4,
+      maxLength: 500,
       decoration: const InputDecoration(labelText: 'ملاحظات'),
     );
+    final saveLabel = _isEdit ? 'حفظ التعديلات' : 'حفظ الموزع';
     final saveItem = ActionItem(
       icon: Icons.save,
-      label: _saving ? 'جار الحفظ' : 'حفظ الموزع',
+      label: _saving ? 'جار الحفظ' : saveLabel,
       primary: true,
       onPressed: _saving ? null : _save,
     );
+    void back() {
+      if (_isEdit) {
+        context.goNamed(
+          'distributor-detail',
+          pathParameters: {'id': '${widget.distributorId}'},
+        );
+      } else {
+        context.goNamed('distributors');
+      }
+    }
 
     return Form(
       key: _formKey,
@@ -192,11 +425,11 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PageHeader(
-            title: 'إضافة موزع',
+            title: _isEdit ? 'تعديل الموزع' : 'إضافة موزع',
             inlineActions: true,
             leading: IconButton(
               tooltip: 'رجوع',
-              onPressed: _saving ? null : () => context.goNamed('distributors'),
+              onPressed: _saving ? null : back,
               icon: const Icon(Icons.arrow_back),
             ),
             actions: [
@@ -237,8 +470,16 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                         FormFieldPair(first: statusField, second: creditField),
                         const SizedBox(height: AppTokens.s4),
                         creditHint,
+                        if (ownerField != null) ...[
+                          const SizedBox(height: AppTokens.s12),
+                          ownerField,
+                        ],
                         const SizedBox(height: AppTokens.s12),
                         permissions,
+                        if (portalField != null) ...[
+                          const SizedBox(height: AppTokens.s12),
+                          portalField,
+                        ],
                         const SizedBox(height: AppTokens.s12),
                         scope,
                         const SizedBox(height: AppTokens.s12),
@@ -266,8 +507,12 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
                           ],
                         ),
                       ),
+                      if (ownerField != null)
+                        _Box(wide: wide, child: ownerField),
                       SizedBox(width: double.infinity, child: permissions),
-                      const SizedBox(width: double.infinity, child: scope),
+                      if (portalField != null)
+                        SizedBox(width: double.infinity, child: portalField),
+                      SizedBox(width: double.infinity, child: scope),
                       SizedBox(width: double.infinity, child: notesField),
                     ],
                   );
@@ -282,8 +527,6 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
     );
   }
 
-  Map<String, dynamic> _scopePayload() => const {'card_batches': 'assigned'};
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_permissions.isEmpty) {
@@ -292,27 +535,64 @@ class _DistributorFormScreenState extends ConsumerState<DistributorFormScreen> {
       );
       return;
     }
+    // `admin_id` only when the picker was offered AND its list loaded (and,
+    // on edit, the owner was actually changed) — never a blind null that
+    // would drop the current owner.
+    final owners = _ownerList();
+    final includeAdmin =
+        owners != null && owners.hasValue && (!_isEdit || _adminTouched);
+    final permissions = _permissions.toList()..sort();
+    final scope =
+        distributorScopePayload(all: _scopeAll, existing: _existingScope);
+    final creditLimit = parseDistributorCreditLimit(_creditLimit.text);
+    final portalPassword =
+        _permissions.contains('cards.check') ? _portalPassword.text.trim() : '';
     setState(() => _saving = true);
     try {
-      final permissions = _permissions.toList()..sort();
-      final created = await ref.read(distributorsRepositoryProvider).create(
-            Distributor(
-              name: _name.text.trim(),
-              displayName: _displayName.text.trim(),
-              email: _email.text.trim(),
-              phone: _phone.text.trim(),
-              status: _status,
-              permissions: permissions,
-              scope: _scopePayload(),
-              creditLimit: num.tryParse(_creditLimit.text) ?? 0,
-              notes: _notes.text.trim(),
-            ),
-          );
+      final repo = ref.read(distributorsRepositoryProvider);
+      final int? id;
+      if (_isEdit) {
+        id = widget.distributorId;
+        await repo.update(
+          id!,
+          distributorPatchBody(
+            displayName: _displayName.text.trim(),
+            phone: _phone.text.trim(),
+            email: _email.text.trim(),
+            status: _status,
+            creditLimit: creditLimit,
+            notes: _notes.text.trim(),
+            permissions: permissions,
+            scope: scope,
+            includeAdmin: includeAdmin,
+            adminId: _adminId,
+            portalPassword: portalPassword,
+          ),
+        );
+        ref.invalidate(distributorSummaryProvider(id));
+      } else {
+        final created = await repo.create(
+          Distributor(
+            name: _name.text.trim(),
+            displayName: _displayName.text.trim(),
+            email: _email.text.trim(),
+            phone: _phone.text.trim(),
+            status: _status,
+            permissions: permissions,
+            scope: scope,
+            creditLimit: creditLimit,
+            notes: _notes.text.trim(),
+            adminId: includeAdmin ? _adminId : null,
+          ),
+          portalPassword: portalPassword,
+        );
+        id = created.id;
+      }
       ref.invalidate(distributorsListProvider);
       if (mounted) {
         context.goNamed(
           'distributor-detail',
-          pathParameters: {'id': '${created.id}'},
+          pathParameters: {'id': '$id'},
         );
       }
     } catch (error) {
@@ -372,6 +652,71 @@ class _ChoiceSection extends StatelessWidget {
               ),
               const SizedBox(height: AppTokens.s4),
               ...children,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One «نطاق الفحص» choice (radio-like row).
+class _ScopeOption extends StatelessWidget {
+  const _ScopeOption({
+    super.key,
+    required this.title,
+    required this.description,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String title;
+  final String description;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppTokens.brandSoft : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        side: BorderSide(
+          color: selected ? AppTokens.brand : AppTokens.border,
+        ),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        child: Padding(
+          padding: const EdgeInsets.all(AppTokens.s8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                selected ? Icons.radio_button_checked : Icons.radio_button_off,
+                size: 18,
+                color: selected ? AppTokens.brandInk : AppTokens.textMuted,
+              ),
+              const SizedBox(width: AppTokens.s8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      description,
+                      style: const TextStyle(
+                        color: AppTokens.textMuted,
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
