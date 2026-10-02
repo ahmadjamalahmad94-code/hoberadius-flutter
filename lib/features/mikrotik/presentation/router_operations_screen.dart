@@ -22,6 +22,10 @@ import '../application/mikrotik_providers.dart';
 import '../data/mikrotik_repository.dart';
 import '../domain/mikrotik_model.dart';
 
+/// معالج «برمجة مايكروتيك» المستقلّ و«مساعد ما قبل التنفيذ» مخفيّان من واجهة
+/// الويب بطلب المالك (2026-07) — الكود والمسارات محفوظة. اقلبها لإعادتهما.
+const bool kShowHiddenMtWizards = false;
+
 class RouterOperationsScreen extends ConsumerStatefulWidget {
   const RouterOperationsScreen({super.key});
 
@@ -159,7 +163,10 @@ class _RouterOperationsScreenState
                     ),
                   ),
                   // MikroTik-domain pages: owner / co-owner (mt:* keys).
-                  if (ref.watch(permissionsProvider).isOwnerLike)
+                  // «برمجة» (معالج برمجة مايكروتيك المستقلّ) أُخفي من الويب بقرار
+                  // المالك (2026-07) — نخفيه هنا أيضًا للتطابق؛ المسار باقٍ.
+                  if (kShowHiddenMtWizards &&
+                      ref.watch(permissionsProvider).isOwnerLike)
                     ActionItem(
                       icon: Icons.tune_outlined,
                       label: 'برمجة',
@@ -181,8 +188,11 @@ class _RouterOperationsScreenState
             ],
           ),
         ),
-        const SizedBox(height: AppTokens.s12),
-        _GuidedAssistantPanel(routerId: selected.id!),
+        // «مساعد ما قبل التنفيذ» (mt_guided_op) مخفيّ من الويب بقرار المالك.
+        if (kShowHiddenMtWizards) ...[
+          const SizedBox(height: AppTokens.s12),
+          _GuidedAssistantPanel(routerId: selected.id!),
+        ],
         const SizedBox(height: AppTokens.s12),
         _RouterProtectedActions(
           routerId: selected.id!,

@@ -69,4 +69,56 @@ void main() {
     expect(state.loopProbes.single.loopDetected, isTrue);
     expect(state.usageWindows.last.label, 'شهري');
   });
+
+  // parity-c: the per-router editor saves the router's OWN values (null =
+  // inherit) — never the effective ones, which froze the global defaults.
+  test('router override: parsed, and PATCH sends null for «الافتراضي»', () {
+    final r = RouterAlertTarget.fromJson({
+      'id': 4,
+      'name': 'r4',
+      'enabled': true,
+      'offline_after_min': 6,
+      'normal_speed_mbps': 100,
+      'normal_usage_gb': 200,
+      'usage_window': 'day',
+      'override': {
+        'offline_after_min': null,
+        'normal_speed_mbps': 50,
+        'normal_usage_gb': null,
+        'usage_window': null,
+      },
+    });
+    expect(r.overrideKnown, isTrue);
+    expect(r.overrideSpeedMbps, 50);
+    expect(r.overrideOfflineAfterMin, isNull);
+    final body = r
+        .withOverrides(
+          enabled: false,
+          offlineAfterMin: null,
+          speedMbps: 70,
+          usageGb: null,
+          usageWindow: null,
+        )
+        .toJson();
+    expect(body, {
+      'id': 4,
+      'enabled': false,
+      'offline_after_min': null,
+      'normal_speed_mbps': 70,
+      'normal_usage_gb': null,
+      'usage_window': null,
+    });
+  });
+
+  test('older server (no override) keeps the effective-value body', () {
+    final r = RouterAlertTarget.fromJson({
+      'id': 4,
+      'offline_after_min': 6,
+      'normal_speed_mbps': 100,
+      'normal_usage_gb': 200,
+      'usage_window': 'day',
+    });
+    expect(r.overrideKnown, isFalse);
+    expect(r.toJson()['normal_speed_mbps'], 100);
+  });
 }

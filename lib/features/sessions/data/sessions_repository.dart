@@ -172,8 +172,28 @@ class SessionsRepository {
         'down_kbps': downloadKbps,
         'up_kbps': uploadKbps,
         'duration': duration,
-        // Server accepts minutes|hours; mirrors the web temp-speed form.
+        // minutes|hours|days (server cap: 1440 minutes in total).
         'duration_unit': durationUnit,
+      },
+    );
+    return _mapData(res);
+  }
+
+  /// «تغيير الوقت» من شاشة المتصلين: `POST /cards/{id}/adjust-time` بكامل
+  /// الردّ (`card` + `adjustment{remaining_seconds, exhausted, coa}`) كي تقول
+  /// الرسالة ما قاله الويب — لا «تمّ» عامّة حين انتهت البطاقة.
+  Future<Map<String, dynamic>> adjustCardTime(
+    int cardId, {
+    required int amount,
+    required String unit,
+    bool subtract = false,
+  }) async {
+    final res = await _api.post(
+      '/api/v1/cards/$cardId/adjust-time',
+      body: {
+        'amount': amount,
+        'unit': unit,
+        'op': subtract ? 'subtract' : 'add',
       },
     );
     return _mapData(res);

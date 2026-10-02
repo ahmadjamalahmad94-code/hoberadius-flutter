@@ -31,7 +31,7 @@ class _BandwidthSchedulesScreenState
   final _up = TextEditingController(text: '1000');
   final _cirDown = TextEditingController(text: '0');
   final _cirUp = TextEditingController(text: '0');
-  final _priority = TextEditingController(text: '100');
+  final _priority = TextEditingController(text: '5');
   final _notes = TextEditingController();
   String _targetType = 'plan';
   String _starts = '22:00';
@@ -210,7 +210,7 @@ class _BandwidthSchedulesScreenState
               subscriberUsername:
                   _targetType == 'subscriber' ? (_subscriberUsername ?? '') : '',
               cardBatchId: _targetType == 'card_batch' ? _cardBatchId : null,
-              priority: parseIntInput(_priority.text) ?? 0,
+              priority: parseIntInput(_priority.text) ?? 5,
               name: _name.text.trim(),
               startsAtTime: _starts,
               endsAtTime: _ends,

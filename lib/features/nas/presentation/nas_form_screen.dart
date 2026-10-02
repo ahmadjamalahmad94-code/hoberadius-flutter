@@ -32,6 +32,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
 
   String _vendor = 'mikrotik';
   String _nasType = 'hotspot';
+  String _rosVersion = '';
   bool _enabled = true;
   bool _monitoring = true;
   bool _apiUseTls = false;
@@ -71,7 +72,7 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     _c['coa_port']!.text = '3799';
     _c['api_port']!.text = '8728';
     _c['ssh_port']!.text = '22';
-    _c['snmp_community']!.text = 'public';
+    // parity-c: no «public» default — the web form starts empty.
     if (widget.isEdit) _loadExisting();
   }
 
@@ -117,7 +118,9 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     // the previously-stored value.
     setState(() {
       _vendor = d.vendor;
-      _nasType = d.nasType;
+      _nasType = kNasTypeLabels.containsKey(d.nasType) ? d.nasType : 'other';
+      _rosVersion =
+          const {'', '6', '7'}.contains(d.rosVersion) ? d.rosVersion : '';
       _enabled = d.enabled;
       _monitoring = d.monitoringEnabled;
       _apiUseTls = d.apiUseTls;
@@ -126,6 +129,15 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
   }
 
   int _i(String key) => parseIntInput(_c[key]!.text) ?? 0;
+
+  static const _portKeys = [
+    'auth_port',
+    'acct_port',
+    'coa_port',
+    'api_port',
+    'ssh_port',
+    'ports',
+  ];
 
   /// The server said this router NAME is taken (409 `nas_name_conflict`):
   /// shown under the name field, cleared when the name is edited.
@@ -156,6 +168,11 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       requireMessageAuthenticator: _requireMessageAuth,
       sshPort: _i('ssh_port'),
       tags: _s('tags'),
+      rosVersion: _rosVersion,
+      blankPorts: {
+        for (final k in _portKeys)
+          if (_c[k]!.text.trim().isEmpty) k,
+      },
       pendingSecret: _s('secret'),
       pendingApiPassword: _s('api_password'),
     );
@@ -253,11 +270,21 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     }
   }
 
+  /// Empty = the server default (like the web); otherwise 1–65535
+  /// («عدد المنافذ» may be 0).
   Widget _portField(String label, String key) => FormFieldRow(
         label: label,
         child: TextFormField(
           controller: _c[key],
           keyboardType: TextInputType.number,
+          validator: (v) => (v == null || v.trim().isEmpty)
+              ? null
+              : validateNumberInput(
+                  v,
+                  decimal: false,
+                  min: key == 'ports' ? 0 : 1,
+                  max: 65535,
+                ),
         ),
       );
 
@@ -379,29 +406,42 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                           setState(() => _vendor = v ?? 'mikrotik'),
                     ),
                   ),
+                  // parity-c: the server's list (services/devices.py
+                  // NAS_TYPES_ALLOWED) with the web labels — «wireless»
+                  // was app-only and always refused (422).
                   second: FormFieldRow(
                     label: 'النوع',
                     child: DropdownButtonFormField<String>(
                       isExpanded: true,
                       initialValue: _nasType,
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'hotspot',
-                          child: Text('هوتسبوت'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'pppoe',
-                          child: Text('اتصال PPPoE'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'wireless',
-                          child: Text('لاسلكي'),
-                        ),
-                        DropdownMenuItem(value: 'other', child: Text('أخرى')),
+                      items: [
+                        for (final e in kNasTypeLabels.entries)
+                          DropdownMenuItem(value: e.key, child: Text(e.value)),
                       ],
                       onChanged: (v) =>
                           setState(() => _nasType = v ?? 'hotspot'),
                     ),
+                  ),
+                ),
+                FormFieldRow(
+                  label: 'إصدار RouterOS',
+                  hint: 'يحدّد صيغة أمر نفق الإدارة في سكربت التهيئة. '
+                      'اتركه «غير محدّد» ولن تستطيع توليد السكربت حتى تختار.',
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: _rosVersion,
+                    items: const [
+                      DropdownMenuItem(value: '', child: Text('غير محدّد')),
+                      DropdownMenuItem(
+                        value: '7',
+                        child: Text('RouterOS 7 (وأحدث)'),
+                      ),
+                      DropdownMenuItem(
+                        value: '6',
+                        child: Text('RouterOS 6 (قديم)'),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => _rosVersion = v ?? ''),
                   ),
                 ),
                 FormFieldPair(
@@ -549,6 +589,18 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     );
   }
 }
+
+/// `nas_type` values the server accepts, with the web form's labels.
+const Map<String, String> kNasTypeLabels = {
+  'hotspot': 'هوت سبوت',
+  'pppoe': 'PPPoE',
+  'dhcp': 'DHCP',
+  'router': 'راوتر',
+  'ap': 'نقطة وصول',
+  'switch': 'سويتش',
+  'firewall': 'جدار ناري',
+  'other': 'أخرى',
+};
 
 /// Three short port fields on one row (aligned on their inputs).
 class _PortsRow extends StatelessWidget {
