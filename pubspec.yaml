@@ -94,16 +94,6 @@ flutter:
   # PDF exports. Bundled here so the designer canvas previews Arabic
   # in a font visually identical to the exported PDF.
   fonts:
-    # خطُّ الهويّة مُضمَّنًا: كان يُجلب وقتَ التشغيل من fonts.gstatic.com عبر
-    # GoogleFonts.cairoTextTheme، فإن تعذّر الوصول إليه (شبكةٌ مقيّدة/بلا إنترنت)
-    # لا يُرسم في بناءِ الويب أيُّ نصٍّ إطلاقًا (r6ui) — وعلى الجوّال خطُّ النظام.
-    - family: Cairo
-      fonts:
-        - asset: assets/fonts/Cairo-Regular.ttf
-        - asset: assets/fonts/Cairo-Bold.ttf
-          weight: 700
-        - asset: assets/fonts/Cairo-Black.ttf
-          weight: 900
     - family: Almarai
       fonts:
         - asset: assets/fonts/Almarai-Regular.ttf
