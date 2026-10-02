@@ -24,6 +24,8 @@ String formatReportCell(ReportColumn column, Object? value) {
       return _formatDuration(value);
     case ReportColumnKind.boolean:
       return _formatBool(value);
+    case ReportColumnKind.result:
+      return _formatBool(value) == 'نعم' ? 'نجاح' : 'فشل';
     case ReportColumnKind.amount:
       return _formatAmount(value);
     case ReportColumnKind.status:

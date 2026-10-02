@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -12,6 +13,7 @@ import '../../subscribers/domain/subscriber_model.dart';
 import '../application/bandwidth_schedules_controller.dart';
 import '../application/bandwidth_schedules_providers.dart';
 import '../domain/bandwidth_schedule_model.dart';
+import 'widgets/bandwidth_edit_dialog.dart';
 import 'widgets/bandwidth_form_card.dart';
 import 'widgets/bandwidth_schedules_list.dart';
 
@@ -62,6 +64,13 @@ class _BandwidthSchedulesScreenState
     final plans = ref.watch(bandwidthPlansProvider);
     final subscribers = ref.watch(bandwidthSubscribersProvider);
     final batches = ref.watch(bandwidthCardBatchesProvider);
+    final groupNames =
+        ref.watch(bandwidthGroupNamesProvider).valueOrNull ?? const {};
+    // Same keys as the web routes (bandwidth_schedules_update → plans.edit,
+    // _delete → plans.delete); the server enforces them too.
+    final perms = ref.watch(permissionsProvider);
+    final canEdit = perms.can('plans.edit');
+    final canDelete = perms.can('plans.delete');
     final planItems = plans.valueOrNull ?? const <Plan>[];
     final subscriberItems = subscribers.valueOrNull ?? const <Subscriber>[];
     final batchItems = batches.valueOrNull ?? const <CardBatch>[];
@@ -98,6 +107,7 @@ class _BandwidthSchedulesScreenState
                 ref.invalidate(bandwidthPlansProvider);
                 ref.invalidate(bandwidthSubscribersProvider);
                 ref.invalidate(bandwidthCardBatchesProvider);
+                ref.invalidate(bandwidthGroupNamesProvider);
               },
               icon: const Icon(Icons.refresh),
             ),
@@ -174,6 +184,12 @@ class _BandwidthSchedulesScreenState
                 applying: _applying,
                 onApplyDryRun: (item) => _applySchedule(item),
                 onApplyLive: (item) => _applySchedule(item, live: true),
+                groupNames: groupNames,
+                canEdit: canEdit,
+                canDelete: canDelete,
+                onEdit: _editSchedule,
+                onDelete: _deleteSchedule,
+                onToggleEnabled: _toggleSchedule,
               ),
             );
             if (!wide) {
@@ -203,25 +219,24 @@ class _BandwidthSchedulesScreenState
   Future<void> _createSchedule() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-    final result =
-        await ref.read(bandwidthSchedulesControllerProvider).create(
-              targetType: _targetType,
-              planId: _targetType == 'plan' ? _planId : null,
-              subscriberUsername:
-                  _targetType == 'subscriber' ? (_subscriberUsername ?? '') : '',
-              cardBatchId: _targetType == 'card_batch' ? _cardBatchId : null,
-              priority: parseIntInput(_priority.text) ?? 5,
-              name: _name.text.trim(),
-              startsAtTime: _starts,
-              endsAtTime: _ends,
-              speedDownKbps: parseIntInput(_down.text) ?? 0,
-              speedUpKbps: parseIntInput(_up.text) ?? 0,
-              cirDownKbps: parseIntInput(_cirDown.text) ?? 0,
-              cirUpKbps: parseIntInput(_cirUp.text) ?? 0,
-              restoreMode: _restoreMode,
-              enabled: _enabled,
-              notes: _notes.text.trim(),
-            );
+    final result = await ref.read(bandwidthSchedulesControllerProvider).create(
+          targetType: _targetType,
+          planId: _targetType == 'plan' ? _planId : null,
+          subscriberUsername:
+              _targetType == 'subscriber' ? (_subscriberUsername ?? '') : '',
+          cardBatchId: _targetType == 'card_batch' ? _cardBatchId : null,
+          priority: parseIntInput(_priority.text) ?? 5,
+          name: _name.text.trim(),
+          startsAtTime: _starts,
+          endsAtTime: _ends,
+          speedDownKbps: parseIntInput(_down.text) ?? 0,
+          speedUpKbps: parseIntInput(_up.text) ?? 0,
+          cirDownKbps: parseIntInput(_cirDown.text) ?? 0,
+          cirUpKbps: parseIntInput(_cirUp.text) ?? 0,
+          restoreMode: _restoreMode,
+          enabled: _enabled,
+          notes: _notes.text.trim(),
+        );
     if (!mounted) return;
     setState(() => _saving = false);
     if (result.message != null) {
@@ -230,9 +245,48 @@ class _BandwidthSchedulesScreenState
     }
     final text = result.error ?? result.message;
     if (text != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(text)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     }
+  }
+
+  void _snack(BandwidthSchedulesActionResult result) {
+    final text = result.error ?? result.message;
+    if (text != null && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    }
+  }
+
+  Future<void> _editSchedule(BandwidthSchedule item) async {
+    final fields = await showBandwidthEditDialog(context, item);
+    if (fields == null || !mounted) return;
+    setState(() => _applying = true);
+    final result = await ref
+        .read(bandwidthSchedulesControllerProvider)
+        .update(item, fields);
+    if (!mounted) return;
+    setState(() => _applying = false);
+    _snack(result);
+  }
+
+  Future<void> _deleteSchedule(BandwidthSchedule item) async {
+    final ok = await confirmDeleteBandwidthSchedule(context, item);
+    if (!ok || !mounted) return;
+    setState(() => _applying = true);
+    final result =
+        await ref.read(bandwidthSchedulesControllerProvider).delete(item);
+    if (!mounted) return;
+    setState(() => _applying = false);
+    _snack(result);
+  }
+
+  Future<void> _toggleSchedule(BandwidthSchedule item, bool enabled) async {
+    setState(() => _applying = true);
+    final result = await ref
+        .read(bandwidthSchedulesControllerProvider)
+        .setEnabled(item, enabled);
+    if (!mounted) return;
+    setState(() => _applying = false);
+    _snack(result);
   }
 
   Future<void> _applySchedule(
@@ -247,8 +301,7 @@ class _BandwidthSchedulesScreenState
     setState(() => _applying = false);
     final text = result.error ?? result.message;
     if (text != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(text)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
     }
   }
 }

@@ -2,7 +2,18 @@ import 'package:flutter/material.dart';
 
 /// How a report cell should be rendered. Drives the bespoke per-report
 /// formatting (dates, byte counters, durations, booleans, money).
-enum ReportColumnKind { text, date, bytes, duration, boolean, amount, status }
+enum ReportColumnKind {
+  text,
+  date,
+  bytes,
+  duration,
+  boolean,
+  amount,
+  status,
+
+  /// A login attempt's outcome (true → «نجاح», false → «فشل»), like the web.
+  result,
+}
 
 /// One curated column in a bespoke operational-report table. The ordering of
 /// the [OperationalReportDef.columns] list is the on-screen column order, so it
@@ -32,6 +43,8 @@ class OperationalReportDef {
     required this.category,
     required this.columns,
     this.dateKey,
+    this.resultFilter = false,
+    this.sourceFilter = false,
   });
 
   final String slug;
@@ -41,9 +54,16 @@ class OperationalReportDef {
   final String category;
   final List<ReportColumn> columns;
 
-  /// Row key holding the primary timestamp, used for the client-side
-  /// date-range filter (the API only exposes `q`/`limit`/`offset`).
+  /// Row key holding the primary timestamp. A non-null key shows the من/إلى
+  /// range, which is sent to the server (`date_from`/`date_to`, local days)
+  /// exactly like the web report page — never filtered locally.
   final String? dateKey;
+
+  /// The web page's «النتيجة» (الكل/نجاح/فشل) filter (`result`).
+  final bool resultFilter;
+
+  /// The web page's «المصدر» filter (`source`: panel/portal/network).
+  final bool sourceFilter;
 }
 
 /// The 15 wired operational-report slugs, each with a tailored column layout
@@ -101,20 +121,27 @@ const List<OperationalReportDef> operationalReportCatalog = [
       ReportColumn('last_seen', 'آخر ظهور', kind: ReportColumnKind.date),
     ],
   ),
+  // zero-w2: same source/columns as the web /reports/login_status page —
+  // the flat login-attempts log (login_events), not a subscribers roster.
   OperationalReportDef(
     slug: 'login-status',
-    title: 'حالة دخول المستفيدين',
-    subtitle: 'آخر دخول وظهور وحالة الحساب.',
+    title: 'سجل محاولات تسجيل الدخول',
+    subtitle: 'كل محاولة دخول — نجاحًا أو فشلًا — مع الشبكة والجهاز والسبب.',
     icon: Icons.how_to_reg_outlined,
     category: 'الجلسات والاتصال',
-    dateKey: 'last_seen_at',
+    dateKey: 'when',
+    resultFilter: true,
+    sourceFilter: true,
     columns: [
-      ReportColumn('username', 'اسم الدخول'),
-      ReportColumn('status', 'الحالة', kind: ReportColumnKind.status),
-      ReportColumn('online_count', 'متصل الآن', numeric: true),
-      ReportColumn('last_login_at', 'آخر دخول', kind: ReportColumnKind.date),
-      ReportColumn('last_seen_at', 'آخر ظهور', kind: ReportColumnKind.date),
-      ReportColumn('expire_at', 'ينتهي في', kind: ReportColumnKind.date),
+      ReportColumn('when', 'الوقت', kind: ReportColumnKind.date),
+      ReportColumn('username', 'المستخدم'),
+      ReportColumn('success', 'النتيجة', kind: ReportColumnKind.result),
+      ReportColumn('source', 'المصدر'),
+      ReportColumn('ip', 'عنوان الشبكة'),
+      ReportColumn('nas', 'جهاز الشبكة'),
+      ReportColumn('mac', 'MAC'),
+      ReportColumn('device', 'الجهاز'),
+      ReportColumn('reason', 'السبب'),
     ],
   ),
   // ── الدخول والمصادقة ──────────────────────────────────────────────
@@ -125,11 +152,13 @@ const List<OperationalReportDef> operationalReportCatalog = [
     icon: Icons.login_outlined,
     category: 'الدخول والمصادقة',
     dateKey: 'when',
+    resultFilter: true,
+    sourceFilter: true,
     columns: [
       ReportColumn('when', 'وقت الحدث', kind: ReportColumnKind.date),
       ReportColumn('username', 'اسم الدخول'),
       ReportColumn('actor_type', 'نوع المستخدم'),
-      ReportColumn('success', 'النتيجة', kind: ReportColumnKind.boolean),
+      ReportColumn('success', 'النتيجة', kind: ReportColumnKind.result),
       ReportColumn('reason', 'السبب'),
       ReportColumn('source', 'المصدر'),
       ReportColumn('ip', 'IP'),
@@ -251,21 +280,24 @@ const List<OperationalReportDef> operationalReportCatalog = [
     ],
   ),
   // ── الإدارة ──────────────────────────────────────────────────────
+  // zero-w2: same source/columns as the web /reports/manager_login_status
+  // page — manager login attempts (login_events, actor=admin), not the
+  // admins roster.
   OperationalReportDef(
     slug: 'manager-login-status',
-    title: 'دخول المدراء',
-    subtitle: 'آخر دخول وحالة حسابات الإدارة.',
+    title: 'سجل محاولات دخول المدراء',
+    subtitle: 'محاولات دخول المدراء إلى اللوحة — نجاحًا أو فشلًا.',
     icon: Icons.admin_panel_settings_outlined,
     category: 'الإدارة',
-    dateKey: 'last_login_at',
+    dateKey: 'when',
+    resultFilter: true,
     columns: [
-      ReportColumn('username', 'اسم الدخول'),
-      ReportColumn('full_name', 'الاسم الكامل'),
-      ReportColumn('email', 'البريد'),
-      ReportColumn('role_display_name', 'الدور'),
-      ReportColumn('enabled', 'مفعّل', kind: ReportColumnKind.boolean),
-      ReportColumn('last_login_at', 'آخر دخول', kind: ReportColumnKind.date),
-      ReportColumn('created_at', 'تاريخ الإنشاء', kind: ReportColumnKind.date),
+      ReportColumn('when', 'الوقت', kind: ReportColumnKind.date),
+      ReportColumn('username', 'المدير'),
+      ReportColumn('success', 'النتيجة', kind: ReportColumnKind.result),
+      ReportColumn('ip', 'عنوان الشبكة'),
+      ReportColumn('device', 'المتصفح / الجهاز'),
+      ReportColumn('reason', 'السبب'),
     ],
   ),
   // ── البطاقات ─────────────────────────────────────────────────────

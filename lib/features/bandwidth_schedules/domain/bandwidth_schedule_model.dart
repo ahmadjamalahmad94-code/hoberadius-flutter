@@ -19,6 +19,8 @@ class BandwidthSchedule {
     required this.enabled,
     required this.notes,
     required this.createdAt,
+    this.subscriberGroupId,
+    this.daysCsv = '',
   });
 
   final int id;
@@ -39,6 +41,12 @@ class BandwidthSchedule {
   final String notes;
   final DateTime? createdAt;
 
+  /// Target of a `subscriber_group` rule (its members only).
+  final int? subscriberGroupId;
+
+  /// Days chosen in the web speed-rule panels (kept as-is on edit).
+  final String daysCsv;
+
   factory BandwidthSchedule.fromJson(Map<String, dynamic> json) {
     return BandwidthSchedule(
       id: _asInt(json['id']),
@@ -58,6 +66,8 @@ class BandwidthSchedule {
       enabled: _asBool(json['enabled']),
       notes: (json['notes'] ?? '').toString(),
       createdAt: parseServerDateTime(json['created_at']),
+      subscriberGroupId: _nullableInt(json['subscriber_group_id']),
+      daysCsv: (json['days_csv'] ?? '').toString(),
     );
   }
 }

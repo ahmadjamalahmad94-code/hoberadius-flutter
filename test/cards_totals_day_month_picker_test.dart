@@ -20,7 +20,7 @@ void main() {
       totals: CardBatchOperationsTotals(usedToday: 3, valueToday: 15),
       onPickDay: (d) => day = d,
       onPickMonth: (_) {},
-    )));
+    ),),);
     await tester.tap(find.text('بطاقات اليوم'));
     await tester.pumpAndSettle();
     expect(find.byType(DatePickerDialog), findsOneWidget);
@@ -28,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
     final now = DateTime.now();
     expect(day,
-        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}');
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',);
   });
 
   testWidgets('month tile opens a month grid and reports YYYY-MM',
@@ -38,7 +38,7 @@ void main() {
       totals: CardBatchOperationsTotals(usedMonth: 9, valueMonth: 45),
       onPickDay: (_) {},
       onPickMonth: (m) => month = m,
-    )));
+    ),),);
     await tester.tap(find.text('بطاقات الشهر'));
     await tester.pumpAndSettle();
     expect(find.text('اختر الشهر'), findsOneWidget);
@@ -52,7 +52,7 @@ void main() {
       totals: CardBatchOperationsTotals(day: '2026-09-10', month: '2026-08'),
       onPickDay: (_) {},
       onPickMonth: (_) {},
-    )));
+    ),),);
     expect(find.text('بطاقات 2026-09-10'), findsOneWidget);
     expect(find.text('بطاقات أغسطس 2026'), findsOneWidget);
   });
@@ -64,7 +64,7 @@ void main() {
     addTearDown(tester.view.reset);
     await tester.pumpWidget(_wrap(CardsListTotals(
       totals: CardBatchOperationsTotals(configuredValue: 102815.4),
-    )));
+    ),),);
     expect(find.text('قيمة كل كروت الحزم'), findsOneWidget);
     expect(find.text('بسعر البيع، المباع وغير المباع'), findsOneWidget);
     final value = tester.widget<Text>(find.textContaining('102,815.4'));
