@@ -264,8 +264,11 @@ class PaymentFormCard extends StatelessWidget {
 class LoanFormCard extends StatelessWidget {
   const LoanFormCard({
     super.key,
+    required this.days,
     required this.hours,
-    required this.amount,
+    required this.debt,
+    required this.onDebtChanged,
+    required this.computedValue,
     required this.reason,
     required this.applyToRadius,
     required this.dryRun,
@@ -273,6 +276,7 @@ class LoanFormCard extends StatelessWidget {
     required this.onApplyChanged,
     required this.onDryRunChanged,
     required this.onSubmit,
+    this.debtAvailable = true,
     this.currency = '',
     this.error,
     this.preview,
@@ -281,8 +285,20 @@ class LoanFormCard extends StatelessWidget {
   final String currency;
   final String? error;
   final String? preview;
+  final TextEditingController days;
   final TextEditingController hours;
-  final TextEditingController amount;
+
+  /// «تسجيل دين (مدين)» — like the web: the value is NOT typed, it is the
+  /// plan price × the duration (`price_from_days`), shown read-only.
+  final bool debt;
+  final ValueChanged<bool> onDebtChanged;
+
+  /// False when the plan has no price/period (a debt would record 0.00).
+  final bool debtAvailable;
+
+  /// The read-only value of a debt loan (price × duration), already
+  /// computed by the screen.
+  final double computedValue;
   final TextEditingController reason;
   final bool applyToRadius;
   final bool dryRun;
@@ -297,25 +313,49 @@ class LoanFormCard extends StatelessWidget {
       title: 'منح سلفة',
       icon: Icons.handshake_outlined,
       children: [
+        SegmentedButton<bool>(
+          segments: [
+            const ButtonSegment(
+              value: false,
+              label: Text('مجانية'),
+              icon: Icon(Icons.card_giftcard_outlined),
+            ),
+            ButtonSegment(
+              value: true,
+              label: const Text('تسجيل دين (مدين)'),
+              icon: const Icon(Icons.receipt_long_outlined),
+              enabled: debtAvailable,
+            ),
+          ],
+          selected: {debt},
+          onSelectionChanged:
+              busy ? null : (v) => onDebtChanged(v.isNotEmpty && v.first),
+        ),
+        const SizedBox(height: AppTokens.s8),
         FormFieldPair(
           first: NumberTextField(
+            controller: days,
+            decimal: false,
+            decoration: const InputDecoration(labelText: 'عدد الأيام'),
+          ),
+          second: NumberTextField(
             controller: hours,
             decimal: false,
             decoration: const InputDecoration(labelText: 'عدد الساعات'),
           ),
-          second: NumberTextField(
-            controller: amount,
-            extraError: (v) => v > AppLimits.maxLoanAmount
-                ? 'قيمة السلفة كبيرة جدًا — الحدّ الأعلى ${formatNumberBound(AppLimits.maxLoanAmount)}.'
-                : null,
-            decoration: InputDecoration(
-              labelText:
-                  currency.isEmpty
-                      ? 'قيمة السلفة'
-                      : 'قيمة السلفة (${currencyDisplay(currency)})',
-            ),
-          ),
         ),
+        if (debt) ...[
+          const SizedBox(height: AppTokens.s8),
+          InputDecorator(
+            decoration: InputDecoration(
+              labelText: currency.isEmpty
+                  ? 'قيمة السلفة (تلقائي)'
+                  : 'قيمة السلفة (تلقائي — ${currencyDisplay(currency)})',
+              helperText: 'تُحتسب من سعر الباقة × المدّة — لا تُكتب يدويًّا.',
+            ),
+            child: Text(computedValue.toStringAsFixed(2)),
+          ),
+        ],
         const SizedBox(height: AppTokens.s8),
         TextField(
           controller: reason,

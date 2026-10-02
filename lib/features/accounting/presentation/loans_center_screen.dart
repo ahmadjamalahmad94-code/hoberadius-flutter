@@ -621,7 +621,6 @@ Future<LoanCreateOutcome?> _loanDialog(
   final username = TextEditingController();
   final days = TextEditingController(text: '0');
   final hours = TextEditingController(text: '2');
-  final amount = TextEditingController(text: '0');
   final reason = TextEditingController();
   var priceFromDays = false;
   // ON by default: a loan recorded without it gives debt with no time.
@@ -629,12 +628,8 @@ Future<LoanCreateOutcome?> _loanDialog(
   // Same-frame guard: two taps before the first rebuild = one request.
   var submitting = false;
   var dryRun = true;
-  // Supported codes (web settings list), the system currency first/default.
-  var chosenCurrency = currency.isEmpty ? kDefaultCurrency : currency;
-  final currencies = {
-    chosenCurrency,
-    ...kSupportedCurrencies,
-  }.toList();
+  // The system currency only (no per-loan currency, like the web).
+  final systemCurrency = currency.isEmpty ? kDefaultCurrency : currency;
   String? error;
   String? preview;
   var busy = false;
@@ -679,48 +674,18 @@ Future<LoanCreateOutcome?> _loanDialog(
                   ],
                 ),
                 const SizedBox(height: AppTokens.s8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: NumberTextField(
-                        controller: amount,
-                        enabled: !priceFromDays,
-                        extraError: (v) => v > AppLimits.maxLoanAmount
-                            ? moneyTooLargeMessage(AppLimits.maxLoanAmount)
-                            : null,
-                        decoration: InputDecoration(
-                          labelText: 'المبلغ',
-                          helperText: priceFromDays
-                              ? 'يحسبه الخادم من سعر باقة المشترك × المدة.'
-                              : 'ضع 0 للسلفة المجانية أو مبلغًا لتسجيل دين.',
-                          helperMaxLines: 2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppTokens.s8),
-                    // A list of the supported codes, the system currency by
-                    // default (free text saved «ST13 LOA» as a currency).
-                    SizedBox(
-                      width: 110,
-                      child: DropdownButtonFormField<String>(
-                        isExpanded: true,
-                        initialValue: chosenCurrency,
-                        decoration: const InputDecoration(labelText: 'العملة'),
-                        items: [
-                          for (final c in currencies)
-                            DropdownMenuItem(
-                              value: c,
-                              child: Text(currencyDisplay(c)),
-                            ),
-                        ],
-                        onChanged: busy
-                            ? null
-                            : (v) => setState(
-                                  () => chosenCurrency = v ?? chosenCurrency,
-                                ),
-                      ),
-                    ),
-                  ],
+                // Like the web (owner decision 2026-10-02): no typed value
+                // and no currency choice — a debt is the subscriber's price
+                // × the days, recorded in the system currency.
+                InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'قيمة السلفة (تلقائي — ${currencyDisplay(systemCurrency)})',
+                    helperText: priceFromDays
+                        ? 'يحسبها الخادم من سعر باقة المشترك × المدة.'
+                        : 'سلفة مجانية: وقت فقط بدون قيمة ماليّة.',
+                    helperMaxLines: 2,
+                  ),
+                  child: Text(priceFromDays ? 'سعر الباقة × الأيام' : '0.00'),
                 ),
                 const SizedBox(height: AppTokens.s8),
                 TextField(
@@ -732,9 +697,8 @@ Future<LoanCreateOutcome?> _loanDialog(
                   dense: true,
                   value: priceFromDays,
                   onChanged: (value) => setState(() => priceFromDays = value),
-                  label: 'احتساب الدين من عدد الأيام',
-                  subtitle:
-                      'استخدمها عندما تريد تسجيل دين طويل بناءً على سعر الباقة.',
+                  label: 'تسجيل دين (مدين)',
+                  subtitle: 'القيمة تُحتسب تلقائيًا من سعر الباقة × عدد الأيام.',
                 ),
                 HubSwitchRow(
                   dense: true,
@@ -789,14 +753,11 @@ Future<LoanCreateOutcome?> _loanDialog(
                     final user = username.text.trim();
                     final parsedDays = parseIntInput(days.text) ?? 0;
                     final parsedHours = parseIntInput(hours.text) ?? 0;
-                    final parsedAmount = priceFromDays
-                        ? 0
-                        : (parseDecimalInput(amount.text) ?? 0);
                     final problem = validateLoanCenterInput(
                       username: user,
                       daysText: days.text,
                       hoursText: hours.text,
-                      amountText: priceFromDays ? '0' : amount.text,
+                      amountText: '0',
                       priceFromDays: priceFromDays,
                     );
                     if (problem != null) {
@@ -810,8 +771,8 @@ Future<LoanCreateOutcome?> _loanDialog(
                       username: user,
                       days: parsedDays,
                       hours: parsedHours,
-                      amount: parsedAmount,
-                      currency: chosenCurrency,
+                      amount: 0,
+                      currency: systemCurrency,
                       reason: reason.text.trim(),
                       priceFromDays: priceFromDays,
                       applyToRadius: applyToRadius,
@@ -836,7 +797,7 @@ Future<LoanCreateOutcome?> _loanDialog(
                         error = null;
                         preview = _loanCenterPreviewText(
                           draft,
-                          chosenCurrency,
+                          systemCurrency,
                           estimated: est,
                         );
                       });
