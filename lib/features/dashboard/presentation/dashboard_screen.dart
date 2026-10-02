@@ -11,6 +11,7 @@ import '../../../core/theme/app_palette.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../core/theme/typography.dart';
 import '../../../shared/widgets/app_card.dart';
+import '../../../shared/widgets/auto_height_grid.dart';
 import '../../../shared/widgets/hub_error_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../data/dashboard_repository.dart';
@@ -843,21 +844,17 @@ class _MetricGrid extends StatelessWidget {
             : c.maxWidth >= 760
                 ? 3
                 : 2;
-        return GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: cols,
-          mainAxisSpacing: AppTokens.s12,
-          crossAxisSpacing: AppTokens.s12,
-          // Denser tiles: the compact layout (icon+label row, then value/sub)
-          // needs far less height than the old stacked one, so widen the ratio
-          // to cut the empty white space the square cells used to leave.
-          childAspectRatio: c.maxWidth < 520
-              ? 1.3
-              : c.maxWidth < 760
-                  ? 1.6
-                  : 2.2,
-          children: tiles,
+        // Owner 2026-10-02: tiles are as tall as their content (no fixed
+        // aspect ratio → no empty white band); each row shares the tallest
+        // tile's height so the sales tile never looks shorter.
+        final tileWidth = (c.maxWidth - AppTokens.s12 * (cols - 1)) / cols;
+        return _TileCompact(
+          compact: tileWidth < 180,
+          child: AutoHeightGrid(
+            columns: cols,
+            spacing: AppTokens.s12,
+            children: tiles,
+          ),
         );
       },
     );
@@ -896,6 +893,21 @@ class _TapCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Tells the metric tiles whether they are in the narrow (phone) layout —
+/// decided once by the grid, since a LayoutBuilder inside a tile breaks the
+/// intrinsic sizing that lets each row fit its content.
+class _TileCompact extends InheritedWidget {
+  const _TileCompact({required this.compact, required super.child});
+  final bool compact;
+
+  static bool of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_TileCompact>()?.compact ??
+      false;
+
+  @override
+  bool updateShouldNotify(_TileCompact old) => old.compact != compact;
 }
 
 class _MetricTile extends StatelessWidget {
@@ -963,9 +975,9 @@ class _MetricTile extends StatelessWidget {
               ]
             : p.shCard,
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 180;
+      child: Builder(
+        builder: (context) {
+          final compact = _TileCompact.of(context);
           final iconBox = Container(
             width: compact ? 36 : 44,
             height: compact ? 36 : 44,
@@ -997,18 +1009,18 @@ class _MetricTile extends StatelessWidget {
               fontSize: 22,
             ),
           );
-          final subWidget = sub != null
-              ? Text(
-                  sub!,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption.copyWith(
-                    color: primary
-                        ? Colors.white.withValues(alpha: 0.78)
-                        : p.textMuted,
-                  ),
-                )
-              : null;
+          // The sub line is always laid out (blank when there is nothing to
+          // say) so every tile — the sales one with no data yet included —
+          // keeps the same height.
+          final subWidget = Text(
+            sub ?? ' ',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTypography.caption.copyWith(
+              color:
+                  primary ? Colors.white.withValues(alpha: 0.78) : p.textMuted,
+            ),
+          );
 
           // Compact (phone): icon + label share the top row, the number and
           // details sit just below with tight spacing — no filler gap.
@@ -1029,10 +1041,8 @@ class _MetricTile extends StatelessWidget {
                   ),
                   const SizedBox(height: AppTokens.s8),
                   valueWidget,
-                  if (subWidget != null) ...[
-                    const SizedBox(height: 2),
-                    subWidget,
-                  ],
+                  const SizedBox(height: 2),
+                  subWidget,
                 ],
               ),
             );
@@ -1045,7 +1055,7 @@ class _MetricTile extends StatelessWidget {
               labelWidget,
               const SizedBox(height: 2),
               valueWidget,
-              if (subWidget != null) subWidget,
+              subWidget,
             ],
           );
           return Padding(

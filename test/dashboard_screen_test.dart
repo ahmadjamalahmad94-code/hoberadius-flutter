@@ -89,7 +89,8 @@ void main() {
     // Alerts card + messages.
     expect(find.text('ما يحتاج انتباه'), findsOneWidget);
     expect(find.text('5 مشترك ينتهي اشتراكهم خلال 3 أيام.'), findsOneWidget);
-    expect(find.text('لا توجد كروت متاحة — وَلِّد دفعة جديدة.'), findsOneWidget);
+    expect(
+        find.text('لا توجد كروت متاحة — وَلِّد دفعة جديدة.'), findsOneWidget,);
 
     // Subscriber attention + top plan surfaced.
     expect(find.text('متابعة المشتركين'), findsOneWidget);
@@ -128,7 +129,8 @@ void main() {
     }
   });
 
-  testWidgets('hides the sales_today tile when the server omits it (old '
+  testWidgets(
+      'hides the sales_today tile when the server omits it (old '
       'server)', (tester) async {
     await _pumpDashboard(
       tester,
@@ -158,17 +160,54 @@ void main() {
     final metrics = DashboardMetrics.fromJson({
       'subscribers': {'total': 200, 'active': 150, 'expired': 12},
       'cards': {'total': 5000, 'used': 331, 'available': 4669, 'batches': 9},
-      'plans': {'total': 7, 'enabled': 6, 'top': {'name': 'باقة الذهبية', 'subs': 64}},
+      'plans': {
+        'total': 7,
+        'enabled': 6,
+        'top': {'name': 'باقة الذهبية', 'subs': 64},
+      },
       'nas': {'total': 4, 'enabled': 3},
       'system': {'db_ok': true, 'radius_ok': false, 'cpu_pct': 23.0},
       'recent_batches': [
-        {'id': 42, 'batch_code': 'B-0042', 'package_name': 'باقة 10 جيجا', 'count': 100, 'used': 37},
+        {
+          'id': 42,
+          'batch_code': 'B-0042',
+          'package_name': 'باقة 10 جيجا',
+          'count': 100,
+          'used': 37,
+        },
       ],
       'alerts': [
         {'level': 'warn', 'message': '7 مشتركين ينتهي اشتراكهم خلال 3 أيام.'},
       ],
     });
     await _pumpDashboard(tester, metrics, size: const Size(360, 1600));
+    expect(tester.takeException(), isNull);
+  });
+
+  // Owner 2026-10-02: tiles are only as tall as their content (no white
+  // band), and the sales tile keeps the same height with no sales yet.
+  testWidgets(
+      'sales tile with no data is as tall as its neighbour, no '
+      'white space', (tester) async {
+    final metrics = DashboardMetrics.fromJson({
+      'nas': {'total': 4, 'enabled': 3},
+      'sales_today': {
+        'date': '2026-10-02',
+        'cards_count': 0,
+        'money_visible': true,
+        'by_currency': [],
+      },
+    });
+    await _pumpDashboard(tester, metrics, size: const Size(360, 1600));
+    Size tile(String label) => tester.getSize(
+          find
+              .ancestor(of: find.text(label), matching: find.byType(InkWell))
+              .first,
+        );
+    final nas = tile('أجهزة الشبكة');
+    final sales = tile('إجمالي مبيعات اليوم');
+    expect(sales.height, nas.height);
+    expect(nas.height, lessThan(115));
     expect(tester.takeException(), isNull);
   });
 }
