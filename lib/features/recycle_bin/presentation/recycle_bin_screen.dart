@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
+import '../../../core/auth/permissions.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -39,6 +40,7 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
   @override
   Widget build(BuildContext context) {
     final async = ref.watch(_recycleProvider(_entityType));
+    final ownerLike = ref.watch(permissionsProvider).isOwnerLike;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -129,7 +131,10 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                           item: item,
                           busy: _busy,
                           onRestore: () => _restore(item),
-                          onArchive: () => _archive(item),
+                          onPurge:
+                              canPurgeRecycleItem(item, ownerLike: ownerLike)
+                                  ? () => _purge(item)
+                                  : null,
                         ),
                         const SizedBox(height: AppTokens.s12),
                       ],
@@ -197,12 +202,21 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
                                         icon: const Icon(Icons.restore),
                                         label: const Text('استعادة'),
                                       ),
-                                      TextButton.icon(
-                                        onPressed:
-                                            _busy ? null : () => _archive(item),
-                                        icon: const Icon(Icons.inventory_2_outlined),
-                                        label: const Text('أرشفة'),
-                                      ),
+                                      if (canPurgeRecycleItem(
+                                        item,
+                                        ownerLike: ownerLike,
+                                      ))
+                                        TextButton.icon(
+                                          onPressed:
+                                              _busy ? null : () => _purge(item),
+                                          style: TextButton.styleFrom(
+                                            foregroundColor: AppTokens.dangerFg,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.delete_forever_outlined,
+                                          ),
+                                          label: const Text('حذف نهائي'),
+                                        ),
                                     ],
                                   ),
                                 ),
@@ -258,35 +272,23 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
     }
   }
 
-  Future<void> _archive(RecycleBinItem item) async {
+  /// The web «حذف نهائيّ»: erases the batch and every card in it — no undo.
+  /// Typed confirmation (like the web backups delete / restore).
+  Future<void> _purge(RecycleBinItem item) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('أرشفة نهائية'),
-        content: Text(
-          'سيتم نقل "${item.label}" إلى الأرشيف النهائي. لا يمكن استعادته بعدها '
-          'من سلة المحذوفات.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('أرشفة'),
-          ),
-        ],
-      ),
+      builder: (ctx) => _PurgeConfirmDialog(label: item.label),
     );
     if (ok != true) return;
     setState(() => _busy = true);
     try {
-      await ref.read(recycleBinRepositoryProvider).archive(item);
+      final cards = await ref.read(recycleBinRepositoryProvider).purge(item);
       ref.invalidate(_recycleProvider(_entityType));
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تمت الأرشفة')),
+        SnackBar(
+          content: Text('تم الحذف النهائي بلا رجعة — بطاقات: $cards'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -298,18 +300,84 @@ class _RecycleBinScreenState extends ConsumerState<RecycleBinScreen> {
   }
 }
 
+class _PurgeConfirmDialog extends StatefulWidget {
+  const _PurgeConfirmDialog({required this.label});
+
+  final String label;
+
+  @override
+  State<_PurgeConfirmDialog> createState() => _PurgeConfirmDialogState();
+}
+
+class _PurgeConfirmDialogState extends State<_PurgeConfirmDialog> {
+  final _typed = TextEditingController();
+
+  @override
+  void dispose() {
+    _typed.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final matches = recyclePurgeConfirmMatches(_typed.text);
+    return AlertDialog(
+      title: const Text('حذف نهائي'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'تُمحى الحزمة "${widget.label}" وكل بطاقاتها من القاعدة تمامًا، '
+            'ولا يمكن التراجع.',
+          ),
+          const SizedBox(height: AppTokens.s12),
+          const Text(
+            'للتأكيد اكتب: $recyclePurgeConfirmPhrase',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          TextField(
+            key: const Key('recycle-purge-confirm'),
+            controller: _typed,
+            autofocus: true,
+            onChanged: (_) => setState(() {}),
+            decoration: const InputDecoration(
+              hintText: recyclePurgeConfirmPhrase,
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('إلغاء'),
+        ),
+        FilledButton(
+          key: const Key('recycle-purge-submit'),
+          style: FilledButton.styleFrom(backgroundColor: AppTokens.dangerFg),
+          onPressed: matches ? () => Navigator.pop(context, true) : null,
+          child: const Text('حذف نهائي'),
+        ),
+      ],
+    );
+  }
+}
+
 class _RecycleCard extends StatelessWidget {
   const _RecycleCard({
     required this.item,
     required this.busy,
     required this.onRestore,
-    required this.onArchive,
+    required this.onPurge,
   });
 
   final RecycleBinItem item;
   final bool busy;
   final VoidCallback onRestore;
-  final VoidCallback onArchive;
+
+  /// Null = no permanent delete for this item (not a card batch / not owner).
+  final VoidCallback? onPurge;
 
   @override
   Widget build(BuildContext context) {
@@ -361,11 +429,15 @@ class _RecycleCard extends StatelessWidget {
                 icon: const Icon(Icons.restore),
                 label: const Text('استعادة'),
               ),
-              OutlinedButton.icon(
-                onPressed: busy ? null : onArchive,
-                icon: const Icon(Icons.inventory_2_outlined),
-                label: const Text('أرشفة'),
-              ),
+              if (onPurge != null)
+                OutlinedButton.icon(
+                  onPressed: busy ? null : onPurge,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTokens.dangerFg,
+                  ),
+                  icon: const Icon(Icons.delete_forever_outlined),
+                  label: const Text('حذف نهائي'),
+                ),
             ],
           ),
         ],
