@@ -92,6 +92,43 @@ class BandwidthSchedulesRepository {
     );
   }
 
+  /// Edit (PATCH, partial — missing keys keep their stored values), same
+  /// validation as the web «تعديل جدول السرعة» form. Returns the saved row.
+  Future<BandwidthSchedule> update(
+    int scheduleId,
+    Map<String, dynamic> fields,
+  ) async {
+    final res = await _api.patch(
+      '/api/v1/bandwidth-schedules/$scheduleId',
+      body: fields,
+    );
+    return _scheduleOf(res);
+  }
+
+  /// The «مفعّل» toggle without touching any other field.
+  Future<BandwidthSchedule> setEnabled(int scheduleId, bool enabled) async {
+    final res = await _api.post(
+      '/api/v1/bandwidth-schedules/$scheduleId/enabled',
+      body: {'enabled': enabled},
+    );
+    return _scheduleOf(res);
+  }
+
+  Future<void> delete(int scheduleId) async {
+    await _api.delete('/api/v1/bandwidth-schedules/$scheduleId');
+  }
+
+  BandwidthSchedule _scheduleOf(Map<String, dynamic> res) {
+    final data = res['data'];
+    final schedule = data is Map ? data['schedule'] : null;
+    if (schedule is Map) {
+      return BandwidthSchedule.fromJson(
+        schedule.map((key, value) => MapEntry(key.toString(), value)),
+      );
+    }
+    throw StateError('استجابة غير متوقعة من الخادم.');
+  }
+
   Future<BandwidthApplyResult> apply(
     int scheduleId, {
     bool live = false,

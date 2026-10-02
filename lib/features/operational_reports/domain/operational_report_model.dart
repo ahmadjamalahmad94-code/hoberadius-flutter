@@ -6,6 +6,7 @@ class OperationalReportSnapshot {
     required this.query,
     required this.limit,
     required this.offset,
+    this.matched,
   });
 
   final String slug;
@@ -15,6 +16,10 @@ class OperationalReportSnapshot {
   final int limit;
   final int offset;
 
+  /// Total rows matching the filters, when the server reports it (the login
+  /// reports); null = unknown (use "a full page means there may be more").
+  final int? matched;
+
   factory OperationalReportSnapshot.fromJson(Map<String, dynamic> json) {
     final rawItems = json['items'];
     return OperationalReportSnapshot(
@@ -23,6 +28,7 @@ class OperationalReportSnapshot {
       query: (json['query'] ?? '').toString(),
       limit: _asInt(json['limit']),
       offset: _asInt(json['offset']),
+      matched: json['matched'] == null ? null : _asInt(json['matched']),
       items: rawItems is List
           ? rawItems
               .whereType<Map>()

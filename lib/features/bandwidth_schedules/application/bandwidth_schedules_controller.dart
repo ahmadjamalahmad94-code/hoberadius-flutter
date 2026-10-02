@@ -59,6 +59,52 @@ class BandwidthSchedulesController {
     }
   }
 
+  Future<BandwidthSchedulesActionResult> update(
+    BandwidthSchedule item,
+    Map<String, dynamic> fields,
+  ) async {
+    try {
+      await _ref
+          .read(bandwidthSchedulesRepositoryProvider)
+          .update(item.id, fields);
+      _ref.invalidate(bandwidthSchedulesProvider);
+      return const BandwidthSchedulesActionResult(
+        message: 'تم تحديث جدول السرعة.',
+      );
+    } catch (e) {
+      return BandwidthSchedulesActionResult(error: visibleErrorMessage(e));
+    }
+  }
+
+  Future<BandwidthSchedulesActionResult> setEnabled(
+    BandwidthSchedule item,
+    bool enabled,
+  ) async {
+    try {
+      await _ref
+          .read(bandwidthSchedulesRepositoryProvider)
+          .setEnabled(item.id, enabled);
+      _ref.invalidate(bandwidthSchedulesProvider);
+      return BandwidthSchedulesActionResult(
+        message: enabled ? 'تم تفعيل الجدول.' : 'تم تعطيل الجدول.',
+      );
+    } catch (e) {
+      return BandwidthSchedulesActionResult(error: visibleErrorMessage(e));
+    }
+  }
+
+  Future<BandwidthSchedulesActionResult> delete(BandwidthSchedule item) async {
+    try {
+      await _ref.read(bandwidthSchedulesRepositoryProvider).delete(item.id);
+      _ref.invalidate(bandwidthSchedulesProvider);
+      return const BandwidthSchedulesActionResult(
+        message: 'تم حذف جدول السرعة.',
+      );
+    } catch (e) {
+      return BandwidthSchedulesActionResult(error: visibleErrorMessage(e));
+    }
+  }
+
   Future<BandwidthSchedulesActionResult> apply(
     BandwidthSchedule item, {
     bool live = false,

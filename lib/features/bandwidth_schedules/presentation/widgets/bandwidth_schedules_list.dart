@@ -16,9 +16,21 @@ class BandwidthSchedulesList extends StatelessWidget {
     required this.applying,
     required this.onApplyDryRun,
     required this.onApplyLive,
+    this.groupNames = const {},
+    this.canEdit = false,
+    this.canDelete = false,
+    this.onEdit,
+    this.onDelete,
+    this.onToggleEnabled,
   });
 
   final List<BandwidthSchedule> items;
+  final Map<int, String> groupNames;
+  final bool canEdit;
+  final bool canDelete;
+  final ValueChanged<BandwidthSchedule>? onEdit;
+  final ValueChanged<BandwidthSchedule>? onDelete;
+  final void Function(BandwidthSchedule item, bool enabled)? onToggleEnabled;
   final Map<int, String> planNames;
   final Map<int, String> batchNames;
   final bool applying;
@@ -44,10 +56,16 @@ class BandwidthSchedulesList extends StatelessWidget {
           for (final item in items) ...[
             _ScheduleTile(
               item: item,
-              targetName: _targetName(item, planNames, batchNames),
+              targetName: _targetName(item, planNames, batchNames, groupNames),
               applying: applying,
               onApplyDryRun: () => onApplyDryRun(item),
               onApplyLive: () => onApplyLive(item),
+              onEdit: canEdit && onEdit != null ? () => onEdit!(item) : null,
+              onDelete:
+                  canDelete && onDelete != null ? () => onDelete!(item) : null,
+              onToggleEnabled: canEdit && onToggleEnabled != null
+                  ? (v) => onToggleEnabled!(item, v)
+                  : null,
             ),
             if (item != items.last) const Divider(height: AppTokens.s24),
           ],
@@ -60,7 +78,12 @@ class BandwidthSchedulesList extends StatelessWidget {
     BandwidthSchedule item,
     Map<int, String> planNames,
     Map<int, String> batchNames,
+    Map<int, String> groupNames,
   ) {
+    if (item.targetType == 'subscriber_group') {
+      final id = item.subscriberGroupId;
+      return 'مجموعة مشتركين: ${id == null ? 'غير محددة' : groupNames[id] ?? '#$id'}';
+    }
     if (item.targetType == 'subscriber') {
       return 'مشترك: ${item.subscriberUsername}';
     }
@@ -79,6 +102,9 @@ class _ScheduleTile extends StatelessWidget {
     required this.applying,
     required this.onApplyDryRun,
     required this.onApplyLive,
+    this.onEdit,
+    this.onDelete,
+    this.onToggleEnabled,
   });
 
   final BandwidthSchedule item;
@@ -86,6 +112,9 @@ class _ScheduleTile extends StatelessWidget {
   final bool applying;
   final VoidCallback onApplyDryRun;
   final VoidCallback onApplyLive;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+  final ValueChanged<bool>? onToggleEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +140,15 @@ class _ScheduleTile extends StatelessWidget {
               text: item.enabled ? 'مفعّل' : 'معطّل',
               tone: item.enabled ? PillTone.green : PillTone.neutral,
             ),
+            if (onToggleEnabled != null)
+              Tooltip(
+                message: item.enabled ? 'تعطيل الجدول' : 'تفعيل الجدول',
+                child: Switch(
+                  key: ValueKey('schedule-enabled-${item.id}'),
+                  value: item.enabled,
+                  onChanged: applying ? null : onToggleEnabled,
+                ),
+              ),
             const StatusPill(text: 'معاينة متاحة', tone: PillTone.orange),
           ],
         ),
@@ -126,8 +164,8 @@ class _ScheduleTile extends StatelessWidget {
           children: [
             _Metric(label: 'تنزيل', value: '${item.speedDownKbps} Kbps'),
             _Metric(label: 'رفع', value: '${item.speedUpKbps} Kbps'),
-            _Metric(label: 'حد تنزيل أدنى', value: '${item.cirDownKbps}'),
-            _Metric(label: 'حد رفع أدنى', value: '${item.cirUpKbps}'),
+            _Metric(label: 'CIR تنزيل', value: '${item.cirDownKbps} Kbps'),
+            _Metric(label: 'CIR رفع', value: '${item.cirUpKbps} Kbps'),
           ],
         ),
         if (item.notes.isNotEmpty) ...[
@@ -139,7 +177,25 @@ class _ScheduleTile extends StatelessWidget {
           alignment: AlignmentDirectional.centerEnd,
           child: Wrap(
             spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
             children: [
+              if (onEdit != null)
+                OutlinedButton.icon(
+                  key: ValueKey('schedule-edit-${item.id}'),
+                  onPressed: applying ? null : onEdit,
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('تعديل'),
+                ),
+              if (onDelete != null)
+                OutlinedButton.icon(
+                  key: ValueKey('schedule-delete-${item.id}'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTokens.red,
+                  ),
+                  onPressed: applying ? null : onDelete,
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('حذف'),
+                ),
               OutlinedButton.icon(
                 onPressed: applying ? null : onApplyDryRun,
                 icon: const Icon(Icons.science_outlined),

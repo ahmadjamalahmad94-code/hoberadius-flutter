@@ -17,16 +17,14 @@ import '../domain/operational_report_catalog.dart';
 import '../domain/operational_report_model.dart';
 import 'report_formatting.dart';
 
-final _detailProvider = FutureProvider.autoDispose
-    .family<OperationalReportSnapshot, _DetailRequest>((ref, request) {
-  return ref
-      .watch(operationalReportsRepositoryProvider)
-      .fetch(slug: request.slug, query: request.query, limit: 300);
-});
+/// Page size of one server request (the API caps `limit` at 1000).
+const int kOperationalReportPageSize = 100;
 
 /// Bespoke detail view for a single operational report: curated column layout
-/// from the catalog, server search, a client-side date-range drill-down on the
-/// report's primary timestamp, and per-kind cell formatting.
+/// from the catalog and the web page's filters — search, من/إلى (local days),
+/// and for the login reports النتيجة/المصدر — all applied by the SERVER, with
+/// «تحميل المزيد» paging. (It used to fetch the newest 300 rows once and
+/// filter the dates locally, so any older day showed nothing.)
 class OperationalReportDetailScreen extends ConsumerStatefulWidget {
   const OperationalReportDetailScreen({super.key, required this.slug});
 
@@ -40,14 +38,112 @@ class OperationalReportDetailScreen extends ConsumerStatefulWidget {
 class _OperationalReportDetailScreenState
     extends ConsumerState<OperationalReportDetailScreen> {
   final _queryController = TextEditingController();
-  String _query = '';
-  DateTime? _from;
-  DateTime? _to;
+  OperationalReportQuery _filters = const OperationalReportQuery();
+
+  List<Map<String, dynamic>> _rows = const [];
+  int? _matched;
+  bool _hasMore = false;
+  bool _loading = true;
+  bool _loadingMore = false;
+  Object? _error;
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _reload();
+    });
+  }
 
   @override
   void dispose() {
     _queryController.dispose();
     super.dispose();
+  }
+
+  Future<void> _reload() async {
+    if (operationalReportBySlug(widget.slug) == null) return;
+    final gen = ++_generation;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final snap = await ref.read(operationalReportsRepositoryProvider).fetch(
+            slug: widget.slug,
+            filters: _filters,
+            limit: kOperationalReportPageSize,
+          );
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _rows = snap.items;
+        _matched = snap.matched;
+        _hasMore = _moreAfter(snap, snap.items.length);
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore) return;
+    final gen = _generation;
+    setState(() => _loadingMore = true);
+    try {
+      final snap = await ref.read(operationalReportsRepositoryProvider).fetch(
+            slug: widget.slug,
+            filters: _filters,
+            limit: kOperationalReportPageSize,
+            offset: _rows.length,
+          );
+      if (!mounted || gen != _generation) return;
+      setState(() {
+        _rows = [..._rows, ...snap.items];
+        _matched = snap.matched ?? _matched;
+        _hasMore = _moreAfter(snap, _rows.length);
+        _loadingMore = false;
+      });
+    } catch (e) {
+      if (!mounted || gen != _generation) return;
+      setState(() => _loadingMore = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(visibleErrorMessage(e))),
+      );
+    }
+  }
+
+  static bool _moreAfter(OperationalReportSnapshot snap, int loaded) {
+    final matched = snap.matched;
+    if (matched != null) return loaded < matched;
+    return snap.items.length >= kOperationalReportPageSize;
+  }
+
+  void _setFilters(OperationalReportQuery next) {
+    if (next == _filters) return;
+    _filters = next;
+    _reload();
+  }
+
+  OperationalReportQuery _copy({
+    String? query,
+    DateTime? Function()? from,
+    DateTime? Function()? to,
+    String? result,
+    String? source,
+  }) {
+    return OperationalReportQuery(
+      query: query ?? _filters.query,
+      dateFrom: from != null ? from() : _filters.dateFrom,
+      dateTo: to != null ? to() : _filters.dateTo,
+      result: result ?? _filters.result,
+      source: source ?? _filters.source,
+    );
   }
 
   @override
@@ -56,9 +152,9 @@ class _OperationalReportDetailScreenState
     if (def == null) {
       return _UnknownReport(slug: widget.slug);
     }
-    final request = _DetailRequest(widget.slug, _query);
-    final async = ref.watch(_detailProvider(request));
     final hasDate = def.dateKey != null;
+    final from = _filters.dateFrom;
+    final to = _filters.dateTo;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -75,7 +171,7 @@ class _OperationalReportDetailScreenState
           actions: [
             IconButton(
               tooltip: 'تحديث',
-              onPressed: () => ref.invalidate(_detailProvider(request)),
+              onPressed: _reload,
               icon: const Icon(Icons.refresh, color: AppTokens.textSecondary),
             ),
           ],
@@ -122,7 +218,7 @@ class _OperationalReportDetailScreenState
                       child: HubActionButton(
                         item: ActionItem(
                           icon: Icons.event_outlined,
-                          label: _from == null ? 'من' : _fmtDay(_from!),
+                          label: from == null ? 'من' : _fmtDay(from),
                           onPressed: () => _pickDate(isFrom: true),
                         ),
                       ),
@@ -132,22 +228,79 @@ class _OperationalReportDetailScreenState
                       child: HubActionButton(
                         item: ActionItem(
                           icon: Icons.event_outlined,
-                          label: _to == null ? 'إلى' : _fmtDay(_to!),
+                          label: to == null ? 'إلى' : _fmtDay(to),
                           onPressed: () => _pickDate(isFrom: false),
                         ),
                       ),
                     ),
-                    if (_from != null || _to != null) ...[
+                    if (from != null || to != null) ...[
                       const SizedBox(width: AppTokens.s4),
                       IconButton(
                         tooltip: 'مسح التاريخ',
-                        onPressed: () => setState(() {
-                          _from = null;
-                          _to = null;
-                        }),
+                        onPressed: () => _setFilters(
+                          _copy(from: () => null, to: () => null),
+                        ),
                         icon: const Icon(Icons.clear, size: 20),
                       ),
                     ],
+                  ],
+                ),
+              ],
+              if (def.resultFilter || def.sourceFilter) ...[
+                const SizedBox(height: AppTokens.s8),
+                Row(
+                  children: [
+                    if (def.resultFilter)
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          key: const ValueKey('report-result-filter'),
+                          isExpanded: true,
+                          initialValue: _filters.result,
+                          decoration: const InputDecoration(
+                            labelText: 'النتيجة',
+                            isDense: true,
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: '', child: Text('الكل')),
+                            DropdownMenuItem(
+                              value: 'success',
+                              child: Text('نجاح'),
+                            ),
+                            DropdownMenuItem(value: 'fail', child: Text('فشل')),
+                          ],
+                          onChanged: (v) => _setFilters(_copy(result: v ?? '')),
+                        ),
+                      ),
+                    if (def.resultFilter && def.sourceFilter)
+                      const SizedBox(width: AppTokens.s8),
+                    if (def.sourceFilter)
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          key: const ValueKey('report-source-filter'),
+                          isExpanded: true,
+                          initialValue: _filters.source,
+                          decoration: const InputDecoration(
+                            labelText: 'المصدر',
+                            isDense: true,
+                          ),
+                          items: const [
+                            DropdownMenuItem(value: '', child: Text('الكل')),
+                            DropdownMenuItem(
+                              value: 'panel',
+                              child: Text('لوحة التحكم'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'portal',
+                              child: Text('البوابة'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'network',
+                              child: Text('الشبكة'),
+                            ),
+                          ],
+                          onChanged: (v) => _setFilters(_copy(source: v ?? '')),
+                        ),
+                      ),
                   ],
                 ),
               ],
@@ -155,51 +308,55 @@ class _OperationalReportDetailScreenState
           ),
         ),
         const SizedBox(height: AppTokens.s12),
-        async.when(
-          loading: () => const Center(
+        if (_loading)
+          const Center(
             child: Padding(
               padding: EdgeInsets.all(AppTokens.s24),
               child: CircularProgressIndicator(),
             ),
-          ),
-          error: (e, _) => EmptyState(
+          )
+        else if (_error != null)
+          EmptyState(
             icon: Icons.error_outline,
             title: 'تعذر جلب التقرير',
-            subtitle: visibleErrorMessage(e),
-          ),
-          data: (snapshot) => _ReportTable(
+            subtitle: visibleErrorMessage(_error!),
+          )
+        else ...[
+          _ReportTable(
             def: def,
-            rows: _applyDateFilter(def, snapshot.items),
-            totalFetched: snapshot.count,
-            hasQuery: snapshot.query.isNotEmpty,
-            dateFiltered: _from != null || _to != null,
+            rows: _rows,
+            matched: _matched,
+            filtered: _filters.hasFilters,
           ),
-        ),
+          if (_hasMore) ...[
+            const SizedBox(height: AppTokens.s12),
+            Center(
+              child: OutlinedButton.icon(
+                key: const ValueKey('report-load-more'),
+                onPressed: _loadingMore ? null : _loadMore,
+                icon: _loadingMore
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.expand_more),
+                label: const Text('تحميل المزيد'),
+              ),
+            ),
+          ],
+        ],
       ],
     );
   }
 
-  List<Map<String, dynamic>> _applyDateFilter(
-    OperationalReportDef def,
-    List<Map<String, dynamic>> items,
-  ) {
-    if (_from == null && _to == null) return items;
-    return items.where((row) {
-      final date = reportRowDate(def, row);
-      if (date == null) return false;
-      if (_from != null && date.isBefore(_from!)) return false;
-      if (_to != null && date.isAfter(_to!)) return false;
-      return true;
-    }).toList();
-  }
-
   void _search() {
-    setState(() => _query = _queryController.text.trim());
+    _setFilters(_copy(query: _queryController.text.trim()));
   }
 
   Future<void> _pickDate({required bool isFrom}) async {
     final now = panelNow();
-    final initial = (isFrom ? _from : _to) ?? now;
+    final initial = (isFrom ? _filters.dateFrom : _filters.dateTo) ?? now;
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -207,13 +364,9 @@ class _OperationalReportDetailScreenState
       lastDate: DateTime(now.year + 1),
     );
     if (picked == null) return;
-    setState(() {
-      if (isFrom) {
-        _from = DateTime(picked.year, picked.month, picked.day);
-      } else {
-        _to = DateTime(picked.year, picked.month, picked.day, 23, 59, 59);
-      }
-    });
+    // A calendar day; the server turns it into the panel's LOCAL day bounds.
+    final day = DateTime(picked.year, picked.month, picked.day);
+    _setFilters(isFrom ? _copy(from: () => day) : _copy(to: () => day));
   }
 }
 
@@ -223,16 +376,16 @@ class _ReportTable extends StatelessWidget {
   const _ReportTable({
     required this.def,
     required this.rows,
-    required this.totalFetched,
-    required this.hasQuery,
-    required this.dateFiltered,
+    required this.matched,
+    required this.filtered,
   });
 
   final OperationalReportDef def;
   final List<Map<String, dynamic>> rows;
-  final int totalFetched;
-  final bool hasQuery;
-  final bool dateFiltered;
+
+  /// Server total for the filters (login reports); null when not reported.
+  final int? matched;
+  final bool filtered;
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +393,7 @@ class _ReportTable extends StatelessWidget {
       return EmptyState(
         icon: def.icon,
         title: 'لا توجد بيانات',
-        subtitle: hasQuery || dateFiltered
+        subtitle: filtered
             ? 'لا توجد نتائج تطابق الفلترة الحالية.'
             : 'هذا التقرير لا يحتوي سجلات بعد.',
       );
@@ -252,8 +405,8 @@ class _ReportTable extends StatelessWidget {
         vertical: AppTokens.s8,
       ),
       child: Text(
-        dateFiltered
-            ? '${arCount(rows.length, arRecord, showOne: true)} ضمن النطاق (من أصل $totalFetched)'
+        matched != null && matched! > rows.length
+            ? '${arCount(rows.length, arRecord, showOne: true)} معروضة من أصل $matched'
             : arCount(rows.length, arRecord, showOne: true),
         style: const TextStyle(
           color: AppTokens.textMuted,
@@ -344,7 +497,8 @@ class _ReportRowCard extends StatelessWidget {
     final head = columns.first;
     ReportColumn? status;
     for (final c in columns.skip(1)) {
-      if (c.kind == ReportColumnKind.status) {
+      if (c.kind == ReportColumnKind.status ||
+          c.kind == ReportColumnKind.result) {
         status = c;
         break;
       }
@@ -409,7 +563,9 @@ class _ReportRowCard extends StatelessWidget {
                 Flexible(
                   child: StatusPill(
                     text: statusText,
-                    tone: toneForStatus(statusText),
+                    tone: status!.kind == ReportColumnKind.result
+                        ? (statusText == 'نجاح' ? PillTone.green : PillTone.red)
+                        : toneForStatus(statusText),
                   ),
                 ),
               ],
@@ -492,17 +648,4 @@ class _UnknownReport extends StatelessWidget {
       ],
     );
   }
-}
-
-class _DetailRequest {
-  const _DetailRequest(this.slug, this.query);
-  final String slug;
-  final String query;
-
-  @override
-  bool operator ==(Object other) =>
-      other is _DetailRequest && other.slug == slug && other.query == query;
-
-  @override
-  int get hashCode => Object.hash(slug, query);
 }
