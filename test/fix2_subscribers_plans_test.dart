@@ -496,7 +496,9 @@ void main() {
       );
     });
 
-    test('temp speed: days allowed, strict numbers, ≤ a year', () {
+    // parity-c: the server's rules (services/temp_speed.py) — 0 or ≥64
+    // Kbps per direction (not both 0), 1…1440 minutes in total.
+    test('temp speed: server limits (0|≥64 kbps, ≤ 1 day)', () {
       String? v(String d, String u, String dur, String unit) =>
           validateTemporarySpeedInput(
             downloadText: d,
@@ -504,10 +506,18 @@ void main() {
             durationText: dur,
             unit: unit,
           );
-      expect(v('2048', '1024', '3', 'days'), isNull);
+      expect(v('2048', '1024', '1', 'days'), isNull);
+      expect(v('2048', '1024', '24', 'hours'), isNull);
+      expect(v('2048', '1024', '1440', 'minutes'), isNull);
       expect(v('٢٠٤٨', '1024', '2', 'hours'), isNull);
-      expect(v('2048', '1024', '400', 'days'), contains('سنة'));
+      expect(v('2048', '1024', '2', 'days'), contains('يوم واحد'));
+      expect(v('2048', '1024', '25', 'hours'), contains('يوم واحد'));
+      expect(v('2048', '1024', '1441', 'minutes'), contains('يوم واحد'));
       expect(v('2048', '1e3', '2', 'hours'), contains('سرعة الرفع'));
+      expect(v('0', '1024', '30', 'minutes'), isNull);
+      expect(v('2048', '0', '30', 'minutes'), isNull);
+      expect(v('0', '0', '30', 'minutes'), contains('0/0'));
+      expect(v('32', '1024', '30', 'minutes'), contains('64'));
       expect(v('2048', '1024', '0', 'minutes'), isNotNull);
     });
   });

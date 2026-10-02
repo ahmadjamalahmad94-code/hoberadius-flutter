@@ -216,6 +216,10 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     await _runAction(
       session: session,
       successMessage: 'تم طلب إلغاء السرعة المؤقتة لـ ${session.username}.',
+      outcome: (res) => cancelTempSpeedOutcome(
+        session.username,
+        res is Map<String, dynamic> ? res : const {},
+      ),
       action: (repo) => repo.cancelTemporarySpeed(
         username: session.username,
         sessionId: session.sessionId,
@@ -265,17 +269,31 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     if (id == null) return;
     final draft = await showCardTimeDialog(context, username: session.username);
     if (draft == null) return;
-    await _runTask(
-      success: draft.subtract
-          ? 'تم خصم ${draft.label} من ${session.username}.'
-          : 'تمت إضافة ${draft.label} إلى ${session.username}.',
-      task: () => ref.read(cardsRepositoryProvider).adjustCardTime(
+    try {
+      final res = await ref.read(sessionsRepositoryProvider).adjustCardTime(
             id,
             amount: draft.amount,
             unit: draft.unit,
             subtract: draft.subtract,
-          ),
-    );
+          );
+      if (!mounted) return;
+      final o = cardTimeOutcome(session.username, draft, res);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(o.message),
+          backgroundColor: o.warning ? AppTokens.warningFg : null,
+          duration: o.warning
+              ? const Duration(seconds: 8)
+              : const Duration(milliseconds: 4000),
+        ),
+      );
+      _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(visibleErrorMessage(error))),
+      );
+    }
   }
 
   Future<void> _resetCardUsage(OnlineSession session) async {
@@ -783,6 +801,79 @@ String coaFailureReason(String code) {
   if (known != null) return known;
   if (c.startsWith('unknown-code-')) return 'ردّ غير معروف من الراوتر';
   return 'تعذّر تأكيد التطبيق على الراوتر';
+}
+
+/// The message after «إلغاء السرعة» — the web's two flashes
+/// (routes/sessions.py online_temp_speed_cancel): `temporary_speed.reverted`
+/// false means there was no active temp window, NOT a success.
+SessionActionOutcome cancelTempSpeedOutcome(
+  String username,
+  Map<String, dynamic> data,
+) {
+  final who = ltrIsolate(username);
+  final ts = data['temporary_speed'];
+  if (ts is Map && ts['reverted'] == false) {
+    return SessionActionOutcome(
+      message: 'لا توجد سرعة مؤقتة فعّالة لـ $who.',
+    );
+  }
+  if (ts is Map && ts['reverted'] == true) {
+    return SessionActionOutcome(
+      message: 'تم إلغاء السرعة المؤقتة لـ $who وإرجاعه لسرعته العادية فورًا.',
+    );
+  }
+  return SessionActionOutcome(
+    message: 'تم طلب إلغاء السرعة المؤقتة لـ $who.',
+  );
+}
+
+/// The message after «تغيير الوقت» — the web card checker's set_time flash
+/// (routes/cards.py): an exhausting subtraction is a WARNING (the card is
+/// now finished and its session cut); otherwise the new remaining time and
+/// whether the router got the update live (`adjustment.coa`).
+SessionActionOutcome cardTimeOutcome(
+  String username,
+  CardTimeDraft draft,
+  Map<String, dynamic> data,
+) {
+  final who = ltrIsolate(username);
+  final head = draft.subtract
+      ? 'تم خصم ${draft.label} من $who'
+      : 'تمت إضافة ${draft.label} إلى $who';
+  final adj = data['adjustment'];
+  if (adj is! Map) return SessionActionOutcome(message: '$head.');
+  if (adj['exhausted'] == true) {
+    return SessionActionOutcome(
+      warning: true,
+      message: '$head — استُنفد وقت البطاقة كلّه فصارت منتهية وقُطعت '
+          'جلستها إن كانت متصلة.',
+    );
+  }
+  final rem = int.tryParse('${adj['remaining_seconds'] ?? ''}');
+  var tail = '';
+  if (rem != null && rem > 0) {
+    final h = rem ~/ 3600;
+    final m = (rem % 3600) ~/ 60;
+    tail = ' المتبقي الآن: $h ساعة و $m دقيقة.';
+  }
+  final coa = adj['coa'];
+  var coaNote = '';
+  var warning = false;
+  if (coa is Map) {
+    final code = '${coa['code'] ?? ''}'.trim();
+    if (coa['ok'] == true) {
+      coaNote = ' — وصل التحديث للراوتر.';
+    } else if (code == 'no_active_session') {
+      coaNote = ' — لا جلسة نشطة الآن، سيُطبَّق في الجلسة التالية.';
+    } else {
+      warning = true;
+      coaNote = ' — لم يصل التحديث الفوري للراوتر (${coaFailureReason(code)}).';
+    }
+  }
+  return SessionActionOutcome(
+    warning: warning,
+    message: '$head.$tail$coaNote',
+  );
 }
 
 /// The message after «سرعة مؤقتة», the same cases as the web flash
@@ -1654,8 +1745,9 @@ class _TemporarySpeedDraft {
 }
 
 Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
-  final download = TextEditingController(text: '2048');
-  final upload = TextEditingController(text: '1024');
+  // الافتراضيّ مطابق لنموذج الويب (sessions_list.html: 2500/2500 Kbit/s).
+  final download = TextEditingController(text: '2500');
+  final upload = TextEditingController(text: '2500');
   final duration = TextEditingController(text: '30');
   var unit = 'minutes';
 
@@ -1670,7 +1762,7 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'أدخل السرعة بالكيلوبت/ثانية والمدة ووحدتها. سيتم إرسال الطلب إلى الريدياس لتطبيق CoA إن كان متاحًا.',
+                'أدخل السرعة بالكيلوبت/ثانية (0 = غير محدود في ذلك الاتجاه، وإلّا 64 فأكثر) والمدة ووحدتها — حتى يوم واحد. سيتم إرسال الطلب إلى الريدياس لتطبيق CoA إن كان متاحًا.',
               ),
               const SizedBox(height: AppTokens.s12),
               TextField(
@@ -1783,8 +1875,10 @@ Future<_TemporarySpeedDraft?> _showTemporarySpeedDialog(BuildContext context) {
   });
 }
 
-/// Temp-speed dialog guard (Arabic): whole positive numbers, a duration of
-/// at most a year whatever the unit.
+/// Temp-speed dialog guard (Arabic) — the server's own rules
+/// (`services/temp_speed.py` apply_temp_speed): each speed is 0 (= unlimited
+/// in that direction) or 64…1,000,000 Kbps, not both 0; the window is
+/// 1…1440 minutes (a day at most) whatever the unit.
 String? validateTemporarySpeedInput({
   required String downloadText,
   required String uploadText,
@@ -1794,18 +1888,30 @@ String? validateTemporarySpeedInput({
   for (final (label, text) in [
     ('سرعة التنزيل', downloadText),
     ('سرعة الرفع', uploadText),
-    ('المدة', durationText),
   ]) {
-    final err = validateNumberInput(text, decimal: false, min: 1);
+    final err = validateNumberInput(text, decimal: false, min: 0);
     if (err != null) return '$label: $err';
+    final v = parseIntInput(text) ?? 0;
+    if (v > 0 && v < 64) {
+      return '$label: 0 (غير محدود) أو 64 كيلوبت فأكثر.';
+    }
+    if (v > 1000000) return '$label: السرعة المدخلة كبيرة جدًا.';
   }
+  if ((parseIntInput(downloadText) ?? 0) == 0 &&
+      (parseIntInput(uploadText) ?? 0) == 0) {
+    return 'السرعة المؤقتة تحتاج سرعة تنزيل أو رفع — 0/0 تعني «بلا تقييد».';
+  }
+  final err = validateNumberInput(durationText, decimal: false, min: 1);
+  if (err != null) return 'المدة: $err';
   final v = parseIntInput(durationText) ?? 0;
   final minutes = switch (unit) {
     'days' => v * 1440,
     'hours' => v * 60,
     _ => v,
   };
-  if (minutes > 365 * 1440) return 'المدة: الحدّ الأعلى سنة.';
+  if (minutes > 1440) {
+    return 'المدة: الحدّ الأعلى يوم واحد (1440 دقيقة).';
+  }
   return null;
 }
 
