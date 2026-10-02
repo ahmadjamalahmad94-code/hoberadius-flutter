@@ -136,7 +136,7 @@ class _PolicySidePanel extends StatelessWidget {
           ]
         : const [
             ('العناصر', 'نطاق دفع أو IP مسموح قبل الدخول'),
-            ('البروفايل', 'اختياري لتحديد بروفايل الهوتسبوت'),
+            ('السيرفر', 'اختياري لتحديد سيرفر الهوتسبوت'),
             ('المعاينة', 'تراجع السماح وقابلية التراجع'),
           ];
 
@@ -1219,33 +1219,36 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: AppTokens.s12),
-          DropdownButtonFormField<String>(
-            isExpanded: true,
-            initialValue: _kindValue,
-            decoration: const InputDecoration(labelText: 'النوع'),
-            items: widget.kind.isWebBlock
-                ? const [
-                    DropdownMenuItem(value: 'domain', child: Text('نطاق')),
-                    DropdownMenuItem(value: 'ip', child: Text('عنوان IP')),
-                    DropdownMenuItem(value: 'cidr', child: Text('شبكة CIDR')),
-                  ]
-                : const [
-                    DropdownMenuItem(
-                      value: 'dst_host',
-                      child: Text('اسم نطاق'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'dst_address',
-                      child: Text('عنوان IP'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'dst_address_list',
-                      child: Text('قائمة عناوين'),
-                    ),
-                  ],
-            onChanged: (value) =>
-                setState(() => _kindValue = value ?? _kindValue),
-          ),
+          // parity-c: a block target's kind (نطاق / IP / CIDR) is detected
+          // by the server's analyzer — exactly like the web form, which has
+          // no type field; a hand-picked type could disagree with the value.
+          if (widget.kind.isWebBlock)
+            const Text(
+              'يُكتشف النوع تلقائيًا: نطاق أو عنوان IP أو شبكة CIDR.',
+              style: TextStyle(color: AppTokens.textMuted, fontSize: 12.5),
+            )
+          else
+            DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: _kindValue,
+              decoration: const InputDecoration(labelText: 'النوع'),
+              items: const [
+                DropdownMenuItem(
+                  value: 'dst_host',
+                  child: Text('اسم نطاق'),
+                ),
+                DropdownMenuItem(
+                  value: 'dst_address',
+                  child: Text('عنوان IP'),
+                ),
+                DropdownMenuItem(
+                  value: 'dst_address_list',
+                  child: Text('قائمة عناوين'),
+                ),
+              ],
+              onChanged: (value) =>
+                  setState(() => _kindValue = value ?? _kindValue),
+            ),
           const SizedBox(height: AppTokens.s12),
           TextField(
             controller: _value,
@@ -1328,7 +1331,6 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
       final body = widget.kind.isWebBlock
           ? {
               'value': value,
-              'target_type': _kindValue,
               'category': _category.text.trim().isEmpty
                   ? 'custom'
                   : _category.text.trim(),
@@ -1484,8 +1486,12 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
                 const Divider(height: AppTokens.s24),
                 TextField(
                   controller: _hotspotProfile,
+                  // parity-c: emitted as «server=» — a hotspot SERVER name
+                  // (same label as the web form).
                   decoration: const InputDecoration(
-                    labelText: 'بروفايل الهوتسبوت اختياري',
+                    labelText: 'اسم سيرفر الهوتسبوت (اختياري)',
+                    hintText: 'مثلاً: hotspot1',
+                    helperText: 'فارغ = كل السيرفرات.',
                   ),
                 ),
               ],
