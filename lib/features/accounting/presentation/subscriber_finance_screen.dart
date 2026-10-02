@@ -46,7 +46,8 @@ class _SubscriberFinanceScreenState
   final _paymentAmount = TextEditingController();
   final _paymentNotes = TextEditingController();
   final _loanHours = TextEditingController(text: '2');
-  final _loanAmount = TextEditingController(text: '0');
+  final _loanDays = TextEditingController(text: '0');
+  bool _loanDebt = false;
   final _loanReason = TextEditingController();
   // «تطبيق على الريدياس» is ON by default: a payment/loan recorded with it
   // off gives money without time (r03 N15).
@@ -68,6 +69,13 @@ class _SubscriberFinanceScreenState
   void initState() {
     super.initState();
     _future = _load();
+    // The read-only debt value follows the typed duration.
+    _loanDays.addListener(_onLoanDuration);
+    _loanHours.addListener(_onLoanDuration);
+  }
+
+  void _onLoanDuration() {
+    if (mounted && _loanDebt) setState(() {});
   }
 
   @override
@@ -81,7 +89,8 @@ class _SubscriberFinanceScreenState
     _paymentAmount.clear();
     _paymentNotes.clear();
     _loanHours.text = '2';
-    _loanAmount.text = '0';
+    _loanDays.text = '0';
+    _loanDebt = false;
     _loanReason.clear();
     _paymentKeys.reset();
     _loanKeys.reset();
@@ -103,7 +112,7 @@ class _SubscriberFinanceScreenState
     _paymentAmount.dispose();
     _paymentNotes.dispose();
     _loanHours.dispose();
-    _loanAmount.dispose();
+    _loanDays.dispose();
     _loanReason.dispose();
     super.dispose();
   }
@@ -247,14 +256,48 @@ class _SubscriberFinanceScreenState
     }
   }
 
+  /// Minutes of the loan form (days + hours).
+  int get _loanMinutes =>
+      (parseIntInput(_loanDays.text) ?? 0) * 1440 +
+      (parseIntInput(_loanHours.text) ?? 0) * 60;
+
+  /// The web's rule (owner decision 2026-10-02): a debt loan's value is the
+  /// subscriber's price × the duration — never typed. Free → 0.
+  double _loanValue(SubscriberFinanceData data) {
+    final c = data.context;
+    if (!_loanDebt || c == null) return 0;
+    return priceForMinutes(
+      effectivePrice: c.effectivePrice,
+      planMinutes: c.planMinutes,
+      minutes: _loanMinutes,
+    );
+  }
+
+  /// No context (old server), or a plan without price/period: no debt.
+  bool _debtAvailable(SubscriberFinanceData data) {
+    final c = data.context;
+    return c != null && c.effectivePrice > 0 && c.planMinutes > 0;
+  }
+
   Future<void> _createLoan(SubscriberFinanceData data) async {
-    final problem = validateFinanceLoanInput(
-          hoursText: _loanHours.text,
-          amountText: _loanAmount.text,
-        ) ??
-        validateExtendSpan((parseIntInput(_loanHours.text) ?? 0) * 60);
+    final c = data.context;
+    final days = parseIntInput(_loanDays.text) ?? 0;
     final hours = parseIntInput(_loanHours.text) ?? 0;
-    final amount = parseDecimalInput(_loanAmount.text) ?? 0;
+    final amount = _loanValue(data);
+    final dErr = readNumberInput(_loanDays.text, decimal: false).error;
+    final hErr = readNumberInput(_loanHours.text, decimal: false).error;
+    final problem = (dErr != null ? 'عدد الأيام: $dErr' : null) ??
+        (hErr != null ? 'عدد الساعات: $hErr' : null) ??
+        (_loanDebt && !_debtAvailable(data)
+            ? 'لا يمكن تسجيل دين: الباقة بلا سعر أو مدّة — اختر «مجانية».'
+            : null) ??
+        validateLoan(
+          type: _loanDebt ? LoanType.debt : LoanType.free,
+          days: days,
+          hours: hours,
+          maxFreeHours: c?.maxFreeLoanHours ?? 72,
+          maxDebtDays: c?.maxDebtLoanDays ?? 366,
+        );
     if (problem != null) {
       setState(() {
         _loanError = problem;
@@ -266,7 +309,7 @@ class _SubscriberFinanceScreenState
       setState(() {
         _loanError = null;
         _loanPreview = loanPreviewText(
-          hours: hours,
+          minutes: _loanMinutes,
           amount: amount,
           currency: data.currency,
           applyToRadius: _applyLoan,
@@ -276,8 +319,9 @@ class _SubscriberFinanceScreenState
     }
     final body = {
       'u': widget.username,
+      'd': days,
       'h': hours,
-      'a': amount,
+      'debt': _loanDebt,
       'r': _loanReason.text.trim(),
       'x': _applyLoan,
     };
@@ -287,8 +331,12 @@ class _SubscriberFinanceScreenState
         final outcome =
             await ref.read(accountingRepositoryProvider).createLoanWithOutcome(
                   username: widget.username,
+                  days: days,
                   hours: hours,
-                  amount: amount,
+                  // Never a typed value: a debt is priced by the server
+                  // from the duration (price_from_days), exactly like the web.
+                  amount: 0,
+                  priceFromDays: _loanDebt,
                   reason: _loanReason.text.trim(),
                   applyToRadius: _applyLoan,
                   idempotencyKey: key,
@@ -466,8 +514,15 @@ class _SubscriberFinanceScreenState
                   onSubmit: () => _createPayment(data),
                 );
                 final loan = LoanFormCard(
+                  days: _loanDays,
                   hours: _loanHours,
-                  amount: _loanAmount,
+                  debt: _loanDebt,
+                  debtAvailable: _debtAvailable(data),
+                  computedValue: _loanValue(data),
+                  onDebtChanged: (v) => setState(() {
+                    _loanDebt = v;
+                    _loanPreview = null;
+                  }),
                   reason: _loanReason,
                   applyToRadius: _applyLoan,
                   dryRun: _dryRunLoan,
@@ -586,7 +641,7 @@ String paymentPreviewText({
 
 /// Local «معاينة بدون تنفيذ» of a loan: nothing is sent to the server.
 String loanPreviewText({
-  required int hours,
+  required int minutes,
   required double amount,
   required String currency,
   required bool applyToRadius,
@@ -596,5 +651,5 @@ String loanPreviewText({
       : 'سلفة مجانية بدون قيمة';
   final radius =
       applyToRadius ? 'وتُطبَّق المدّة على الحساب' : 'دون تطبيق على الحساب';
-  return 'معاينة فقط — لم يُسجَّل شيء. ${arDuration(hours * 60)}: $value $radius.';
+  return 'معاينة فقط — لم يُسجَّل شيء. ${arDuration(minutes)}: $value $radius.';
 }

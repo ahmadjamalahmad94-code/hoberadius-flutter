@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/format/currency.dart';
+import '../../../core/l10n/arabic_labels.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../application/admin_control_controller.dart';
@@ -42,22 +44,54 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
 
   Future<void> _editSetting(SettingItem item) async {
     final controller = TextEditingController(text: item.value);
+    final choices = settingChoices(item.key);
+    String? picked = choices == null
+        ? null
+        : choices.any((c) => c.$1 == item.value.trim())
+            ? item.value.trim()
+            : null;
     final value = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(item.displayLabel),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          minLines: 1,
-          maxLines: 3,
-          decoration: InputDecoration(
-            labelText: 'القيمة',
-            helperText: item.defaultValue.isEmpty
-                ? null
-                : 'الافتراضي: ${item.defaultValue}',
-          ),
-        ),
+        content: choices != null
+            ? DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: picked,
+                decoration: InputDecoration(
+                  labelText: 'القيمة',
+                  helperText: item.defaultValue.isEmpty
+                      ? null
+                      : 'الافتراضي: ${item.defaultValue}',
+                ),
+                items: [
+                  for (final c in choices)
+                    DropdownMenuItem(
+                      value: c.$1,
+                      child: Text(
+                        item.key == kCurrencySettingKey
+                            ? currencyOptionLabel(c.$1)
+                            : c.$2,
+                      ),
+                    ),
+                ],
+                onChanged: (v) {
+                  picked = v;
+                  if (v != null) controller.text = v;
+                },
+              )
+            : TextField(
+                controller: controller,
+                autofocus: true,
+                minLines: 1,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'القيمة',
+                  helperText: item.defaultValue.isEmpty
+                      ? null
+                      : 'الافتراضي: ${item.defaultValue}',
+                ),
+              ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),

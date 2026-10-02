@@ -690,30 +690,33 @@ Future<void> _showCreateTicketDialog(
                         isExpanded: true,
                         initialValue: category,
                         decoration: const InputDecoration(labelText: 'النوع'),
+                        // The web's list and labels (tickets_list.html) —
+                        // «service» had no label, «payment/technical» were
+                        // app-only (parity-b).
                         items: const [
                           DropdownMenuItem(
                             value: 'general',
                             child: Text('عام'),
                           ),
                           DropdownMenuItem(
-                            value: 'service',
-                            child: Text('خدمة'),
+                            value: 'billing',
+                            child: Text('الفواتير والدفع'),
                           ),
                           DropdownMenuItem(
-                            value: 'service_request',
-                            child: Text('طلب خدمة'),
+                            value: 'connection',
+                            child: Text('الاتصال والخدمة'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'hardware',
+                            child: Text('الأجهزة والمعدّات'),
                           ),
                           DropdownMenuItem(
                             value: 'complaint',
                             child: Text('شكوى'),
                           ),
                           DropdownMenuItem(
-                            value: 'payment',
-                            child: Text('دفع'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'technical',
-                            child: Text('فني'),
+                            value: 'service_request',
+                            child: Text('طلب خدمة'),
                           ),
                         ],
                         onChanged: busy

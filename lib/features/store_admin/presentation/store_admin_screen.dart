@@ -609,11 +609,14 @@ class _PaymentMethodDialogState extends ConsumerState<_PaymentMethodDialog> {
   late bool _active;
   bool _saving = false;
 
+  // The server's VALID_METHODS / _METHOD_AR (services/store_deposits.py),
+  // like the web form. «wallet/cliq/cash» were stored as «other» silently,
+  // and a web-made «jawaly_pay/palpay» channel opened here as «other» and was
+  // overwritten on save (parity-b F4).
   static const _methods = {
+    'jawaly_pay': 'جوالي باي',
     'bank': 'تحويل بنكي',
-    'wallet': 'محفظة إلكترونية',
-    'cliq': 'كليك (CliQ)',
-    'cash': 'نقدي',
+    'palpay': 'PalPay',
     'other': 'قناة أخرى',
   };
 

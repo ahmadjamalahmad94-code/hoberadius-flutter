@@ -389,12 +389,12 @@ class _PaymentSettingsEditorState
                 label: 'العملة',
                 child: DropdownButtonFormField<String>(
                   isExpanded: true,
-                  initialValue: kSupportedCurrencies.contains(_currency)
+                  initialValue: kCollectionCurrencies.contains(_currency)
                       ? _currency
-                      : kDefaultCurrency,
+                      : kCollectionCurrencies.first,
                   // Half-width field: show the name only once picked (the
                   // «— JOD» suffix stays in the open menu).
-                  selectedItemBuilder: (context) => kSupportedCurrencies
+                  selectedItemBuilder: (context) => kCollectionCurrencies
                       .map(
                         (value) => Align(
                           alignment: AlignmentDirectional.centerStart,
@@ -408,7 +408,7 @@ class _PaymentSettingsEditorState
                         ),
                       )
                       .toList(),
-                  items: kSupportedCurrencies
+                  items: kCollectionCurrencies
                       .map(
                         (value) => DropdownMenuItem(
                           value: value,
@@ -1020,8 +1020,18 @@ Future<void> _showCreatePaymentRequestDialog(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final draft =
-      await _paymentRequestDialog(context, ref.read(tenantCurrencyProvider));
+  // The collection's own currency (its settings) — the server prefers the
+  // request's currency over it, and the tenant currency could be one the
+  // collection does not accept / not the wallet's (parity-b F1b).
+  String currency = ref.read(tenantCurrencyProvider);
+  try {
+    final s = await ref.read(paymentCollectionSettingsProvider.future);
+    if (s.currency.trim().isNotEmpty) {
+      currency = s.currency.trim().toUpperCase();
+    }
+  } catch (_) {}
+  if (!context.mounted) return;
+  final draft = await _paymentRequestDialog(context, currency);
   if (draft == null) return;
   try {
     final created = await ref
@@ -1125,8 +1135,7 @@ Future<PaymentRequestDraft?> _paymentRequestDialog(
                           labelText: 'المبلغ',
                           helperText: kMaxMoneyHelper,
                         ),
-                        validator: (value) =>
-                            readMoneyInput(value ?? '').error,
+                        validator: (value) => readMoneyInput(value ?? '').error,
                       ),
                     ),
                     const SizedBox(width: AppTokens.s12),

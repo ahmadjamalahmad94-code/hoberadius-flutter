@@ -84,7 +84,11 @@ class Admin {
         'email': email,
         'mobile': mobile,
         'phone': phone,
-        if (roleId != null) 'role_id': roleId,
+        // Only a changed role (the web sends none for an unchanged one): an
+        // older server treated the re-sent current role as an escalation
+        // and refused a manager's whole save (parity-b).
+        if (roleId != null && (original == null || roleId != original.roleId))
+          'role_id': roleId,
         if (ownerFlags &&
             (original == null
                 ? isSuperAdmin
@@ -227,19 +231,45 @@ class PermissionGroup {
 }
 
 class PermissionCatalog {
-  PermissionCatalog({required this.items, required this.groups});
+  PermissionCatalog({
+    required this.items,
+    required this.groups,
+    this.deprecated = const {},
+  });
 
   final List<String> items;
+
+  /// Groups WITHOUT the deprecated keys (they gate nothing — the web editor
+  /// hides them too). A role keeps any it already holds: the editor never
+  /// removes a key it does not show.
   final List<PermissionGroup> groups;
 
-  factory PermissionCatalog.fromJson(Map<String, dynamic> j) =>
-      PermissionCatalog(
-        items: ((j['items'] as List?) ?? const [])
-            .map((e) => e.toString())
-            .toList(),
-        groups: ((j['groups'] as List?) ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .map(PermissionGroup.fromJson)
-            .toList(),
-      );
+  /// `deprecated` of the catalog (kept only so stored roles stay valid).
+  final Set<String> deprecated;
+
+  factory PermissionCatalog.fromJson(Map<String, dynamic> j) {
+    final deprecated = ((j['deprecated'] as List?) ?? const [])
+        .map((e) => e.toString())
+        .toSet();
+    return PermissionCatalog(
+      items: ((j['items'] as List?) ?? const [])
+          .map((e) => e.toString())
+          .where((p) => !deprecated.contains(p))
+          .toList(),
+      groups: ((j['groups'] as List?) ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(PermissionGroup.fromJson)
+          .map(
+            (g) => PermissionGroup(
+              key: g.key,
+              label: g.label,
+              permissions:
+                  g.permissions.where((p) => !deprecated.contains(p)).toList(),
+            ),
+          )
+          .where((g) => g.permissions.isNotEmpty)
+          .toList(),
+      deprecated: deprecated,
+    );
+  }
 }
