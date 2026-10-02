@@ -279,7 +279,7 @@ class _Status extends StatelessWidget {
 PillTone distributorStatusTone(Distributor distributor) {
   if (distributor.isActive) return PillTone.green;
   return switch (distributor.status.trim().toLowerCase()) {
-    'disabled' || 'inactive' => PillTone.red,
+    'disabled' || 'inactive' || 'blocked' => PillTone.red,
     _ => PillTone.amber,
   };
 }
@@ -290,6 +290,7 @@ String distributorStatusLabel(String value) {
     'active' => 'مفعّل',
     'disabled' || 'inactive' => 'معطّل',
     'suspended' => 'موقوف',
+    'blocked' => 'محظور',
     'pending' => 'بانتظار المراجعة',
     '' => 'غير محدد',
     _ => 'حالة غير معروفة',
@@ -301,6 +302,7 @@ String distributorPermissionLabel(String value) {
   return switch (v) {
     'cards.read' => 'عرض الكروت',
     'cards.sell' => 'بيع الكروت',
+    'cards.check' => 'فحص كروت',
     'cards.view' => 'عرض الكروت',
     'cards.create' => 'إنشاء كروت',
     'wallet.credit' => 'تسجيل تحصيل',

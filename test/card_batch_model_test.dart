@@ -53,7 +53,6 @@ void main() {
       () {
     final body = UpdateBatchRequest(
       planId: 2,
-      count: 40,
       packageName: 'Edited',
       pricePerCard: 2.5,
       totalQuotaMb: 1024,
@@ -65,7 +64,8 @@ void main() {
     ).toBody();
 
     expect(body['plan_id'], 2);
-    expect(body['count'], 40);
+    // count is locked after generation (server 422) — never sent.
+    expect(body.containsKey('count'), isFalse);
     expect(body['package_name'], 'Edited');
     expect(body['time_unit'], 'hours');
     expect(body['device_count'], 2);

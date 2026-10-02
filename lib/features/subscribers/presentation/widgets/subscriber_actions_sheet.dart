@@ -29,6 +29,9 @@ enum SubscriberAction {
   archive,
   resetPassword,
   rename,
+
+  /// The web profile's «إلغاء السرعة المؤقتة» (X beside the countdown).
+  tempSpeedCancel,
 }
 
 class SubscriberActionSpec {
@@ -38,6 +41,7 @@ class SubscriberActionSpec {
     required this.label,
     required this.tone,
     this.permission,
+    this.fallbackPermission,
     this.legacySupported = false,
   });
 
@@ -48,6 +52,9 @@ class SubscriberActionSpec {
 
   /// Key in actions-context `permissions`; `null` = always shown.
   final String? permission;
+
+  /// Read instead of [permission] when an older server does not send it.
+  final String? fallbackPermission;
 
   /// Runs on a server without the new endpoints (old API had it).
   final bool legacySupported;
@@ -89,7 +96,9 @@ const kActivationActions = <SubscriberActionSpec>[
     icon: Icons.restart_alt,
     label: 'استعادة الكوتة اليومية',
     tone: PillTone.blue,
-    permission: 'quota',
+    // The web gates it on its own endpoint (users_quota_reset_daily).
+    permission: 'quota_reset',
+    fallbackPermission: 'quota',
   ),
 ];
 
@@ -122,7 +131,9 @@ const kAdminActions = <SubscriberActionSpec>[
     icon: Icons.badge_outlined,
     label: 'إرسال بيانات المشترك',
     tone: PillTone.blue,
-    permission: 'send_message',
+    // Its own grant on the web («إرسال بيانات الدخول», users_send_credentials)
+    // — not «إرسال SMS» (comms.sms): a manager could hold one without the other.
+    permission: 'send_credentials',
   ),
   SubscriberActionSpec(
     action: SubscriberAction.changePlan,
@@ -138,6 +149,13 @@ const kAdminActions = <SubscriberActionSpec>[
     tone: PillTone.amber,
     permission: 'disconnect',
     legacySupported: true,
+  ),
+  SubscriberActionSpec(
+    action: SubscriberAction.tempSpeedCancel,
+    icon: Icons.speed_outlined,
+    label: 'إلغاء السرعة المؤقتة',
+    tone: PillTone.amber,
+    permission: 'temp_speed_cancel',
   ),
   SubscriberActionSpec(
     action: SubscriberAction.toggle,
@@ -185,7 +203,15 @@ ActionAvailability actionAvailability(
   SubscriberActionsContext c,
 ) {
   final key = spec.permission;
-  if (key != null && !c.permissions.allows(key)) {
+  final fallback = spec.fallbackPermission;
+  if (key != null &&
+      !(fallback == null
+          ? c.permissions.allows(key)
+          : c.permissions.allowsOr(key, fallback))) {
+    return const ActionAvailability(visible: false);
+  }
+  if (spec.action == SubscriberAction.tempSpeedCancel && c.tempSpeed == null) {
+    // Like the web profile: the cancel X exists only beside a temp speed.
     return const ActionAvailability(visible: false);
   }
   if (c.legacy && !spec.legacySupported) {
@@ -371,6 +397,8 @@ Future<void> runSubscriberAction(
       dialog = toggleConfirm(c);
     case SubscriberAction.archive:
       dialog = archiveConfirm(c);
+    case SubscriberAction.tempSpeedCancel:
+      dialog = tempSpeedCancelConfirm(c);
   }
   final outcome = await showActionDialog(context, dialog);
   if (outcome == null || !context.mounted) return;
@@ -446,6 +474,35 @@ ConfirmActionDialog toggleConfirm(SubscriberActionsContext c) {
       }
       await repo.disable(c.username);
       return 'تم تعطيل ${c.username}';
+    },
+  );
+}
+
+ConfirmActionDialog tempSpeedCancelConfirm(SubscriberActionsContext c) {
+  final ts = c.tempSpeed;
+  final when = ts == null
+      ? ''
+      : ts.unknown
+          ? ' — مفتوحة (بدون وقت نهاية)'
+          : ts.expired
+              ? ' — انتهت مدّتها'
+              : '';
+  return ConfirmActionDialog(
+    icon: Icons.speed_outlined,
+    tone: PillTone.amber,
+    title: 'إلغاء السرعة المؤقتة',
+    subtitle: c.username,
+    message: ts == null
+        ? 'إلغاء السرعة المؤقتة لـ «${c.username}»؟'
+        : 'إلغاء السرعة المؤقتة (${ts.rateLabel})$when لـ «${c.username}»؟',
+    note: 'تُعاد السرعة الطبيعية فورًا للجلسة المتصلة.',
+    confirmLabel: 'إلغاء السرعة',
+    task: (repo) async {
+      final res = await repo.cancelTempSpeed(c.username);
+      final msg = (res['message'] ?? '').toString();
+      return msg.isNotEmpty
+          ? msg
+          : 'تم إلغاء السرعة المؤقتة لـ «${c.username}».';
     },
   );
 }

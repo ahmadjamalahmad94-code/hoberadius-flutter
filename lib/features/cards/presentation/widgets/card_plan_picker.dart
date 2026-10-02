@@ -49,7 +49,13 @@ class CardPlanPicker extends ConsumerWidget {
     required this.onChanged,
     this.serverError,
     this.currency = '',
+    this.keepLabel,
   });
+
+  /// Batch editor: the batch's current plan when it is not in the (active
+  /// only) list — shown as the hint and accepted as is, so an inactive plan
+  /// does not block saving the other fields. Null = a plan must be picked.
+  final String? keepLabel;
 
   final int? selectedId;
   final ValueChanged<PlanOption> onChanged;
@@ -103,9 +109,16 @@ class CardPlanPicker extends ConsumerWidget {
           initialValue: exists ? selectedId : null,
           isExpanded: true,
           itemHeight: null,
-          hint: const Text('اختر الباقة'),
+          hint: Text(
+            !exists && keepLabel != null && selectedId != null
+                ? keepLabel!
+                : 'اختر الباقة',
+          ),
           decoration: InputDecoration(errorText: serverError),
-          validator: (v) => v == null ? 'اختر الباقة' : null,
+          validator: (v) =>
+              v == null && !(keepLabel != null && selectedId != null)
+                  ? 'اختر الباقة'
+                  : null,
           selectedItemBuilder: (_) => [
             for (final p in plans)
               Align(

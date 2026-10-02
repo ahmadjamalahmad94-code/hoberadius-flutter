@@ -311,8 +311,19 @@ class CardsRepository {
   Future<CardCheckResult> resetCardUsage(int cardId) =>
       _cardAction(cardId, 'reset-usage');
 
-  Future<CardCheckResult> disconnectCard(int cardId, {String sessionId = ''}) =>
-      _cardAction(cardId, 'disconnect', body: {'session_id': sessionId});
+  /// «فصل كل الأجهزة المتصلة»: [sessionIds] → `session_ids: [..]`; empty →
+  /// no key, and the server disconnects ALL the card's sessions (it used to
+  /// get only the first online session id, so one device of several was
+  /// kicked).
+  Future<CardCheckResult> disconnectCard(
+    int cardId, {
+    List<String> sessionIds = const [],
+  }) =>
+      _cardAction(
+        cardId,
+        'disconnect',
+        body: {if (sessionIds.isNotEmpty) 'session_ids': sessionIds},
+      );
 
   Future<CardCheckResult> deleteCardPermanently(
     int cardId, {

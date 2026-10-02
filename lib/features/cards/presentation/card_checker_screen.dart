@@ -6,6 +6,7 @@ import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../application/card_checker_controller.dart';
+import '../application/card_checker_format.dart';
 import '../data/cards_repository.dart';
 import 'widgets/card_checker_details.dart';
 import 'widgets/card_checker_dialogs.dart';
@@ -169,21 +170,17 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
               onDisconnect: () async {
                 final ok = await cardCheckerConfirm(
                   context,
-                  title: 'طرد الجلسة',
-                  body: 'سيتم إرسال طلب طرد الجلسة النشطة لهذه البطاقة.',
+                  title: 'فصل كل الأجهزة المتصلة',
+                  body: 'سيتم فصل كل الجلسات المتصلة لهذه البطاقة '
+                      '(كل الأجهزة).',
                 );
                 if (!mounted || !ok) return;
-                var sessionId = '';
-                for (final session in result.accountingSummary.latestSessions) {
-                  if (session.online && session.sessionId.isNotEmpty) {
-                    sessionId = session.sessionId;
-                    break;
-                  }
-                }
+                // All online sessions (empty = no key → the server kicks all
+                // of the card's sessions).
+                final ids = cardOnlineSessionIds(result);
                 await _runAction(
-                  (repo) =>
-                      repo.disconnectCard(result.id!, sessionId: sessionId),
-                  success: 'تم إرسال طلب الطرد إلى الخادم.',
+                  (repo) => repo.disconnectCard(result.id!, sessionIds: ids),
+                  success: 'تم إرسال طلب فصل كل الأجهزة إلى الخادم.',
                 );
               },
               onDeletePermanent: () async {

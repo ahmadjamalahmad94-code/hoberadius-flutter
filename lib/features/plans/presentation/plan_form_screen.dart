@@ -34,8 +34,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   bool _speedControl = false;
   bool _burstEnabled = false;
   bool _nightlyUnlimited = false;
-  bool _hotspotEnabled = false;
-  bool _pppEnabled = false;
+  bool _speedUnlimited = false;
+  bool _sharedSingleSession = false;
   bool _bindMac = false;
   bool _bindIp = false;
   bool _singleUseOnce = false;
@@ -44,15 +44,11 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   bool _speedOverrideAllowed = false;
   bool _forceMacAddress = false;
   String _planTier = 'Personal';
-  final Set<String> _allowedDays = {
-    'sun',
-    'mon',
-    'tue',
-    'wed',
-    'thu',
-    'fri',
-    'sat',
-  };
+  // «ساعات الباقة» — empty = not set (no fake default).
+  String _offerHoursFrom = '';
+  String _offerHoursTo = '';
+  // «أيام وساعات السماح» — access-schedule JSON, '' = none.
+  String _connectionSchedule = '';
 
   // Form fields not listed here keep their default (or, in edit mode,
   // their previously-saved value via `_loaded`) so we never lose
@@ -65,6 +61,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     'priority',
     'validity_days',
     'duration_minutes',
+    'max_daily_minutes',
     'session_timeout_sec',
     'idle_timeout_sec',
     'quota_total_mb',
@@ -90,8 +87,6 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     'address_pool',
     'framed_pool',
     'vlan_id',
-    'allowed_hours_from',
-    'allowed_hours_to',
     'price',
     'currency',
   ];
@@ -128,17 +123,19 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
         speedControl: _speedControl,
         burstEnabled: _burstEnabled,
         nightlyUnlimited: _nightlyUnlimited,
-        hotspotEnabled: _hotspotEnabled,
-        pppEnabled: _pppEnabled,
         bindMac: _bindMac,
         bindIp: _bindIp,
         singleUseOnce: _singleUseOnce,
         prepaid: _prepaid,
         planTier: _planTier,
-        allowedDays: _allowedDays,
         loanEnabled: _loanEnabled,
         speedOverrideAllowed: _speedOverrideAllowed,
         forceMacAddress: _forceMacAddress,
+        speedUnlimited: _speedUnlimited,
+        sharedSingleSession: _sharedSingleSession,
+        offerHoursFrom: _offerHoursFrom,
+        offerHoursTo: _offerHoursTo,
+        connectionSchedule: _connectionSchedule,
       );
 
   Future<void> _loadExisting() async {
@@ -156,8 +153,11 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       _speedControl = sel.speedControl;
       _burstEnabled = sel.burstEnabled;
       _nightlyUnlimited = sel.nightlyUnlimited;
-      _hotspotEnabled = sel.hotspotEnabled;
-      _pppEnabled = sel.pppEnabled;
+      _speedUnlimited = sel.speedUnlimited;
+      _sharedSingleSession = sel.sharedSingleSession;
+      _offerHoursFrom = sel.offerHoursFrom;
+      _offerHoursTo = sel.offerHoursTo;
+      _connectionSchedule = sel.connectionSchedule;
       _bindMac = sel.bindMac;
       _bindIp = sel.bindIp;
       _singleUseOnce = sel.singleUseOnce;
@@ -166,9 +166,6 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       _speedOverrideAllowed = sel.speedOverrideAllowed;
       _forceMacAddress = sel.forceMacAddress;
       _planTier = sel.planTier;
-      _allowedDays
-        ..clear()
-        ..addAll(sel.allowedDays);
     });
   }
 
@@ -176,7 +173,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   String? _localError;
 
   Future<void> _submit() async {
-    final numberError = planFormNumberError(_c);
+    final numberError = planFormNumberError(_c) ??
+        planFormSpeedError(_c, speedUnlimited: _speedUnlimited);
     setState(() => _localError = numberError);
     if (!_formKey.currentState!.validate() || numberError != null) return;
     final plan = buildPlanFromForm(_c, _selections, base: _loaded);
@@ -263,6 +261,8 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
           const SizedBox(height: AppTokens.s12),
           PlanSpeedSection(
             controllers: _c,
+            speedUnlimited: _speedUnlimited,
+            onSpeedUnlimitedChanged: (v) => setState(() => _speedUnlimited = v),
             speedControl: _speedControl,
             onSpeedControlChanged: (v) => setState(() => _speedControl = v),
             burstEnabled: _burstEnabled,
@@ -278,20 +278,21 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             bindIp: _bindIp,
             onBindMacChanged: (v) => setState(() => _bindMac = v),
             onBindIpChanged: (v) => setState(() => _bindIp = v),
+            sharedSingleSession: _sharedSingleSession,
+            onSharedSingleSessionChanged: (v) =>
+                setState(() => _sharedSingleSession = v),
           ),
           const SizedBox(height: AppTokens.s12),
           PlanWindowSection(
-            controllers: _c,
-            allowedDays: _allowedDays,
-            onAllowedDaysChanged: (days) => setState(() {
-              _allowedDays
-                ..clear()
-                ..addAll(days);
-            }),
-            onAllowedFromChanged: (value) =>
-                setState(() => _c['allowed_hours_from']!.text = value),
-            onAllowedToChanged: (value) =>
-                setState(() => _c['allowed_hours_to']!.text = value),
+            offerHoursFrom: _offerHoursFrom,
+            offerHoursTo: _offerHoursTo,
+            connectionSchedule: _connectionSchedule,
+            onOfferHoursFromChanged: (v) =>
+                setState(() => _offerHoursFrom = v),
+            onOfferHoursToChanged: (v) => setState(() => _offerHoursTo = v),
+            // No setState: the picker owns its UI state; rebuilding with the
+            // re-parsed value would only re-hydrate it.
+            onConnectionScheduleChanged: (v) => _connectionSchedule = v,
           ),
           const SizedBox(height: AppTokens.s12),
           PlanCommerceSection(
@@ -305,11 +306,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
           ),
           const SizedBox(height: AppTokens.s12),
           PlanServicesSection(
-            hotspotEnabled: _hotspotEnabled,
-            pppEnabled: _pppEnabled,
             singleUseOnce: _singleUseOnce,
-            onHotspotChanged: (v) => setState(() => _hotspotEnabled = v),
-            onPppChanged: (v) => setState(() => _pppEnabled = v),
             onSingleUseChanged: (v) => setState(() => _singleUseOnce = v),
           ),
           const SizedBox(height: AppTokens.s12),

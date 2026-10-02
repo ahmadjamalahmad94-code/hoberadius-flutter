@@ -47,6 +47,55 @@ String? validateCardAffix(String raw) {
   return null;
 }
 
+/// Shortest card username the forms accept (web generator `min="4"`).
+const int kCardUsernameLengthMin = 4;
+
+/// Longest card password the forms accept.
+const int kCardPasswordLengthMax = 32;
+
+/// Most devices one card may allow — the server clamps `device_count` to
+/// 0..50 (0 = the global card setting).
+const int kCardDeviceCountMax = 50;
+
+/// «عدد الأجهزة» choices of the generator AND the batch editor (web: a
+/// 0–50 number field; 0 = the global card setting).
+const List<int> kCardDeviceCountOptions = [
+  0, 1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 30, 50, //
+];
+
+/// [kCardDeviceCountOptions] plus [current] when a stored batch holds a
+/// value outside the list (e.g. 7) — the dropdown must show what is saved.
+List<int> cardDeviceCountOptionsFor(int current) {
+  if (current < 0 ||
+      current > kCardDeviceCountMax ||
+      kCardDeviceCountOptions.contains(current)) {
+    return kCardDeviceCountOptions;
+  }
+  return [...kCardDeviceCountOptions, current]..sort();
+}
+
+/// Label of one «عدد الأجهزة» choice.
+String cardDeviceCountLabel(int n) =>
+    n <= 0 ? '0 = الافتراض العام (من الإعدادات)' : '$n';
+
+/// A stored/absent device count as the forms show it: missing or invalid →
+/// 0 (the global setting), never a silent 1.
+int normalizeCardDeviceCount(int? n) =>
+    (n == null || n < 0) ? 0 : (n > kCardDeviceCountMax ? kCardDeviceCountMax : n);
+
+/// «عند بلوغ حدّ الأجهزة» (`device_limit_mode`) choices, web wording.
+const Map<String, String> kCardDeviceLimitModeLabels = {
+  '': 'الافتراض العام للكروت (من الإعدادات)',
+  'reject': 'رفض الجلسة الجديدة',
+  'replace': 'استبدال — فصل أقدم جلسة والسماح',
+};
+
+/// `reject` / `replace`, anything else → '' (follow the global setting).
+String normalizeDeviceLimitMode(Object? raw) {
+  final v = (raw ?? '').toString().trim().toLowerCase();
+  return (v == 'reject' || v == 'replace') ? v : '';
+}
+
 class GenerateBatchRequest {
   GenerateBatchRequest({
     required this.planId,
@@ -61,7 +110,8 @@ class GenerateBatchRequest {
     this.passwordGenerationType = 'medium',
     this.timeValue = 0,
     this.timeUnit = 'days',
-    this.deviceCount = 1,
+    this.deviceCount = 0,
+    this.deviceLimitMode = '',
     this.pricePerCard = 0,
     this.totalPrice = 0,
     this.totalQuotaMb = 0,
@@ -70,6 +120,9 @@ class GenerateBatchRequest {
     this.loginWithoutPassword = false,
     this.includeBatchNumber = false,
   });
+
+  /// «عند بلوغ حدّ الأجهزة»: '' (global setting) | `reject` | `replace`.
+  final String deviceLimitMode;
 
   /// «تضمين رقم الحزمة»: the batch id (digits) after the prefix, inside the
   /// total username length (web generator semantics).
@@ -108,12 +161,15 @@ class GenerateBatchRequest {
           'prefix_or_suffix_value': prefixOrSuffixValue,
         'username_length': usernameLength,
         'password_length': loginWithoutPassword ? 0 : passwordLength,
-        if (loginWithoutPassword) 'login_without_password': true,
+        // ALWAYS explicit: a network whose default is «أرقام فقط» used to
+        // ignore the app's password choice when the key was absent.
+        'login_without_password': loginWithoutPassword,
         if (includeBatchNumber) 'include_batch_number': true,
         'password_generation_type': passwordGenerationType,
         'time_value': timeValue,
         'time_unit': timeUnit,
         'device_count': deviceCount,
+        'device_limit_mode': normalizeDeviceLimitMode(deviceLimitMode),
         'price_per_card': pricePerCard,
         'total_price': totalPrice,
         'total_quota_mb': totalQuotaMb,
@@ -122,10 +178,15 @@ class GenerateBatchRequest {
       };
 }
 
+/// PATCH body of the batch editor. Only what the server lets an operator
+/// change after generation: the structural fields (count, username
+/// prefix/suffix/length, password length/type, include-batch-number and its
+/// position) are locked server-side (422) and are never sent; neither are
+/// `phone_only_login` (no server reader) nor `duration_mode` (derived from
+/// `count_from_first_connect`).
 class UpdateBatchRequest {
   UpdateBatchRequest({
     required this.planId,
-    required this.count,
     this.packageName = '',
     this.status = 'active',
     this.pricePerCard = 0,
@@ -134,18 +195,10 @@ class UpdateBatchRequest {
     this.totalQuotaMb = 0,
     this.serviceName = '',
     this.managerId = 0,
-    this.usernamePrefix = '',
-    this.usernameSuffix = '',
-    this.usernameLength = 8,
-    this.passwordLength = 6,
-    this.passwordGenerationType = 'medium',
-    this.includeBatchNumber = false,
-    this.startsWithOrEndsWith = '',
-    this.prefixOrSuffixValue = '',
     this.timeValue = 0,
     this.timeUnit = 'days',
-    this.deviceCount = 1,
-    this.durationMode = 'time_unit',
+    this.deviceCount = 0,
+    this.deviceLimitMode = '',
     this.validityAfterFirstLoginDays = 0,
     this.countBySeconds = false,
     this.countFromFirstConnect = true,
@@ -153,12 +206,11 @@ class UpdateBatchRequest {
     this.autoRenewAfterFirstUse = false,
     this.switchToMacOnConnect = false,
     this.lockToMacOnClose = false,
-    this.phoneOnlyLogin = false,
+    this.loginWithoutPassword = false,
     this.notes = '',
   });
 
   final int planId;
-  final int count;
   final String packageName;
   final String status;
   final num pricePerCard;
@@ -167,18 +219,14 @@ class UpdateBatchRequest {
   final int totalQuotaMb;
   final String serviceName;
   final int managerId;
-  final String usernamePrefix;
-  final String usernameSuffix;
-  final int usernameLength;
-  final int passwordLength;
-  final String passwordGenerationType;
-  final bool includeBatchNumber;
-  final String startsWithOrEndsWith;
-  final String prefixOrSuffixValue;
   final int timeValue;
   final String timeUnit;
+
+  /// 0 = the global card setting; 1..50 an explicit limit.
   final int deviceCount;
-  final String durationMode;
+
+  /// «عند بلوغ حدّ الأجهزة»: '' (global setting) | `reject` | `replace`.
+  final String deviceLimitMode;
   final int validityAfterFirstLoginDays;
   final bool countBySeconds;
   final bool countFromFirstConnect;
@@ -186,12 +234,13 @@ class UpdateBatchRequest {
   final bool autoRenewAfterFirstUse;
   final bool switchToMacOnConnect;
   final bool lockToMacOnClose;
-  final bool phoneOnlyLogin;
+
+  /// «الدخول برقم البطاقة فقط (بلا كلمة مرور)».
+  final bool loginWithoutPassword;
   final String notes;
 
   Map<String, dynamic> toBody() => {
         'plan_id': planId,
-        'count': count,
         'package_name': packageName,
         'status': status,
         'price_per_card': pricePerCard,
@@ -200,18 +249,10 @@ class UpdateBatchRequest {
         'total_quota_mb': totalQuotaMb,
         'service_name': serviceName,
         'manager_id': managerId,
-        'username_prefix': usernamePrefix,
-        'username_suffix': usernameSuffix,
-        'username_length': usernameLength,
-        'password_length': passwordLength,
-        'password_generation_type': passwordGenerationType,
-        'include_batch_number': includeBatchNumber,
-        'starts_with_or_ends_with': startsWithOrEndsWith,
-        'prefix_or_suffix_value': prefixOrSuffixValue,
         'time_value': timeValue,
         'time_unit': timeUnit,
-        'device_count': deviceCount,
-        'duration_mode': durationMode,
+        'device_count': normalizeCardDeviceCount(deviceCount),
+        'device_limit_mode': normalizeDeviceLimitMode(deviceLimitMode),
         'validity_after_first_login_days': validityAfterFirstLoginDays,
         'count_by_seconds': countBySeconds,
         'count_from_first_connect': countFromFirstConnect,
@@ -219,7 +260,7 @@ class UpdateBatchRequest {
         'auto_renew_after_first_use': autoRenewAfterFirstUse,
         'switch_to_mac_on_connect': switchToMacOnConnect,
         'lock_to_mac_on_close': lockToMacOnClose,
-        'phone_only_login': phoneOnlyLogin,
+        'login_without_password': loginWithoutPassword,
         'notes': notes,
       };
 }

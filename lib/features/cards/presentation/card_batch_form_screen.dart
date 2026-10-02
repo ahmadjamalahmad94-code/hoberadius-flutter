@@ -18,6 +18,7 @@ import '../data/cards_repository.dart';
 import '../domain/card_model.dart';
 import '../domain/username_preview.dart';
 import '../application/cards_list_providers.dart';
+import 'widgets/card_device_limit_fields.dart';
 import 'widgets/card_generate_dialog.dart';
 import 'widgets/card_number_field.dart';
 import 'widgets/card_plan_picker.dart';
@@ -59,6 +60,9 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
   int? _nextBatchId;
   // 0 = follow the global card setting, like the web generator.
   int _devices = 0;
+
+  /// «عند بلوغ حدّ الأجهزة»: '' = the global card setting.
+  String _deviceLimitMode = '';
 
   bool _loading = false;
 
@@ -205,6 +209,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
       timeValue: parseIntInput(_timeVal.text) ?? 0,
       timeUnit: _timeUnit,
       deviceCount: _devices,
+      deviceLimitMode: _deviceLimitMode,
       pricePerCard: parseNumberInput(_pricePerCard.text) ?? 0,
       totalPrice: parseNumberInput(_totalPrice.text) ?? 0,
       totalQuotaMb: parseIntInput(_totalQuota.text) ?? 0,
@@ -418,7 +423,7 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                   child: CardNumberField(
                     controller: _ulen,
                     required: true,
-                    min: 1,
+                    min: kCardUsernameLengthMin,
                     max: kCardUsernameLengthMax,
                     serverError: _fieldErrors['username_length'],
                     onChanged: (_) => _clearFieldError('username_length'),
@@ -462,7 +467,15 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                       label: 'الطول',
                       child: Text('—'),
                     )
-                  : _num(_plen, 'الطول'),
+                  : FormFieldRow(
+                      label: 'الطول',
+                      child: CardNumberField(
+                        controller: _plen,
+                        required: true,
+                        min: 1,
+                        max: kCardPasswordLengthMax,
+                      ),
+                    ),
               second: FormFieldRow(
                 label: 'مستوى التعقيد',
                 child: DropdownButtonFormField<String>(
@@ -516,22 +529,13 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
                     ),
                   ),
                 ),
-                FormFieldRow(
-                  label: 'عدد الأجهزة المسموحة',
-                  child: DropdownButtonFormField<int>(
-                    isExpanded: true,
-                    value: _devices,
-                    items: const [
-                      DropdownMenuItem(
-                          value: 0, child: Text('حسب الإعداد العام')),
-                      DropdownMenuItem(value: 1, child: Text('1')),
-                      DropdownMenuItem(value: 2, child: Text('2')),
-                      DropdownMenuItem(value: 3, child: Text('3')),
-                      DropdownMenuItem(value: 5, child: Text('5')),
-                      DropdownMenuItem(value: 10, child: Text('10')),
-                    ],
-                    onChanged: (v) => setState(() => _devices = v ?? 0),
-                  ),
+                CardDeviceCountField(
+                  value: _devices,
+                  onChanged: (v) => setState(() => _devices = v),
+                ),
+                CardDeviceLimitModeField(
+                  value: _deviceLimitMode,
+                  onChanged: (v) => setState(() => _deviceLimitMode = v),
                 ),
               ],
             ),

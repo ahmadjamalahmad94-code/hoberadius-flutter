@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 
@@ -98,6 +100,9 @@ class Plan {
     this.forceMacAddress = false,
     this.offerHoursFrom = '',
     this.offerHoursTo = '',
+    this.speedUnlimited = false,
+    this.sharedSingleSession = false,
+    this.connectionSchedule = '',
     // — opaque
     this.metadata = const {},
     this.createdAt,
@@ -180,6 +185,18 @@ class Plan {
   final bool forceMacAddress;
   final String offerHoursFrom;
   final String offerHoursTo;
+
+  /// «بلا حدّ للسرعة» — the server refuses a 0 speed without it (a silent 0
+  /// meant «open» on the router).
+  final bool speedUnlimited;
+
+  /// «بطاقة مشتركة — جلسة واحدة فعّالة»: a new login kicks the old one.
+  final bool sharedSingleSession;
+
+  /// «أيام وساعات السماح» — the access-schedule JSON string
+  /// (`{"windows":[…]}`), '' = no restriction. Overrides the legacy
+  /// `allowed_days` / `allowed_hours_*` fallbacks on the server.
+  final String connectionSchedule;
 
   final Map<String, dynamic> metadata;
   final DateTime? createdAt;
@@ -299,6 +316,9 @@ class Plan {
       forceMacAddress: j['force_mac_address'] == true,
       offerHoursFrom: (j['offer_hours_from'] ?? '').toString(),
       offerHoursTo: (j['offer_hours_to'] ?? '').toString(),
+      speedUnlimited: _bool(j['speed_unlimited']),
+      sharedSingleSession: _bool(j['shared_single_session']),
+      connectionSchedule: _schedule(j['connection_schedule']),
       metadata: meta,
       createdAt: _dt(j['created_at']),
       updatedAt: _dt(j['updated_at']),
@@ -376,11 +396,26 @@ class Plan {
         'force_mac_address': forceMacAddress,
         'offer_hours_from': offerHoursFrom,
         'offer_hours_to': offerHoursTo,
+        'speed_unlimited': speedUnlimited,
+        'shared_single_session': sharedSingleSession,
+        'connection_schedule': connectionSchedule,
         'metadata': metadata,
       };
 
   static int? _int(Object? v) =>
       v == null ? null : (v is int ? v : int.tryParse(v.toString()));
+
+  static bool _bool(Object? v) =>
+      v == true || v == 1 || v == '1' || v == 'true';
+
+  /// The schedule as the server's JSON string; a decoded map (older
+  /// serializers) is re-encoded, anything else is «none».
+  static String _schedule(Object? v) {
+    if (v == null) return '';
+    if (v is String) return v.trim();
+    if (v is Map) return jsonEncode(v);
+    return '';
+  }
 
   static num? _num(Object? v) {
     if (v == null) return null;
@@ -474,6 +509,9 @@ class Plan {
     bool? forceMacAddress,
     String? offerHoursFrom,
     String? offerHoursTo,
+    bool? speedUnlimited,
+    bool? sharedSingleSession,
+    String? connectionSchedule,
     Map<String, dynamic>? metadata,
   }) =>
       Plan(
@@ -547,6 +585,9 @@ class Plan {
         forceMacAddress: forceMacAddress ?? this.forceMacAddress,
         offerHoursFrom: offerHoursFrom ?? this.offerHoursFrom,
         offerHoursTo: offerHoursTo ?? this.offerHoursTo,
+        speedUnlimited: speedUnlimited ?? this.speedUnlimited,
+        sharedSingleSession: sharedSingleSession ?? this.sharedSingleSession,
+        connectionSchedule: connectionSchedule ?? this.connectionSchedule,
         metadata: metadata ?? this.metadata,
       );
 }

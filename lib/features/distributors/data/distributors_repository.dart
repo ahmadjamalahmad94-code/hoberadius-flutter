@@ -39,9 +39,33 @@ class DistributorsRepository {
     return out;
   }
 
-  Future<Distributor> create(Distributor distributor) async {
+  /// [portalPassword] («كلمة مرور بوابة الفحص») travels only when set.
+  Future<Distributor> create(
+    Distributor distributor, {
+    String portalPassword = '',
+  }) async {
+    final res = await _api.post(
+      '/api/v1/distributors',
+      body: {
+        ...distributor.toBody(),
+        if (portalPassword.isNotEmpty) 'portal_password': portalPassword,
+      },
+    );
+    return _distributorOf(res);
+  }
+
+  /// «تعديل»: PATCH /api/v1/distributors/<id> with [body] (see
+  /// `distributorPatchBody` — never balance/debt).
+  Future<Distributor> update(
+    int distributorId,
+    Map<String, dynamic> body,
+  ) async {
     final res =
-        await _api.post('/api/v1/distributors', body: distributor.toBody());
+        await _api.patch('/api/v1/distributors/$distributorId', body: body);
+    return _distributorOf(res);
+  }
+
+  Distributor _distributorOf(Map<String, dynamic> res) {
     final data = res['data'];
     final json = data is Map<String, dynamic> ? data['distributor'] : null;
     return Distributor.fromJson(json is Map<String, dynamic> ? json : const {});

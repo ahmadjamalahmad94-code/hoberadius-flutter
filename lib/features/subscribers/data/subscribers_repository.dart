@@ -179,6 +179,21 @@ class SubscribersRepository {
         body: {'new_password': newPassword},
       );
 
+  /// Names of the subscriber groups (`GET /api/v1/subscriber-groups`) — the
+  /// web form's «المجموعة» is a dropdown of exactly these.
+  Future<List<String>> groupNames() async {
+    final res = await _api.get('/api/v1/subscriber-groups');
+    final d = _payload(res);
+    final items = d['items'];
+    if (items is! List) return const [];
+    final out = <String>[];
+    for (final g in items) {
+      final name = g is Map ? '${g['name'] ?? ''}'.trim() : '';
+      if (name.isNotEmpty && !out.contains(name)) out.add(name);
+    }
+    return out;
+  }
+
   Map<String, dynamic> _payload(Map<String, dynamic> res) {
     final d = res['data'];
     if (d is Map<String, dynamic>) return d;
@@ -205,4 +220,10 @@ class SubscribersPage {
 
 final subscribersRepositoryProvider = Provider<SubscribersRepository>((ref) {
   return SubscribersRepository(ref.watch(apiClientProvider));
+});
+
+/// «المجموعة» choices of the subscriber form.
+final subscriberGroupNamesProvider =
+    FutureProvider.autoDispose<List<String>>((ref) {
+  return ref.watch(subscribersRepositoryProvider).groupNames();
 });
