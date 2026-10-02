@@ -629,7 +629,8 @@ class _SubscriberAttention extends StatelessWidget {
         _StatItem(
           icon: Icons.star_outline,
           label: 'الأكثر استخدامًا',
-          value: '${metrics.topPlanName} · ${arCount(metrics.topPlanSubs, arSubscriber, showOne: true)}',
+          value:
+              '${metrics.topPlanName} · ${arCount(metrics.topPlanSubs, arSubscriber, showOne: true)}',
           bg: p.brandSoft,
           fg: p.brandInk,
           full: true,
@@ -826,17 +827,12 @@ class _MetricGrid extends StatelessWidget {
         ),
       // fix3 (owner 2026-09-30): «إجمالي مبيعات اليوم» — card sales only,
       // local panel day. Absent `sales_today` (older server) hides the tile.
+      // Owner 2026-10-02: the period is selectable (day / week / month /
+      // from–to), default today — like «المبيعات» on the cards screen.
       if (metrics.salesToday != null)
-        _MetricTile(
-          icon: Icons.point_of_sale_outlined,
-          label: 'إجمالي مبيعات اليوم',
-          value: arCount(metrics.salesToday!.cardsCount, arCard, showOne: true),
-          sub: metrics.salesToday!.moneyVisible &&
-                  metrics.salesToday!.byCurrency.isNotEmpty
-              ? formatByCurrency(metrics.salesToday!.byCurrency)
-              : null,
-          tone: _MetricTone.success,
-          onTap: vis.cards ? () => context.goNamed('cards') : null,
+        _DashboardSalesTile(
+          initial: metrics.salesToday!,
+          onOpenCards: vis.cards ? () => context.goNamed('cards') : null,
         ),
     ];
     if (tiles.isEmpty) return const SizedBox.shrink();
@@ -1186,6 +1182,147 @@ class _Bar extends StatelessWidget {
             minHeight: 8,
             backgroundColor: p.surfaceTinted,
             valueColor: AlwaysStoppedAnimation(color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// «المبيعات» on the dashboard — starts on today (the server's `sales_today`);
+/// tapping picks another period and reads `/api/v1/dashboard/sales`.
+class _DashboardSalesTile extends ConsumerStatefulWidget {
+  const _DashboardSalesTile({required this.initial, this.onOpenCards});
+  final SalesToday initial;
+  final VoidCallback? onOpenCards;
+
+  @override
+  ConsumerState<_DashboardSalesTile> createState() =>
+      _DashboardSalesTileState();
+}
+
+class _DashboardSalesTileState extends ConsumerState<_DashboardSalesTile> {
+  SalesToday? _picked;
+  String _label = 'إجمالي مبيعات اليوم';
+  bool _loading = false;
+
+  static String _ymd(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Future<void> _load(String from, String to, String label) async {
+    setState(() => _loading = true);
+    try {
+      final r =
+          await ref.read(dashboardRepositoryProvider).sales(from: from, to: to);
+      if (!mounted) return;
+      setState(() {
+        _picked = r;
+        _label = label;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّر جلب المبيعات لهذه الفترة')),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _pick() async {
+    final now = DateTime.now();
+    final today = _ymd(now);
+    final weekStart = _ymd(now.subtract(Duration(days: (now.weekday + 1) % 7)));
+    final monthStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (key, label, icon) in const [
+              ('day', 'اليوم', Icons.today_outlined),
+              ('week', 'هذا الأسبوع', Icons.view_week_outlined),
+              ('month', 'هذا الشهر', Icons.calendar_month_outlined),
+              ('custom', 'فترة من – إلى…', Icons.date_range_outlined),
+            ])
+              ListTile(
+                leading: Icon(icon),
+                title: Text(label),
+                onTap: () => Navigator.pop(ctx, key),
+              ),
+            if (widget.onOpenCards != null)
+              ListTile(
+                leading: const Icon(Icons.credit_card),
+                title: const Text('فتح البطاقات'),
+                onTap: () => Navigator.pop(ctx, 'cards'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+    switch (choice) {
+      case 'day':
+        setState(() {
+          _picked = null;
+          _label = 'إجمالي مبيعات اليوم';
+        });
+      case 'week':
+        await _load(weekStart, today, 'مبيعات هذا الأسبوع');
+      case 'month':
+        await _load(monthStart, today, 'مبيعات هذا الشهر');
+      case 'custom':
+        final r = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(2020),
+          lastDate: now,
+          initialDateRange: DateTimeRange(
+            start: DateTime(now.year, now.month),
+            end: now,
+          ),
+          helpText: 'اختر الفترة',
+        );
+        if (r == null) return;
+        final f = _ymd(r.start);
+        final t = _ymd(r.end);
+        await _load(
+          f,
+          t,
+          f == t ? 'مبيعات $f' : 'مبيعات ${f.substring(5)} ← ${t.substring(5)}',
+        );
+      case 'cards':
+        widget.onOpenCards?.call();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = _picked ?? widget.initial;
+    return Stack(
+      children: [
+        _MetricTile(
+          icon: Icons.point_of_sale_outlined,
+          label: _label,
+          value: _loading ? '…' : arCount(s.cardsCount, arCard, showOne: true),
+          sub: s.moneyVisible && s.byCurrency.isNotEmpty
+              ? formatByCurrency(s.byCurrency)
+              : null,
+          tone: _MetricTone.success,
+          onTap: _pick,
+        ),
+        PositionedDirectional(
+          top: 10,
+          end: 10,
+          child: IgnorePointer(
+            child: Icon(
+              Icons.edit_calendar_outlined,
+              size: 16,
+              color: AppPalette.of(context).successFg,
+            ),
           ),
         ),
       ],

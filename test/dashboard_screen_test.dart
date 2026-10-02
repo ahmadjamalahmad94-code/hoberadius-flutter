@@ -120,6 +120,12 @@ void main() {
 
     expect(find.text('إجمالي مبيعات اليوم'), findsOneWidget);
     expect(find.textContaining('100 بطاقة'), findsOneWidget);
+    // Owner 2026-10-02: the period is selectable (default today).
+    await tester.tap(find.text('إجمالي مبيعات اليوم'));
+    await tester.pumpAndSettle();
+    for (final l in ['اليوم', 'هذا الأسبوع', 'هذا الشهر', 'فترة من – إلى…']) {
+      expect(find.text(l), findsOneWidget);
+    }
   });
 
   testWidgets('hides the sales_today tile when the server omits it (old '

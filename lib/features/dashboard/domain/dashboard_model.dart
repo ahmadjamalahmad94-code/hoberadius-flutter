@@ -14,7 +14,8 @@
 /// batches) and `alerts` (the "ما يحتاج انتباه" panel). Those are now parsed.
 library;
 
-import '../../../core/format/currency.dart' show CurrencyAmount, parseByCurrency;
+import '../../../core/format/currency.dart'
+    show CurrencyAmount, parseByCurrency;
 
 class DashboardMetrics {
   DashboardMetrics({
@@ -292,9 +293,13 @@ class SalesToday {
     required this.cardsCount,
     required this.moneyVisible,
     this.byCurrency = const [],
+    this.dateTo = '',
   });
 
   final String date;
+
+  /// End of the period (inclusive); '' or == [date] for a single day.
+  final String dateTo;
   final int cardsCount;
   final bool moneyVisible;
 
@@ -306,6 +311,7 @@ class SalesToday {
     if (j == null) return null;
     return SalesToday(
       date: (j['date'] ?? '').toString(),
+      dateTo: (j['date_to'] ?? '').toString(),
       cardsCount: DashboardMetrics._i(j['cards_count']),
       moneyVisible: DashboardMetrics._b(j['money_visible']) ?? false,
       byCurrency: parseByCurrency(j['by_currency']),

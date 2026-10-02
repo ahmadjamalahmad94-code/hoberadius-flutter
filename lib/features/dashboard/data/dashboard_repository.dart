@@ -27,6 +27,17 @@ class DashboardRepository {
     );
   }
 
+  /// «المبيعات» for a picked period (owner 2026-10-02) — same rules as the
+  /// dashboard's `sales_today`. `from`/`to` are local YYYY-MM-DD, inclusive.
+  Future<SalesToday?> sales({required String from, required String to}) async {
+    final res = await _api.get(
+      '/api/v1/dashboard/sales',
+      query: {'from': from, 'to': to},
+    );
+    final d = res['data'];
+    return SalesToday.fromJson(d is Map<String, dynamic> ? d : null);
+  }
+
   Future<Map<String, dynamic>?> _safe(
     Future<Map<String, dynamic>> Function() f,
   ) async {
