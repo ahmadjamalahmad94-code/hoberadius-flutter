@@ -9,10 +9,11 @@ import '../../../../core/api/api_exception.dart';
 import '../../../../core/auth/permissions.dart';
 import '../../../../shared/widgets/collapsible_section.dart';
 import '../../../../shared/widgets/form_field_row.dart';
-import '../../../../shared/widgets/hub_time_picker_circular.dart';
+import '../../../../shared/widgets/hub_access_schedule.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
-import '../../../../shared/widgets/wheel_picker_fields.dart';
+import '../../../../shared/widgets/hub_unit_input.dart';
 import '../../../admins/data/admins_repository.dart';
+import '../../data/subscribers_repository.dart';
 import '../../domain/subscriber_model.dart';
 import 'expire_picker.dart';
 import 'plan_picker.dart';
@@ -37,6 +38,65 @@ class _NumField extends StatelessWidget {
   }
 }
 
+/// A number + unit field (the web's `unit_input_picker`): the controller
+/// keeps the canonical value (kbps / MB / minutes) so the form's number
+/// checks and the payload are unchanged; the unit only changes what is typed.
+class _UnitField extends StatelessWidget {
+  const _UnitField({
+    required this.controller,
+    required this.kind,
+    required this.units,
+    this.enabled = true,
+  });
+  final TextEditingController controller;
+  final HubUnitKind kind;
+  final List<String> units;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, v, _) => HubUnitInput(
+        value: parseIntInput(v.text) ?? 0,
+        kind: kind,
+        units: units,
+        enabled: enabled,
+        onChanged: (base) {
+          final next = base > 0 ? '$base' : '';
+          if (controller.text != next) controller.text = next;
+        },
+      ),
+    );
+  }
+}
+
+/// «عند بلوغ حدّ الأجهزة» choices — the web form's list (same values).
+const List<(String, String)> kDeviceLimitModeOptions = [
+  ('', 'الافتراض العام (من الإعدادات)'),
+  ('reject', 'رفض الجلسة الجديدة'),
+  ('replace', 'استبدال — فصل أقدم جلسة والسماح'),
+];
+
+/// «الحالة» choices — the server's ACCOUNT_STATUSES with the web's labels.
+const List<(String, String)> kSubscriberStatusOptions = [
+  ('enabled', 'مفعَّل'),
+  ('disabled', 'معطَّل'),
+  ('expired', 'منتهٍ'),
+  ('suspended', 'موقوف'),
+  ('pending', 'قيد الانتظار'),
+];
+
+/// «نوع المستخدم» choices the API accepts (subscriber | trial); a card or
+/// any other type is refused with 422, so an already-stored other value is
+/// shown (never offered).
+List<(String, String)> userTypeOptions(String current) {
+  const canonical = [('subscriber', 'مشترك'), ('trial', 'تجريبي')];
+  final cur = current.trim();
+  if (cur.isEmpty || canonical.any((e) => e.$1 == cur)) return canonical;
+  return [...canonical, (cur, '$cur (قديم)')];
+}
+
 /// Subscriber form — basic identity + plan + expiry.
 class SubscriberCoreSection extends StatelessWidget {
   const SubscriberCoreSection({
@@ -55,7 +115,14 @@ class SubscriberCoreSection extends StatelessWidget {
     this.fieldErrors = const {},
     this.explicitNoExpiry = false,
     this.onExplicitNoExpiryChanged,
+    this.loginWithoutPassword = false,
+    this.onLoginWithoutPasswordChanged,
   });
+
+  /// «قسم كلمة المرور» معطَّل: the subscriber logs in by name only; the
+  /// stored password is kept (turning it back on restores it).
+  final bool loginWithoutPassword;
+  final ValueChanged<bool>? onLoginWithoutPasswordChanged;
 
   /// Create form: «بدون انتهاء» chosen explicitly (`expire_at: null`).
   final bool explicitNoExpiry;
@@ -132,21 +199,32 @@ class SubscriberCoreSection extends StatelessWidget {
               first: username,
               second: FormFieldRow(
                 label: 'كلمة المرور',
-                required: true,
+                required: !loginWithoutPassword,
                 child: TextFormField(
                   controller: controllers['password'],
                   obscureText: true,
                   inputFormatters: [
                     LengthLimitingTextInputFormatter(kSubscriberPasswordMax),
                   ],
+                  // Login by name only: no password needed (the web's rule).
                   validator: (v) => (v == null || v.isEmpty)
-                      ? 'مطلوب'
+                      ? (loginWithoutPassword ? null : 'مطلوب')
                       : validateNewSubscriberPassword(v),
                 ),
               ),
             ),
             fullName,
           ],
+          if (onLoginWithoutPasswordChanged != null)
+            HubSwitchRow(
+              label: 'قسم كلمة المرور',
+              subtitle: loginWithoutPassword
+                  ? 'معطَّل: الدخول باسم المستخدم وحدَه'
+                  : 'مفعَّل: تُطلب كلمة المرور عند الدخول',
+              value: loginWithoutPassword,
+              onChanged: onLoginWithoutPasswordChanged,
+              dense: true,
+            ),
           FormFieldPair(
             first: FormFieldRow(
               label: 'الجوال',
@@ -177,10 +255,11 @@ class SubscriberCoreSection extends StatelessWidget {
               child: DropdownButtonFormField<String>(
                 isExpanded: true,
                 initialValue: status,
-                items: const [
-                  DropdownMenuItem(value: 'enabled', child: Text('مفعّل')),
-                  DropdownMenuItem(value: 'disabled', child: Text('معطّل')),
-                  DropdownMenuItem(value: 'expired', child: Text('منتهي')),
+                items: [
+                  for (final (v, label) in kSubscriberStatusOptions)
+                    DropdownMenuItem(value: v, child: Text(label)),
+                  if (!kSubscriberStatusOptions.any((e) => e.$1 == status))
+                    DropdownMenuItem(value: status, child: Text(status)),
                 ],
                 onChanged: (v) => onStatusChanged(v ?? 'enabled'),
               ),
@@ -189,14 +268,10 @@ class SubscriberCoreSection extends StatelessWidget {
               label: 'نوع المستخدم',
               child: DropdownButtonFormField<String>(
                 isExpanded: true,
-                initialValue: userType,
-                items: const [
-                  DropdownMenuItem(
-                    value: 'subscriber',
-                    child: Text('مشترك'),
-                  ),
-                  DropdownMenuItem(value: 'card', child: Text('كرت')),
-                  DropdownMenuItem(value: 'employee', child: Text('موظف')),
+                initialValue: userType.trim().isEmpty ? 'subscriber' : userType,
+                items: [
+                  for (final (v, label) in userTypeOptions(userType))
+                    DropdownMenuItem(value: v, child: Text(label)),
                 ],
                 onChanged: (v) => onUserTypeChanged(v ?? 'subscriber'),
               ),
@@ -315,6 +390,102 @@ class SubscriberMtSection extends StatelessWidget {
   }
 }
 
+/// «إعدادات شبكة متقدمة جدًا» — the web form's per-subscriber RADIUS reply
+/// overrides (metadata `mikrotik.mikrotik_*` / `radius.*`), sent by the
+/// policy engine on every login.
+class SubscriberAdvancedNetworkSection extends StatelessWidget {
+  const SubscriberAdvancedNetworkSection({
+    super.key,
+    required this.controllers,
+  });
+
+  final Map<String, TextEditingController> controllers;
+
+  Widget _text(String key, String label, String hint, {String? example}) =>
+      FormFieldRow(
+        label: label,
+        hint: hint,
+        child: TextFormField(
+          controller: controllers[key],
+          textDirection: TextDirection.ltr,
+          decoration: InputDecoration(hintText: example),
+        ),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return CollapsibleSection(
+      storageKey: 'sub.netadv',
+      icon: Icons.memory_outlined,
+      title: 'إعدادات شبكة متقدمة جدًا',
+      initiallyExpanded: false,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'للحالات الخاصة فقط. اتركها فارغة إلا إذا كان عندك سياسة جهاز '
+              'شبكة محددة لهذا المشترك.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          _text(
+            'net_filter_chain',
+            'سلسلة فلترة الراوتر',
+            'تمرّر ترافيك المشترك عبر سلسلة Firewall محددة.',
+            example: 'forward / input',
+          ),
+          _text(
+            'net_address_list',
+            'قائمة عناوين الراوتر',
+            'يضيف عنوان المشترك لقائمة Address-List في الراوتر.',
+          ),
+          _text(
+            'net_framed_route',
+            'مسار الراوتر الموجَّه',
+            'شبكة إضافية توجَّه خلف اتصال المشترك.',
+            example: '10.10.0.0/24 10.10.0.1',
+          ),
+          _text(
+            'net_user_group',
+            'مجموعة مستخدم الراوتر',
+            'مجموعة صلاحيات Hotspot في الراوتر.',
+          ),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'أولوية طابور السرعة',
+              hint: '1 = أعلى أولوية عند ازدحام الشبكة.',
+              child: _NumField(controller: controllers['net_queue_priority']!),
+            ),
+            second: FormFieldRow(
+              label: 'فترة تحديث الاستهلاك (ث)',
+              hint: 'كل كم ثانية يبلّغ الراوتر عن استهلاك الجلسة.',
+              child:
+                  _NumField(controller: controllers['net_acct_interim_sec']!),
+            ),
+          ),
+          _text(
+            'net_framed_pool',
+            'نطاق عناوين الجلسات',
+            'اسم Pool يأخذ منه المشترك عنوانه.',
+          ),
+          FormFieldRow(
+            label: 'خصائص PPP إضافية',
+            hint: 'سطر لكل خاصية.',
+            child: TextFormField(
+              controller: controllers['net_ppp_extra'],
+              maxLines: 3,
+              textDirection: TextDirection.ltr,
+              decoration:
+                  const InputDecoration(hintText: 'خاصية=قيمة (سطر لكل واحدة)'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// RADIUS / DNS attributes section.
 class SubscriberRadiusSection extends StatelessWidget {
   const SubscriberRadiusSection({super.key, required this.controllers});
@@ -365,9 +536,18 @@ class SubscriberRadiusSection extends StatelessWidget {
 
 /// MAC / IP lock section (collapsed by default).
 class SubscriberLockSection extends StatelessWidget {
-  const SubscriberLockSection({super.key, required this.controllers});
+  const SubscriberLockSection({
+    super.key,
+    required this.controllers,
+    this.deviceLimitMode = '',
+    this.onDeviceLimitModeChanged,
+  });
 
   final Map<String, TextEditingController> controllers;
+
+  /// «عند بلوغ حدّ الأجهزة»: '' | reject | replace.
+  final String deviceLimitMode;
+  final ValueChanged<String>? onDeviceLimitModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -378,15 +558,14 @@ class SubscriberLockSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
+          // «العناوين المسموحة (MAC)» (allowed_macs) was a second MAC box:
+          // the web keeps it as a hidden mirror of this one and the RADIUS
+          // policy reads only mac_lock — removed (stored value untouched).
           FormFieldRow(
             label: 'قفل على MAC',
-            hint: 'AA:BB:CC:DD:EE:FF',
+            hint: 'الماكات المسموحة بالدخول لهذا الحساب، مفصولة بفواصل '
+                '(AA:BB:CC:DD:EE:FF).',
             child: TextFormField(controller: controllers['mac_lock']),
-          ),
-          FormFieldRow(
-            label: 'العناوين المسموحة (MAC)',
-            hint: 'قِيَم MAC مفصولة بفواصل',
-            child: TextFormField(controller: controllers['allowed_macs']),
           ),
           FormFieldRow(
             label: 'IP ثابت',
@@ -395,7 +574,8 @@ class SubscriberLockSection extends StatelessWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'عدد الأجهزة المسموحة',
-              hint: 'الحد الأقصى للجلسات المتزامنة',
+              hint: 'الحد الأقصى للأجهزة المتصلة في آنٍ واحد — يُنفَّذ عند '
+                  'المصادقة.',
               child: _NumField(controller: controllers['device_count']!),
             ),
             second: FormFieldRow(
@@ -403,6 +583,23 @@ class SubscriberLockSection extends StatelessWidget {
               child: _NumField(controller: controllers['vlan_id']!),
             ),
           ),
+          if (onDeviceLimitModeChanged != null)
+            FormFieldRow(
+              label: 'عند بلوغ حدّ الأجهزة',
+              hint: '«الافتراض العام» يتبع إعداد اللوحة.',
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue:
+                    kDeviceLimitModeOptions.any((e) => e.$1 == deviceLimitMode)
+                        ? deviceLimitMode
+                        : '',
+                items: [
+                  for (final (v, label) in kDeviceLimitModeOptions)
+                    DropdownMenuItem(value: v, child: Text(label)),
+                ],
+                onChanged: (v) => onDeviceLimitModeChanged!(v ?? ''),
+              ),
+            ),
           FormFieldRow(
             label: 'ملف اتصال الجهاز',
             child: TextFormField(
@@ -488,8 +685,8 @@ class SubscriberManagementSection extends ConsumerWidget {
           FormFieldPair(
             first: FormFieldRow(
               label: 'المجموعة',
-              hint: 'اسم مجموعة المشتركين',
-              child: TextFormField(controller: controllers['group']),
+              hint: 'تُدار من «مجموعات المشتركين».',
+              child: _GroupPicker(controller: controllers['group']!),
             ),
             second: FormFieldRow(
               label: 'مجموعة العناوين (Pool)',
@@ -509,6 +706,40 @@ class SubscriberManagementSection extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// «المجموعة» — a dropdown of the subscriber groups (the web's list); a
+/// stored name missing from the list stays selectable, and a failed fetch
+/// (older server / no permission) falls back to free text.
+class _GroupPicker extends ConsumerWidget {
+  const _GroupPicker({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final groups = ref.watch(subscriberGroupNamesProvider);
+    return groups.when(
+      loading: () => const LinearProgressIndicator(),
+      error: (_, __) => TextFormField(controller: controller),
+      data: (names) => ValueListenableBuilder<TextEditingValue>(
+        valueListenable: controller,
+        builder: (context, v, _) {
+          final cur = v.text.trim();
+          return DropdownButtonFormField<String>(
+            isExpanded: true,
+            initialValue: cur,
+            items: [
+              const DropdownMenuItem(value: '', child: Text('— بدون —')),
+              for (final n in names) DropdownMenuItem(value: n, child: Text(n)),
+              if (cur.isNotEmpty && !names.contains(cur))
+                DropdownMenuItem(value: cur, child: Text(cur)),
+            ],
+            onChanged: (n) => controller.text = n ?? '',
+          );
+        },
       ),
     );
   }
@@ -652,30 +883,44 @@ class SubscriberSpeedSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
+          // ONE switch, like the web: «سرعة أساسية مخصّصة» (bandwidth_control
+          // — the flag the RADIUS policy reads) and «تفعيل السرعة المخصصة»
+          // (custom_speed — a label only) were two switches, so turning on
+          // the second alone changed nothing on the router.
           HubSwitchRow(
-            label: 'سرعة أساسية مخصّصة',
-            subtitle: 'قيم ثابتة تتجاوز سرعة الباقة',
-            value: bandwidthControlEnabled,
-            onChanged: onBandwidthControlChanged,
-            dense: true,
-          ),
-          HubSwitchRow(
-            label: 'تفعيل السرعة المخصصة',
-            subtitle: 'فعّلها لتطبيق سرعة خاصة بدل سرعة الباقة',
-            value: customSpeed,
-            onChanged: onCustomSpeedChanged,
+            label: 'سرعة مخصصة',
+            subtitle: temporarySpeed
+                ? 'سرعة مؤقتة مفعّلة الآن — تُدار من «المتصلون»'
+                : 'فعّلها لتطبيق سرعة خاصة بدل سرعة الباقة.',
+            value: customSpeed || bandwidthControlEnabled,
+            onChanged: temporarySpeed
+                ? null
+                : (v) {
+                    onCustomSpeedChanged(v);
+                    onBandwidthControlChanged(v);
+                  },
             dense: true,
           ),
           FormFieldPair(
             first: FormFieldRow(
-              label: 'سرعة التنزيل (kbps)',
-              hint: '0 = استخدم قيمة الباقة',
-              child: _NumField(controller: controllers['download_speed_kbps']!),
+              label: 'سرعة التنزيل',
+              hint: '0 = استخدم قيمة الباقة.',
+              child: _UnitField(
+                controller: controllers['download_speed_kbps']!,
+                kind: HubUnitKind.speed,
+                units: const ['kbps', 'Mbps'],
+                enabled: !temporarySpeed,
+              ),
             ),
             second: FormFieldRow(
-              label: 'سرعة الرفع (kbps)',
-              hint: '0 = استخدم قيمة الباقة',
-              child: _NumField(controller: controllers['upload_speed_kbps']!),
+              label: 'سرعة الرفع',
+              hint: '0 = استخدم قيمة الباقة.',
+              child: _UnitField(
+                controller: controllers['upload_speed_kbps']!,
+                kind: HubUnitKind.speed,
+                units: const ['kbps', 'Mbps'],
+                enabled: !temporarySpeed,
+              ),
             ),
           ),
           // «سرعة مؤقتة» had no effect from this form (r02): a temporary
@@ -693,8 +938,8 @@ class SubscriberSpeedSection extends StatelessWidget {
 /// never changes it), an older value (Balance/Voucher…) stays listed.
 List<(String, String)> serviceTypeOptions(String current) {
   const canonical = [
-    ('Hotspot', 'هوتسبوت'),
-    ('PPPoE', 'PPPoE'),
+    ('Hotspot', 'هوت سبوت'),
+    ('PPPoE', 'برودباند'),
     ('both', 'كلاهما'),
   ];
   final cur = current.trim();
@@ -717,8 +962,8 @@ String legacyServiceTypeLabel(String v) => switch (v.trim().toLowerCase()) {
       'balance' => 'رصيد (قديم)',
       'voucher' => 'كوبون (قديم)',
       'others' => 'أخرى (قديم)',
-      'hotspot' => 'هوتسبوت',
-      'pppoe' => 'PPPoE',
+      'hotspot' => 'هوت سبوت',
+      'pppoe' => 'برودباند',
       _ => '$v (قديم)',
     };
 
@@ -751,7 +996,13 @@ class SubscriberQuotaSection extends StatelessWidget {
     required this.onEqualShareDownloadChanged,
     required this.equalShareUpload,
     required this.onEqualShareUploadChanged,
+    this.connectionSchedule = '',
+    this.onConnectionScheduleChanged,
   });
+
+  /// «الأيام والأوقات المسموحة للاتصال» (access-schedule JSON).
+  final String connectionSchedule;
+  final ValueChanged<String>? onConnectionScheduleChanged;
 
   final Map<String, TextEditingController> controllers;
   final bool quotaLimitEnabled;
@@ -773,62 +1024,93 @@ class SubscriberQuotaSection extends StatelessWidget {
       child: Column(
         children: [
           FormFieldRow(
-            label: 'كوتا مدمجة (MB)',
-            hint: 'تحلّ محل كوتا التنزيل/الرفع. 0 = غير محدودة',
-            child: _NumField(controller: controllers['combined_quota_mb']!),
-          ),
-          FormFieldPair(
-            first: FormFieldRow(
-              label: 'كوتا التنزيل (MB)',
-              hint: '0 = غير محدودة',
-              child: _NumField(controller: controllers['download_quota_mb']!),
-            ),
-            second: FormFieldRow(
-              label: 'كوتا الرفع (MB)',
-              hint: '0 = غير محدودة',
-              child: _NumField(controller: controllers['upload_quota_mb']!),
+            label: 'كوتا إجمالية (مدمجة)',
+            hint: 'إجمالي البيانات المسموحة للحساب؛ إن حُدِّدت تحلّ محل كوتا '
+                'التنزيل/الرفع المنفصلة. 0 = غير محدودة.',
+            child: _UnitField(
+              controller: controllers['combined_quota_mb']!,
+              kind: HubUnitKind.quota,
+              units: const ['MB', 'GB'],
             ),
           ),
           FormFieldPair(
             first: FormFieldRow(
-              label: 'إجمالي وقت الاتصال (دقيقة)',
-              hint: '0 = بلا حد',
-              child: _NumField(
-                controller: controllers['total_connection_time_min']!,
+              label: 'كوتا التنزيل',
+              hint: '0 = غير محدودة.',
+              child: _UnitField(
+                controller: controllers['download_quota_mb']!,
+                kind: HubUnitKind.quota,
+                units: const ['MB', 'GB'],
               ),
             ),
             second: FormFieldRow(
-              label: 'وقت الاتصال اليومي (دقيقة)',
-              hint: '0 = بلا حد',
-              child: _NumField(
+              label: 'كوتا الرفع',
+              hint: '0 = غير محدودة.',
+              child: _UnitField(
+                controller: controllers['upload_quota_mb']!,
+                kind: HubUnitKind.quota,
+                units: const ['MB', 'GB'],
+              ),
+            ),
+          ),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'إجمالي وقت الاتصال',
+              hint: '0 = بلا حد خاص.',
+              child: _UnitField(
+                controller: controllers['total_connection_time_min']!,
+                kind: HubUnitKind.time,
+                units: const ['min', 'hr', 'day'],
+              ),
+            ),
+            second: FormFieldRow(
+              label: 'وقت الاتصال اليومي',
+              hint: '0 = بلا حد.',
+              child: _UnitField(
                 controller: controllers['daily_connection_time_min']!,
+                kind: HubUnitKind.time,
+                units: const ['min', 'hr'],
               ),
             ),
           ),
           HubSwitchRow(
             label: 'تطبيق حد الكوتا',
+            subtitle: 'عند التفعيل تُطبَّق كوتا التنزيل/الرفع/المدمجة.',
             value: quotaLimitEnabled,
             onChanged: onQuotaLimitChanged,
             dense: true,
           ),
           HubSwitchRow(
             label: 'تطبيق حد وقت الاتصال',
+            subtitle: 'عند التفعيل يُطبَّق وقت الاتصال أعلاه.',
             value: connectionTimeLimitEnabled,
             onChanged: onConnectionTimeLimitChanged,
             dense: true,
           ),
           HubSwitchRow(
-            label: 'توزيع متساوٍ للتنزيل',
+            label: 'تقسيم سرعة التنزيل على الأجهزة',
+            subtitle: 'تُقسَّم سرعة التنزيل بالتساوي على الأجهزة المتصلة.',
             value: equalShareDownload,
             onChanged: onEqualShareDownloadChanged,
             dense: true,
           ),
           HubSwitchRow(
-            label: 'توزيع متساوٍ للرفع',
+            label: 'تقسيم سرعة الرفع على الأجهزة',
+            subtitle: 'تُقسَّم سرعة الرفع بالتساوي على الأجهزة المتصلة.',
             value: equalShareUpload,
             onChanged: onEqualShareUploadChanged,
             dense: true,
           ),
+          // The web's «الأيام والأوقات المسموحة للاتصال» (connection_schedule,
+          // enforced by the policy engine). Replaces the app's «ساعات السماح»
+          // (metadata, never read) and «أيام العمل» (a legacy cache the
+          // schedule overrides).
+          if (onConnectionScheduleChanged != null)
+            HubAccessSchedule(
+              title: 'الأيام والأوقات المسموحة للاتصال',
+              value: AccessSchedule.parse(connectionSchedule),
+              onChanged: (v) => onConnectionScheduleChanged!(v.encode()),
+            ),
         ],
       ),
     );
@@ -873,24 +1155,16 @@ class SubscriberPppoeSection extends StatelessWidget {
   }
 }
 
-/// Advanced section — allowed hours + working days + first-use toggle.
+/// Advanced section — the first-use toggle. «ساعات السماح» (a metadata value
+/// nothing read) and «أيام العمل» (a legacy cache) moved to «الأيام والأوقات
+/// المسموحة للاتصال» in «الحصة والوقت», as on the web.
 class SubscriberAdvancedSection extends StatelessWidget {
   const SubscriberAdvancedSection({
     super.key,
-    required this.allowedFrom,
-    required this.allowedTo,
-    required this.onAllowedHoursChanged,
-    required this.workingDays,
-    required this.onWorkingDaysChanged,
     required this.disableOnFirstUse,
     required this.onDisableOnFirstUseChanged,
   });
 
-  final String allowedFrom;
-  final String allowedTo;
-  final void Function(String from, String to) onAllowedHoursChanged;
-  final Set<String> workingDays;
-  final ValueChanged<Set<String>> onWorkingDaysChanged;
   final bool disableOnFirstUse;
   final ValueChanged<bool> onDisableOnFirstUseChanged;
 
@@ -903,33 +1177,6 @@ class SubscriberAdvancedSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldRow(
-            label: 'ساعات السماح',
-            child: Row(
-              children: [
-                Expanded(
-                  child: HubTimePickerCircular(
-                    value: allowedFrom,
-                    onChanged: (from) => onAllowedHoursChanged(from, allowedTo),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: HubTimePickerCircular(
-                    value: allowedTo,
-                    onChanged: (to) => onAllowedHoursChanged(allowedFrom, to),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          FormFieldRow(
-            label: 'أيام العمل',
-            child: WheelDaysPickerField(
-              selectedKeys: workingDays,
-              onChanged: onWorkingDaysChanged,
-            ),
-          ),
           HubSwitchRow(
             label: 'تعطيل تلقائي بعد أول استخدام',
             value: disableOnFirstUse,

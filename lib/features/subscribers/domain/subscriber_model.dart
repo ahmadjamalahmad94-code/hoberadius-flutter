@@ -104,6 +104,18 @@ class Subscriber {
     // — general (metadata) —
     this.notes = '',
     this.tags = const <String>[],
+    // — parity with the web form (all enforced by the policy engine) —
+    this.loginWithoutPassword = false,
+    this.deviceLimitMode = '',
+    this.connectionSchedule = '',
+    this.netFilterChain = '',
+    this.netAddressList = '',
+    this.netFramedRoute = '',
+    this.netUserGroup = '',
+    this.netQueuePriority = '',
+    this.netFramedPool = '',
+    this.netAcctInterimSec = '',
+    this.netPppExtra = '',
     // — read-only counters —
     this.usedSeconds = 0,
     this.usedBytesIn = 0,
@@ -211,6 +223,30 @@ class Subscriber {
 
   final String notes;
   final List<String> tags;
+
+  /// «قسم كلمة المرور» معطَّل: the subscriber logs in by name only (the
+  /// stored password is kept). Read by the policy engine.
+  final bool loginWithoutPassword;
+
+  /// «عند بلوغ حدّ الأجهزة»: '' (the panel default) | reject | replace.
+  final String deviceLimitMode;
+
+  /// «الأيام والأوقات المسموحة للاتصال» — the server's access-schedule JSON
+  /// (`{"windows":[{"days":[..],"from":"HH:MM","to":"HH:MM"}]}`); '' = no
+  /// restriction. The server derives `working_days` from it.
+  final String connectionSchedule;
+
+  /// «إعدادات شبكة متقدمة جدًا» — the web form's metadata keys
+  /// (`mikrotik.mikrotik_*`, `radius.framed_pool|acct_interim_interval_sec|
+  /// ppp_attributes_extra`), sent as RADIUS reply attributes on login.
+  final String netFilterChain;
+  final String netAddressList;
+  final String netFramedRoute;
+  final String netUserGroup;
+  final String netQueuePriority;
+  final String netFramedPool;
+  final String netAcctInterimSec;
+  final String netPppExtra;
 
   final int usedSeconds;
   final int usedBytesIn;
@@ -335,6 +371,18 @@ class Subscriber {
       subscriptionDays: _int(sub['days']),
       notes: (gen['notes'] ?? '').toString(),
       tags: _strList(gen['tags']),
+      loginWithoutPassword: j['login_without_password'] == true ||
+          j['login_without_password'] == 1,
+      deviceLimitMode: (j['device_limit_mode'] ?? '').toString(),
+      connectionSchedule: (j['connection_schedule'] ?? '').toString(),
+      netFilterChain: _metaStr(mt['mikrotik_filter_chain']),
+      netAddressList: _metaStr(mt['mikrotik_address_list']),
+      netFramedRoute: _metaStr(mt['mikrotik_framed_route']),
+      netUserGroup: _metaStr(mt['mikrotik_user_group']),
+      netQueuePriority: _metaStr(mt['mikrotik_queue_priority']),
+      netFramedPool: _metaStr(rad['framed_pool']),
+      netAcctInterimSec: _metaStr(rad['acct_interim_interval_sec']),
+      netPppExtra: _metaStr(rad['ppp_attributes_extra']),
       // counters
       usedSeconds: _int(j['used_seconds']) ?? 0,
       usedBytesIn: _int(j['used_bytes_in']) ?? 0,
@@ -409,7 +457,11 @@ class Subscriber {
       'primary_dns_ppp': primaryDnsPpp,
       'secondary_dns_ppp': secondaryDnsPpp,
       'caller_id': callerId,
-      'working_days': workingDaysCsv,
+      // `working_days` is no longer edited here: the server derives it from
+      // `connection_schedule` (the web form's «الأيام والأوقات المسموحة»).
+      'connection_schedule': connectionSchedule,
+      'login_without_password': loginWithoutPassword,
+      'device_limit_mode': deviceLimitMode,
       'auto_renewal': autoRenewal,
       'pppoe_username': pppoeUsername,
       if (pppoePassword.isNotEmpty) 'pppoe_password': pppoePassword,
@@ -535,11 +587,19 @@ class Subscriber {
           'rate_limit': mtRateLimit,
           'ip_pool': mtIpPool,
           'comment': mtComment,
+          'mikrotik_filter_chain': netFilterChain,
+          'mikrotik_address_list': netAddressList,
+          'mikrotik_framed_route': netFramedRoute,
+          'mikrotik_user_group': netUserGroup,
+          'mikrotik_queue_priority': netQueuePriority,
         },
         'radius': {
           if (sessionTimeout != null) 'session_timeout': sessionTimeout,
           if (idleTimeout != null) 'idle_timeout': idleTimeout,
           'called_station_id': calledStationId,
+          'framed_pool': netFramedPool,
+          'acct_interim_interval_sec': netAcctInterimSec,
+          'ppp_attributes_extra': netPppExtra,
         },
         'advanced': {
           'allowed_hours': allowedHours,
@@ -566,6 +626,8 @@ class Subscriber {
   /// to UTC, so every save from the edit form cut the expiry by the UTC
   /// offset (3 h in Palestine).
   static DateTime? _parseDt(Object? v) => parseServerDateTime(v);
+
+  static String _metaStr(Object? v) => v == null ? '' : v.toString();
 
   static int? _int(Object? v) =>
       v == null ? null : (v is int ? v : int.tryParse(v.toString()));
@@ -662,6 +724,9 @@ class Subscriber {
     int? subscriptionDays,
     String? notes,
     List<String>? tags,
+    bool? loginWithoutPassword,
+    String? deviceLimitMode,
+    String? connectionSchedule,
   }) =>
       Subscriber(
         id: id ?? this.id,
@@ -746,6 +811,17 @@ class Subscriber {
         subscriptionDays: subscriptionDays ?? this.subscriptionDays,
         notes: notes ?? this.notes,
         tags: tags ?? this.tags,
+        loginWithoutPassword: loginWithoutPassword ?? this.loginWithoutPassword,
+        deviceLimitMode: deviceLimitMode ?? this.deviceLimitMode,
+        connectionSchedule: connectionSchedule ?? this.connectionSchedule,
+        netFilterChain: netFilterChain,
+        netAddressList: netAddressList,
+        netFramedRoute: netFramedRoute,
+        netUserGroup: netUserGroup,
+        netQueuePriority: netQueuePriority,
+        netFramedPool: netFramedPool,
+        netAcctInterimSec: netAcctInterimSec,
+        netPppExtra: netPppExtra,
       );
 }
 

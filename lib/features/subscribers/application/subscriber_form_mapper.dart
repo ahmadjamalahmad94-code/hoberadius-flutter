@@ -62,6 +62,15 @@ const kSubscriberFormControllerKeys = [
   'subscription_days',
   'notes',
   'tags',
+  // «إعدادات شبكة متقدمة جدًا» (web metadata keys, enforced on login)
+  'net_filter_chain',
+  'net_address_list',
+  'net_framed_route',
+  'net_user_group',
+  'net_queue_priority',
+  'net_framed_pool',
+  'net_acct_interim_sec',
+  'net_ppp_extra',
 ];
 
 /// Form-state container for selections the form does not track in text
@@ -88,6 +97,9 @@ class SubscriberFormSelections {
     required this.connectionTimeLimitEnabled,
     required this.equalShareDownload,
     required this.equalShareUpload,
+    this.loginWithoutPassword = false,
+    this.deviceLimitMode = '',
+    this.connectionSchedule = '',
   });
 
   final String status;
@@ -109,6 +121,24 @@ class SubscriberFormSelections {
   final bool connectionTimeLimitEnabled;
   final bool equalShareDownload;
   final bool equalShareUpload;
+
+  /// «قسم كلمة المرور» معطَّل (login by name only).
+  final bool loginWithoutPassword;
+
+  /// «عند بلوغ حدّ الأجهزة»: '' | reject | replace.
+  final String deviceLimitMode;
+
+  /// «الأيام والأوقات المسموحة للاتصال» (access-schedule JSON, '' = none).
+  final String connectionSchedule;
+}
+
+/// Optional controllers (older callers/tests build a smaller set).
+String _text(Map<String, TextEditingController> c, String key) =>
+    c[key]?.text.trim() ?? '';
+
+void _put(Map<String, TextEditingController> c, String key, String value) {
+  final ctrl = c[key];
+  if (ctrl != null) ctrl.text = value;
 }
 
 /// Pours a server-returned [Subscriber] into the form's text
@@ -186,6 +216,14 @@ void applySubscriberToForm(
   c['subscription_days']!.text = s.subscriptionDays?.toString() ?? '';
   c['notes']!.text = s.notes;
   c['tags']!.text = s.tags.join(', ');
+  _put(c, 'net_filter_chain', s.netFilterChain);
+  _put(c, 'net_address_list', s.netAddressList);
+  _put(c, 'net_framed_route', s.netFramedRoute);
+  _put(c, 'net_user_group', s.netUserGroup);
+  _put(c, 'net_queue_priority', s.netQueuePriority);
+  _put(c, 'net_framed_pool', s.netFramedPool);
+  _put(c, 'net_acct_interim_sec', s.netAcctInterimSec);
+  _put(c, 'net_ppp_extra', s.netPppExtra);
 }
 
 SubscriberFormSelections selectionsFromSubscriber(Subscriber s) =>
@@ -209,6 +247,9 @@ SubscriberFormSelections selectionsFromSubscriber(Subscriber s) =>
       connectionTimeLimitEnabled: s.connectionTimeLimitEnabled,
       equalShareDownload: s.equalShareDownload,
       equalShareUpload: s.equalShareUpload,
+      loginWithoutPassword: s.loginWithoutPassword,
+      deviceLimitMode: s.deviceLimitMode,
+      connectionSchedule: s.connectionSchedule,
     );
 
 /// Builds a [Subscriber] from the form's controllers + selections.
@@ -257,8 +298,7 @@ Subscriber buildSubscriberFromForm(
       allowedMacs: c['allowed_macs']!.text.trim(),
       deviceConnectionFile: c['device_connection_file']!.text.trim(),
       bandwidthControlEnabled: sel.bandwidthControlEnabled,
-      downloadSpeedKbps:
-          parseIntInput(c['download_speed_kbps']!.text) ?? 0,
+      downloadSpeedKbps: parseIntInput(c['download_speed_kbps']!.text) ?? 0,
       uploadSpeedKbps: parseIntInput(c['upload_speed_kbps']!.text) ?? 0,
       customSpeed: sel.customSpeed,
       temporarySpeed: sel.temporarySpeed,
@@ -300,6 +340,17 @@ Subscriber buildSubscriberFromForm(
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList(),
+      loginWithoutPassword: sel.loginWithoutPassword,
+      deviceLimitMode: sel.deviceLimitMode,
+      connectionSchedule: sel.connectionSchedule,
+      netFilterChain: _text(c, 'net_filter_chain'),
+      netAddressList: _text(c, 'net_address_list'),
+      netFramedRoute: _text(c, 'net_framed_route'),
+      netUserGroup: _text(c, 'net_user_group'),
+      netQueuePriority: _text(c, 'net_queue_priority'),
+      netFramedPool: _text(c, 'net_framed_pool'),
+      netAcctInterimSec: _text(c, 'net_acct_interim_sec'),
+      netPppExtra: c['net_ppp_extra']?.text.trim() ?? '',
     );
 
 double _parseMoney(String value) => parseDecimalInput(value) ?? 0;
@@ -323,6 +374,8 @@ const Map<String, String> kSubscriberNumberFields = {
   'session_timeout': 'مهلة الجلسة',
   'idle_timeout': 'مهلة الخمول',
   'subscription_days': 'مدّة الاشتراك',
+  'net_queue_priority': 'أولوية طابور السرعة',
+  'net_acct_interim_sec': 'فترة تحديث الاستهلاك',
 };
 
 /// The first invalid numeric field as «الحقل: السبب», or null.

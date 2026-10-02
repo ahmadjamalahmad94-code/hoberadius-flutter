@@ -53,6 +53,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   bool _connectionTimeLimitEnabled = false;
   bool _equalShareDownload = false;
   bool _equalShareUpload = false;
+  bool _loginWithoutPassword = false;
+  String _deviceLimitMode = '';
+  String _connectionSchedule = '';
 
   /// The row exactly as loaded into the form: the save sends only what the
   /// operator changed relative to it (never the whole stale row).
@@ -83,20 +86,6 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
     super.dispose();
   }
 
-  String get _allowedFrom {
-    final parts = _c['allowed_hours']!.text.split('-');
-    return parts.isNotEmpty && parts.first.trim().isNotEmpty
-        ? parts.first.trim()
-        : '08:00';
-  }
-
-  String get _allowedTo {
-    final parts = _c['allowed_hours']!.text.split('-');
-    return parts.length > 1 && parts[1].trim().isNotEmpty
-        ? parts[1].trim()
-        : '22:00';
-  }
-
   SubscriberFormSelections get _selections => SubscriberFormSelections(
         status: _status,
         userType: _userType,
@@ -117,6 +106,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         connectionTimeLimitEnabled: _connectionTimeLimitEnabled,
         equalShareDownload: _equalShareDownload,
         equalShareUpload: _equalShareUpload,
+        loginWithoutPassword: _loginWithoutPassword,
+        deviceLimitMode: _deviceLimitMode,
+        connectionSchedule: _connectionSchedule,
       );
 
   Future<void> _loadExisting() async {
@@ -150,6 +142,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       _connectionTimeLimitEnabled = sel.connectionTimeLimitEnabled;
       _equalShareDownload = sel.equalShareDownload;
       _equalShareUpload = sel.equalShareUpload;
+      _loginWithoutPassword = sel.loginWithoutPassword;
+      _deviceLimitMode = sel.deviceLimitMode;
+      _connectionSchedule = sel.connectionSchedule;
     });
   }
 
@@ -325,6 +320,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                       if (v) _expireAt = null;
                     }),
             onRename: widget.isEdit ? _rename : null,
+            loginWithoutPassword: _loginWithoutPassword,
+            onLoginWithoutPasswordChanged: (v) =>
+                setState(() => _loginWithoutPassword = v),
             fieldErrors: {
               if (_ownsError &&
                   action.errorField != null &&
@@ -370,6 +368,9 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
             equalShareUpload: _equalShareUpload,
             onEqualShareUploadChanged: (v) =>
                 setState(() => _equalShareUpload = v),
+            connectionSchedule: _connectionSchedule,
+            onConnectionScheduleChanged: (v) =>
+                setState(() => _connectionSchedule = v),
           ),
           const SizedBox(height: AppTokens.s12),
           SubscriberPppoeSection(controllers: _c),
@@ -382,19 +383,16 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
           const SizedBox(height: AppTokens.s12),
           SubscriberRadiusSection(controllers: _c),
           const SizedBox(height: AppTokens.s12),
-          SubscriberLockSection(controllers: _c),
+          SubscriberLockSection(
+            controllers: _c,
+            deviceLimitMode: _deviceLimitMode,
+            onDeviceLimitModeChanged: (v) =>
+                setState(() => _deviceLimitMode = v),
+          ),
+          const SizedBox(height: AppTokens.s12),
+          SubscriberAdvancedNetworkSection(controllers: _c),
           const SizedBox(height: AppTokens.s12),
           SubscriberAdvancedSection(
-            allowedFrom: _allowedFrom,
-            allowedTo: _allowedTo,
-            onAllowedHoursChanged: (from, to) =>
-                setState(() => _c['allowed_hours']!.text = '$from-$to'),
-            workingDays: _workingDays,
-            onWorkingDaysChanged: (days) => setState(() {
-              _workingDays
-                ..clear()
-                ..addAll(days);
-            }),
             disableOnFirstUse: _disableOnFirstUse,
             onDisableOnFirstUseChanged: (v) =>
                 setState(() => _disableOnFirstUse = v),
