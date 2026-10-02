@@ -1107,7 +1107,8 @@ class SubscriberQuotaSection extends StatelessWidget {
           // schedule overrides).
           if (onConnectionScheduleChanged != null)
             HubAccessSchedule(
-              title: 'الأيام والأوقات المسموحة للاتصال',
+              // The web's long title overflowed the shared header at phone width.
+              title: 'الأيام والأوقات',
               value: AccessSchedule.parse(connectionSchedule),
               onChanged: (v) => onConnectionScheduleChanged!(v.encode()),
             ),

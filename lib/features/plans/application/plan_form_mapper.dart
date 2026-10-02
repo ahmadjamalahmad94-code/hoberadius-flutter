@@ -3,11 +3,16 @@ import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:hoberadius_app/core/format/currency.dart';
 import 'package:flutter/material.dart';
 
-import '../../../shared/widgets/wheel_picker_fields.dart';
 import '../domain/plan_model.dart';
 
 /// Non-text-field selections that the form tracks separately from the
 /// `TextEditingController` map.
+///
+/// Not here on purpose (web parity): `hotspot_enabled` / `ppp_enabled` are
+/// derived by the server from «نوع الخدمة», and `allowed_days` /
+/// `allowed_hours_*` are legacy fallbacks overridden by
+/// `connection_schedule` / `offer_hours_*`. The form no longer edits them;
+/// [buildPlanFromForm] keeps the loaded plan's values untouched.
 class PlanFormSelections {
   const PlanFormSelections({
     required this.planType,
@@ -17,17 +22,19 @@ class PlanFormSelections {
     required this.speedControl,
     required this.burstEnabled,
     required this.nightlyUnlimited,
-    required this.hotspotEnabled,
-    required this.pppEnabled,
     required this.bindMac,
     required this.bindIp,
     required this.singleUseOnce,
     required this.prepaid,
     required this.planTier,
-    required this.allowedDays,
     required this.loanEnabled,
     required this.speedOverrideAllowed,
     required this.forceMacAddress,
+    this.speedUnlimited = false,
+    this.sharedSingleSession = false,
+    this.offerHoursFrom = '',
+    this.offerHoursTo = '',
+    this.connectionSchedule = '',
   });
 
   final String planType;
@@ -37,17 +44,27 @@ class PlanFormSelections {
   final bool speedControl;
   final bool burstEnabled;
   final bool nightlyUnlimited;
-  final bool hotspotEnabled;
-  final bool pppEnabled;
   final bool bindMac;
   final bool bindIp;
   final bool singleUseOnce;
   final bool prepaid;
   final String planTier;
-  final Set<String> allowedDays;
   final bool loanEnabled;
   final bool speedOverrideAllowed;
   final bool forceMacAddress;
+
+  /// «بلا حدّ للسرعة».
+  final bool speedUnlimited;
+
+  /// «بطاقة مشتركة — جلسة واحدة فعّالة».
+  final bool sharedSingleSession;
+
+  /// «ساعات الباقة — من / إلى» as HH:MM; '' = not set (no fake default).
+  final String offerHoursFrom;
+  final String offerHoursTo;
+
+  /// «أيام وساعات السماح» — access-schedule JSON, '' = none.
+  final String connectionSchedule;
 }
 
 void applyPlanToForm(Plan p, Map<String, TextEditingController> c) {
@@ -58,6 +75,7 @@ void applyPlanToForm(Plan p, Map<String, TextEditingController> c) {
   c['priority']!.text = p.priority.toString();
   c['validity_days']!.text = p.validityDays.toString();
   c['duration_minutes']!.text = p.durationMinutes.toString();
+  c['max_daily_minutes']?.text = p.maxDailyMinutes.toString();
   c['session_timeout_sec']!.text = p.sessionTimeoutSec.toString();
   c['idle_timeout_sec']!.text = p.idleTimeoutSec.toString();
   c['quota_total_mb']!.text = p.quotaTotalMb.toString();
@@ -83,8 +101,6 @@ void applyPlanToForm(Plan p, Map<String, TextEditingController> c) {
   c['address_pool']!.text = p.addressPool;
   c['framed_pool']!.text = p.framedPool;
   c['vlan_id']!.text = p.vlanId.toString();
-  c['allowed_hours_from']!.text = p.allowedHoursFrom;
-  c['allowed_hours_to']!.text = p.allowedHoursTo;
   c['price']!.text = p.price.toString();
   c['currency']!.text = p.currency;
 }
@@ -97,19 +113,19 @@ PlanFormSelections selectionsFromPlan(Plan p) => PlanFormSelections(
       speedControl: p.speedControlEnabled,
       burstEnabled: p.burstEnabled,
       nightlyUnlimited: p.nightlyUnlimitedEnabled,
-      hotspotEnabled: p.hotspotEnabled,
-      pppEnabled: p.pppEnabled,
       bindMac: p.bindMac,
       bindIp: p.bindIp,
       singleUseOnce: p.singleUseOnce,
       prepaid: p.prepaid,
       planTier: p.planTier,
-      allowedDays: Set<String>.from(
-        p.allowedDays.isEmpty ? wheelDayKeys : p.allowedDays,
-      ),
       loanEnabled: p.loanEnabled,
       speedOverrideAllowed: p.speedOverrideAllowed,
       forceMacAddress: p.forceMacAddress,
+      speedUnlimited: p.speedUnlimited,
+      sharedSingleSession: p.sharedSingleSession,
+      offerHoursFrom: p.offerHoursFrom,
+      offerHoursTo: p.offerHoursTo,
+      connectionSchedule: p.connectionSchedule,
     );
 
 /// Every numeric field of the plan form with its Arabic label: whole
@@ -119,7 +135,8 @@ PlanFormSelections selectionsFromPlan(Plan p) => PlanFormSelections(
 const Map<String, String> kPlanNumberFields = {
   'price': 'السعر',
   'priority': 'الأولوية',
-  'duration_minutes': 'مدّة الاتصال (د)',
+  'duration_minutes': 'مدة الوقت',
+  'max_daily_minutes': 'حد يومي',
   'validity_days': 'الصلاحية (أيام)',
   'session_timeout_sec': 'مهلة الجلسة (ث)',
   'idle_timeout_sec': 'مهلة الخمول (ث)',
@@ -134,8 +151,8 @@ const Map<String, String> kPlanNumberFields = {
   'monthly_combined_quota_mb': 'مجمّع شهري (MB)',
   'speed_down_kbps': 'سرعة التنزيل',
   'speed_up_kbps': 'سرعة الرفع',
-  'cir_down_kbps': 'CIR تنزيل',
-  'cir_up_kbps': 'CIR رفع',
+  'cir_down_kbps': 'سرعة مضمونة CIR للتنزيل',
+  'cir_up_kbps': 'سرعة مضمونة CIR للرفع',
   'burst_down_kbps': 'Burst تنزيل',
   'burst_up_kbps': 'Burst رفع',
   'burst_threshold_kbps': 'عتبة Burst',
@@ -167,6 +184,23 @@ String? planFormNumberError(Map<String, TextEditingController> c) {
   return null;
 }
 
+/// The server's rule (`plans._validate`): a 0 download or upload speed is
+/// refused unless «بلا حدّ للسرعة» is on — a silent 0 meant «open» on the
+/// router. Checked before saving so the message shows without a round trip.
+String? planFormSpeedError(
+  Map<String, TextEditingController> c, {
+  required bool speedUnlimited,
+}) {
+  if (speedUnlimited) return null;
+  final down = parseIntInput(c['speed_down_kbps']?.text ?? '') ?? 0;
+  final up = parseIntInput(c['speed_up_kbps']?.text ?? '') ?? 0;
+  if (down == 0 || up == 0) {
+    return 'السرعة مطلوبة (تنزيل ورفع) — أو علّم «بلا حدّ للسرعة» صراحةً '
+        'إن كانت الباقة مفتوحة.';
+  }
+  return null;
+}
+
 Plan buildPlanFromForm(
   Map<String, TextEditingController> c,
   PlanFormSelections sel, {
@@ -189,6 +223,9 @@ Plan buildPlanFromForm(
     // Empty = «not chosen» = 5 (the server's default).
     priority: parseIntInput(c['priority']!.text) ?? kDefaultPlanPriority,
     durationMinutes: parseInt('duration_minutes'),
+    maxDailyMinutes: c['max_daily_minutes'] == null
+        ? null
+        : parseInt('max_daily_minutes'),
     validityDays: parseInt('validity_days'),
     sessionTimeoutSec: parseInt('session_timeout_sec'),
     idleTimeoutSec: parseInt('idle_timeout_sec'),
@@ -204,6 +241,7 @@ Plan buildPlanFromForm(
     speedDownKbps: parseInt('speed_down_kbps'),
     speedUpKbps: parseInt('speed_up_kbps'),
     speedControlEnabled: sel.speedControl,
+    speedUnlimited: sel.speedUnlimited,
     cirDownKbps: parseInt('cir_down_kbps'),
     cirUpKbps: parseInt('cir_up_kbps'),
     burstEnabled: sel.burstEnabled,
@@ -216,10 +254,10 @@ Plan buildPlanFromForm(
     addressPool: parseStr('address_pool'),
     framedPool: parseStr('framed_pool'),
     vlanId: parseInt('vlan_id'),
-    allowedDays:
-        sel.allowedDays.isEmpty ? wheelDayKeys : sel.allowedDays.toList(),
-    allowedHoursFrom: parseStr('allowed_hours_from'),
-    allowedHoursTo: parseStr('allowed_hours_to'),
+    sharedSingleSession: sel.sharedSingleSession,
+    offerHoursFrom: sel.offerHoursFrom.trim(),
+    offerHoursTo: sel.offerHoursTo.trim(),
+    connectionSchedule: sel.connectionSchedule.trim(),
     price: parseNum('price'),
     currency:
         parseStr('currency').isEmpty ? kDefaultCurrency : parseStr('currency'),
@@ -227,8 +265,6 @@ Plan buildPlanFromForm(
     prepaid: sel.prepaid,
     autoRenew: sel.autoRenew,
     singleUseOnce: sel.singleUseOnce,
-    hotspotEnabled: sel.hotspotEnabled,
-    pppEnabled: sel.pppEnabled,
     bindMac: sel.bindMac,
     bindIp: sel.bindIp,
     loanEnabled: sel.loanEnabled,
