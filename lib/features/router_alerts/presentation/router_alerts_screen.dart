@@ -600,10 +600,18 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
 
   void _load(RouterAlertTarget router) {
     _enabled = router.enabled;
-    _offlineAfter.text = router.offlineAfterMin.toString();
-    _speed.text = router.normalSpeedMbps.toString();
-    _usageGb.text = router.normalUsageGb.toString();
-    _window = router.usageWindow.isEmpty ? 'day' : router.usageWindow;
+    if (router.overrideKnown) {
+      // The router's OWN values; empty = «الافتراضي» (the hint shows it).
+      _offlineAfter.text = router.overrideOfflineAfterMin?.toString() ?? '';
+      _speed.text = router.overrideSpeedMbps?.toString() ?? '';
+      _usageGb.text = router.overrideUsageGb?.toString() ?? '';
+      _window = router.overrideUsageWindow ?? '';
+    } else {
+      _offlineAfter.text = router.offlineAfterMin.toString();
+      _speed.text = router.normalSpeedMbps.toString();
+      _usageGb.text = router.normalUsageGb.toString();
+      _window = router.usageWindow.isEmpty ? 'day' : router.usageWindow;
+    }
   }
 
   @override
@@ -670,24 +678,41 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
                 controller: _offlineAfter,
                 label: 'مفصول بعد',
                 suffix: 'دقيقة',
+                hint: widget.router.overrideKnown
+                    ? '${widget.router.offlineAfterMin}'
+                    : null,
               ),
               _NumberField(
                 controller: _speed,
                 label: 'حد السرعة',
                 suffix: 'Mbps',
+                hint: widget.router.overrideKnown
+                    ? '${widget.router.normalSpeedMbps}'
+                    : null,
               ),
               _NumberField(
                 controller: _usageGb,
                 label: 'حد الاستهلاك',
                 suffix: 'GB',
+                hint: widget.router.overrideKnown
+                    ? '${widget.router.normalUsageGb}'
+                    : null,
               ),
               _WindowPicker(
                 value: _window,
                 windows: widget.windows,
+                allowDefault: widget.router.overrideKnown,
                 onChanged: (value) => setState(() => _window = value),
               ),
             ],
           ),
+          if (widget.router.overrideKnown) ...[
+            const SizedBox(height: AppTokens.s8),
+            Text(
+              'فارغ = يستخدم الافتراضي العامّ (الظاهر باهتًا داخل الخانة).',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: AppTokens.s12),
           Align(
             alignment: AlignmentDirectional.centerEnd,
@@ -703,6 +728,39 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
   }
 
   void _submit() {
+    if (widget.router.overrideKnown) {
+      int? opt(TextEditingController c) {
+        final t = c.text.trim();
+        return t.isEmpty ? null : (int.tryParse(t) ?? -1);
+      }
+
+      final offline = opt(_offlineAfter);
+      final speed = opt(_speed);
+      final usage = opt(_usageGb);
+      if ((offline != null && offline < 2) ||
+          (speed != null && speed < 1) ||
+          (usage != null && usage < 1)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'أدخل أرقامًا صحيحة (مفصول بعد ≥ 2، الباقي ≥ 1) أو اترك الخانة '
+              'فارغة للافتراضي',
+            ),
+          ),
+        );
+        return;
+      }
+      widget.onSave(
+        widget.router.withOverrides(
+          enabled: _enabled,
+          offlineAfterMin: offline,
+          speedMbps: speed,
+          usageGb: usage,
+          usageWindow: _window.isEmpty ? null : _window,
+        ),
+      );
+      return;
+    }
     final offline = int.tryParse(_offlineAfter.text.trim()) ?? 0;
     final speed = int.tryParse(_speed.text.trim()) ?? 0;
     final usage = int.tryParse(_usageGb.text.trim()) ?? 0;
@@ -753,18 +811,28 @@ class _NumberField extends StatelessWidget {
     required this.controller,
     required this.label,
     required this.suffix,
+    this.hint,
   });
 
   final TextEditingController controller;
   final String label;
   final String suffix;
 
+  /// The inherited default shown while the box is empty.
+  final String? hint;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
       keyboardType: TextInputType.number,
-      decoration: InputDecoration(labelText: label, suffixText: suffix),
+      decoration: InputDecoration(
+        labelText: label,
+        suffixText: suffix,
+        hintText: hint,
+        floatingLabelBehavior:
+            hint == null ? null : FloatingLabelBehavior.always,
+      ),
     );
   }
 }
@@ -774,20 +842,28 @@ class _WindowPicker extends StatelessWidget {
     required this.value,
     required this.windows,
     required this.onChanged,
+    this.allowDefault = false,
   });
 
   final String value;
   final List<UsageWindowOption> windows;
   final ValueChanged<String> onChanged;
 
+  /// Per-router: a «الافتراضي» choice (key '') = inherit the global window.
+  final bool allowDefault;
+
   @override
   Widget build(BuildContext context) {
-    final options = windows.isEmpty
+    final base = windows.isEmpty
         ? const [
             UsageWindowOption(key: 'day', label: 'يومي'),
             UsageWindowOption(key: 'month', label: 'شهري'),
           ]
         : windows;
+    final options = [
+      if (allowDefault) const UsageWindowOption(key: '', label: 'الافتراضي'),
+      ...base,
+    ];
     final safeValue =
         options.any((item) => item.key == value) ? value : options.first.key;
     return DropdownButtonFormField<String>(

@@ -137,6 +137,11 @@ class RouterAlertTarget {
     required this.usageWindow,
     required this.lastPushAt,
     required this.hasOverride,
+    this.overrideKnown = false,
+    this.overrideOfflineAfterMin,
+    this.overrideSpeedMbps,
+    this.overrideUsageGb,
+    this.overrideUsageWindow,
   });
 
   final int id;
@@ -150,8 +155,38 @@ class RouterAlertTarget {
   final String lastPushAt;
   final bool hasOverride;
 
+  /// The server sent the router's OWN values (`override`, parity-c). The
+  /// editor pre-fills those — null = «الافتراضي» (inherits the global
+  /// default) — never the effective ones: saving the effective values froze
+  /// the defaults into every router and later global changes stopped
+  /// reaching it. An older server has no `override` → legacy behaviour.
+  final bool overrideKnown;
+  final int? overrideOfflineAfterMin;
+  final int? overrideSpeedMbps;
+  final int? overrideUsageGb;
+  final String? overrideUsageWindow;
+
   factory RouterAlertTarget.fromJson(Map<String, dynamic> json) {
+    final ov = json['override'];
+    int? ovInt(String key) {
+      if (ov is! Map) return null;
+      final v = ov[key];
+      if (v == null || '$v'.trim().isEmpty) return null;
+      return int.tryParse('$v'.trim());
+    }
+
+    String? ovWindow() {
+      if (ov is! Map) return null;
+      final v = '${ov['usage_window'] ?? ''}'.trim();
+      return v.isEmpty ? null : v;
+    }
+
     return RouterAlertTarget(
+      overrideKnown: ov is Map,
+      overrideOfflineAfterMin: ovInt('offline_after_min'),
+      overrideSpeedMbps: ovInt('normal_speed_mbps'),
+      overrideUsageGb: ovInt('normal_usage_gb'),
+      overrideUsageWindow: ovWindow(),
       id: _int(json['id']),
       name: _string(json['name']),
       address: _string(json['address']),
@@ -183,17 +218,60 @@ class RouterAlertTarget {
       usageWindow: usageWindow ?? this.usageWindow,
       lastPushAt: lastPushAt,
       hasOverride: hasOverride,
+      overrideKnown: overrideKnown,
+      overrideOfflineAfterMin: overrideOfflineAfterMin,
+      overrideSpeedMbps: overrideSpeedMbps,
+      overrideUsageGb: overrideUsageGb,
+      overrideUsageWindow: overrideUsageWindow,
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'enabled': enabled,
-        'offline_after_min': offlineAfterMin,
-        'normal_speed_mbps': normalSpeedMbps,
-        'normal_usage_gb': normalUsageGb,
-        'usage_window': usageWindow,
-      };
+  /// The router's own limits as typed (null = «الافتراضي»).
+  RouterAlertTarget withOverrides({
+    required bool enabled,
+    required int? offlineAfterMin,
+    required int? speedMbps,
+    required int? usageGb,
+    required String? usageWindow,
+  }) {
+    return RouterAlertTarget(
+      id: id,
+      name: name,
+      address: address,
+      enabled: enabled,
+      offlineAfterMin: this.offlineAfterMin,
+      normalSpeedMbps: normalSpeedMbps,
+      normalUsageGb: normalUsageGb,
+      usageWindow: this.usageWindow,
+      lastPushAt: lastPushAt,
+      hasOverride: hasOverride,
+      overrideKnown: true,
+      overrideOfflineAfterMin: offlineAfterMin,
+      overrideSpeedMbps: speedMbps,
+      overrideUsageGb: usageGb,
+      overrideUsageWindow: usageWindow,
+    );
+  }
+
+  /// PATCH body: the override values (null → the server stores NULL =
+  /// inherit); an older server's payload keeps the effective values.
+  Map<String, dynamic> toJson() => overrideKnown
+      ? {
+          'id': id,
+          'enabled': enabled,
+          'offline_after_min': overrideOfflineAfterMin,
+          'normal_speed_mbps': overrideSpeedMbps,
+          'normal_usage_gb': overrideUsageGb,
+          'usage_window': overrideUsageWindow,
+        }
+      : {
+          'id': id,
+          'enabled': enabled,
+          'offline_after_min': offlineAfterMin,
+          'normal_speed_mbps': normalSpeedMbps,
+          'normal_usage_gb': normalUsageGb,
+          'usage_window': usageWindow,
+        };
 }
 
 class RouterAlertCounts {
