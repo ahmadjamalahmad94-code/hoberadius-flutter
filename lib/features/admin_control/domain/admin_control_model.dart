@@ -11,6 +11,15 @@ class SettingItem {
   final String value;
   final String defaultValue;
 
+  /// Arabic name shown to the user. The raw key (`system.name`) is an
+  /// implementation detail and is never displayed: a missing/raw label falls
+  /// back to «إعداد <القسم>» derived from the key prefix.
+  String get displayLabel {
+    final l = label.trim();
+    if (l.isNotEmpty && l != key && !_rawKeyLike.hasMatch(l)) return l;
+    return settingFallbackLabel(key);
+  }
+
   factory SettingItem.fromJson(Map<String, dynamic> json) {
     return SettingItem(
       key: _string(json['key']),
@@ -19,6 +28,34 @@ class SettingItem {
       defaultValue: _string(json['default']),
     );
   }
+}
+
+final RegExp _rawKeyLike = RegExp(r'^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)+$');
+
+const Map<String, String> _settingSectionsAr = {
+  'system': 'النظام',
+  'branding': 'الهويّة',
+  'billing': 'الفوترة',
+  'portal': 'البوّابة',
+  'device_limit': 'حدّ الأجهزة',
+  'security': 'الأمان',
+  'cards': 'البطاقات',
+  'radius': 'الراديوس',
+  'comms': 'الاتصالات',
+  'subscribers': 'المشتركين',
+  'auth': 'الدخول',
+  'quota': 'الحصّة',
+  'network': 'الشبكة',
+  'infra': 'البنية التحتيّة',
+  'limits': 'الحدود',
+};
+
+/// Arabic fallback for a setting with no usable label — never the raw key.
+String settingFallbackLabel(String key) {
+  final dot = key.indexOf('.');
+  final prefix = dot <= 0 ? key : key.substring(0, dot);
+  final section = _settingSectionsAr[prefix];
+  return section == null ? 'إعداد إضافيّ' : 'إعداد $section';
 }
 
 class SettingsSnapshot {

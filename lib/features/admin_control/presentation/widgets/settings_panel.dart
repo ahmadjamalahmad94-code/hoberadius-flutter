@@ -32,12 +32,9 @@ class SettingsPanel extends ConsumerWidget {
           count: snapshot.items.length,
           itemBuilder: (_, i) {
             final item = snapshot.items[i];
+            // المفتاحُ الخامّ (system.name) لا يُعرض — الاسمُ العربيّ وحده.
             return ListTile(
-              title: Text(item.label),
-              subtitle: Text(
-                item.key,
-                style: const TextStyle(color: AppTokens.textMuted),
-              ),
+              title: Text(item.displayLabel),
               trailing: Wrap(
                 spacing: AppTokens.s8,
                 crossAxisAlignment: WrapCrossAlignment.center,

@@ -28,6 +28,7 @@ const Map<String, String> _groupLabels = {
   'settings': 'الإعدادات',
   'audit': 'سجل التدقيق',
   'api': 'الواجهة البرمجية',
+  'routers': 'الراوترات',
   'general': 'عام',
 };
 
@@ -191,8 +192,33 @@ const Map<String, PermissionGroupStyle> _groupStyles = {
 };
 
 /// Arabic label for a full permission key (`users.view` → «عرض المستفيدين»).
-/// Unknown keys are returned unchanged.
-String permissionLabel(String key) => _permLabels[key] ?? key;
+/// Unknown keys (a newer server than this build) never surface raw: they get
+/// an Arabic «فعل — القسم» composed from the action suffix and group prefix.
+String permissionLabel(String key) =>
+    _permLabels[key] ?? permissionFallbackLabel(key);
+
+/// Common action suffixes → Arabic verb (fallback composer only).
+const Map<String, String> _actionVerbs = {
+  'view': 'عرض',
+  'create': 'إنشاء',
+  'add': 'إضافة',
+  'edit': 'تعديل',
+  'delete': 'حذف',
+  'export': 'تصدير',
+  'import': 'استيراد',
+  'manage': 'إدارة',
+  'disconnect': 'قطع الاتصال',
+};
+
+/// Arabic fallback for a permission key with no catalogue entry.
+String permissionFallbackLabel(String key) {
+  final prefix = permissionGroupPrefix(key);
+  final dot = key.indexOf('.');
+  final action = dot <= 0 ? '' : key.substring(dot + 1);
+  final verb = _actionVerbs[action] ?? 'صلاحية إضافيّة';
+  final group = _groupLabels[prefix];
+  return group == null ? verb : '$verb — $group';
+}
 
 /// Arabic label for a group prefix. Falls back to [fallback] (e.g. the
 /// API-provided label) then the prefix itself.

@@ -11,7 +11,11 @@ void main() {
   });
 
   test('unknown keys fall back safely without throwing', () {
-    expect(permissionLabel('future.new_perm'), 'future.new_perm');
+    // Never the raw key: an Arabic «فعل — القسم» / «صلاحية إضافيّة».
+    expect(permissionLabel('future.new_perm'), 'صلاحية إضافيّة');
+    expect(permissionLabel('users.new_thing'), 'صلاحية إضافيّة — المستفيدون');
+    expect(permissionLabel('reports.export'), isNot(contains('.')));
+    expect(permissionLabel('routers.mystery_view'), contains('الراوترات'));
     expect(hasPermissionLabel('future.new_perm'), isFalse);
     // Unknown group prefers the API-provided fallback, else the prefix.
     expect(permissionGroupLabel('weird', fallback: 'مجموعة'), 'مجموعة');
@@ -21,7 +25,10 @@ void main() {
   test('group prefix + style resolve, unknown → general', () {
     expect(permissionGroupPrefix('cards.print'), 'cards');
     expect(permissionGroupPrefix('noDot'), 'general');
-    expect(permissionGroupStyle('cards').ink, isNot(permissionGroupStyle('users').ink));
+    expect(
+      permissionGroupStyle('cards').ink,
+      isNot(permissionGroupStyle('users').ink),
+    );
     // Unknown prefix yields the general style (same as 'general').
     expect(
       permissionGroupStyle('mystery').icon,

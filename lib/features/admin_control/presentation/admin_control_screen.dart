@@ -45,14 +45,14 @@ class _AdminControlScreenState extends ConsumerState<AdminControlScreen> {
     final value = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(item.label),
+        title: Text(item.displayLabel),
         content: TextField(
           controller: controller,
           autofocus: true,
           minLines: 1,
           maxLines: 3,
           decoration: InputDecoration(
-            labelText: item.key,
+            labelText: 'القيمة',
             helperText: item.defaultValue.isEmpty
                 ? null
                 : 'الافتراضي: ${item.defaultValue}',

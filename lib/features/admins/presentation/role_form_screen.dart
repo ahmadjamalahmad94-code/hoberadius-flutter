@@ -227,7 +227,7 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
             child: Column(
               children: [
                 FormFieldRow(
-                  label: 'المعرّف الداخلي (name)',
+                  label: 'المعرّف الداخلي (بأحرف لاتينيّة)',
                   required: true,
                   child: TextFormField(
                     controller: _name,
@@ -310,8 +310,11 @@ class _RoleFormScreenState extends ConsumerState<RoleFormScreen> {
                           runSpacing: 6,
                           children: g.permissions.map((p) {
                             final selected = _permissions.contains(p);
+                            // التلميحُ عربيّ (القسم — الصلاحية) لا المفتاحُ الخامّ
+                            // (كان «dashboard.view» يظهر في التلميح وفي شجرةِ الوصول).
                             return Tooltip(
-                              message: p,
+                              message:
+                                  '${permissionGroupLabel(g.key, fallback: g.label)} — ${permissionLabel(p)}',
                               child: FilterChip(
                                 label: Text(permissionLabel(p)),
                                 selected: selected,
