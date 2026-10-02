@@ -13,6 +13,7 @@ class CardsListTotals extends StatelessWidget {
     required this.totals,
     this.onPickDay,
     this.onPickMonth,
+    this.onPickRange,
   });
   final CardBatchOperationsTotals totals;
 
@@ -20,6 +21,84 @@ class CardsListTotals extends StatelessWidget {
   /// tile opens a picker; the value is YYYY-MM-DD / YYYY-MM.
   final ValueChanged<String>? onPickDay;
   final ValueChanged<String>? onPickMonth;
+
+  /// «المبيعات» period: (from, to) as YYYY-MM-DD, both inclusive.
+  final void Function(String from, String to)? onPickRange;
+
+  static String _ymd(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  String _rangeLabel() {
+    final now = DateTime.now();
+    final today = _ymd(now);
+    final from = totals.rangeFrom;
+    final to = totals.rangeTo;
+    final monthStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+    if (from.isEmpty || (from == monthStart && (to.isEmpty || to == today))) {
+      return 'مبيعات هذا الشهر';
+    }
+    if (from == today && to == today) return 'مبيعات اليوم';
+    final weekStart = _ymd(now.subtract(Duration(days: (now.weekday + 1) % 7)));
+    if (from == weekStart && to == today) return 'مبيعات هذا الأسبوع';
+    if (from == to) return 'مبيعات $from';
+    return 'مبيعات ${from.substring(5)} ← ${to.isEmpty ? '…' : to.substring(5)}';
+  }
+
+  Future<void> _pickRange(BuildContext context) async {
+    final now = DateTime.now();
+    final today = _ymd(now);
+    // the week starts on Saturday (Palestine)
+    final weekStart = _ymd(now.subtract(Duration(days: (now.weekday + 1) % 7)));
+    final monthStart = '${now.year}-${now.month.toString().padLeft(2, '0')}-01';
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      backgroundColor: Colors.white,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (key, label, icon) in const [
+              ('day', 'اليوم', Icons.today_outlined),
+              ('week', 'هذا الأسبوع', Icons.view_week_outlined),
+              ('month', 'هذا الشهر', Icons.calendar_month_outlined),
+              ('custom', 'فترة من – إلى…', Icons.date_range_outlined),
+            ])
+              ListTile(
+                leading: Icon(icon),
+                title: Text(label),
+                onTap: () => Navigator.pop(ctx, key),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !context.mounted) return;
+    switch (choice) {
+      case 'day':
+        onPickRange?.call(today, today);
+      case 'week':
+        onPickRange?.call(weekStart, today);
+      case 'month':
+        onPickRange?.call(monthStart, today);
+      case 'custom':
+        final picked = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(2020),
+          lastDate: now,
+          initialDateRange: DateTimeRange(
+            start: DateTime.tryParse(totals.rangeFrom) ??
+                DateTime(now.year, now.month),
+            end: DateTime.tryParse(totals.rangeTo) ?? now,
+          ),
+          helpText: 'اختر الفترة',
+        );
+        if (picked != null) {
+          onPickRange?.call(_ymd(picked.start), _ymd(picked.end));
+        }
+    }
+  }
 
   static const _months = [
     'يناير',
@@ -171,16 +250,26 @@ class CardsListTotals extends StatelessWidget {
               footnote: formatMoney(totals.valueMonth, cur),
               onTap: onPickMonth == null ? null : () => _pickMonth(context),
             ),
-            // Was «قيمة تقديرية / ليست تقريرًا ماليًا» — unclear, and the
-            // number was cut («...102,815.4»). It is every card of the shown
-            // batches at its selling price, sold or not.
-            _StatCard(
-              compact: compact,
-              icon: Icons.payments_outlined,
-              label: 'قيمة كل كروت الحزم',
-              value: formatMoney(totals.configuredValue, cur),
-              footnote: 'بسعر البيع، المباع وغير المباع',
-            ),
+            // Owner 2026-10-02: sales for a period he picks (day / week /
+            // month / from–to) instead of one fixed «all cards» value.
+            // Older servers (no used_range) keep the old total tile.
+            if (totals.usedRange != null)
+              _StatCard(
+                compact: compact,
+                icon: Icons.payments_outlined,
+                label: _rangeLabel(),
+                value: formatMoney(totals.valueRange ?? 0, cur),
+                footnote: '${totals.usedRange} بطاقة',
+                onTap: onPickRange == null ? null : () => _pickRange(context),
+              )
+            else
+              _StatCard(
+                compact: compact,
+                icon: Icons.payments_outlined,
+                label: 'قيمة كل كروت الحزم',
+                value: formatMoney(totals.configuredValue, cur),
+                footnote: 'بسعر البيع، المباع وغير المباع',
+              ),
           ],
         );
       },

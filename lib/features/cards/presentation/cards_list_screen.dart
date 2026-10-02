@@ -103,6 +103,9 @@ class CardsListScreen extends ConsumerWidget {
                   onPickMonth: (m) => ref
                       .read(batchOpsFiltersProvider.notifier)
                       .state = filters.copyWith(month: m),
+                  onPickRange: (f, t) => ref
+                      .read(batchOpsFiltersProvider.notifier)
+                      .state = filters.copyWith(rangeFrom: f, rangeTo: t),
                 ),
                 const SizedBox(height: AppTokens.s16),
                 CardsBatchesTable(page: page),

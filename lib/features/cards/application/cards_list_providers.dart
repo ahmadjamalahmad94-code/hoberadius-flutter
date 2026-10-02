@@ -13,6 +13,8 @@ class CardBatchOpsFilters {
     this.perPage = 25,
     this.day = '',
     this.month = '',
+    this.rangeFrom = '',
+    this.rangeTo = '',
   });
 
   final String query;
@@ -25,6 +27,10 @@ class CardBatchOpsFilters {
   final String day;
   final String month;
 
+  /// «المبيعات» period (YYYY-MM-DD, both inclusive); '' = this month.
+  final String rangeFrom;
+  final String rangeTo;
+
   CardBatchOpsFilters copyWith({
     String? query,
     String? status,
@@ -32,6 +38,8 @@ class CardBatchOpsFilters {
     int? perPage,
     String? day,
     String? month,
+    String? rangeFrom,
+    String? rangeTo,
   }) =>
       CardBatchOpsFilters(
         query: query ?? this.query,
@@ -40,6 +48,8 @@ class CardBatchOpsFilters {
         perPage: perPage ?? this.perPage,
         day: day ?? this.day,
         month: month ?? this.month,
+        rangeFrom: rangeFrom ?? this.rangeFrom,
+        rangeTo: rangeTo ?? this.rangeTo,
       );
 }
 
@@ -60,6 +70,8 @@ final batchesOperationsProvider =
         perPage: filters.perPage,
         day: filters.day,
         month: filters.month,
+        rangeFrom: filters.rangeFrom,
+        rangeTo: filters.rangeTo,
       );
 });
 

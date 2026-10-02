@@ -71,4 +71,43 @@ void main() {
     expect(value.overflow, isNot(TextOverflow.ellipsis));
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('«المبيعات» tile picks a period and shows its sales',
+      (tester) async {
+    String? from, to;
+    await tester.pumpWidget(_wrap(CardsListTotals(
+      totals: CardBatchOperationsTotals(
+          usedRange: 7,
+          valueRange: 35,
+          rangeFrom: '2026-09-01',
+          rangeTo: '2026-09-07'),
+      onPickDay: (_) {},
+      onPickMonth: (_) {},
+      onPickRange: (f, t) {
+        from = f;
+        to = t;
+      },
+    )));
+    expect(find.text('مبيعات 09-01 ← 09-07'), findsOneWidget);
+    expect(find.text('7 بطاقة'), findsOneWidget);
+    await tester.tap(find.text('مبيعات 09-01 ← 09-07'));
+    await tester.pumpAndSettle();
+    for (final l in ['اليوم', 'هذا الأسبوع', 'هذا الشهر', 'فترة من – إلى…']) {
+      expect(find.text(l), findsOneWidget);
+    }
+    await tester.tap(find.text('اليوم'));
+    await tester.pumpAndSettle();
+    final now = DateTime.now();
+    final today =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    expect((from, to), (today, today));
+  });
+
+  testWidgets('older server (no used_range) keeps the total-value tile',
+      (tester) async {
+    await tester.pumpWidget(_wrap(CardsListTotals(
+      totals: CardBatchOperationsTotals(configuredValue: 10),
+    )));
+    expect(find.text('قيمة كل كروت الحزم'), findsOneWidget);
+  });
 }

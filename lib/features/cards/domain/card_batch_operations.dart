@@ -65,6 +65,10 @@ class CardBatchOperationsTotals {
     this.valueYear = 0,
     this.day = '',
     this.month = '',
+    this.usedRange,
+    this.valueRange,
+    this.rangeFrom = '',
+    this.rangeTo = '',
   });
 
   final int batchCount;
@@ -80,6 +84,12 @@ class CardBatchOperationsTotals {
   final String day;
   final String month;
 
+  /// «المبيعات» for the picked period — null on older servers.
+  final int? usedRange;
+  final num? valueRange;
+  final String rangeFrom;
+  final String rangeTo;
+
   factory CardBatchOperationsTotals.fromJson(Map<String, dynamic> json) =>
       CardBatchOperationsTotals(
         batchCount: cardParseInt(json['batch_count']) ?? 0,
@@ -92,6 +102,10 @@ class CardBatchOperationsTotals {
         valueYear: cardParseNum(json['value_year']) ?? 0,
         day: (json['day'] ?? '').toString(),
         month: (json['month'] ?? '').toString(),
+        usedRange: cardParseInt(json['used_range']),
+        valueRange: cardParseNum(json['value_range']),
+        rangeFrom: (json['range_from'] ?? '').toString(),
+        rangeTo: (json['range_to'] ?? '').toString(),
       );
 }
 
