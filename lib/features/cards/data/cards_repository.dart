@@ -65,6 +65,8 @@ class CardsRepository {
     int? distributorId,
     int page = 1,
     int perPage = 25,
+    String day = '',
+    String month = '',
   }) async {
     final res = await _api.get(
       '/api/v1/cards/batches',
@@ -78,6 +80,9 @@ class CardsRepository {
         if (distributorId != null) 'distributor_id': distributorId,
         'page': page,
         'per_page': perPage,
+        // the «بطاقات اليوم/الشهر» tiles (older servers ignore them)
+        if (day.isNotEmpty) 'day': day,
+        if (month.isNotEmpty) 'month': month,
       },
     );
     return CardBatchOperationsPage.fromJson(res);

@@ -11,6 +11,8 @@ class CardBatchOpsFilters {
     this.status = '',
     this.page = 1,
     this.perPage = 25,
+    this.day = '',
+    this.month = '',
   });
 
   final String query;
@@ -18,17 +20,26 @@ class CardBatchOpsFilters {
   final int page;
   final int perPage;
 
+  /// «بطاقات اليوم/الشهر» for a day (YYYY-MM-DD) / month (YYYY-MM) the owner
+  /// picks; '' = today / this month (owner 2026-10-02).
+  final String day;
+  final String month;
+
   CardBatchOpsFilters copyWith({
     String? query,
     String? status,
     int? page,
     int? perPage,
+    String? day,
+    String? month,
   }) =>
       CardBatchOpsFilters(
         query: query ?? this.query,
         status: status ?? this.status,
         page: page ?? this.page,
         perPage: perPage ?? this.perPage,
+        day: day ?? this.day,
+        month: month ?? this.month,
       );
 }
 
@@ -47,6 +58,8 @@ final batchesOperationsProvider =
         status: filters.status,
         page: filters.page,
         perPage: filters.perPage,
+        day: filters.day,
+        month: filters.month,
       );
 });
 

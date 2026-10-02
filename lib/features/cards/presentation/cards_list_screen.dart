@@ -95,7 +95,15 @@ class CardsListScreen extends ConsumerWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                CardsListTotals(totals: page.totals),
+                CardsListTotals(
+                  totals: page.totals,
+                  onPickDay: (d) => ref
+                      .read(batchOpsFiltersProvider.notifier)
+                      .state = filters.copyWith(day: d),
+                  onPickMonth: (m) => ref
+                      .read(batchOpsFiltersProvider.notifier)
+                      .state = filters.copyWith(month: m),
+                ),
                 const SizedBox(height: AppTokens.s16),
                 CardsBatchesTable(page: page),
                 const SizedBox(height: AppTokens.s12),

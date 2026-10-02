@@ -188,8 +188,8 @@ void main() {
       expect(tester.takeException(), isNull);
       // Owner 2026-10-02: «تطبيق» beside the search; «تصدير» beside the
       // status opens one menu with CSV / Excel / PDF.
-      _expectOneLineWhole(tester, find.text('تطبيق'));
-      _expectOneLineWhole(tester, find.text('تصدير'));
+      _expectOneLineWhole(tester, find.text('تطبيق'), allowScaleDown: true);
+      _expectOneLineWhole(tester, find.text('تصدير'), allowScaleDown: true);
       await tester.tap(find.byKey(const ValueKey('cards-export-menu')));
       await tester.pumpAndSettle();
       for (final label in ['CSV', 'Excel', 'PDF']) {
