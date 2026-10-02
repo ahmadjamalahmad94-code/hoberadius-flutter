@@ -163,7 +163,7 @@ class SubscriberActionsRepository {
 
   Future<Map<String, dynamic>> quotaTopup(
     String username, {
-    required double quotaMb,
+    required int quotaMb,
     required String target,
     required ChargeMode charge,
     double amount = 0,
@@ -270,6 +270,14 @@ class SubscriberActionsRepository {
 
   Future<Map<String, dynamic>> disconnect(String username) =>
       _post(username, 'disconnect', const {}, what: 'فصل الاتصال');
+
+  /// The web profile's «إلغاء السرعة المؤقتة» (parity-a servers).
+  Future<Map<String, dynamic>> cancelTempSpeed(String username) => _post(
+        username,
+        'temp-speed/cancel',
+        const {},
+        what: 'إلغاء السرعة المؤقتة',
+      );
 
   // ── Endpoints the older API already had (used by the legacy menu) ──────
 

@@ -1,5 +1,6 @@
 import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
@@ -282,7 +283,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
     }
     if (_price > 0) {
       return 'سعر الوقت المُضاف ${formatMoney(_price, c.currency)} '
-          '(حسب سعر العرض ${formatMoney(c.effectivePrice, c.currency)}).'
+          '(حسب ${priceLabelOf(c)} ${formatMoney(c.effectivePrice, c.currency)}).'
           '${_charge == ChargeMode.paid ? ' تُخصم من رصيد المشترك.' : ' تُسجَّل كدين على المشترك.'}';
     }
     return 'حدّد المدة لاحتساب السعر تلقائيًا حسب سعر العرض/المخصّص.';
@@ -474,7 +475,8 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
   final _size = TextEditingController();
   final _money = TextEditingController(text: '0');
   final _notes = TextEditingController();
-  int _unitMb = 1024;
+  // The web picker's default unit (unit_input_picker kind=quota: MB first).
+  int _unitMb = 1;
   String _target = 'combined';
   String _window = 'auto';
   ChargeMode _charge = ChargeMode.free;
@@ -489,7 +491,8 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
     super.dispose();
   }
 
-  double get _quotaMb => (parseLocalizedNumber(_size.text) ?? 0) * _unitMb;
+  /// Whole MB, rounded like the web picker — the server takes an integer.
+  int get _quotaMb => quotaMbOf(parseLocalizedNumber(_size.text) ?? 0, _unitMb);
   double get _amount => parseLocalizedNumber(_money.text) ?? 0;
 
   String? get _invalid {
@@ -523,7 +526,9 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
             'n': _notes.text.trim(),
           }),
         );
-        return ActionOutcome('تمت إضافة ${_fmtMb(_quotaMb)} لـ ${c.username}');
+        return ActionOutcome(
+          'تمت إضافة ${_fmtMb(_quotaMb.toDouble())} لـ ${c.username}',
+        );
       });
 
   @override
@@ -564,11 +569,11 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
               initialValue: _unitMb,
               isExpanded: true,
               decoration: actionFieldDecoration,
-              items: const [
-                DropdownMenuItem(value: 1024, child: Text('GB')),
-                DropdownMenuItem(value: 1, child: Text('MB')),
+              items: [
+                for (final (mb, label) in kQuotaUnits)
+                  DropdownMenuItem(value: mb, child: Text(label)),
               ],
-              onChanged: (v) => setState(() => _unitMb = v ?? 1024),
+              onChanged: (v) => setState(() => _unitMb = v ?? 1),
             ),
           ),
         ),
@@ -1119,7 +1124,7 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
         if (_h > 0) '$_h ساعة',
       ].join(' و');
       return 'سيتم تسجيل دين $span بقيمة ${formatMoney(_value, c.currency)} '
-          '(حسب سعر العرض ${formatMoney(c.effectivePrice, c.currency)}).';
+          '(حسب ${priceLabelOf(c)} ${formatMoney(c.effectivePrice, c.currency)}).';
     }
     return 'حدّد عدد الأيام لاحتساب قيمة الدين تلقائيًا حسب سعر '
         'العرض/المخصّص.';
@@ -1792,6 +1797,12 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
     with _ActionRunner {
   final _pw = TextEditingController();
   bool _show = false;
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    await Clipboard.setData(ClipboardData(text: _pw.text));
+    if (mounted) setState(() => _copied = true);
+  }
 
   @override
   void dispose() {
@@ -1807,7 +1818,7 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
   @override
   Widget build(BuildContext context) {
     final invalid =
-        _pw.text.isEmpty ? null : validateNewSubscriberPassword(_pw.text);
+        _pw.text.isEmpty ? null : resetPasswordProblem(_pw.text);
     return ActionDialogFrame(
       icon: Icons.password_outlined,
       tone: PillTone.blue,
@@ -1829,24 +1840,52 @@ class _ResetPasswordDialogState extends ConsumerState<ResetPasswordDialog>
             obscureText: !_show,
             textDirection: TextDirection.ltr,
             decoration: actionFieldDecoration.copyWith(
-              suffixIcon: IconButton(
-                tooltip: _show ? 'إخفاء' : 'إظهار',
-                icon: Icon(
-                  _show
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 20,
-                ),
-                onPressed: () => setState(() => _show = !_show),
+              // The web password field's two actions: «إظهار/إخفاء» + «نسخ»
+              // (to hand the new password to the subscriber).
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: 'نسخ',
+                    icon: const Icon(Icons.copy_outlined, size: 20),
+                    onPressed: _pw.text.isEmpty ? null : _copy,
+                  ),
+                  IconButton(
+                    tooltip: _show ? 'إخفاء' : 'إظهار',
+                    icon: Icon(
+                      _show
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _show = !_show),
+                  ),
+                ],
               ),
             ),
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(() => _copied = false),
           ),
         ),
-        if (invalid != null) ActionNote(text: invalid, tone: PillTone.red),
+        if (invalid != null)
+          ActionNote(text: invalid, tone: PillTone.red)
+        else if (_copied)
+          const ActionNote(text: 'نُسخت كلمة المرور.', tone: PillTone.green),
       ],
     );
   }
+}
+
+/// The reset-password rule as the server applies it
+/// (`users.validate_new_password`): at least 4 characters AFTER trimming —
+/// «  ab  » passed the app's length check and was refused (422).
+String? resetPasswordProblem(String value) {
+  final base = validateNewSubscriberPassword(value);
+  if (base != null) return base;
+  if (value.trim().length < kSubscriberPasswordMin) {
+    return 'كلمة المرور $kSubscriberPasswordMin أحرف على الأقل '
+        '(بدون المسافات في الطرفين).';
+  }
+  return null;
 }
 
 /// A line break for joined notes.

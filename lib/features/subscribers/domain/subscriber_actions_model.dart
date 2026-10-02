@@ -27,6 +27,11 @@ class ActionPermissions {
   }
 
   bool allows(String key) => _flags[key] ?? true;
+
+  /// [key] when the server sends it, else [fallback] — e.g. «quota_reset»
+  /// (its own web endpoint) on servers that only sent «quota».
+  bool allowsOr(String key, String fallback) =>
+      _flags.containsKey(key) ? _flags[key]! : allows(fallback);
 }
 
 class ActionPlan {
@@ -105,6 +110,43 @@ class OpenLoan {
   }
 }
 
+/// The profile page's «سرعة مؤقتة» bar (actions-context `temp_speed`,
+/// parity-a servers): null when the subscriber has no temp-speed flag.
+class TempSpeedState {
+  const TempSpeedState({
+    this.active = false,
+    this.expired = false,
+    this.unknown = false,
+    this.endsAt,
+    this.downKbps = 0,
+    this.upKbps = 0,
+  });
+
+  final bool active;
+  final bool expired;
+
+  /// Flag set but no end stored («مفتوحة (بدون وقت نهاية)»).
+  final bool unknown;
+  final DateTime? endsAt;
+  final int downKbps;
+  final int upKbps;
+
+  static TempSpeedState? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    return TempSpeedState(
+      active: raw['active'] == true,
+      expired: raw['expired'] == true,
+      unknown: raw['unknown'] == true,
+      endsAt: parseServerUtc(raw['ends_at']),
+      downKbps: _intOrNull(raw['down_kbps']) ?? 0,
+      upKbps: _intOrNull(raw['up_kbps']) ?? 0,
+    );
+  }
+
+  /// «2500k / 1024k» — the web bar's rate chip.
+  String get rateLabel => '${downKbps}k / ${upKbps}k';
+}
+
 class MessageTemplate {
   const MessageTemplate({
     required this.key,
@@ -172,6 +214,7 @@ class SubscriberActionsContext {
     this.currency = '',
     this.plan,
     this.effectivePrice = 0,
+    this.priceIsCustom = false,
     this.balance = 0,
     this.debt = 0,
     this.openLoans = const [],
@@ -182,6 +225,7 @@ class SubscriberActionsContext {
     this.quotaWindows = const [],
     this.quotaUsage = const [],
     this.onlineSessions = 0,
+    this.tempSpeed,
     this.smsEnabled = true,
     this.whatsappEnabled = false,
     this.templates = kDefaultMessageTemplates,
@@ -202,6 +246,10 @@ class SubscriberActionsContext {
 
   /// Custom price or plan price — what the web prices time with.
   final double effectivePrice;
+
+  /// `price_is_custom`: the web hints say «السعر المخصّص» instead of «سعر
+  /// العرض» when the subscriber has his own price.
+  final bool priceIsCustom;
   final double balance;
   final double debt;
   final List<OpenLoan> openLoans;
@@ -222,6 +270,7 @@ class SubscriberActionsContext {
   /// Caps and usage per window, ready to show («اليوم: 150 / 200 MB»).
   final List<String> quotaUsage;
   final int onlineSessions;
+  final TempSpeedState? tempSpeed;
   final bool smsEnabled;
   final bool whatsappEnabled;
   final List<MessageTemplate> templates;
@@ -259,6 +308,7 @@ class SubscriberActionsContext {
       effectivePrice: j.containsKey('effective_price')
           ? _double(j['effective_price'])
           : (plan?.price ?? 0),
+      priceIsCustom: j['price_is_custom'] == true,
       balance: _double(j['balance']),
       debt: _double(j['debt']),
       openLoans: loans
@@ -274,6 +324,7 @@ class SubscriberActionsContext {
       quotaWindows: quotaWindowsOf(quota),
       quotaUsage: quotaUsageLines(quota),
       onlineSessions: _intOrNull(j['online_sessions']) ?? 0,
+      tempSpeed: TempSpeedState.fromJson(j['temp_speed']),
       smsEnabled: channels['sms'] != false,
       whatsappEnabled: channels['whatsapp'] == true,
       templates: tpls.isEmpty ? kDefaultMessageTemplates : tpls,
@@ -325,6 +376,7 @@ class SubscriberActionsContext {
         currency: currency,
         plan: plan,
         effectivePrice: effectivePrice,
+        priceIsCustom: priceIsCustom,
         balance: balance,
         debt: debt,
         openLoans: openLoans,
@@ -335,6 +387,7 @@ class SubscriberActionsContext {
         quotaWindows: quotaWindows,
         quotaUsage: quotaUsage,
         onlineSessions: onlineSessions,
+        tempSpeed: tempSpeed,
         smsEnabled: smsEnabled,
         whatsappEnabled: whatsappEnabled,
         templates: templates,
@@ -556,6 +609,24 @@ Map<String, dynamic> chargePayload(
       if (charge != ChargeMode.free) 'amount': amount,
       'notes': notes.trim(),
     };
+
+/// «حجم الكوتة» units of the web top-up dialog (unit_input_picker
+/// kind=quota): MB (the web default), GB, TB — in MB.
+const kQuotaUnits = <(int, String)>[
+  (1, 'MB'),
+  (1024, 'GB'),
+  (1048576, 'TB'),
+];
+
+/// Whole MB of a typed size × unit — the web picker's `Math.round(v × ratio)`.
+/// The server takes an integer `quota_mb` only: «1.3 GB» (1331.2 MB) used to
+/// be refused with «قيمة الكوتة … غير صحيحة».
+int quotaMbOf(double value, int unitMb) =>
+    value.isFinite && value > 0 ? (value * unitMb).round() : 0;
+
+/// The web hints' price label: «السعر المخصّص» / «سعر العرض».
+String priceLabelOf(SubscriberActionsContext c) =>
+    c.priceIsCustom ? 'السعر المخصّص' : 'سعر العرض';
 
 /// «نوع الكوتة» of the web top-up dialog.
 const kQuotaTargets = <(String, String)>[
