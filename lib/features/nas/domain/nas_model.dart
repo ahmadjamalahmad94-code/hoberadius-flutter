@@ -30,6 +30,8 @@ class NasDevice {
     this.requireMessageAuthenticator = false,
     this.sshPort = 22,
     this.tags = '',
+    this.rosVersion = '',
+    this.blankPorts = const {},
     this.lastCheckStatus = '',
     this.lastCheckAt,
     this.lastSeenAt,
@@ -59,6 +61,15 @@ class NasDevice {
   final bool requireMessageAuthenticator;
   final int sshPort;
   final String tags;
+
+  /// «إصدار RouterOS»: '' (غير محدّد) | '6' | '7' — the web form's field
+  /// (parity-c). The onboarding script refuses to build while it is empty.
+  final String rosVersion;
+
+  /// Form-only: port keys the operator left EMPTY. They are sent as null so
+  /// the server applies its default (1812/1813/3799/8728/22) like the web,
+  /// instead of 0, which the server rejects.
+  final Set<String> blankPorts;
   final String lastCheckStatus;
   final DateTime? lastCheckAt;
   final DateTime? lastSeenAt;
@@ -90,6 +101,7 @@ class NasDevice {
         requireMessageAuthenticator: j['require_message_authenticator'] == true,
         sshPort: _int(j['ssh_port']) ?? 22,
         tags: (j['tags'] ?? '').toString(),
+        rosVersion: (j['ros_version'] ?? '').toString(),
         lastCheckStatus: (j['last_check_status'] ?? '').toString(),
         lastCheckAt: _dt(j['last_check_at']),
         lastSeenAt: _dt(j['last_seen_at']),
@@ -104,12 +116,12 @@ class NasDevice {
         'vendor': vendor,
         'nas_type': nasType,
         'shortname': shortname,
-        'ports': ports,
+        'ports': blankPorts.contains('ports') ? null : ports,
         'snmp_community': snmpCommunity,
-        'auth_port': authPort,
-        'acct_port': acctPort,
-        'coa_port': coaPort,
-        'api_port': apiPort,
+        'auth_port': blankPorts.contains('auth_port') ? null : authPort,
+        'acct_port': blankPorts.contains('acct_port') ? null : acctPort,
+        'coa_port': blankPorts.contains('coa_port') ? null : coaPort,
+        'api_port': blankPorts.contains('api_port') ? null : apiPort,
         'api_user': apiUser,
         'api_use_tls': apiUseTls,
         'location': location,
@@ -118,8 +130,9 @@ class NasDevice {
         'description': description,
         'enabled': enabled,
         'require_message_authenticator': requireMessageAuthenticator,
-        'ssh_port': sshPort,
+        'ssh_port': blankPorts.contains('ssh_port') ? null : sshPort,
         'tags': tags,
+        'ros_version': rosVersion,
         if (pendingSecret.isNotEmpty) 'secret': pendingSecret,
         if (pendingApiPassword.isNotEmpty) 'api_password': pendingApiPassword,
       };
@@ -147,6 +160,8 @@ class NasDevice {
     bool? requireMessageAuthenticator,
     int? sshPort,
     String? tags,
+    String? rosVersion,
+    Set<String>? blankPorts,
     String? pendingSecret,
     String? pendingApiPassword,
   }) =>
@@ -174,6 +189,8 @@ class NasDevice {
             requireMessageAuthenticator ?? this.requireMessageAuthenticator,
         sshPort: sshPort ?? this.sshPort,
         tags: tags ?? this.tags,
+        rosVersion: rosVersion ?? this.rosVersion,
+        blankPorts: blankPorts ?? this.blankPorts,
         lastCheckStatus: lastCheckStatus,
         lastCheckAt: lastCheckAt,
         lastSeenAt: lastSeenAt,

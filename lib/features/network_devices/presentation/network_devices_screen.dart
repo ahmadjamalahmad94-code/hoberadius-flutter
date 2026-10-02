@@ -1659,6 +1659,18 @@ class _NetworkDeviceDialogState extends State<_NetworkDeviceDialog> {
                             : '${router.name} - ${router.address}',
                       ),
                     ),
+                  // parity-c: the device's router was archived/deleted —
+                  // keep it selectable (the web falls back to it) instead
+                  // of an invalid dropdown value.
+                  if (!widget.routers.any((r) => r.id == _routerId))
+                    DropdownMenuItem(
+                      value: _routerId,
+                      child: Text(
+                        widget.device?.routerName.isNotEmpty == true
+                            ? '${widget.device!.routerName} (غير متاح)'
+                            : 'الراوتر الحالي #$_routerId (غير متاح)',
+                      ),
+                    ),
                 ],
                 onChanged: (value) {
                   if (value != null) setState(() => _routerId = value);

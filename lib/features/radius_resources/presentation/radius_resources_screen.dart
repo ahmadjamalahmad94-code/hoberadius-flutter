@@ -1169,9 +1169,15 @@ class _BandwidthProfileDialogState
               TextFormField(
                 controller: _burst,
                 textDirection: TextDirection.ltr,
+                // parity-c: the web's name for it; a non-empty line
+                // REPLACES the two rates above at login (MikroTik order:
+                // upload/download).
                 decoration: const InputDecoration(
-                  labelText: 'إعداد الدفعة (Burst)',
+                  labelText: 'سطر السرعة المؤقتة على الراوتر (Burst)',
                   hintText: 'اختياري — مثال: 2M/4M',
+                  helperText: 'إن مُلئ يتقدّم على السرعتين أعلاه — الصيغة: '
+                      'رفع/تنزيل. اتركه فارغًا لتُطبَّق السرعتان.',
+                  helperMaxLines: 2,
                 ),
               ),
               const SizedBox(height: AppTokens.s12),
