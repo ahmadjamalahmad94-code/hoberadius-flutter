@@ -186,14 +186,16 @@ void main() {
         (_) => FakeResponse.ok({}),
       );
       expect(tester.takeException(), isNull);
-      // 4 export buttons → 2 + 2 at 360 (was 4 in a row → «…Ex»).
-      for (final label in ['تطبيق', 'CSV', 'Excel', 'PDF']) {
-        _expectOneLineWhole(tester, find.text(label));
+      // Owner 2026-10-02: «تطبيق» beside the search, the three exports in
+      // ONE row. The test font is ~2x wider than Cairo, so an export label
+      // may scale down here — never cut.
+      _expectOneLineWhole(tester, find.text('تطبيق'));
+      for (final label in ['CSV', 'Excel', 'PDF']) {
+        _expectOneLineWhole(tester, find.text(label), allowScaleDown: true);
       }
-      expect(
-        tester.getSize(find.widgetWithText(OutlinedButton, 'Excel')).width,
-        greaterThanOrEqualTo(ActionBar.minButtonWidth),
-      );
+      final csv = tester.getCenter(find.widgetWithText(OutlinedButton, 'CSV'));
+      final pdf = tester.getCenter(find.widgetWithText(OutlinedButton, 'PDF'));
+      expect((csv.dy - pdf.dy).abs(), lessThan(1), reason: 'exports in one row');
       // The test font is ~2x wider than Cairo: a label may shrink, never cut.
       for (final label in ['أرشفة', 'استعادة', 'تحديث']) {
         _expectOneLineWhole(tester, find.text(label), allowScaleDown: true);

@@ -79,17 +79,23 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
     final search = TextField(
       controller: _queryController,
       textInputAction: TextInputAction.search,
+      // Compact (owner 2026-10-02: «صغّر شريط البحث» — lower, simpler card).
       decoration: const InputDecoration(
-        labelText: 'بحث',
-        hintText: 'اسم الحزمة، العرض، المدير...',
-        prefixIcon: Icon(Icons.search),
+        isDense: true,
+        hintText: 'بحث: اسم الحزمة، العرض، المدير...',
+        prefixIcon: Icon(Icons.search, size: 20),
+        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
       ),
       onSubmitted: (_) => _applySearch(),
     );
     final status = DropdownButtonFormField<String>(
       isExpanded: true,
       initialValue: widget.filters.status,
-      decoration: const InputDecoration(labelText: 'الحالة'),
+      decoration: const InputDecoration(
+        isDense: true,
+        labelText: 'الحالة',
+        contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+      ),
       items: [
         for (final item in _statuses.entries)
           DropdownMenuItem(value: item.key, child: Text(item.value)),
@@ -106,48 +112,63 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (wide)
-                Row(
-                  children: [
-                    Expanded(child: search),
-                    const SizedBox(width: AppTokens.s12),
+              // Row 1: search + «تطبيق» beside it (was a separate button row).
+              Row(
+                children: [
+                  Expanded(child: search),
+                  const SizedBox(width: AppTokens.s8),
+                  SizedBox(
+                    height: 44,
+                    child: FilledButton.icon(
+                      onPressed: _applySearch,
+                      icon: const Icon(Icons.filter_alt_outlined, size: 18),
+                      label: const Text('تطبيق'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                      ),
+                    ),
+                  ),
+                  if (wide) ...[
+                    const SizedBox(width: AppTokens.s8),
                     SizedBox(width: 220, child: status),
                   ],
-                )
-              else ...[
-                search,
-                const SizedBox(height: AppTokens.s12),
+                ],
+              ),
+              if (!wide) ...[
+                const SizedBox(height: AppTokens.s8),
                 status,
               ],
-              const SizedBox(height: AppTokens.s12),
-              ActionBar(
-                maxPerRow: 4,
-                items: [
-                  ActionItem(
-                    icon: Icons.filter_alt_outlined,
-                    label: 'تطبيق',
-                    primary: true,
-                    onPressed: _applySearch,
-                  ),
-                  ActionItem(
-                    icon: Icons.file_download_outlined,
-                    label: 'CSV',
-                    onPressed: exportDenied == null ? widget.onExportCsv : null,
-                    tooltip: exportDenied,
-                  ),
-                  ActionItem(
-                    icon: Icons.table_chart_outlined,
-                    label: 'Excel',
-                    onPressed:
-                        exportDenied == null ? widget.onExportXlsx : null,
-                    tooltip: exportDenied,
-                  ),
-                  ActionItem(
-                    icon: Icons.picture_as_pdf_outlined,
-                    label: 'PDF',
-                    onPressed: exportDenied == null ? widget.onExportPdf : null,
-                    tooltip: exportDenied,
-                  ),
+              const SizedBox(height: AppTokens.s8),
+              // Row 2: the three exports side by side (were stacked 2+1).
+              Row(
+                children: [
+                  for (final (i, e) in <(IconData, String, VoidCallback)>[
+                    (Icons.file_download_outlined, 'CSV', widget.onExportCsv),
+                    (Icons.table_chart_outlined, 'Excel', widget.onExportXlsx),
+                    (Icons.picture_as_pdf_outlined, 'PDF', widget.onExportPdf),
+                  ].indexed) ...[
+                    if (i > 0) const SizedBox(width: AppTokens.s8),
+                    Expanded(
+                      child: Tooltip(
+                        message: exportDenied ?? '',
+                        child: SizedBox(
+                          height: 40,
+                          child: OutlinedButton.icon(
+                            onPressed: exportDenied == null ? e.$3 : null,
+                            icon: Icon(e.$1, size: 18),
+                            // never cut: scales down only if a phone is that narrow
+                            label: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(e.$2, maxLines: 1),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               if (widget.selectedCount > 0 && canBulk) ...[
