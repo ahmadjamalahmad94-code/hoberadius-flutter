@@ -167,27 +167,44 @@ class BandwidthFormCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppTokens.s12),
-            _NumberField(
+            // parity-c: the web's scale (1–10, default 5, lower wins).
+            TextFormField(
               controller: priority,
-              label: 'الأولوية داخل نفس النطاق',
+              keyboardType: TextInputType.number,
+              inputFormatters: numberFieldFormatters,
+              decoration: const InputDecoration(
+                labelText: 'الأولوية داخل نفس النطاق (1-10)',
+                helperText:
+                    'الرقم الأصغر يُفحص أولًا إذا تداخلت أكثر من قاعدة داخل نفس النطاق.',
+                helperMaxLines: 2,
+              ),
+              validator: (v) =>
+                  validateNumberInput(v, decimal: false, min: 1, max: 10),
             ),
             const SizedBox(height: AppTokens.s12),
             DropdownButtonFormField<String>(
               isExpanded: true,
               initialValue: restoreMode,
+              // parity-c: the web's three modes (the server now refuses
+              // anything else — previous_value/manual were app-only).
               items: const [
                 DropdownMenuItem(
                   value: 'profile_default',
-                  child: Text('رجوع لإعداد الباقة الأساسي'),
+                  child: Text('الرجوع للسرعة الأساسية'),
                 ),
                 DropdownMenuItem(
-                  value: 'previous_value',
-                  child: Text('رجوع للقيمة السابقة'),
+                  value: 'keep_current',
+                  child: Text('إبقاء آخر سرعة'),
                 ),
-                DropdownMenuItem(value: 'manual', child: Text('رجوع يدوي')),
+                DropdownMenuItem(
+                  value: 'disconnect',
+                  child: Text('فصل الجلسة'),
+                ),
               ],
               onChanged: (v) => onRestoreChanged(v ?? 'profile_default'),
-              decoration: const InputDecoration(labelText: 'طريقة الرجوع'),
+              decoration: const InputDecoration(
+                labelText: 'طريقة الرجوع بعد الوقت',
+              ),
             ),
             const SizedBox(height: AppTokens.s12),
             TextField(
