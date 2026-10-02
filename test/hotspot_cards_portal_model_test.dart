@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/features/hotspot_cards_portal/domain/hotspot_cards_portal_model.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 
 void main() {
   test('parses hotspot cards portal login and catalog payloads', () {
@@ -19,7 +20,7 @@ void main() {
 
     expect(login.token, 'portal-token');
     expect(login.user.title, 'صاحب المحفظة');
-    expect(login.user.walletLabel, '42.50 ILS');
+    expect(stripBidiMarks(login.user.walletLabel), '42.50 ₪');
 
     final item = HotspotCatalogItem.fromJson({
       'id': '12',
@@ -34,7 +35,7 @@ void main() {
     });
 
     expect(item.title, 'كرت ساعة');
-    expect(item.priceLabel, '5.00 ILS');
+    expect(stripBidiMarks(item.priceLabel), '5.00 ₪');
     expect(item.available, isTrue);
   });
 
@@ -58,7 +59,7 @@ void main() {
       },
     });
 
-    expect(owned.amountLabel, '5.00 ILS');
+    expect(stripBidiMarks(owned.amountLabel), '5.00 ₪');
     expect(owned.card.username, 'HP-001');
     expect(owned.card.statusLabel, 'جاهزة');
 

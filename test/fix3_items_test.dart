@@ -192,9 +192,9 @@ void main() {
       expect(formatMoneyAmount(1046), '1,046');
       expect(formatMoneyAmount(117.58999999999999), '117.59');
       expect(formatMoneyAmount(-0.001), '0');
-      expect(formatWithCurrency(3, 'usd'), '3 USD');
-      expect(formatWithCurrency(37.5, 'ILS'), '37.50 ILS');
-      expect(stripBidiMarks(formatMoney(7.5, 'ILS')), '7.50 ILS');
+      expect(stripBidiMarks(formatWithCurrency(3, 'usd')), '3 USD');
+      expect(stripBidiMarks(formatWithCurrency(37.5, 'ILS')), '37.50 ₪');
+      expect(stripBidiMarks(formatMoney(7.5, 'ILS')), '7.50 ₪');
     });
 
     test('a report money cell carries its ROW currency', () {
@@ -601,8 +601,9 @@ void main() {
     );
     await tester.pump();
     expect(tester.takeException(), isNull);
-    expect(find.textContaining('650 ILS'), findsOneWidget);
-    expect(find.textContaining('123,456.75 ILS'), findsOneWidget);
+    expect(find.textContaining('650 ₪'), findsOneWidget);
+    expect(find.textContaining('123,456.75 ₪'), findsOneWidget);
+    expect(find.textContaining('ILS'), findsNothing);
   });
 
   // ───────────────────────── ambiguous hour (F03 N7) ─────────────────────
@@ -664,6 +665,6 @@ void main() {
     expect('جاري توليد ${arCount(5, arCard, showOne: true)}…',
         'جاري توليد 5 بطاقات…',);
     expect(formatCurrencyList(const [CurrencyAmount('ILS', 7.5)]),
-        contains('7.50 ILS'),);
+        contains('7.50 ₪'),);
   });
 }

@@ -15,6 +15,7 @@ import '../../../shared/widgets/status_pill.dart';
 import '../data/store_admin_repository.dart';
 import '../domain/store_admin_model.dart';
 import 'store_chat_dialog.dart';
+import '../../../core/format/currency.dart';
 
 /// Store admin-management console — deposit/withdrawal approvals, payment
 /// methods CRUD, and the support chat inbox. Mirrors the web store support
@@ -223,7 +224,9 @@ class _RequestsCardState extends ConsumerState<_RequestsCard> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('المبلغ المطلوب: ${r.amount} ${r.currency}'),
+            Text(
+              'المبلغ المطلوب: ${amountWithCurrencyCode(r.amount, r.currency)}',
+            ),
             if (widget.isDeposit) ...[
               const SizedBox(height: AppTokens.s8),
               TextField(
@@ -367,7 +370,7 @@ class _RequestRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${r.amount} ${r.currency}',
+                      amountWithCurrencyCode(r.amount, r.currency),
                       style: const TextStyle(
                         fontWeight: FontWeight.w900,
                         fontSize: 16,

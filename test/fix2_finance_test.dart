@@ -226,7 +226,7 @@ void main() {
     test('net profit = server payments + live other rows, per currency', () {
       String show(List<CurrencyAmount> l) =>
           stripBidiMarks(formatCurrencyList(l));
-      expect(show(page.netProfitPerCurrency), '5,905.48 ILS · 420.10 EUR · 8 USD');
+      expect(show(page.netProfitPerCurrency), '5,905.48 ₪ · 420.10 EUR · 8 USD');
       expect(show(page.companySharePerCurrency), contains('6 USD'));
       expect(show(page.collectedPerCurrency), contains('20 USD'));
       expect(show(page.netProfitPerCurrency), isNot(contains('2,000')));
@@ -238,7 +238,7 @@ void main() {
         CurrencyAmount('USD', 426.31),
       ]);
       expect(kLtrIsolate.allMatches(text).length, 2);
-      expect(stripBidiMarks(text), '5,905.48 ILS · 426.31 USD');
+      expect(stripBidiMarks(text), '5,905.48 ₪ · 426.31 USD');
     });
 
     test('filtered rows never sum voided ones', () {

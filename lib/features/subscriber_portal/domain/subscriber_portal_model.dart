@@ -1,4 +1,5 @@
 import 'package:hoberadius_app/core/format/server_time.dart';
+import 'package:hoberadius_app/core/format/currency.dart';
 
 class SubscriberPortalCapabilities {
   const SubscriberPortalCapabilities({
@@ -190,7 +191,7 @@ class SubscriberPortalPlan {
     if (price <= 0) return 'السعر غير محدد';
     final amount =
         price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2);
-    return currency.isEmpty ? amount : '$amount $currency';
+    return amountWithCurrencyCode(amount, currency);
   }
 
   String get durationLabel {
@@ -284,10 +285,10 @@ class SubscriberPortalWallet {
 
   String get balanceLabel {
     if (balance.isNotEmpty) {
-      return currency.isEmpty ? balance : '$balance $currency';
+      return amountWithCurrencyCode(balance, currency);
     }
     final amount = (balanceMinor / 100).toStringAsFixed(2);
-    return currency.isEmpty ? amount : '$amount $currency';
+    return amountWithCurrencyCode(amount, currency);
   }
 
   factory SubscriberPortalWallet.fromJson(Map<String, dynamic> json) {

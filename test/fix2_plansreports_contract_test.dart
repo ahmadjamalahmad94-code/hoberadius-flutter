@@ -115,7 +115,7 @@ void main() {
     expect(reportColumnKeys(t), ['period', 'transactions', 'total']);
     expect(
       stripBidiMarks(reportCell(t.rows.single, 'total')),
-      '900 ILS · 100.50 USD',
+      '900 ₪ · 100.50 USD',
     );
     expect(reportCell(t.rows.single, 'transactions'), '3');
     // Old server: no columns → keys of the rows.

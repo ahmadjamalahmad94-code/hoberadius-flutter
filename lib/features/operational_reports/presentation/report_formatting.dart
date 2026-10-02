@@ -13,6 +13,8 @@ String formatReportCell(ReportColumn column, Object? value) {
     if (column.kind == ReportColumnKind.boolean) return 'لا';
     return '—';
   }
+  // The «العملة» column: «₪» for ILS like the web, other codes as-is.
+  if (column.key == 'currency') return currencyDisplay(value.toString());
   switch (column.kind) {
     case ReportColumnKind.date:
       return _formatDate(value);

@@ -1,5 +1,6 @@
 import 'package:hoberadius_app/core/format/panel_time.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
+import 'package:hoberadius_app/core/format/currency.dart';
 
 class HotspotPortalUser {
   const HotspotPortalUser({
@@ -22,8 +23,7 @@ class HotspotPortalUser {
 
   String get walletLabel {
     final amount = walletBalance.trim();
-    if (amount.isEmpty) return currency;
-    return currency.isEmpty ? amount : '$amount $currency';
+    return amountWithCurrencyCode(amount, currency);
   }
 
   factory HotspotPortalUser.fromJson(Map<String, dynamic> json) {
@@ -95,7 +95,7 @@ class HotspotCatalogItem {
 
   String get priceLabel {
     if (price.trim().isEmpty) return 'السعر غير محدد';
-    return currency.trim().isEmpty ? price : '$price $currency';
+    return amountWithCurrencyCode(price, currency);
   }
 
   factory HotspotCatalogItem.fromJson(Map<String, dynamic> json) {
@@ -178,8 +178,7 @@ class HotspotOwnedCard {
   final HotspotPortalCard card;
 
   String get amountLabel {
-    if (amount.trim().isEmpty) return currency;
-    return currency.trim().isEmpty ? amount : '$amount $currency';
+    return amountWithCurrencyCode(amount, currency);
   }
 
   factory HotspotOwnedCard.fromJson(Map<String, dynamic> json) {

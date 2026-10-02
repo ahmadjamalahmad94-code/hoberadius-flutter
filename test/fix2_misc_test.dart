@@ -226,7 +226,7 @@ void main() {
         }),
       );
       expect(tester.takeException(), isNull);
-      final balances = find.textContaining('300 شيكل إسرائيلي / ');
+      final balances = find.textContaining('300 ₪\u2069 / ');
       expect(balances, findsOneWidget);
       final p = tester.renderObject<RenderParagraph>(balances);
       expect(p.didExceedMaxLines, isFalse);

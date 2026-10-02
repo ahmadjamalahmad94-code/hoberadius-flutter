@@ -16,6 +16,7 @@ import '../../domain/subscriber_model.dart';
 import '../../../../core/api/idempotency.dart';
 import '../../../../core/format/money_limits.dart';
 import '../../../../core/format/bidi.dart';
+import '../../../../core/format/currency.dart';
 import '../../../../core/format/number_input.dart';
 import 'action_dialog_kit.dart';
 
@@ -419,7 +420,7 @@ class _ExtendDialogState extends ConsumerState<ExtendDialog>
             ),
             second: FormFieldRow(
               label: 'العملة',
-              child: ReadOnlyValue(value: c.currency),
+              child: ReadOnlyValue(value: currencyDisplay(c.currency)),
             ),
           ),
         if (!legacy) _notesField(_notes),
@@ -650,7 +651,7 @@ class _QuotaTopupDialogState extends ConsumerState<QuotaTopupDialog>
             ),
             second: FormFieldRow(
               label: 'العملة',
-              child: ReadOnlyValue(value: c.currency),
+              child: ReadOnlyValue(value: currencyDisplay(c.currency)),
             ),
           ),
         if (_invalid != null && _size.text.isNotEmpty) ...[
@@ -793,7 +794,7 @@ class _QuotaResetDialogState extends ConsumerState<QuotaResetDialog>
             ),
             second: FormFieldRow(
               label: 'العملة',
-              child: ReadOnlyValue(value: c.currency),
+              child: ReadOnlyValue(value: currencyDisplay(c.currency)),
             ),
           ),
         _notesField(_notes),
@@ -908,7 +909,7 @@ class _PaymentDialogState extends ConsumerState<PaymentDialog>
           ),
           second: FormFieldRow(
             label: 'العملة',
-            child: ReadOnlyValue(value: c.currency),
+            child: ReadOnlyValue(value: currencyDisplay(c.currency)),
           ),
         ),
         FormFieldRow(
@@ -1224,7 +1225,7 @@ class _LoanDialogState extends ConsumerState<LoanDialog> with _ActionRunner {
             ),
             second: FormFieldRow(
               label: 'العملة',
-              child: ReadOnlyValue(value: c.currency),
+              child: ReadOnlyValue(value: currencyDisplay(c.currency)),
             ),
           ),
         _notesField(_reason, label: 'سبب السلفة'),

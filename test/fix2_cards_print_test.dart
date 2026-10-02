@@ -449,16 +449,16 @@ void main() {
       );
       expect(
         batchPriceLabel({'price_per_card': 5}, fallbackCurrency: 'ILS'),
-        '5 ILS',
+        '5 ₪',
       );
       expect(batchPriceLabel({'price_per_card': 2.5}), '2.50');
     });
 
-    test('old server batch without currency → «5 ILS» on the card', () async {
+    test('old server batch without currency → «5 ₪» on the card', () async {
       final ctl = await _controller(_server(), currency: () => 'ILS');
       addTearDown(ctl.dispose);
       ctl.setShowPrice(true);
-      expect(ctl.state.form.priceText, '5 ILS');
+      expect(ctl.state.form.priceText, '5 ₪');
     });
 
     test('updated server batch currency wins', () async {
@@ -921,7 +921,7 @@ void main() {
       await tester.tap(find.byType(DropdownButtonFormField<int>).first);
       await tester.pumpAndSettle();
       expect(find.textContaining('Gold 1H'), findsWidgets);
-      expect(find.textContaining('5 ILS · صلاحية 30 يوم'), findsWidgets);
+      expect(find.textContaining('5 ₪\u2069 · صلاحية 30 يوم'), findsWidgets);
       expect(find.textContaining('Off plan'), findsNothing);
       expect(find.textContaining('Old plan'), findsNothing);
       await tester.tap(find.textContaining('Gold 1H').last);

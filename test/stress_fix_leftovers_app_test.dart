@@ -204,7 +204,7 @@ void main() {
       expect(t.mixedCurrency, isTrue);
       expect(
         stripBidiMarks(formatByCurrency(t.outstandingByCurrency)),
-        '30 ILS · 10 USD',
+        '30 ₪ · 10 USD',
       );
     });
 
@@ -240,7 +240,7 @@ void main() {
     test('batch price label', () {
       expect(
         batchPriceLabel({'price_per_card': 5, 'currency': 'ILS'}),
-        '5 ILS',
+        '5 ₪',
       );
       expect(batchPriceLabel({'price_per_card': 0}), '');
     });
@@ -273,7 +273,7 @@ void main() {
       expect(ctl.state.mode, PreviewMode.page);
       ctl.setShowPrice(true);
       expect(ctl.state.form.showPrice, isTrue);
-      expect(ctl.state.form.priceText, '5 ILS');
+      expect(ctl.state.form.priceText, '5 ₪');
     });
 
     test('price text travels in the form fields', () {

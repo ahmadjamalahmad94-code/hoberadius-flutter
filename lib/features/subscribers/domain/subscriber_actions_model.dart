@@ -887,10 +887,9 @@ int paymentExtendMinutes({
 }
 
 String formatMoney(double v, String currency) {
-  // The app's one money format (grouped, 0 or 2 decimals).
-  final text = formatWithCurrency(v, currency);
-  // LRI…PDI: keep «50 ILS» in reading order inside an Arabic sentence.
-  return currency.isEmpty ? text : '\u2066$text\u2069';
+  // The app's one money format (grouped, 0 or 2 decimals), already one
+  // LRI…PDI run so «50 ₪» keeps its reading order inside Arabic text.
+  return formatWithCurrency(v, currency);
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────

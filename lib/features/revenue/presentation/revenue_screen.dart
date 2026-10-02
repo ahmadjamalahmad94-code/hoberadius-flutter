@@ -333,17 +333,17 @@ class _RevenueTable extends StatelessWidget {
                   DataCell(Text('${item.id}')),
                   DataCell(Text(item.sourceLabel)),
                   DataCell(
-                    Text('${_money(item.originalPrice)} ${item.currency}'),
+                    Text(formatWithCurrency(item.originalPrice, item.currency)),
                   ),
                   DataCell(
-                    Text('${_money(item.collectedAmount)} ${item.currency}'),
+                    Text(formatWithCurrency(item.collectedAmount, item.currency)),
                   ),
                   DataCell(
-                    Text('${_money(item.wholesaleCost)} ${item.currency}'),
+                    Text(formatWithCurrency(item.wholesaleCost, item.currency)),
                   ),
                   DataCell(
                     Text(
-                      '${_money(item.netProfit)} ${item.currency}',
+                      formatWithCurrency(item.netProfit, item.currency),
                       style: const TextStyle(fontWeight: FontWeight.w900),
                     ),
                   ),
@@ -371,7 +371,7 @@ class _RevenueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String m(num v) => '${_money(v)} ${item.currency}';
+    String m(num v) => formatWithCurrency(v, item.currency);
     return AppCard(
       padding: const EdgeInsets.all(AppTokens.s12),
       child: Column(
@@ -478,8 +478,6 @@ PillTone _statusTone(String status) {
     _ => PillTone.neutral,
   };
 }
-
-String _money(num value) => formatMoneyAmount(value);
 
 String _fmt(DateTime? value) {
   if (value == null) return 'غير محدد';

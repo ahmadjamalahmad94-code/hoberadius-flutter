@@ -607,7 +607,7 @@ String loanCreatedMessage(LoanCreateOutcome o) {
   }
   final l = o.loan;
   final what = l.amount > 0
-      ? 'الدين ${_money(l.amount)} ${l.currency}'.trim()
+      ? 'الدين ${amountWithCurrencyCode(_money(l.amount), l.currency)}'
       : 'السلفة';
   return 'تم تسجيل $what للمشترك ${l.username}';
 }
@@ -708,7 +708,10 @@ Future<LoanCreateOutcome?> _loanDialog(
                         decoration: const InputDecoration(labelText: 'العملة'),
                         items: [
                           for (final c in currencies)
-                            DropdownMenuItem(value: c, child: Text(c)),
+                            DropdownMenuItem(
+                              value: c,
+                              child: Text(currencyDisplay(c)),
+                            ),
                         ],
                         onChanged: busy
                             ? null
@@ -907,16 +910,16 @@ String _loanCenterPreviewText(
   ].join(' و ');
   final value = d.priceFromDays
       ? (estimated != null && estimated > 0
-          ? 'دين محسوب من سعر الباقة ≈ ${_money(estimated)} $currency'.trim()
+          ? 'دين محسوب من سعر الباقة ≈ ${amountWithCurrencyCode(_money(estimated), currency)}'
           : 'دين محسوب من سعر الباقة على الخادم')
       : d.amount > 0
-          ? 'دين ${_money(d.amount)} ${currency.isEmpty ? '' : currency}'.trim()
+          ? 'دين ${amountWithCurrencyCode(_money(d.amount), currency)}'
           : 'سلفة مجانية';
   return 'معاينة فقط — لم يُسجَّل شيء: $span لـ ${d.username} ($value).';
 }
 
 String _loanAmountLabel(LoanEntry loan) {
-  final base = '${_money(loan.amount)} ${loan.currency}'.trim();
+  final base = amountWithCurrencyCode(_money(loan.amount), loan.currency);
   if (loan.isOpen && loan.outstanding > 0 && loan.outstanding < loan.amount) {
     return '$base (المتبقّي ${_money(loan.outstanding)})';
   }
@@ -950,7 +953,7 @@ Future<_SettlementDraft?> _settlementDialog(
               decoration: InputDecoration(
                 labelText: loan.currency.isEmpty
                     ? 'المبلغ المستلم'
-                    : 'المبلغ المستلم (${loan.currency})',
+                    : 'المبلغ المستلم (${currencyDisplay(loan.currency)})',
                 helperText: 'المتبقّي: ${_money(loan.outstanding)}',
               ),
             ),

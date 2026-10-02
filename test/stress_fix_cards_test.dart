@@ -11,6 +11,7 @@ import 'package:hoberadius_app/features/cards/presentation/card_batch_form_scree
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/fake_api.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -98,10 +99,15 @@ void main() {
   });
 
   test('M4: money shows the tenant currency, never a hardcoded ₪', () {
-    expect(formatMoney(1234.5, 'JOD'), '1,234.50 JOD');
+    expect(stripBidiMarks(formatMoney(1234.5, 'JOD')), '1,234.50 JOD');
     expect(formatMoney(10), '10');
-    expect(formatMoney(10, 'ILS').contains('₪'), isFalse);
-    expect(formatWithCurrency(1234567.891, 'USD'), '1,234,567.89 USD');
+    // A JOD tenant never sees «₪»; an ILS tenant sees «₪», never «ILS».
+    expect(formatMoney(10, 'JOD').contains('₪'), isFalse);
+    expect(stripBidiMarks(formatMoney(10, 'ILS')), '10 ₪');
+    expect(
+      stripBidiMarks(formatWithCurrency(1234567.891, 'USD')),
+      '1,234,567.89 USD',
+    );
   });
 
   testWidgets('H1: more than 1,000 cards asks for confirmation',

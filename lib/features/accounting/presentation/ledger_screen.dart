@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../data/accounting_repository.dart';
 import '../domain/accounting_model.dart';
+import '../../../core/format/currency.dart';
 
 final _ledgerProvider =
     FutureProvider.autoDispose.family<List<LedgerEntry>, String>((ref, type) {
@@ -132,7 +133,14 @@ class _LedgerScreenState extends ConsumerState<LedgerScreen> {
                             entry.username.isEmpty ? '—' : entry.username,
                           ),
                         ),
-                        DataCell(Text('${entry.amount} ${entry.currency}')),
+                        DataCell(
+                          Text(
+                            amountWithCurrencyCode(
+                              '${entry.amount}',
+                              entry.currency,
+                            ),
+                          ),
+                        ),
                         DataCell(Text(_ledgerStatusLabel(entry.status))),
                         DataCell(Text(_fmt(entry.createdAt))),
                         DataCell(

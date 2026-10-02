@@ -30,7 +30,7 @@ class CurrencyField extends StatelessWidget {
       ),
       // One line (it wrapped over three lines in narrow dialog columns).
       child: Text(
-        '${currencyLabel(currency)} ($currency)',
+        currencyOptionLabel(currency),
         textDirection: TextDirection.rtl,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

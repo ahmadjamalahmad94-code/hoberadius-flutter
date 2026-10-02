@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:hoberadius_app/features/subscriber_portal/domain/subscriber_portal_model.dart';
 
 void main() {
@@ -91,7 +92,7 @@ void main() {
 
     expect(dashboard.hasDebt, isTrue);
     expect(dashboard.plan.title, '50 Mbps');
-    expect(dashboard.plan.priceLabel, '35 ILS');
+    expect(stripBidiMarks(dashboard.plan.priceLabel), '35 ₪');
     expect(dashboard.subscription.expiredViewAllowed, isTrue);
     expect(dashboard.usage.totalLabel, isNot('0 ب'));
     expect(dashboard.sessions.single.online, isTrue);

@@ -143,7 +143,7 @@ void main() {
     );
     // Currency comes from the server (actions-context), never «JOD».
     expect(find.textContaining('JOD'), findsNothing);
-    expect(_field('المبلغ (ILS)'), findsOneWidget);
+    expect(_field('المبلغ (₪)'), findsOneWidget);
     // Turn the payment preview off (first «معاينة بدون تنفيذ» switch).
     await tester.tap(find.text('معاينة بدون تنفيذ').at(0));
     await tester.pumpAndSettle();

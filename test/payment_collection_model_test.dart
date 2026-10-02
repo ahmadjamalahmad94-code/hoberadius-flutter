@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/features/payment_collection/domain/payment_collection_model.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 
 void main() {
   test('payment settings parse and serialize api payload', () {
@@ -72,7 +73,7 @@ void main() {
       },
     });
 
-    expect(instructions.amountLabel, '25.50 ILS');
+    expect(stripBidiMarks(instructions.amountLabel), '25.50 ₪');
     expect(instructions.receiverWallet, '0599000000');
     expect(instructions.referenceCode, 'PAY-15');
     expect(instructions.statusLabel, 'بانتظار الدفع');
@@ -158,7 +159,10 @@ void main() {
 
     expect(summary.isClean, isFalse);
     expect(summary.totalIssues, 3);
-    expect(summary.paidWithoutLedger.single.amountLabel, '40 ILS');
+    expect(
+      stripBidiMarks(summary.paidWithoutLedger.single.amountLabel),
+      '40 ₪',
+    );
     expect(summary.paidWithoutLedger.single.statusLabel, 'مدفوع');
     expect(
       summary.duplicateProviderTransactions.single.displayReference,
@@ -195,7 +199,7 @@ void main() {
     expect(page.count, 1);
     expect(item.isReviewable, isTrue);
     expect(item.canSubmitProof, isTrue);
-    expect(item.amountLabel, '50 ILS');
+    expect(stripBidiMarks(item.amountLabel), '50 ₪');
     expect(item.statusLabel, 'بانتظار مراجعة الإثبات');
     expect(item.purposeLabel, 'تجديد مشترك');
     expect(item.payerLabel, 'مشترك #44');
@@ -221,7 +225,7 @@ void main() {
     expect(result.request.isPaid, isTrue);
     expect(result.request.canSubmitProof, isFalse);
     expect(result.request.canApplyService, isTrue);
-    expect(result.request.amountLabel, '75.50 ILS');
+    expect(stripBidiMarks(result.request.amountLabel), '75.50 ₪');
     expect(result.request.purposeLabel, 'شراء كروت');
   });
 

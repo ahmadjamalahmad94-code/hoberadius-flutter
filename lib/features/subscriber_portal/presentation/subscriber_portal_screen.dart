@@ -13,6 +13,7 @@ import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../application/subscriber_portal_controller.dart';
 import '../domain/subscriber_portal_model.dart';
+import '../../../core/format/currency.dart';
 
 class SubscriberPortalScreen extends ConsumerStatefulWidget {
   const SubscriberPortalScreen({super.key});
@@ -755,7 +756,7 @@ class _PaymentRow extends StatelessWidget {
             const SizedBox(width: AppTokens.s8),
           ],
           Text(
-            '$amount $currency'.trim(),
+            amountWithCurrencyCode(amount, currency),
             style: const TextStyle(fontWeight: FontWeight.w900),
           ),
         ],

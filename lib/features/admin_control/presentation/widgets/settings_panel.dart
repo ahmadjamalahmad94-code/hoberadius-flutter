@@ -8,6 +8,17 @@ import '../../../../shared/widgets/empty_state.dart';
 import '../../application/admin_control_providers.dart';
 import '../../domain/admin_control_model.dart';
 import 'admin_section_common.dart';
+import '../../../../core/format/currency.dart';
+import '../../../../core/l10n/arabic_labels.dart';
+
+/// The shown value of a setting row. `billing.currency` shows «شيكل (₪)»
+/// for ILS like the web (display only — the edit dialog and the saved value
+/// keep the ISO code).
+String _settingValueText(SettingItem item) {
+  if (item.value.isEmpty) return 'غير محدد';
+  if (item.key == kCurrencySettingKey) return currencyOptionLabel(item.value);
+  return item.value;
+}
 
 class SettingsPanel extends ConsumerWidget {
   const SettingsPanel({super.key, required this.onEdit});
@@ -42,7 +53,7 @@ class SettingsPanel extends ConsumerWidget {
                   ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 220),
                     child: Text(
-                      item.value.isEmpty ? 'غير محدد' : item.value,
+                      _settingValueText(item),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),

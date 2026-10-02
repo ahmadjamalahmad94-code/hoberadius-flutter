@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hoberadius_app/core/format/bidi.dart';
 import 'package:hoberadius_app/features/tickets/domain/ticket_model.dart';
 
 void main() {
@@ -116,7 +117,10 @@ void main() {
     expect(result.paymentRequestId, 12);
     expect(result.serviceLabel, 'خدمة تغيير IP / VPN');
     expect(result.ticket.category, 'service_request');
-    expect(result.paymentRequest?.amountLabel, '35 ILS');
+    expect(
+      stripBidiMarks(result.paymentRequest?.amountLabel ?? ''),
+      '35 ₪',
+    );
   });
 
   test('Service request decision without payment still parses safely', () {

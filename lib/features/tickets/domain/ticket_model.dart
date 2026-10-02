@@ -197,8 +197,10 @@ class ServicePaymentRequest {
     );
   }
 
-  String get amountLabel =>
-      '${amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2)} $currency';
+  String get amountLabel => amountWithCurrencyCode(
+        amount.toStringAsFixed(amount.truncateToDouble() == amount ? 0 : 2),
+        currency,
+      );
 }
 
 class ServiceRequestResult {

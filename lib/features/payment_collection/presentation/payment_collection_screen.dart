@@ -399,7 +399,9 @@ class _PaymentSettingsEditorState
                         (value) => Align(
                           alignment: AlignmentDirectional.centerStart,
                           child: Text(
-                            currencyLabel(value),
+                            isShekelCode(value)
+                                ? currencyOptionLabel(value)
+                                : currencyLabel(value),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -411,7 +413,9 @@ class _PaymentSettingsEditorState
                         (value) => DropdownMenuItem(
                           value: value,
                           child: Text(
-                            '${currencyLabel(value)} — $value',
+                            isShekelCode(value)
+                                ? currencyOptionLabel(value)
+                                : '${currencyLabel(value)} — $value',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),

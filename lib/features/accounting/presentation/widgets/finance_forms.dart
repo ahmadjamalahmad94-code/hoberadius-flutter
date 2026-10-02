@@ -7,6 +7,7 @@ import '../../../../shared/widgets/hub_layout.dart';
 import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../../../core/format/money_limits.dart';
 import '../../../../shared/widgets/number_text_field.dart';
+import '../../../../core/format/currency.dart';
 
 /// Compact info banner (tinted, small text) — was a full white card with a
 /// paragraph that took as much room as a form.
@@ -212,7 +213,9 @@ class PaymentFormCard extends StatelessWidget {
             extraError: (v) =>
                 validateMoneyAmount(v, cap: MoneyCap.subscriberPayment),
             decoration: InputDecoration(
-              labelText: currency.isEmpty ? 'المبلغ' : 'المبلغ ($currency)',
+              labelText: currency.isEmpty
+                  ? 'المبلغ'
+                  : 'المبلغ (${currencyDisplay(currency)})',
             ),
           ),
           second: TextField(
@@ -307,7 +310,9 @@ class LoanFormCard extends StatelessWidget {
                 : null,
             decoration: InputDecoration(
               labelText:
-                  currency.isEmpty ? 'قيمة السلفة' : 'قيمة السلفة ($currency)',
+                  currency.isEmpty
+                      ? 'قيمة السلفة'
+                      : 'قيمة السلفة (${currencyDisplay(currency)})',
             ),
           ),
         ),

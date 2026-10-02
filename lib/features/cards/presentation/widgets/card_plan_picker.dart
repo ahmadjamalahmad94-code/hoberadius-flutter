@@ -30,7 +30,7 @@ String planDurationLabel(PlanOption p) {
   return '$m دقيقة';
 }
 
-/// «5 ILS · صلاحية 30 يوم» under the plan name.
+/// «5 ₪ · صلاحية 30 يوم» under the plan name.
 String planPickerSubtitle(PlanOption p, {String fallbackCurrency = ''}) {
   final cur =
       p.currency.trim().isNotEmpty ? p.currency.trim() : fallbackCurrency;

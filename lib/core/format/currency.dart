@@ -79,13 +79,55 @@ String formatMoneyAmount(num value) {
   return _group(fixed == '-0' ? '0' : fixed);
 }
 
-/// «1,234.50 JOD» — [formatMoneyAmount] + the currency code (none when
-/// unknown).
-String formatWithCurrency(num value, String currency) {
+/// The shekel symbol the web panel prints for `ILS` (`CURRENCY_SYMBOLS`).
+const String kShekelSymbol = '₪';
+
+/// What the USER sees for a currency code (owner 2026-10-01): the shekel is
+/// always «₪» — exactly like the web's `money` filter — never «ILS»; every
+/// other currency keeps its upper-cased ISO code («JOD», «USD»). Display
+/// only: request bodies, query params, dropdown values and stored settings
+/// keep the code.
+String currencyDisplay(String? code) {
+  final c = (code ?? '').trim().toUpperCase();
+  return c == 'ILS' ? kShekelSymbol : c;
+}
+
+/// Whether [code] is the shekel (`ILS`, any case/padding).
+bool isShekelCode(String? code) => (code ?? '').trim().toUpperCase() == 'ILS';
+
+/// «20 ₪» / «7.5 JOD» for an amount that is already a display string (API
+/// strings like `"12.50"`): amount first, then [currencyDisplay] — the
+/// web's order. An empty code leaves the amount alone; an empty amount gives
+/// the symbol alone.
+///
+/// With a currency the result is ONE left-to-right isolate (LRI…PDI): an
+/// un-isolated «1,112.80 ₪» inside Arabic text is drawn «₪ 1,112.80» by the
+/// bidi algorithm (the owner saw «ILS 1,112.80» on the batch stats). Pass
+/// `isolate: false` for text that is not drawn by Flutter (e.g. the price
+/// text sent to the server's card printer).
+String amountWithCurrencyCode(
+  String amount,
+  String? code, {
+  bool isolate = true,
+}) {
+  final a = amount.trim();
+  final c = currencyDisplay(code);
+  if (a.isEmpty) return c;
+  if (c.isEmpty) return a;
+  return isolate ? ltrIsolate('$a $c') : '$a $c';
+}
+
+/// «1,234.50 JOD» / «20 ₪» — [formatMoneyAmount] + [currencyDisplay] (none
+/// when unknown), one LTR isolate (see [amountWithCurrencyCode]). Same order
+/// as the web `money` filter («amount symbol»).
+String formatWithCurrency(
+  num value,
+  String currency, {
+  bool isolate = true,
+}) {
   final grouped = formatMoneyAmount(value);
   if (grouped == '—') return grouped;
-  final code = currency.trim().toUpperCase();
-  return code.isEmpty ? grouped : '$grouped $code';
+  return amountWithCurrencyCode(grouped, currency, isolate: isolate);
 }
 
 String _group(String fixed) {
@@ -133,14 +175,14 @@ List<CurrencyAmount> parseByCurrency(
   return out;
 }
 
-/// «1,200 ILS · 30 USD» for a mixed-currency total. Each «amount CUR» is an
+/// «1,200 ₪ · 30 USD» for a mixed-currency total. Each «amount CUR» is an
 /// LTR isolate so RTL text does not scramble the order (r09 N7: «ILS ·
 /// 426.31 USD · 420.10 EUR 5,905.48»).
 String formatByCurrency(List<CurrencyAmount> parts) => parts
     .map((p) => ltrIsolate(formatWithCurrency(p.amount, p.currency)))
     .join(' · ');
 
-/// One currency → «1,200 ILS»; several → [formatByCurrency]; none → «0».
+/// One currency → «1,200 ₪»; several → [formatByCurrency]; none → «0».
 String formatCurrencyList(List<CurrencyAmount> parts, {String fallback = ''}) {
   if (parts.isEmpty) return ltrIsolate(formatWithCurrency(0, fallback));
   if (parts.length == 1) {

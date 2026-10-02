@@ -20,6 +20,7 @@ import '../../../shared/widgets/status_pill.dart';
 import '../application/card_users_providers.dart';
 import '../data/card_users_repository.dart';
 import '../domain/card_users_model.dart';
+import '../../../core/format/currency.dart';
 
 class CardUsersScreen extends ConsumerWidget {
   const CardUsersScreen({super.key});
@@ -180,7 +181,10 @@ class _Summary extends StatelessWidget {
           CountItem('الكروت المملوكة', summary.cards, tone: PillTone.blue),
           CountItem.text(
             'رصيد المحافظ',
-            '${summary.balance.toStringAsFixed(2)} ${summary.currency}',
+            amountWithCurrencyCode(
+              summary.balance.toStringAsFixed(2),
+              summary.currency,
+            ),
             tone: PillTone.brand,
           ),
         ],
@@ -215,7 +219,10 @@ class _UsersTable extends StatelessWidget {
                 DataCell(Text(user.mobile.isEmpty ? 'غير مدخل' : user.mobile)),
                 DataCell(
                   Text(
-                    '${user.balance.toStringAsFixed(2)} ${user.walletCurrency}',
+                    amountWithCurrencyCode(
+                      user.balance.toStringAsFixed(2),
+                      user.walletCurrency,
+                    ),
                   ),
                 ),
                 DataCell(Text('${user.ownedCardsCount}')),
@@ -272,8 +279,10 @@ class _UserCard extends StatelessWidget {
                   InfoItem(
                     icon: Icons.account_balance_wallet_outlined,
                     label: 'الرصيد',
-                    value:
-                        '${user.balance.toStringAsFixed(2)} ${user.walletCurrency}',
+                    value: amountWithCurrencyCode(
+                      user.balance.toStringAsFixed(2),
+                      user.walletCurrency,
+                    ),
                   ),
                   InfoItem(
                     icon: Icons.credit_card_outlined,
@@ -407,7 +416,10 @@ class _PackageTile extends StatelessWidget {
           ),
         ),
         Text(
-          '${package.price.toStringAsFixed(2)} ${package.currency}',
+          amountWithCurrencyCode(
+            package.price.toStringAsFixed(2),
+            package.currency,
+          ),
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
       ],

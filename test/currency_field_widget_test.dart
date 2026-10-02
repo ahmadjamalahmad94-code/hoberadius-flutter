@@ -46,7 +46,9 @@ void main() {
   testWidgets('changing tenant currency propagates to the money form',
       (tester) async {
     await _pump(tester, {'billing.currency': 'ILS'});
-    expect(find.textContaining('ILS'), findsOneWidget);
+    // The shekel shows as «₪» (owner 2026-10-01), never the code.
+    expect(find.textContaining('₪'), findsOneWidget);
+    expect(find.textContaining('ILS'), findsNothing);
     expect(find.textContaining('شيكل'), findsOneWidget);
     // No JOD leakage when the tenant is configured for ILS.
     expect(find.textContaining('JOD'), findsNothing);
@@ -57,7 +59,7 @@ void main() {
   testWidgets('absent currency setting falls back to ILS (server default)',
       (tester) async {
     await _pump(tester, {});
-    expect(find.textContaining('ILS'), findsOneWidget);
+    expect(find.textContaining('₪'), findsOneWidget);
     expect(find.textContaining('JOD'), findsNothing);
   });
 }

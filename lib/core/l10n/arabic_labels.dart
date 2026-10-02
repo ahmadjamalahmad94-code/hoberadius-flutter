@@ -1,4 +1,5 @@
 import '../format/bidi.dart';
+import '../format/currency.dart';
 
 String currencyLabel(String code) {
   return switch (code.trim().toUpperCase()) {
@@ -10,9 +11,22 @@ String currencyLabel(String code) {
   };
 }
 
+/// «20 ₪» for the shekel (owner 2026-10-01: the symbol, like the web, never
+/// «ILS» nor «شيكل إسرائيلي»); other currencies keep their Arabic name
+/// («20 دينار أردني»).
 String amountWithCurrency(String amount, String code) {
   final value = amount.trim().isEmpty ? '0' : amount.trim();
+  final c = code.trim().toUpperCase();
+  if (isShekelCode(c)) return amountWithCurrencyCode(value, c);
   return '$value ${currencyLabel(code)}';
+}
+
+/// A currency picker option label: «شيكل (₪)» for ILS, «دينار أردني (JOD)»
+/// otherwise. The option VALUE stays the ISO code.
+String currencyOptionLabel(String code) {
+  final c = code.trim().toUpperCase();
+  if (isShekelCode(c)) return 'شيكل (${currencyDisplay(c)})';
+  return '${currencyLabel(c)} ($c)';
 }
 
 String unknownStatusLabel(

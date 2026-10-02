@@ -18,6 +18,7 @@ import '../../cards/domain/card_item.dart';
 import '../application/card_users_providers.dart';
 import '../data/card_users_repository.dart';
 import '../domain/card_users_model.dart';
+import '../../../core/format/currency.dart';
 
 class CardUser360Screen extends ConsumerWidget {
   const CardUser360Screen({super.key, required this.cardUserId});
@@ -169,7 +170,10 @@ class _Kpis extends StatelessWidget {
         items: [
           CountItem.text(
             'رصيد المحفظة',
-            '${profile.wallet.balance} ${profile.wallet.currency}',
+            amountWithCurrencyCode(
+              profile.wallet.balance,
+              profile.wallet.currency,
+            ),
             tone: PillTone.brand,
           ),
           CountItem('الكروت', profile.cards.length, tone: PillTone.blue),
@@ -245,8 +249,10 @@ class _IdentityPanel extends StatelessWidget {
               InfoItem(
                 icon: Icons.payments_outlined,
                 label: 'الإنفاق',
-                value:
-                    '${user.spent.toStringAsFixed(2)} ${user.walletCurrency}',
+                value: amountWithCurrencyCode(
+                  user.spent.toStringAsFixed(2),
+                  user.walletCurrency,
+                ),
               ),
               InfoItem(
                 icon: Icons.data_usage,
@@ -297,7 +303,7 @@ class _PurchasePanelState extends ConsumerState<_PurchasePanel> {
                       DropdownMenuItem(
                         value: package.id,
                         child: Text(
-                          '${package.title} · ${package.price.toStringAsFixed(2)} ${package.currency}',
+                          '${package.title} · ${amountWithCurrencyCode(package.price.toStringAsFixed(2), package.currency)}',
                         ),
                       ),
                   ],
@@ -459,7 +465,10 @@ class _PurchasesPanel extends StatelessWidget {
                       color: AppTokens.brandInk,
                     ),
                     title: Text(
-                      '${purchase.amount} ${purchase.currency}',
+                      amountWithCurrencyCode(
+                        purchase.amount,
+                        purchase.currency,
+                      ),
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     subtitle: Text(_dateLabel(purchase.createdAt)),

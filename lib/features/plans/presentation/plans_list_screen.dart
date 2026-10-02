@@ -12,6 +12,7 @@ import '../../../shared/widgets/status_pill.dart';
 import '../../provider_grants/presentation/limit_usage_banner.dart';
 import '../data/plans_repository.dart';
 import '../domain/plan_model.dart';
+import '../../../core/format/currency.dart';
 
 final plansListProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
   return ref.watch(plansRepositoryProvider).list();
@@ -228,7 +229,10 @@ class _PlanCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        '${plan.price.toStringAsFixed(2)} ${plan.currency}',
+                        amountWithCurrencyCode(
+                          plan.price.toStringAsFixed(2),
+                          plan.currency,
+                        ),
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           color: accent,

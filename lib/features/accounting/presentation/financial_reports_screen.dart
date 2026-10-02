@@ -493,6 +493,10 @@ String reportCell(Map<String, dynamic> row, String column) {
         ? formatMoneyAmount(value)
         : ltrIsolate(formatWithCurrency(value, code));
   }
+  // The «العملة» column itself: «₪» for ILS like the web.
+  if (column == 'currency' && value is String && value.trim().isNotEmpty) {
+    return currencyDisplay(value);
+  }
   return _cell(value);
 }
 

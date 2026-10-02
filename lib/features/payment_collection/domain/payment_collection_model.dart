@@ -250,7 +250,9 @@ class PaymentReconciliationItem {
   }
 
   String get amountLabel =>
-      amount == 0 ? 'غير محدد' : '${_formatAmount(amount)} $currency';
+      amount == 0
+          ? 'غير محدد'
+          : amountWithCurrencyCode(_formatAmount(amount), currency);
 
   String get statusLabel => _paymentStatusLabel(status);
 
@@ -299,7 +301,8 @@ class PaymentInstructions {
     );
   }
 
-  String get amountLabel => '${_formatAmount(amount)} $currency';
+  String get amountLabel =>
+      amountWithCurrencyCode(_formatAmount(amount), currency);
 
   String get statusLabel => _paymentStatusLabel(status);
 }
@@ -481,7 +484,8 @@ class PaymentRequestRecord {
   bool get canSubmitProof =>
       !{'paid', 'rejected', 'expired', 'cancelled', 'failed'}.contains(status);
 
-  String get amountLabel => '${_formatAmount(amount)} $currency';
+  String get amountLabel =>
+      amountWithCurrencyCode(_formatAmount(amount), currency);
 
   String get statusLabel => _paymentStatusLabel(status);
 

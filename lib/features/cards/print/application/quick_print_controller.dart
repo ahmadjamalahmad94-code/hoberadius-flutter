@@ -10,6 +10,7 @@ import '../../../../core/api/api_exception.dart';
 import '../../../admin_control/application/admin_control_providers.dart';
 import '../data/quick_print_repository.dart';
 import '../domain/quick_print_form.dart';
+import 'package:hoberadius_app/core/format/currency.dart';
 
 enum PreviewMode { card, page }
 
@@ -121,7 +122,7 @@ class QuickPrintController extends StateNotifier<QuickPrintState> {
   final String Function()? _tenantCurrency;
   Map<String, dynamic> _batch = const {};
 
-  /// The batch's card price («5 ILS»), offered as the price text.
+  /// The batch's card price («5 ₪»), offered as the price text.
   String get batchPriceText {
     var fallback = '';
     try {
@@ -600,7 +601,7 @@ String uniqueTemplateName(
   return '$stem $n';
 }
 
-/// «5 ILS» from a batch row (`price_per_card` + `currency`), '' when free.
+/// «5 ₪» from a batch row (`price_per_card` + `currency`), '' when free.
 /// Old servers send no `currency` → [fallbackCurrency] (the panel's).
 String batchPriceLabel(
   Map<String, dynamic> batch, {
@@ -614,5 +615,6 @@ String batchPriceLabel(
       v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
   var cur = '${batch['currency'] ?? ''}'.trim();
   if (cur.isEmpty) cur = fallbackCurrency.trim();
-  return cur.isEmpty ? text : '$text $cur';
+  // Printed by the server (not Flutter): no bidi isolate marks.
+  return amountWithCurrencyCode(text, cur, isolate: false);
 }
