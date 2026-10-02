@@ -374,7 +374,15 @@ class _RecycleCard extends StatelessWidget {
   }
 }
 
-String _label(String entityType) => _entityLabels[entityType] ?? entityType;
+/// The list returns TABLE names (`access_plans`, `nas_devices`, …): label
+/// them too — the raw table name was shown (parity-b).
+const _tableLabels = <String, String>{
+  'access_plans': 'الباقات',
+  'nas_devices': 'أجهزة الشبكة',
+};
+
+String _label(String entityType) =>
+    _entityLabels[entityType] ?? _tableLabels[entityType] ?? entityType;
 
 String _archiveSource(RecycleBinItem item) {
   if (item.archiveSource == 'auto') {

@@ -195,3 +195,21 @@ String formatCurrencyList(List<CurrencyAmount> parts, {String fallback = ''}) {
 /// the auth controller at session restore — available before the settings
 /// page loads. Empty on older servers / signed out.
 final sessionCurrencyProvider = StateProvider<String>((ref) => '');
+
+/// The currencies the payment collection accepts (server
+/// `payments_repo.CURRENCIES`) — parity-b.
+const List<String> kCollectionCurrencies = ['ILS', 'USD', 'JOD'];
+
+/// The web settings page's currency list (`system_config.CURRENCY_CHOICES`)
+/// — what `billing.currency` may hold (parity-b).
+const List<String> kSettingsCurrencyCodes = [
+  'ILS',
+  'USD',
+  'JOD',
+  'EGP',
+  'IQD',
+  'SAR',
+  'AED',
+  'EUR',
+  'TRY',
+];

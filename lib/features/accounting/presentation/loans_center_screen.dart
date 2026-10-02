@@ -679,7 +679,8 @@ Future<LoanCreateOutcome?> _loanDialog(
                 // × the days, recorded in the system currency.
                 InputDecorator(
                   decoration: InputDecoration(
-                    labelText: 'قيمة السلفة (تلقائي — ${currencyDisplay(systemCurrency)})',
+                    labelText:
+                        'قيمة السلفة (تلقائي — ${currencyDisplay(systemCurrency)})',
                     helperText: priceFromDays
                         ? 'يحسبها الخادم من سعر باقة المشترك × المدة.'
                         : 'سلفة مجانية: وقت فقط بدون قيمة ماليّة.',
@@ -698,7 +699,8 @@ Future<LoanCreateOutcome?> _loanDialog(
                   value: priceFromDays,
                   onChanged: (value) => setState(() => priceFromDays = value),
                   label: 'تسجيل دين (مدين)',
-                  subtitle: 'القيمة تُحتسب تلقائيًا من سعر الباقة × عدد الأيام.',
+                  subtitle:
+                      'القيمة تُحتسب تلقائيًا من سعر الباقة × عدد الأيام.',
                 ),
                 HubSwitchRow(
                   dense: true,

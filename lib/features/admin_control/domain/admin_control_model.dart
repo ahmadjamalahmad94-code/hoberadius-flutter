@@ -1,3 +1,5 @@
+import '../../../core/format/currency.dart';
+
 class SettingItem {
   const SettingItem({
     required this.key,
@@ -106,3 +108,55 @@ Map<String, String> _stringMap(Object? value) {
 }
 
 String _string(Object? value) => (value ?? '').toString();
+
+/// Settings the web edits with a select/toggle — the app offers the same
+/// choices instead of free text (parity-b: «نعم» saved for a toggle was read
+/// as OFF, «شيكل» was stored as the currency). Null = free text.
+const _boolChoices = <(String, String)>[('1', 'مفعّل'), ('0', 'معطّل')];
+
+const Set<String> kBoolSettingKeys = {
+  'auth.allow_password_reset',
+  'cards.login_without_password_default',
+  'security.block_random_mac_cards',
+  'security.block_random_mac_subscribers',
+  'portal.show_usage',
+  'portal.show_sessions',
+  'portal.show_invoices',
+  'portal.allow_password_change',
+  'portal.allow_renewal_request',
+  'portal.allow_loan_request',
+  'portal.show_support',
+  'portal.allow_self_purchase',
+  'portal.allow_plan_change',
+};
+
+
+List<(String, String)>? settingChoices(String key) {
+  if (kBoolSettingKeys.contains(key) ||
+      (key.startsWith('limits.') && key.endsWith('.unlimited'))) {
+    return _boolChoices;
+  }
+  switch (key) {
+    case 'billing.currency':
+      return [for (final c in kSettingsCurrencyCodes) (c, c)];
+    case 'subscribers.create_without_expiry':
+      return const [('expired', 'منتهٍ فورًا'), ('unlimited', 'بلا انتهاء')];
+    case 'security.unauthorized_ui':
+      return const [('freeze', 'تجميد (يظهر معطّلًا)'), ('hide', 'إخفاء')];
+    case 'device_limit.subscribers.mode':
+    case 'device_limit.cards.mode':
+      return const [
+        ('reject', 'رفض الجهاز الجديد'),
+        ('replace', 'استبدال الأقدم'),
+      ];
+    case 'billing.timezone_offset':
+      return const [
+        ('2', '2'),
+        ('3', '3'),
+        ('3.5', '3.5'),
+        ('4', '4'),
+        ('0', '0'),
+      ];
+  }
+  return null;
+}

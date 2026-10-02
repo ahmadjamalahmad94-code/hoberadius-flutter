@@ -121,7 +121,11 @@ void main() {
   testWidgets('subscriber finance: a debt loan sends price_from_days, amount 0',
       (tester) async {
     final adapter = RecordingAdapter(_server());
-    await _pump(tester, adapter, const SubscriberFinanceScreen(username: 'ali'));
+    await _pump(
+      tester,
+      adapter,
+      const SubscriberFinanceScreen(username: 'ali'),
+    );
     // No free «قيمة السلفة» text input any more.
     expect(_field('قيمة السلفة'), findsNothing);
     await tester.tap(find.text('تسجيل دين (مدين)'));
@@ -143,7 +147,11 @@ void main() {
 
   testWidgets('subscriber finance: a free loan sends no value', (tester) async {
     final adapter = RecordingAdapter(_server());
-    await _pump(tester, adapter, const SubscriberFinanceScreen(username: 'ali'));
+    await _pump(
+      tester,
+      adapter,
+      const SubscriberFinanceScreen(username: 'ali'),
+    );
     await tester.tap(find.text('معاينة بدون تنفيذ').at(1));
     await tester.pumpAndSettle();
     await tester.tap(find.text('منح السلفة'));
