@@ -1,3 +1,4 @@
+import '../../../core/platform/save_user_file.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -214,7 +215,10 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
           ),
         ),
         const SizedBox(height: AppTokens.s12),
-        if (_section == 0) _buildDesignSection(action) else _buildPrintSection(action),
+        if (_section == 0)
+          _buildDesignSection(action)
+        else
+          _buildPrintSection(action),
       ],
     );
   }
@@ -373,7 +377,9 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     // Block-at-cap: provider may limit the number of active print templates.
     if (!grantsAllowCreate(ref, 'print_templates')) {
       final limit = ref.read(grantLimitProvider('print_templates'));
@@ -432,12 +438,14 @@ class _PrintTemplatesScreenState extends ConsumerState<PrintTemplatesScreen> {
         .read(printTemplatesActionProvider.notifier)
         .exportPdf(item.id);
     if (result.bytes != null) {
-      await FileSaver.instance.saveFile(
+      if (!await saveUserFile(
         name: 'print-template-${item.id}',
         bytes: result.bytes!,
         ext: 'pdf',
         mimeType: MimeType.pdf,
-      );
+      )) {
+        return;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تنزيل ملف PDF للمعاينة')),

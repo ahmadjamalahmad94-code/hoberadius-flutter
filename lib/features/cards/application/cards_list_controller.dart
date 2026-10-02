@@ -1,3 +1,4 @@
+import '../../../core/platform/save_user_file.dart';
 import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'dart:typed_data';
 
@@ -33,8 +34,10 @@ class CardsListController {
       final bytes = await _ref
           .read(cardsRepositoryProvider)
           .exportBatchesCsv(query: filters.query, status: filters.status);
-      await _save(bytes, 'card-batches', 'csv', MimeType.csv);
-      return const ExportResult(savedAs: 'تم تنزيل ملف الحزم المعروضة');
+      if (!await _save(bytes, 'card-batches', 'csv', MimeType.csv)) {
+        return const ExportResult();
+      }
+      return const ExportResult(savedAs: 'تم حفظ ملف CSV للحزم المعروضة');
     } catch (e) {
       return ExportResult(error: visibleErrorMessage(e));
     }
@@ -46,14 +49,16 @@ class CardsListController {
       final bytes = await _ref
           .read(cardsRepositoryProvider)
           .exportBatchesXlsx(query: filters.query, status: filters.status);
-      await _save(
+      if (!await _save(
         bytes,
         'card-batches',
         'xlsx',
         MimeType.microsoftExcel,
-      );
+      )) {
+        return const ExportResult();
+      }
       return const ExportResult(
-        savedAs: 'تم تنزيل ملف Excel للحزم المعروضة',
+        savedAs: 'تم حفظ ملف Excel للحزم المعروضة',
       );
     } catch (e) {
       return ExportResult(error: visibleErrorMessage(e));
@@ -66,9 +71,11 @@ class CardsListController {
       final bytes = await _ref
           .read(cardsRepositoryProvider)
           .exportBatchesPdf(query: filters.query, status: filters.status);
-      await _save(bytes, 'card-batches', 'pdf', MimeType.pdf);
+      if (!await _save(bytes, 'card-batches', 'pdf', MimeType.pdf)) {
+        return const ExportResult();
+      }
       return const ExportResult(
-        savedAs: 'تم تنزيل ملف PDF للحزم المعروضة',
+        savedAs: 'تم حفظ ملف PDF للحزم المعروضة',
       );
     } catch (e) {
       return ExportResult(error: visibleErrorMessage(e));
@@ -101,19 +108,14 @@ class CardsListController {
     }
   }
 
-  Future<void> _save(
+  /// `false` = the operator closed the «save as» picker (nothing written).
+  Future<bool> _save(
     Uint8List bytes,
     String name,
     String ext,
     MimeType mime,
-  ) async {
-    await FileSaver.instance.saveFile(
-      name: name,
-      bytes: bytes,
-      ext: ext,
-      mimeType: mime,
-    );
-  }
+  ) =>
+      saveUserFile(name: name, bytes: bytes, ext: ext, mimeType: mime);
 }
 
 final cardsListControllerProvider = Provider.autoDispose<CardsListController>(

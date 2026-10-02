@@ -1,3 +1,4 @@
+import '../../../core/platform/save_user_file.dart';
 import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
 import 'package:file_saver/file_saver.dart';
@@ -1398,12 +1399,14 @@ class _RouterRowActionsState extends ConsumerState<_RouterRowActions> {
       final base = dot > 0 ? name.substring(0, dot) : name;
       final ext =
           dot > 0 && dot < name.length - 1 ? name.substring(dot + 1) : 'bin';
-      await FileSaver.instance.saveFile(
+      if (!await saveUserFile(
         name: base.replaceAll('/', '-'),
         bytes: bytes,
         ext: ext,
         mimeType: MimeType.other,
-      );
+      )) {
+        return;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('تم تنزيل «$name» (${bytes.length} بايت).')),
@@ -1643,7 +1646,9 @@ class _AddressListAddDialogState extends State<_AddressListAddDialog> {
         ),
         FilledButton(
           onPressed: () {
-            if (!(_formKey.currentState?.validate() ?? false)) return;
+            if (!(_formKey.currentState?.validate() ?? false)) {
+              return;
+            }
             Navigator.pop(
               context,
               _AddressListEntry(

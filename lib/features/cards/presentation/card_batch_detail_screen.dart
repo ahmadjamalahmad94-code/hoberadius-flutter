@@ -1,5 +1,6 @@
 // ignore_for_file: require_trailing_commas
 
+import '../../../core/platform/save_user_file.dart';
 import 'package:hoberadius_app/core/l10n/arabic_labels.dart';
 import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import 'dart:convert';
@@ -244,11 +245,16 @@ class CardBatchDetailScreen extends ConsumerWidget {
     final name = batch?.batchCode.isNotEmpty == true
         ? 'cards_${batch!.batchCode}'
         : 'cards_batch_$batchId';
-    await FileSaver.instance.saveFile(
+    if (!await saveUserFile(
       name: name,
       bytes: bytes,
       ext: 'csv',
       mimeType: MimeType.csv,
+    )) {
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(content: Text('تم حفظ ملف ${cards.length} بطاقة')),
     );
   }
 }

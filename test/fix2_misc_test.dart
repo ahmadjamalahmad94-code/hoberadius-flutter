@@ -186,16 +186,17 @@ void main() {
         (_) => FakeResponse.ok({}),
       );
       expect(tester.takeException(), isNull);
-      // Owner 2026-10-02: «تطبيق» beside the search, the three exports in
-      // ONE row. The test font is ~2x wider than Cairo, so an export label
-      // may scale down here — never cut.
+      // Owner 2026-10-02: «تطبيق» beside the search; «تصدير» beside the
+      // status opens one menu with CSV / Excel / PDF.
       _expectOneLineWhole(tester, find.text('تطبيق'));
+      _expectOneLineWhole(tester, find.text('تصدير'));
+      await tester.tap(find.byKey(const ValueKey('cards-export-menu')));
+      await tester.pumpAndSettle();
       for (final label in ['CSV', 'Excel', 'PDF']) {
-        _expectOneLineWhole(tester, find.text(label), allowScaleDown: true);
+        expect(find.text(label), findsOneWidget);
       }
-      final csv = tester.getCenter(find.widgetWithText(OutlinedButton, 'CSV'));
-      final pdf = tester.getCenter(find.widgetWithText(OutlinedButton, 'PDF'));
-      expect((csv.dy - pdf.dy).abs(), lessThan(1), reason: 'exports in one row');
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
       // The test font is ~2x wider than Cairo: a label may shrink, never cut.
       for (final label in ['أرشفة', 'استعادة', 'تحديث']) {
         _expectOneLineWhole(tester, find.text(label), allowScaleDown: true);

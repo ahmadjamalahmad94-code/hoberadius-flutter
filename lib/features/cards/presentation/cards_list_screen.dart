@@ -120,8 +120,10 @@ class CardsListScreen extends ConsumerWidget {
       _Export.pdf => await controller.exportPdf(),
     };
     if (!context.mounted) return;
+    final text = result.error ?? result.savedAs;
+    if (text == null) return; // picker closed — nothing saved, nothing to say
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(result.error ?? result.savedAs ?? '')),
+      SnackBar(content: Text(text)),
     );
   }
 

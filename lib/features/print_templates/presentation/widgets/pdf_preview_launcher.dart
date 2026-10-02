@@ -14,6 +14,8 @@ library;
 
 import 'dart:typed_data';
 
+import '../../../../core/platform/save_user_file.dart';
+
 import 'package:file_saver/file_saver.dart' as fs;
 import 'package:flutter/material.dart';
 
@@ -51,12 +53,14 @@ class PdfPreviewLauncher {
     final base = fileName.endsWith('.pdf')
         ? fileName.substring(0, fileName.length - 4)
         : fileName;
-    await fs.FileSaver.instance.saveFile(
+    if (!await saveUserFile(
       name: base,
       bytes: pdfBytes,
       ext: 'pdf',
       mimeType: fs.MimeType.pdf,
-    );
+    )) {
+      return;
+    }
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تم حفظ $fileName')),

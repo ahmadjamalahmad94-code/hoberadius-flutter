@@ -134,41 +134,69 @@ class _CardsListToolbarState extends ConsumerState<CardsListToolbar> {
                   ],
                 ],
               ),
-              if (!wide) ...[
-                const SizedBox(height: AppTokens.s8),
-                status,
-              ],
               const SizedBox(height: AppTokens.s8),
-              // Row 2: the three exports side by side (were stacked 2+1).
+              // Row 2 (owner 2026-10-02): status + ONE «تصدير» button whose
+              // menu holds CSV / Excel / PDF (were three buttons on a row).
               Row(
                 children: [
-                  for (final (i, e) in <(IconData, String, VoidCallback)>[
-                    (Icons.file_download_outlined, 'CSV', widget.onExportCsv),
-                    (Icons.table_chart_outlined, 'Excel', widget.onExportXlsx),
-                    (Icons.picture_as_pdf_outlined, 'PDF', widget.onExportPdf),
-                  ].indexed) ...[
-                    if (i > 0) const SizedBox(width: AppTokens.s8),
-                    Expanded(
-                      child: Tooltip(
-                        message: exportDenied ?? '',
-                        child: SizedBox(
-                          height: 40,
-                          child: OutlinedButton.icon(
-                            onPressed: exportDenied == null ? e.$3 : null,
-                            icon: Icon(e.$1, size: 18),
-                            // never cut: scales down only if a phone is that narrow
-                            label: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(e.$2, maxLines: 1),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 6),
+                  if (!wide) Expanded(child: status) else const Spacer(),
+                  const SizedBox(width: AppTokens.s8),
+                  Tooltip(
+                    message: exportDenied ?? '',
+                    child: PopupMenuButton<VoidCallback>(
+                      key: const ValueKey('cards-export-menu'),
+                      enabled: exportDenied == null,
+                      tooltip: exportDenied ?? 'تصدير الحزم المعروضة',
+                      onSelected: (run) => run(),
+                      itemBuilder: (_) => [
+                        for (final e in <(IconData, String, VoidCallback)>[
+                          (Icons.file_download_outlined, 'CSV', widget.onExportCsv),
+                          (Icons.table_chart_outlined, 'Excel', widget.onExportXlsx),
+                          (Icons.picture_as_pdf_outlined, 'PDF', widget.onExportPdf),
+                        ])
+                          PopupMenuItem<VoidCallback>(
+                            value: e.$3,
+                            child: Row(
+                              children: [
+                                Icon(e.$1, size: 20, color: AppTokens.brand),
+                                const SizedBox(width: AppTokens.s8),
+                                Text(e.$2),
+                              ],
                             ),
                           ),
+                      ],
+                      child: Container(
+                        height: 44,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppTokens.border),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.ios_share,
+                              size: 18,
+                              color: exportDenied == null
+                                  ? AppTokens.brand
+                                  : AppTokens.textMuted,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'تصدير',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: exportDenied == null
+                                    ? AppTokens.brand
+                                    : AppTokens.textMuted,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
-                  ],
+                  ),
                 ],
               ),
               if (widget.selectedCount > 0 && canBulk) ...[

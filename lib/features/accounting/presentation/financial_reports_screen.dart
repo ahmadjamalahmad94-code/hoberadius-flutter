@@ -1,3 +1,4 @@
+import '../../../core/platform/save_user_file.dart';
 import 'package:hoberadius_app/core/format/arabic_plural.dart';
 import '../../../core/format/bidi.dart';
 import '../../../core/format/currency.dart';
@@ -73,12 +74,14 @@ class _FinancialReportsScreenState
         );
         return;
       }
-      await FileSaver.instance.saveFile(
+      if (!await saveUserFile(
         name: 'financial-report-${_slug.replaceAll('/', '-')}',
         bytes: bytes,
         ext: 'csv',
         mimeType: MimeType.csv,
-      );
+      )) {
+        return;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تنزيل التقرير بصيغة CSV')),
@@ -99,12 +102,14 @@ class _FinancialReportsScreenState
       final bytes = await ref
           .read(accountingRepositoryProvider)
           .exportFinancialReportXlsx(_slug);
-      await FileSaver.instance.saveFile(
+      if (!await saveUserFile(
         name: 'financial-report-${_slug.replaceAll('/', '-')}',
         bytes: bytes,
         ext: 'xlsx',
         mimeType: MimeType.microsoftExcel,
-      );
+      )) {
+        return;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تنزيل التقرير بصيغة Excel')),
@@ -125,12 +130,14 @@ class _FinancialReportsScreenState
       final bytes = await ref
           .read(accountingRepositoryProvider)
           .exportFinancialReportPdf(_slug);
-      await FileSaver.instance.saveFile(
+      if (!await saveUserFile(
         name: 'financial-report-${_slug.replaceAll('/', '-')}',
         bytes: bytes,
         ext: 'pdf',
         mimeType: MimeType.pdf,
-      );
+      )) {
+        return;
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم تنزيل التقرير بصيغة PDF')),
