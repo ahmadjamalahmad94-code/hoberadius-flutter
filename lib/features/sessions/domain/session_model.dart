@@ -30,7 +30,44 @@ class OnlineSession {
     this.cardUsedSeconds,
     this.cardRemainingSeconds,
     this.cardBudgetSeconds,
+    this.rateDownKbps = 0,
+    this.rateUpKbps = 0,
+    this.planDownKbps = 0,
+    this.planUpKbps = 0,
+    this.speedState = 'normal',
+    this.tempEndsAt,
   });
+
+  /// The speed the session runs at now (temporary / custom / plan), kbps.
+  final int rateDownKbps;
+  final int rateUpKbps;
+
+  /// The plan (offer) speed, kbps — differs from [rateDownKbps] when raised.
+  final int planDownKbps;
+  final int planUpKbps;
+
+  /// `normal` | `custom` | `temporary`.
+  final String speedState;
+
+  /// When an active temporary speed ends (null = none / no end known).
+  final DateTime? tempEndsAt;
+
+  bool get speedKnown => rateDownKbps > 0 || rateUpKbps > 0;
+  bool get isTemporarySpeed => speedState == 'temporary';
+  bool get isRaisedSpeed =>
+      speedState != 'normal' ||
+      (planDownKbps > 0 && rateDownKbps != planDownKbps) ||
+      (planUpKbps > 0 && rateUpKbps != planUpKbps);
+
+  /// Session length: the accounting counter, or — before the router's first
+  /// interim update (counter still 0) — the time since the session started.
+  int effectiveSessionTime([DateTime? now]) {
+    if (sessionTime > 0) return sessionTime;
+    final s = startedAt;
+    if (s == null) return 0;
+    final d = (now ?? DateTime.now()).toUtc().difference(s.toUtc()).inSeconds;
+    return d > 0 ? d : 0;
+  }
 
   final int? id;
   final String username;
@@ -104,7 +141,21 @@ class OnlineSession {
         cardUsedSeconds: _int(j['card_used_seconds']),
         cardRemainingSeconds: _int(j['card_remaining_seconds']),
         cardBudgetSeconds: _int(j['card_budget_seconds']),
+        rateDownKbps: _int(j['rate_down_kbps']) ?? 0,
+        rateUpKbps: _int(j['rate_up_kbps']) ?? 0,
+        planDownKbps: _int(j['plan_down_kbps']) ?? 0,
+        planUpKbps: _int(j['plan_up_kbps']) ?? 0,
+        speedState:
+            _s(j['speed_state']).isEmpty ? 'normal' : _s(j['speed_state']),
+        tempEndsAt: _tempEnds(j['temporary_speed_window']),
       );
+
+  static DateTime? _tempEnds(Object? w) {
+    if (w is! Map || w['active'] != true) return null;
+    final epoch = _int(w['ends_at_epoch']) ?? 0;
+    if (epoch <= 0) return null;
+    return DateTime.fromMillisecondsSinceEpoch(epoch * 1000, isUtc: true);
+  }
 
   static DateTime? _dt(Object? v) {
     if (v == null) return null;

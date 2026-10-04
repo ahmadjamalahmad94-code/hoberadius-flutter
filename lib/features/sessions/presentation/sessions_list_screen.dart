@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:hoberadius_app/core/format/number_input.dart';
 import 'package:flutter/material.dart';
 import 'package:hoberadius_app/core/format/server_time.dart';
@@ -537,7 +539,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
                   // the page's own `speeds` when nothing is filtered (no extra
                   // request), the unfiltered totals read otherwise.
                   temporarySpeed: _query == const OnlineSessionsQuery()
-                      ? (loaded.speedCounts ?? const <String, int>{})['temporary']
+                      ? (loaded.speedCounts ??
+                          const <String, int>{})['temporary']
                       : ref
                           .watch(onlineTotalsProvider)
                           .valueOrNull
@@ -1208,7 +1211,13 @@ class _SessionTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: AppTokens.s8),
-              StatusPill(text: state, tone: toneForStatus(state), dot: true),
+              // Owner 2026-10-04: we are already in «المتصلون», so the
+              // «متصل» pill said nothing — show the speed the session runs
+              // at now (raised → highlighted, temporary → live countdown).
+              if (session.speedKnown)
+                SessionSpeedBadge(session: session)
+              else
+                StatusPill(text: state, tone: toneForStatus(state), dot: true),
             ],
           ),
           const SizedBox(height: AppTokens.s12),
@@ -1217,7 +1226,7 @@ class _SessionTile extends StatelessWidget {
               InfoItem(
                 icon: Icons.timer_outlined,
                 label: 'المدة',
-                value: formatDuration(session.sessionTime),
+                value: formatDuration(session.effectiveSessionTime()),
               ),
               // RFC 2866: input octets (bytesIn) = the user's UPLOAD,
               // output octets (bytesOut) = DOWNLOAD — as the web shows.
@@ -1936,6 +1945,112 @@ String _stateLabel(OnlineSession session) {
     'disconnected' => 'مفصول',
     _ => raw.trim().isEmpty ? 'غير محدد' : raw,
   };
+}
+
+/// «1.6M» / «512K» — compact for the speed badge.
+String compactKbps(int kbps) {
+  if (kbps <= 0) return '—';
+  if (kbps >= 1000) {
+    final m = kbps / 1000;
+    final t =
+        m == m.roundToDouble() ? m.toStringAsFixed(0) : m.toStringAsFixed(1);
+    return '${t}M';
+  }
+  return '${kbps}K';
+}
+
+/// The live speed of a session beside its name: «↓1.6M ↑1.6M». A raised
+/// speed (temporary / custom / not the plan's) is highlighted; a temporary
+/// one counts down to its end every second.
+class SessionSpeedBadge extends StatefulWidget {
+  const SessionSpeedBadge({super.key, required this.session});
+  final OnlineSession session;
+
+  @override
+  State<SessionSpeedBadge> createState() => _SessionSpeedBadgeState();
+}
+
+class _SessionSpeedBadgeState extends State<SessionSpeedBadge> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _arm();
+  }
+
+  @override
+  void didUpdateWidget(covariant SessionSpeedBadge old) {
+    super.didUpdateWidget(old);
+    _arm();
+  }
+
+  void _arm() {
+    _tick?.cancel();
+    _tick = null;
+    if (widget.session.tempEndsAt != null) {
+      _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  static String _clock(int s) {
+    final h = s ~/ 3600, m = (s % 3600) ~/ 60, sec = s % 60;
+    String two(int v) => v.toString().padLeft(2, '0');
+    return h > 0 ? '$h:${two(m)}:${two(sec)}' : '${two(m)}:${two(sec)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.session;
+    final raised = s.isRaisedSpeed;
+    final fg = raised ? AppTokens.brand : AppTokens.green;
+    final bg = raised ? AppTokens.brandSoft : AppTokens.successBg;
+    final ends = s.tempEndsAt;
+    final left =
+        ends?.difference(DateTime.now().toUtc()).inSeconds.clamp(0, 1 << 31);
+    return Container(
+      key: const ValueKey('session-speed-badge'),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            ltrIsolate(
+                '↓${compactKbps(s.rateDownKbps)} ↑${compactKbps(s.rateUpKbps)}',),
+            style: TextStyle(
+              color: fg,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+            ),
+          ),
+          if (left != null)
+            Text(
+              'مؤقتة · ${_clock(left)}',
+              style: TextStyle(
+                  color: fg, fontSize: 11, fontWeight: FontWeight.w700,),
+            )
+          else if (raised)
+            Text(
+              s.isTemporarySpeed ? 'مؤقتة' : 'سرعة خاصة',
+              style: TextStyle(
+                  color: fg, fontSize: 11, fontWeight: FontWeight.w700,),
+            ),
+        ],
+      ),
+    );
+  }
 }
 
 /// A session length short enough for a third of a 360 px row: «12 د 28 ث»,
