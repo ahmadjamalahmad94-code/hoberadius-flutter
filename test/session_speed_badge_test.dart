@@ -81,4 +81,12 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpWidget(const SizedBox());
   });
+
+  test('speed text never shows a trailing .0', () {
+    expect(compactKbps(2048), '2M');
+    expect(compactKbps(2000), '2M');
+    expect(compactKbps(1600), '1.6M');
+    expect(compactKbps(1536), '1.5M');
+    expect(compactKbps(512), '512K');
+  });
 }

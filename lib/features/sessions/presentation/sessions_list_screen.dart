@@ -1951,9 +1951,9 @@ String _stateLabel(OnlineSession session) {
 String compactKbps(int kbps) {
   if (kbps <= 0) return '—';
   if (kbps >= 1000) {
-    final m = kbps / 1000;
-    final t =
-        m == m.roundToDouble() ? m.toStringAsFixed(0) : m.toStringAsFixed(1);
+    // 2048k reads «2M», 1536k «1.5M» — never a trailing «.0».
+    var t = (kbps / 1000).toStringAsFixed(1);
+    if (t.endsWith('.0')) t = t.substring(0, t.length - 2);
     return '${t}M';
   }
   return '${kbps}K';
