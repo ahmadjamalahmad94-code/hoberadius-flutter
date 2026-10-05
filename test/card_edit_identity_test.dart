@@ -79,7 +79,7 @@ RecordingAdapter _api() => RecordingAdapter((r) {
       }
       if (r.method == 'GET' && r.path == '/api/v1/cards/7') {
         return FakeResponse.ok(
-            {'id': 7, 'username': '316240', 'password': '111111'});
+            {'id': 7, 'username': '316240', 'password': '111111'},);
       }
       if (r.method == 'GET' && r.path == '/api/v1/cards/check') {
         return FakeResponse.ok({'card': _checkCard()});
@@ -97,7 +97,7 @@ Future<void> _frames(WidgetTester tester, [int n = 12]) async {
 }
 
 Future<void> _pump(
-    WidgetTester tester, RecordingAdapter a, Widget child) async {
+    WidgetTester tester, RecordingAdapter a, Widget child,) async {
   tester.view.physicalSize = const Size(400, 2000);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -201,7 +201,7 @@ void main() {
 
     await repo.updateCardIdentity(7, const CardIdentityDraft(password: 'P9'));
     expect(
-        a.where('PATCH', '/api/v1/cards/7').last.jsonBody, {'password': 'P9'});
+        a.where('PATCH', '/api/v1/cards/7').last.jsonBody, {'password': 'P9'},);
     expect(await repo.cardPassword(7), '111111');
   });
 
@@ -220,7 +220,7 @@ void main() {
     expect(c.operations.canEditIdentity, isTrue);
     expect(c.loginWithoutPassword, isTrue);
     expect(
-        CardCheckResult.fromJson(const {}).operations.canEditIdentity, isFalse);
+        CardCheckResult.fromJson(const {}).operations.canEditIdentity, isFalse,);
   });
 
   test('«المزيد»: offered on a card tile with cards.verify only', () {
@@ -233,9 +233,9 @@ void main() {
       cardOps: true,
     );
     expect(sessionMoreActions(card, all),
-        contains(SessionMoreAction.editCardIdentity));
+        contains(SessionMoreAction.editCardIdentity),);
     expect(sessionMoreActions(sub, all),
-        isNot(contains(SessionMoreAction.editCardIdentity)));
+        isNot(contains(SessionMoreAction.editCardIdentity)),);
     const noOps = SessionMorePermissions(
       acts: SessionActionPermissions(AppPermissions.unknown),
       cardCheck: true,
@@ -343,7 +343,7 @@ void main() {
     final ok = a.handler;
     a.handler = (r) => r.method == 'PATCH'
         ? FakeResponse.error(409, 'conflict',
-            'الاسم مستخدم: «123456» رقمُ بطاقةٍ أو اسمُ مشتركٍ آخر.')
+            'الاسم مستخدم: «123456» رقمُ بطاقةٍ أو اسمُ مشتركٍ آخر.',)
         : ok(r);
     await _pump(tester, a, const CardCheckerScreen(initialQuery: '316240'));
     await tester.tap(find.text('تعديل بيانات الكرت'));
