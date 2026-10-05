@@ -49,33 +49,41 @@ void main() {
 
   testWidgets('plan speed shows plainly, a temporary one counts down',
       (tester) async {
-    await tester.pumpWidget(_wrap(SessionSpeedBadge(
-      session: OnlineSession.fromJson({
-        'username': 'a',
-        'rate_down_kbps': 1600,
-        'rate_up_kbps': 1600,
-        'plan_down_kbps': 1600,
-        'plan_up_kbps': 1600,
-      }),
-    ),),);
+    await tester.pumpWidget(
+      _wrap(
+        SessionSpeedBadge(
+          session: OnlineSession.fromJson({
+            'username': 'a',
+            'rate_down_kbps': 1600,
+            'rate_up_kbps': 1600,
+            'plan_down_kbps': 1600,
+            'plan_up_kbps': 1600,
+          }),
+        ),
+      ),
+    );
     expect(find.textContaining('1.6M'), findsOneWidget);
     expect(find.textContaining('مؤقتة'), findsNothing);
 
     final ends = DateTime.now().toUtc().add(const Duration(minutes: 5));
-    await tester.pumpWidget(_wrap(SessionSpeedBadge(
-      session: OnlineSession.fromJson({
-        'username': 'b',
-        'rate_down_kbps': 4000,
-        'rate_up_kbps': 2000,
-        'plan_down_kbps': 1600,
-        'plan_up_kbps': 1600,
-        'speed_state': 'temporary',
-        'temporary_speed_window': {
-          'active': true,
-          'ends_at_epoch': ends.millisecondsSinceEpoch ~/ 1000,
-        },
-      }),
-    ),),);
+    await tester.pumpWidget(
+      _wrap(
+        SessionSpeedBadge(
+          session: OnlineSession.fromJson({
+            'username': 'b',
+            'rate_down_kbps': 4000,
+            'rate_up_kbps': 2000,
+            'plan_down_kbps': 1600,
+            'plan_up_kbps': 1600,
+            'speed_state': 'temporary',
+            'temporary_speed_window': {
+              'active': true,
+              'ends_at_epoch': ends.millisecondsSinceEpoch ~/ 1000,
+            },
+          }),
+        ),
+      ),
+    );
     expect(find.textContaining('4M'), findsOneWidget);
     expect(find.textContaining('مؤقتة · 0'), findsOneWidget);
     await tester.pump(const Duration(seconds: 2));
@@ -97,5 +105,33 @@ void main() {
       'card_batch_name': 'حزمة علاء',
     });
     expect(s.cardBatchName, 'حزمة علاء');
+  });
+
+  testWidgets('countdown reaching zero asks for one refresh', (tester) async {
+    var calls = 0;
+    final ends = DateTime.now().toUtc().add(const Duration(seconds: 2));
+    final session = OnlineSession.fromJson({
+      'username': 'x',
+      'rate_down_kbps': 2560,
+      'rate_up_kbps': 2560,
+      'plan_down_kbps': 2048,
+      'plan_up_kbps': 2048,
+      'speed_state': 'temporary',
+      'temporary_speed_window': {
+        'active': true,
+        'ends_at_epoch': ends.millisecondsSinceEpoch ~/ 1000 + 1,
+      },
+    });
+    await tester.runAsync(() async {
+      await tester.pumpWidget(_wrap(SessionSpeedBadge(
+        session: session,
+        onExpired: () => calls++,
+      ),),);
+      await Future<void>.delayed(const Duration(seconds: 5));
+      await tester.pump();
+    });
+    expect(calls, 1);
+    expect(find.textContaining('انتهت'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
   });
 }

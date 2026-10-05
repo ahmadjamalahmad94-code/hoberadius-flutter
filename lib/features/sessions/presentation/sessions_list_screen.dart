@@ -569,6 +569,14 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
                           acts.disconnect ? () => _disconnect(session) : null,
                       onLockMac: acts.lockMac ? () => _lockMac(session) : null,
                       onMore: () => _showMore(session, perms),
+                      // Owner 2026-10-05: the countdown hit 00:00 and the tile
+                      // kept the old speed — reload once the server reverted.
+                      onSpeedExpired: () => Future.delayed(
+                        const Duration(seconds: 5),
+                        () {
+                          if (mounted) _refresh();
+                        },
+                      ),
                       // Cards too: updated servers apply a card's temp speed;
                       // an older one answers with its own message (422).
                       onTemporarySpeed: acts.tempSpeed
@@ -1102,7 +1110,11 @@ class _SessionTile extends StatelessWidget {
     this.onTemporarySpeed,
     this.onCancelTemporarySpeed,
     this.onChangeTime,
+    this.onSpeedExpired,
   });
+
+  /// Fired once when a temporary-speed countdown reaches zero.
+  final VoidCallback? onSpeedExpired;
 
   final OnlineSession session;
   final String Function(int) formatBytes;
@@ -1221,7 +1233,10 @@ class _SessionTile extends StatelessWidget {
               // «متصل» pill said nothing — show the speed the session runs
               // at now (raised → highlighted, temporary → live countdown).
               if (session.speedKnown)
-                SessionSpeedBadge(session: session)
+                SessionSpeedBadge(
+                  session: session,
+                  onExpired: onSpeedExpired,
+                )
               else
                 StatusPill(text: state, tone: toneForStatus(state), dot: true),
             ],
@@ -1969,8 +1984,11 @@ String compactKbps(int kbps) {
 /// speed (temporary / custom / not the plan's) is highlighted; a temporary
 /// one counts down to its end every second.
 class SessionSpeedBadge extends StatefulWidget {
-  const SessionSpeedBadge({super.key, required this.session});
+  const SessionSpeedBadge({super.key, required this.session, this.onExpired});
   final OnlineSession session;
+
+  /// Called once when the temporary countdown reaches zero.
+  final VoidCallback? onExpired;
 
   @override
   State<SessionSpeedBadge> createState() => _SessionSpeedBadgeState();
@@ -1978,6 +1996,7 @@ class SessionSpeedBadge extends StatefulWidget {
 
 class _SessionSpeedBadgeState extends State<SessionSpeedBadge> {
   Timer? _tick;
+  bool _expired = false;
 
   @override
   void initState() {
@@ -1991,12 +2010,27 @@ class _SessionSpeedBadgeState extends State<SessionSpeedBadge> {
     _arm();
   }
 
+  DateTime? _armedFor;
+
   void _arm() {
+    final ends = widget.session.tempEndsAt;
+    // A rebuild with the same (already expired) window must not fire again.
+    if (ends == _armedFor && (_tick != null || _expired)) return;
     _tick?.cancel();
     _tick = null;
+    _armedFor = ends;
+    _expired = false;
     if (widget.session.tempEndsAt != null) {
       _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (mounted) setState(() {});
+        if (!mounted) return;
+        final ends = widget.session.tempEndsAt;
+        if (ends != null && !ends.isAfter(DateTime.now().toUtc())) {
+          _tick?.cancel();
+          _tick = null;
+          _expired = true;
+          widget.onExpired?.call();
+        }
+        setState(() {});
       });
     }
   }
@@ -2044,7 +2078,9 @@ class _SessionSpeedBadgeState extends State<SessionSpeedBadge> {
           ),
           if (left != null)
             Text(
-              'مؤقتة · ${_clock(left)}',
+              _expired || left == 0
+                  ? 'انتهت · جارٍ التحديث'
+                  : 'مؤقتة · ${_clock(left)}',
               style: TextStyle(
                 color: fg,
                 fontSize: 11,
