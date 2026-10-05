@@ -1196,11 +1196,17 @@ class _SessionTile extends StatelessWidget {
                       ),
                     ),
                     Text(
+                      // «كرت · هوت سبوت (حزمة علاء)» — owner 2026-10-05.
                       [
-                        session.isCard ? 'كرت' : 'مشترك',
-                        if (accessTypeLabel(session.accessType).isNotEmpty)
-                          accessTypeLabel(session.accessType),
-                      ].join(' · '),
+                            session.isCard ? 'كرت' : 'مشترك',
+                            if (accessTypeLabel(session.accessType).isNotEmpty)
+                              accessTypeLabel(session.accessType),
+                          ].join(' · ') +
+                          (session.isCard && session.cardBatchName.isNotEmpty
+                              ? ' (${session.cardBatchName})'
+                              : ''),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppTokens.textMuted,
                         fontSize: 12,
@@ -2028,7 +2034,8 @@ class _SessionSpeedBadgeState extends State<SessionSpeedBadge> {
         children: [
           Text(
             ltrIsolate(
-                '↓${compactKbps(s.rateDownKbps)} ↑${compactKbps(s.rateUpKbps)}',),
+              '↓${compactKbps(s.rateDownKbps)} ↑${compactKbps(s.rateUpKbps)}',
+            ),
             style: TextStyle(
               color: fg,
               fontWeight: FontWeight.w800,
@@ -2039,13 +2046,19 @@ class _SessionSpeedBadgeState extends State<SessionSpeedBadge> {
             Text(
               'مؤقتة · ${_clock(left)}',
               style: TextStyle(
-                  color: fg, fontSize: 11, fontWeight: FontWeight.w700,),
+                color: fg,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             )
           else if (raised)
             Text(
               s.isTemporarySpeed ? 'مؤقتة' : 'سرعة خاصة',
               style: TextStyle(
-                  color: fg, fontSize: 11, fontWeight: FontWeight.w700,),
+                color: fg,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
             ),
         ],
       ),

@@ -89,4 +89,13 @@ void main() {
     expect(compactKbps(1536), '1.5M');
     expect(compactKbps(512), '512K');
   });
+
+  test('parses the card batch name', () {
+    final s = OnlineSession.fromJson({
+      'username': 'c',
+      'user_type': 'card',
+      'card_batch_name': 'حزمة علاء',
+    });
+    expect(s.cardBatchName, 'حزمة علاء');
+  });
 }

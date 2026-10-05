@@ -36,7 +36,11 @@ class OnlineSession {
     this.planUpKbps = 0,
     this.speedState = 'normal',
     this.tempEndsAt,
+    this.cardBatchName = '',
   });
+
+  /// The card's batch (package) name — '' for subscribers / older servers.
+  final String cardBatchName;
 
   /// The speed the session runs at now (temporary / custom / plan), kbps.
   final int rateDownKbps;
@@ -148,6 +152,7 @@ class OnlineSession {
         speedState:
             _s(j['speed_state']).isEmpty ? 'normal' : _s(j['speed_state']),
         tempEndsAt: _tempEnds(j['temporary_speed_window']),
+        cardBatchName: _s(j['card_batch_name']).trim(),
       );
 
   static DateTime? _tempEnds(Object? w) {
