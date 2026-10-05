@@ -37,7 +37,11 @@ class OnlineSession {
     this.speedState = 'normal',
     this.tempEndsAt,
     this.cardBatchName = '',
+    this.fullName = '',
   });
+
+  /// The subscriber's real name (`full_name`) — '' when unknown.
+  final String fullName;
 
   /// The card's batch (package) name — '' for subscribers / older servers.
   final String cardBatchName;
@@ -153,6 +157,7 @@ class OnlineSession {
             _s(j['speed_state']).isEmpty ? 'normal' : _s(j['speed_state']),
         tempEndsAt: _tempEnds(j['temporary_speed_window']),
         cardBatchName: _s(j['card_batch_name']).trim(),
+        fullName: _s(j['full_name']).trim(),
       );
 
   static DateTime? _tempEnds(Object? w) {

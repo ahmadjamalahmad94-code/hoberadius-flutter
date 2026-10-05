@@ -134,4 +134,13 @@ void main() {
     expect(find.textContaining('انتهت'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
+
+  test('parses the subscriber real name', () {
+    final s = OnlineSession.fromJson({
+      'username': 'r6ops_unl033',
+      'user_type': 'subscriber',
+      'full_name': ' أحمد أحمد ',
+    });
+    expect(s.fullName, 'أحمد أحمد');
+  });
 }

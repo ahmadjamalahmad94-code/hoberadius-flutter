@@ -1216,7 +1216,10 @@ class _SessionTile extends StatelessWidget {
                           ].join(' · ') +
                           (session.isCard && session.cardBatchName.isNotEmpty
                               ? ' (${session.cardBatchName})'
-                              : ''),
+                              // Owner 2026-10-05: «مشترك · برود باند (أحمد أحمد)».
+                              : (!session.isCard && session.fullName.isNotEmpty
+                                  ? ' (${session.fullName})'
+                                  : '')),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
