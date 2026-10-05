@@ -6,7 +6,11 @@
 /// - Save needs at least one real change;
 /// - nothing is ever generated here (the separate «generate password»
 ///   features stay where they are);
-/// - Arabic-Indic digits are read as Latin (the server does the same).
+/// - Arabic-Indic digits are read as Latin (the server does the same);
+/// - the number is saved EXACTLY as typed, upper/lower case included (owner
+///   2026-10-05) — the customer must then type the same case, so the dialog
+///   warns whenever the number contains Latin letters
+///   ([cardNumberCaseWarning]). «Ahmad1» instead of «ahmad1» is a change.
 library;
 
 import '../../../core/format/number_input.dart';
@@ -30,6 +34,16 @@ class CardIdentityDraft {
 }
 
 final RegExp _cardNameRe = RegExp(r'^[A-Za-z0-9._@-]{3,64}$');
+final RegExp _latinLetter = RegExp(r'[A-Za-z]');
+
+/// Shown under the number field whenever it contains Latin letters: the
+/// number is saved with its case and login needs the exact same case.
+const String cardNumberCaseWarning =
+    'انتبه: الزبون لازم يكتب الحروف الكبيرة والصغيرة بنفس الطريقة بالضبط';
+
+/// Whether [typed] (as the operator typed it) contains Latin letters.
+bool cardNumberHasLatinLetters(String typed) =>
+    _latinLetter.hasMatch(latinizeDigits(typed));
 
 /// Reads the two fields against the card's current values. Returns either a
 /// draft (possibly empty = nothing changed) or an Arabic error.
@@ -42,8 +56,8 @@ final RegExp _cardNameRe = RegExp(r'^[A-Za-z0-9._@-]{3,64}$');
 }) {
   final u = latinizeDigits(typedUsername).trim();
   final p = passwordless ? '' : latinizeDigits(typedPassword).trim();
-  final userChanged =
-      u.isNotEmpty && u.toLowerCase() != currentUsername.trim().toLowerCase();
+  // Case is kept (owner 2026-10-05) ⇒ a case-only edit is a real change.
+  final userChanged = u.isNotEmpty && u != currentUsername.trim();
   final pwChanged = p.isNotEmpty && p != currentPassword;
   if (userChanged && !_cardNameRe.hasMatch(u)) {
     return (

@@ -43,7 +43,8 @@ Map<String, dynamic> _checkCard({String username = '316240'}) => {
     };
 
 Map<String, dynamic> _patchResult(Map<String, dynamic> body) {
-  final newName = (body['username'] ?? '316240').toString().toLowerCase();
+  // The server keeps the case exactly as typed (owner 2026-10-05).
+  final newName = (body['username'] ?? '316240').toString();
   return {
     'action': 'update_identity',
     'card': _checkCard(username: newName),
@@ -129,6 +130,8 @@ Finder _btn(String label) => find.ancestor(
 Finder get _userField => find.byKey(const ValueKey('card-identity-username'));
 Finder get _pwField => find.byKey(const ValueKey('card-identity-password'));
 Finder get _save => find.byKey(const ValueKey('card-identity-save'));
+Finder get _caseWarning =>
+    find.byKey(const ValueKey('card-identity-case-warning'));
 
 bool _saveEnabled(WidgetTester tester) =>
     tester.widget<ElevatedButton>(_save).onPressed != null;
@@ -160,8 +163,31 @@ void main() {
       expect(n.draft!.toJson(), {'username': '99887766'});
     });
 
-    test('same number in another case is not a change', () {
+    test('same number typed back is not a change', () {
       expect(_read('316240'.toUpperCase(), '111111').draft!.isEmpty, isTrue);
+    });
+
+    // Owner 2026-10-05: the number keeps its upper/lower case ⇒ changing
+    // only the case of a letter IS a change, and the case is sent as typed.
+    test('case is kept: a case-only change is a change, sent as typed', () {
+      final r = readCardIdentityInput(
+        currentUsername: 'ahmad1',
+        currentPassword: '111111',
+        typedUsername: 'Ahmad1',
+        typedPassword: '111111',
+      );
+      expect(r.error, isNull);
+      expect(r.draft!.toJson(), {'username': 'Ahmad1'});
+      expect(_read('ZX-1001', '').draft!.username, 'ZX-1001');
+    });
+
+    test('case warning only when the number has Latin letters', () {
+      expect(cardNumberHasLatinLetters('Ahmad1'), isTrue);
+      expect(cardNumberHasLatinLetters('zx-1'), isTrue);
+      expect(cardNumberHasLatinLetters('316240'), isFalse);
+      expect(cardNumberHasLatinLetters('٣١٦٢٤٠'), isFalse);
+      expect(cardNumberCaseWarning,
+          'انتبه: الزبون لازم يكتب الحروف الكبيرة والصغيرة بنفس الطريقة بالضبط',);
     });
 
     test('Arabic-Indic digits are read as Latin', () {
@@ -195,8 +221,8 @@ void main() {
     expect(req.jsonBody, {'username': 'ZX-1001'});
     expect(res.renamed, isTrue);
     expect(res.passwordChanged, isFalse);
-    expect(res.card.username, 'zx-1001');
-    expect(res.message, contains('من 316240 إلى zx-1001'));
+    expect(res.card.username, 'ZX-1001');
+    expect(res.message, contains('من 316240 إلى ZX-1001'));
     expect(res.message, contains('قُطعت الجلسة'));
 
     await repo.updateCardIdentity(7, const CardIdentityDraft(password: 'P9'));
@@ -275,9 +301,49 @@ void main() {
     await tester.enterText(_userField, '٧٧٧٨٨٨');
     await tester.pump();
     expect(_saveEnabled(tester), isTrue);
+    expect(_caseWarning, findsNothing); // digits only — no case to mind
     await tester.tap(_save);
     await tester.pumpAndSettle();
     expect(got!.toJson(), {'username': '777888'});
+  });
+
+  testWidgets('dialog: Latin letters → case warning, sent exactly as typed',
+      (tester) async {
+    CardIdentityDraft? got;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (ctx) => ElevatedButton(
+            onPressed: () async => got = await showCardIdentityDialog(
+              ctx,
+              username: '316240',
+              password: '111111',
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(_caseWarning, findsNothing);
+    await tester.enterText(_userField, 'Ahmad1');
+    await tester.pump();
+    expect(_caseWarning, findsOneWidget);
+    expect(
+      find.text(
+        'انتبه: الزبون لازم يكتب الحروف الكبيرة والصغيرة بنفس الطريقة بالضبط',
+      ),
+      findsOneWidget,
+    );
+    await tester.enterText(_userField, '٧٧٧٨٨٨');
+    await tester.pump();
+    expect(_caseWarning, findsNothing);
+    await tester.enterText(_userField, 'Ahmad1');
+    await tester.pump();
+    await tester.tap(_save);
+    await tester.pumpAndSettle();
+    expect(got!.toJson(), {'username': 'Ahmad1'});
   });
 
   testWidgets('dialog: «رقم فقط» locks the password field', (tester) async {

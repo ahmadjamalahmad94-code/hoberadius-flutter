@@ -101,6 +101,32 @@ class _CardIdentityDialogState extends State<CardIdentityDialog> {
               decoration: const InputDecoration(labelText: 'رقم الكرت'),
               onChanged: (_) => setState(() => _error = null),
             ),
+            if (cardNumberHasLatinLetters(_user.text))
+              Container(
+                key: const ValueKey('card-identity-case-warning'),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      size: 18,
+                      color: Colors.amber.shade900,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        cardNumberCaseWarning,
+                        style: TextStyle(color: Colors.amber.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             TextField(
               key: const ValueKey('card-identity-password'),
               controller: _pw,
