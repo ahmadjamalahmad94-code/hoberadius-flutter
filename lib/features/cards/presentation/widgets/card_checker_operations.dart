@@ -18,6 +18,7 @@ class CardCheckerOperations extends StatelessWidget {
     required this.onResetUsage,
     required this.onDisconnect,
     required this.onDeletePermanent,
+    this.onEditIdentity,
   });
 
   final CardCheckResult card;
@@ -29,6 +30,9 @@ class CardCheckerOperations extends StatelessWidget {
   final VoidCallback onResetUsage;
   final VoidCallback onDisconnect;
   final VoidCallback onDeletePermanent;
+
+  /// «تعديل بيانات الكرت» (number and/or password).
+  final VoidCallback? onEditIdentity;
 
   @override
   Widget build(BuildContext context) {
@@ -65,19 +69,23 @@ class CardCheckerOperations extends StatelessWidget {
                 ? onUnlockMac
                 : null,
           ),
+          if (onEditIdentity != null && card.operations.canEditIdentity)
+            ActionItem(
+              icon: Icons.edit_note,
+              label: 'تعديل بيانات الكرت',
+              onPressed: enabled ? onEditIdentity : null,
+            ),
           ActionItem(
             icon: Icons.restart_alt,
             label: 'تصفير الاستخدام',
-            onPressed: enabled && card.operations.canResetUsage
-                ? onResetUsage
-                : null,
+            onPressed:
+                enabled && card.operations.canResetUsage ? onResetUsage : null,
           ),
           ActionItem(
             icon: Icons.power_settings_new,
             label: 'فصل كل الأجهزة المتصلة',
-            onPressed: enabled && card.operations.canDisconnect
-                ? onDisconnect
-                : null,
+            onPressed:
+                enabled && card.operations.canDisconnect ? onDisconnect : null,
           ),
           ActionItem(
             icon: Icons.delete_forever,

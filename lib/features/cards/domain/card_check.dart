@@ -10,6 +10,7 @@ class CardCheckResult {
     this.id,
     this.username = '',
     this.hasPassword = false,
+    this.loginWithoutPassword = false,
     this.used = false,
     this.revoked = false,
     this.lockedMac,
@@ -44,6 +45,10 @@ class CardCheckResult {
   final int? id;
   final String username;
   final bool hasPassword;
+
+  /// The card's batch is «رقم فقط» (login by number alone): there is no
+  /// password to edit — the number itself is the secret.
+  final bool loginWithoutPassword;
   final bool used;
   final bool revoked;
   final String? lockedMac;
@@ -78,6 +83,7 @@ class CardCheckResult {
       id: cardParseInt(json['id']),
       username: (json['username'] ?? '').toString(),
       hasPassword: cardParseBool(json['has_password']),
+      loginWithoutPassword: cardParseBool(json['login_without_password']),
       used: cardParseBool(json['used']),
       revoked: cardParseBool(json['revoked']),
       lockedMac: cardParseStringOrNull(json['locked_mac']),
@@ -242,6 +248,7 @@ class CardOperations {
     this.canDisable = false,
     this.canEnable = false,
     this.canDeletePermanently = false,
+    this.canEditIdentity = false,
   });
 
   final bool canDisconnect;
@@ -251,6 +258,10 @@ class CardOperations {
   final bool canEnable;
   final bool canDeletePermanently;
 
+  /// «تعديل بيانات الكرت» (number and/or password) — servers without the
+  /// `PATCH /cards/<id>` endpoint do not send the flag, so it stays hidden.
+  final bool canEditIdentity;
+
   factory CardOperations.fromJson(Map<String, dynamic> json) => CardOperations(
         canDisconnect: cardParseBool(json['can_disconnect']),
         canLockMac: cardParseBool(json['can_lock_mac']),
@@ -258,5 +269,6 @@ class CardOperations {
         canDisable: cardParseBool(json['can_disable']),
         canEnable: cardParseBool(json['can_enable']),
         canDeletePermanently: cardParseBool(json['can_delete_permanently']),
+        canEditIdentity: cardParseBool(json['can_edit_identity']),
       );
 }

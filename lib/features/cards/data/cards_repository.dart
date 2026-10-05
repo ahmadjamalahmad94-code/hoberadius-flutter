@@ -354,6 +354,33 @@ class CardsRepository {
         },
       );
 
+  /// «تعديل بيانات الكرت»: `PATCH /api/v1/cards/<id>` with only the changed
+  /// fields (number and/or password, as typed — never generated). The
+  /// server applies it to RADIUS auth + accounting + routers and kicks the
+  /// live session; errors (409 «الاسم مستخدم», 422) surface as ApiException.
+  Future<CardIdentityResult> updateCardIdentity(
+    int cardId,
+    CardIdentityDraft draft,
+  ) async {
+    final res = await _api.patch('/api/v1/cards/$cardId', body: draft.toJson());
+    final data = (res['data'] ?? res) as Map<String, dynamic>;
+    return CardIdentityResult.fromJson(data);
+  }
+
+  /// The card's current password to prefill «تعديل بيانات الكرت» — empty
+  /// when the server masks it (no «عرض كلمات المرور») or on any error, and
+  /// then the field simply means «leave as is».
+  Future<String> cardPassword(int cardId) async {
+    try {
+      final res = await _api.get('/api/v1/cards/$cardId');
+      final data = (res['data'] ?? res) as Map<String, dynamic>;
+      final pw = (data['password'] ?? '').toString();
+      return pw.contains('•') ? '' : pw;
+    } catch (_) {
+      return '';
+    }
+  }
+
   Future<CardCheckResult> _cardAction(
     int cardId,
     String action, {

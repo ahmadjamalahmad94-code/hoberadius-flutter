@@ -20,6 +20,7 @@ import '../../../shared/widgets/hub_layout.dart';
 import '../../../shared/widgets/even_choice_bar.dart';
 import '../../../shared/widgets/status_pill.dart';
 import '../../cards/data/cards_repository.dart';
+import '../../cards/presentation/widgets/card_identity_dialog.dart';
 import '../../subscribers/data/subscriber_actions_repository.dart';
 import '../data/sessions_repository.dart';
 import '../domain/session_model.dart';
@@ -298,6 +299,36 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
     }
   }
 
+  /// «تعديل بيانات الكرت» from the card tile: number and/or password as
+  /// typed (no generation). The server kicks the live session, so the tile
+  /// leaves the list and comes back under the new number on re-login.
+  Future<void> _editCardIdentity(OnlineSession session) async {
+    final id = session.cardId;
+    if (id == null) return;
+    final repo = ref.read(cardsRepositoryProvider);
+    final current = await repo.cardPassword(id);
+    if (!mounted) return;
+    final draft = await showCardIdentityDialog(
+      context,
+      username: session.username,
+      password: current,
+    );
+    if (!mounted || draft == null || draft.isEmpty) return;
+    try {
+      final res = await repo.updateCardIdentity(id, draft);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(res.message)),
+      );
+      _refresh();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(visibleErrorMessage(error))),
+      );
+    }
+  }
+
   Future<void> _resetCardUsage(OnlineSession session) async {
     final id = session.cardId;
     if (id == null) return;
@@ -369,6 +400,8 @@ class _SessionsListScreenState extends ConsumerState<SessionsListScreen> {
               ),
           SessionMoreAction.disableSubscriber => () =>
               _disableSubscriber(session),
+          SessionMoreAction.editCardIdentity => () =>
+              _editCardIdentity(session),
           SessionMoreAction.resetCardUsage => () => _resetCardUsage(session),
           SessionMoreAction.disableCard => () => _disableCard(session),
           SessionMoreAction.deleteCard => () => _deleteCard(session),
@@ -1355,6 +1388,7 @@ enum SessionMoreAction {
   subscriberProfile(Icons.account_circle_outlined, 'ملف المشترك'),
   cancelSpeed(Icons.restore_outlined, 'إلغاء السرعة'),
   cardChecker(Icons.manage_search_outlined, 'فحص الكرت'),
+  editCardIdentity(Icons.edit_note, 'تعديل بيانات الكرت'),
   resetCardUsage(Icons.restart_alt, 'تصفير الاستخدام'),
   disableSubscriber(Icons.pause_circle_outline, 'تعطيل', danger: true),
   disableCard(Icons.pause_circle_outline, 'تعطيل', danger: true),
@@ -1408,6 +1442,9 @@ List<SessionMoreAction> sessionMoreActions(
     return [
       if (perms.acts.tempSpeed) SessionMoreAction.cancelSpeed,
       if (perms.cardCheck) SessionMoreAction.cardChecker,
+      // card-edit-identity: number and/or password (cards.verify, like the
+      // web checker; the server also checks the batch scope).
+      if (hasCard && perms.cardOps) SessionMoreAction.editCardIdentity,
       if (hasCard && perms.cardOps) SessionMoreAction.resetCardUsage,
       if (hasCard && perms.cardOps) SessionMoreAction.disableCard,
       if (hasCard && perms.cardDelete) SessionMoreAction.deleteCard,

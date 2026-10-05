@@ -8,12 +8,14 @@ import '../../../shared/widgets/page_header.dart';
 import '../application/card_checker_controller.dart';
 import '../application/card_checker_format.dart';
 import '../data/cards_repository.dart';
+import '../domain/card_model.dart';
 import 'widgets/card_checker_details.dart';
 import 'widgets/card_checker_dialogs.dart';
 import 'widgets/card_checker_operations.dart';
 import 'widgets/card_checker_search.dart';
 import 'widgets/card_checker_sessions.dart';
 import 'widgets/card_checker_summary.dart';
+import 'widgets/card_identity_dialog.dart';
 
 /// Card-checker screen. Owns just the local search-text controller and
 /// delegates state + actions to [cardCheckerControllerProvider].
@@ -71,6 +73,40 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
     }
   }
 
+  /// «تعديل بيانات الكرت»: number and/or password as typed (no generation);
+  /// on success the checker shows the card under its new number.
+  Future<void> _editIdentity(CardCheckResult card) async {
+    final id = card.id;
+    if (id == null) return;
+    final repo = ref.read(cardsRepositoryProvider);
+    final current =
+        card.loginWithoutPassword ? '' : await repo.cardPassword(id);
+    if (!mounted) return;
+    final draft = await showCardIdentityDialog(
+      context,
+      username: card.username,
+      password: current,
+      passwordless: card.loginWithoutPassword,
+    );
+    if (!mounted || draft == null || draft.isEmpty) return;
+    CardIdentityResult? res;
+    final outcome =
+        await ref.read(cardCheckerControllerProvider.notifier).runAction(
+      (r) async {
+        res = await r.updateCardIdentity(id, draft);
+        return res!.card;
+      },
+      success: '',
+    );
+    if (!mounted) return;
+    if (res != null && res!.username.isNotEmpty) _query.text = res!.username;
+    final message = outcome.error ?? res?.message;
+    if (message != null && message.isNotEmpty) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(cardCheckerControllerProvider);
@@ -121,6 +157,7 @@ class _CardCheckerScreenState extends ConsumerState<CardCheckerScreen> {
             CardCheckerOperations(
               card: result,
               busy: state.actionLoading,
+              onEditIdentity: () => _editIdentity(result),
               onEnable: () => _runAction(
                 (repo) => repo.enableCard(result.id!),
                 success: 'تم تفعيل البطاقة.',
