@@ -10,6 +10,8 @@ import 'package:hoberadius_app/core/auth/security_key_storage.dart';
 import 'package:hoberadius_app/core/auth/token_storage.dart';
 import 'package:hoberadius_app/features/admin_control/application/admin_control_providers.dart';
 import 'package:hoberadius_app/features/notifications/application/notifications_providers.dart';
+import 'package:hoberadius_app/features/ops_assistant/application/ops_assistant_providers.dart';
+import 'package:hoberadius_app/features/ops_assistant/domain/ops_models.dart';
 import 'package:hoberadius_app/features/notifications/push/desktop_toast_bridge.dart';
 import 'package:hoberadius_app/features/notifications/push/push_service.dart';
 import 'package:hoberadius_app/features/provider_grants/application/provider_grants_provider.dart';
@@ -94,6 +96,10 @@ Future<void> _pumpShell(WidgetTester tester, Size size) async {
         // Same for the e-cards usage probe: treat as in use so every section
         // renders, without a live API call.
         eCardsInUseProvider.overrideWith((ref) async => true),
+        // And the operations-assistant availability probe (/ops/status).
+        opsStatusProvider.overrideWith(
+          (ref) async => const OpsStatus.notSupported(),
+        ),
         // The shell provides the tenant currency (settings fetch) — stubbed.
         tenantCurrencyProvider.overrideWithValue('ILS'),
       ],

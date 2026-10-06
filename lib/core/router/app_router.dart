@@ -43,6 +43,7 @@ import '../../features/distributors/presentation/distributor_form_screen.dart';
 import '../../features/distributors/presentation/distributors_list_screen.dart';
 import '../../features/admin_alerts/presentation/telegram_alerts_screen.dart';
 import '../../features/events/presentation/events_center_screen.dart';
+import '../../features/ops_assistant/presentation/ops_assistant_screen.dart';
 import '../../features/hotspot_cards_portal/presentation/hotspot_cards_portal_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
@@ -537,6 +538,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/events',
             name: 'events-center',
             builder: (ctx, st) => const EventsCenterScreen(),
+          ),
+          // «مساعد العمليّات» (تجريبيّ) — reachable only while /ops/status
+          // says available (menu entry gated; the screen re-checks).
+          GoRoute(
+            path: '/ops-assistant',
+            name: 'ops-assistant',
+            builder: (ctx, st) => const OpsAssistantScreen(),
           ),
           GoRoute(
             path: '/alerts/telegram',

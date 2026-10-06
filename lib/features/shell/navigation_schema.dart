@@ -38,6 +38,26 @@ const dashboardNavItem = AppNavItem(
   description: 'المؤشرات اليومية وحالة الشبكة والخدمات الأساسية.',
 );
 
+/// «مساعد العمليّات» (تجريبيّ) — like the web sidebar, a standalone entry
+/// after the groups, shown ONLY while `/api/v1/ops/status` says available
+/// (flag ON + password gate open). Not part of [appNavSections] (which mirror
+/// the always-present web groups); `visibleNavSectionsProvider` appends
+/// [opsAssistantNavSection] when the server allows it.
+const opsAssistantNavItem = AppNavItem(
+  icon: Icons.smart_toy_outlined,
+  label: 'مساعد العمليّات',
+  routeName: 'ops-assistant',
+  path: '/ops-assistant',
+  description: 'اكتب طلبك بلغتك — المساعد يجهّز الإجراء وأنت تؤكّده (تجريبيّ).',
+);
+
+const opsAssistantNavSection = AppNavSection(
+  id: 'ops-assistant',
+  icon: Icons.smart_toy_outlined,
+  label: 'مساعد العمليّات',
+  items: [opsAssistantNavItem],
+);
+
 const moreNavItem = AppNavItem(
   icon: Icons.more_horiz,
   label: 'المزيد',
@@ -383,6 +403,7 @@ int mobileNavIndexForLocation(
 /// Without this map they fell back to the bottom tab and every one of them
 /// was titled «لوحة التحكم» (R11 L-4). Labels follow the web sidebar.
 const kExtraRouteTitles = <String, String>{
+  '/ops-assistant': 'مساعد العمليّات',
   '/about': 'حول التطبيق والتحديثات',
   '/notifications': 'الإشعارات',
   '/print-templates': 'قوالب الطباعة',

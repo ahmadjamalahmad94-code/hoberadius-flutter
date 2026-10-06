@@ -298,6 +298,10 @@ const kAlwaysAllowedPaths = <String>{
   '/service-blocked',
   '/service-upgrade',
   '/no-access',
+  // Operations assistant: any signed-in admin (web: login_required + the
+  // guard allow-list) — the executor decides each action with THIS admin's
+  // own permissions, and the screen is gated by /ops/status.
+  '/ops-assistant',
 };
 
 bool _segmentsMatch(List<String> pattern, List<String> path) {

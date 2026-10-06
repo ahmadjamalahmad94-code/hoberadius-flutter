@@ -4,6 +4,7 @@ import '../../core/api/api_client.dart';
 import '../../core/auth/auth_controller.dart';
 import '../../core/auth/permissions.dart';
 import '../../core/auth/route_permissions.dart';
+import '../ops_assistant/application/ops_assistant_providers.dart';
 import '../provider_grants/application/nav_visibility.dart';
 import 'navigation_schema.dart';
 
@@ -74,10 +75,18 @@ final visibleNavSectionsProvider =
   final sections = ref.watch(gatedNavSectionsProvider);
   final inUse = ref.watch(eCardsInUseProvider).valueOrNull ?? false;
   final perms = ref.watch(permissionsProvider);
+  final ops = ref.watch(opsAssistantNavVisibleProvider);
   return filterNavSectionsByPermissions(
     [
       for (final s in sections)
         if (!kUsageGatedSectionIds.contains(s.section.id) || inUse) s,
+      if (ops)
+        const GatedNavSection(
+          section: opsAssistantNavSection,
+          items: [
+            GatedNavItem(item: opsAssistantNavItem, requiresUpgrade: false),
+          ],
+        ),
     ],
     perms,
   );
