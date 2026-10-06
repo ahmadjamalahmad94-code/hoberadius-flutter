@@ -158,12 +158,23 @@ class ApiClient {
 
   /// [headers] carries per-request extras such as `Idempotency-Key` (money
   /// actions); servers that do not know a header simply ignore it.
+  ///
+  /// [receiveTimeout] overrides [ApiClientConfig.receiveTimeout] for one slow
+  /// call (e.g. the operations assistant's model turn, which may chain
+  /// several model calls on the server).
   Future<Map<String, dynamic>> post(
     String path, {
     Object? body,
     Map<String, String>? headers,
+    Duration? receiveTimeout,
   }) =>
-      _send('POST', path, body: body, headers: headers);
+      _send(
+        'POST',
+        path,
+        body: body,
+        headers: headers,
+        receiveTimeout: receiveTimeout,
+      );
 
   Future<Map<String, dynamic>> put(
     String path, {
@@ -193,6 +204,7 @@ class ApiClient {
     Object? body,
     Map<String, String>? headers,
     bool background = false,
+    Duration? receiveTimeout,
   }) async {
     final idempotent = _isIdempotent(method);
     final isLogin = path == _loginPath;
@@ -212,6 +224,7 @@ class ApiClient {
           options: Options(
             method: method,
             headers: headers == null || headers.isEmpty ? null : headers,
+            receiveTimeout: receiveTimeout,
           ),
         );
       } on DioException catch (e) {
