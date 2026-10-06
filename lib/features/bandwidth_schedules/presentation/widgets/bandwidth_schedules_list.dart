@@ -6,6 +6,7 @@ import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/empty_state.dart';
 import '../../../../shared/widgets/status_pill.dart';
 import '../../domain/bandwidth_schedule_model.dart';
+import 'schedule_days_picker.dart';
 
 class BandwidthSchedulesList extends StatelessWidget {
   const BandwidthSchedulesList({
@@ -154,7 +155,7 @@ class _ScheduleTile extends StatelessWidget {
         ),
         const SizedBox(height: AppTokens.s8),
         Text(
-          '$targetName • ${item.startsAtTime} → ${item.endsAtTime} • أولوية ${item.priority}',
+          '$targetName • ${item.startsAtTime} → ${item.endsAtTime} • ${scheduleDaysLabel(item.daysCsv)} • أولوية ${item.priority}',
           style: const TextStyle(color: AppTokens.textMuted),
         ),
         const SizedBox(height: AppTokens.s8),
@@ -164,8 +165,6 @@ class _ScheduleTile extends StatelessWidget {
           children: [
             _Metric(label: 'تنزيل', value: '${item.speedDownKbps} Kbps'),
             _Metric(label: 'رفع', value: '${item.speedUpKbps} Kbps'),
-            _Metric(label: 'CIR تنزيل', value: '${item.cirDownKbps} Kbps'),
-            _Metric(label: 'CIR رفع', value: '${item.cirUpKbps} Kbps'),
           ],
         ),
         if (item.notes.isNotEmpty) ...[

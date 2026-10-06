@@ -5,6 +5,7 @@ import '../../../../core/theme/tokens.dart';
 import '../../../../shared/widgets/hub_unit_input.dart';
 import '../../../../shared/widgets/wheel_picker_fields.dart';
 import '../../domain/bandwidth_schedule_model.dart';
+import 'schedule_days_picker.dart';
 
 /// «تعديل جدول السرعة» — the web edit dialog's fields, labels and units
 /// (speeds in kbps/Mbps, priority 1–10, the three restore modes). The target
@@ -40,8 +41,7 @@ class _BandwidthEditDialogState extends State<BandwidthEditDialog> {
   late String _ends;
   late int _down;
   late int _up;
-  late int _cirDown;
-  late int _cirUp;
+  late Set<String> _days;
   late String _restoreMode;
   late bool _enabled;
 
@@ -64,8 +64,7 @@ class _BandwidthEditDialogState extends State<BandwidthEditDialog> {
     _ends = i.endsAtTime.isEmpty ? '00:00' : i.endsAtTime;
     _down = i.speedDownKbps;
     _up = i.speedUpKbps;
-    _cirDown = i.cirDownKbps;
-    _cirUp = i.cirUpKbps;
+    _days = parseScheduleDays(i.daysCsv);
     _restoreMode = _restoreModes.contains(i.restoreMode)
         ? i.restoreMode
         : 'profile_default';
@@ -89,8 +88,7 @@ class _BandwidthEditDialogState extends State<BandwidthEditDialog> {
       'ends_at_time': _ends,
       'speed_down_kbps': _down,
       'speed_up_kbps': _up,
-      'cir_down_kbps': _cirDown,
-      'cir_up_kbps': _cirUp,
+      'days_csv': scheduleDaysCsv(_days),
       'restore_mode': _restoreMode,
       'notes': _notes.text.trim(),
       'enabled': _enabled,
@@ -164,13 +162,14 @@ class _BandwidthEditDialogState extends State<BandwidthEditDialog> {
                   }),
                 ),
                 const SizedBox(height: AppTokens.s12),
+                ScheduleDaysPicker(
+                  selected: _days,
+                  onChanged: (v) => setState(() => _days = v),
+                ),
+                const SizedBox(height: AppTokens.s12),
                 _speed('سرعة التنزيل', _down, (v) => _down = v),
                 const SizedBox(height: AppTokens.s8),
                 _speed('سرعة الرفع', _up, (v) => _up = v),
-                const SizedBox(height: AppTokens.s8),
-                _speed('CIR تنزيل', _cirDown, (v) => _cirDown = v),
-                const SizedBox(height: AppTokens.s8),
-                _speed('CIR رفع', _cirUp, (v) => _cirUp = v),
                 const SizedBox(height: AppTokens.s12),
                 DropdownButtonFormField<String>(
                   isExpanded: true,

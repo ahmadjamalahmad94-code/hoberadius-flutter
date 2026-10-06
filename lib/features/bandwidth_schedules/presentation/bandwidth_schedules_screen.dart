@@ -16,6 +16,7 @@ import '../domain/bandwidth_schedule_model.dart';
 import 'widgets/bandwidth_edit_dialog.dart';
 import 'widgets/bandwidth_form_card.dart';
 import 'widgets/bandwidth_schedules_list.dart';
+import 'widgets/schedule_days_picker.dart';
 
 class BandwidthSchedulesScreen extends ConsumerStatefulWidget {
   const BandwidthSchedulesScreen({super.key});
@@ -31,13 +32,12 @@ class _BandwidthSchedulesScreenState
   final _name = TextEditingController();
   final _down = TextEditingController(text: '3000');
   final _up = TextEditingController(text: '1000');
-  final _cirDown = TextEditingController(text: '0');
-  final _cirUp = TextEditingController(text: '0');
   final _priority = TextEditingController(text: '5');
   final _notes = TextEditingController();
   String _targetType = 'plan';
   String _starts = '22:00';
   String _ends = '06:00';
+  Set<String> _days = <String>{};
   String _restoreMode = 'profile_default';
   int? _planId;
   String? _subscriberUsername;
@@ -51,8 +51,6 @@ class _BandwidthSchedulesScreenState
     _name.dispose();
     _down.dispose();
     _up.dispose();
-    _cirDown.dispose();
-    _cirUp.dispose();
     _priority.dispose();
     _notes.dispose();
     super.dispose();
@@ -145,8 +143,7 @@ class _BandwidthSchedulesScreenState
               name: _name,
               down: _down,
               up: _up,
-              cirDown: _cirDown,
-              cirUp: _cirUp,
+              days: _days,
               priority: _priority,
               notes: _notes,
               starts: _starts,
@@ -166,6 +163,7 @@ class _BandwidthSchedulesScreenState
               onCardBatchChanged: (v) => setState(() => _cardBatchId = v),
               onStartsChanged: (v) => setState(() => _starts = v),
               onEndsChanged: (v) => setState(() => _ends = v),
+              onDaysChanged: (v) => setState(() => _days = v),
               onRestoreChanged: (v) => setState(() => _restoreMode = v),
               onEnabledChanged: (v) => setState(() => _enabled = v),
               onSubmit: _createSchedule,
@@ -231,8 +229,7 @@ class _BandwidthSchedulesScreenState
           endsAtTime: _ends,
           speedDownKbps: parseIntInput(_down.text) ?? 0,
           speedUpKbps: parseIntInput(_up.text) ?? 0,
-          cirDownKbps: parseIntInput(_cirDown.text) ?? 0,
-          cirUpKbps: parseIntInput(_cirUp.text) ?? 0,
+          daysCsv: scheduleDaysCsv(_days),
           restoreMode: _restoreMode,
           enabled: _enabled,
           notes: _notes.text.trim(),

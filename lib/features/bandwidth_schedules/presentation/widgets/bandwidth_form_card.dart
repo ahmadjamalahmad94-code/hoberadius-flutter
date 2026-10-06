@@ -7,6 +7,7 @@ import '../../../../shared/widgets/wheel_picker_fields.dart';
 import '../../../cards/domain/card_model.dart';
 import '../../../plans/domain/plan_model.dart';
 import '../../../subscribers/domain/subscriber_model.dart';
+import 'schedule_days_picker.dart';
 
 class BandwidthFormCard extends StatelessWidget {
   const BandwidthFormCard({
@@ -22,8 +23,7 @@ class BandwidthFormCard extends StatelessWidget {
     required this.name,
     required this.down,
     required this.up,
-    required this.cirDown,
-    required this.cirUp,
+    required this.days,
     required this.priority,
     required this.notes,
     required this.starts,
@@ -37,6 +37,7 @@ class BandwidthFormCard extends StatelessWidget {
     required this.onCardBatchChanged,
     required this.onStartsChanged,
     required this.onEndsChanged,
+    required this.onDaysChanged,
     required this.onRestoreChanged,
     required this.onEnabledChanged,
     required this.onSubmit,
@@ -53,8 +54,7 @@ class BandwidthFormCard extends StatelessWidget {
   final TextEditingController name;
   final TextEditingController down;
   final TextEditingController up;
-  final TextEditingController cirDown;
-  final TextEditingController cirUp;
+  final Set<String> days;
   final TextEditingController priority;
   final TextEditingController notes;
   final String starts;
@@ -68,6 +68,7 @@ class BandwidthFormCard extends StatelessWidget {
   final ValueChanged<int?> onCardBatchChanged;
   final ValueChanged<String> onStartsChanged;
   final ValueChanged<String> onEndsChanged;
+  final ValueChanged<Set<String>> onDaysChanged;
   final ValueChanged<String> onRestoreChanged;
   final ValueChanged<bool> onEnabledChanged;
   final VoidCallback onSubmit;
@@ -137,6 +138,8 @@ class BandwidthFormCard extends StatelessWidget {
               },
             ),
             const SizedBox(height: AppTokens.s12),
+            ScheduleDaysPicker(selected: days, onChanged: onDaysChanged),
+            const SizedBox(height: AppTokens.s12),
             Row(
               children: [
                 Expanded(
@@ -145,24 +148,6 @@ class BandwidthFormCard extends StatelessWidget {
                 const SizedBox(width: AppTokens.s8),
                 Expanded(
                   child: _NumberField(controller: up, label: 'رفع Kbps'),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppTokens.s12),
-            Row(
-              children: [
-                Expanded(
-                  child: _NumberField(
-                    controller: cirDown,
-                    label: 'الحد الأدنى للتنزيل',
-                  ),
-                ),
-                const SizedBox(width: AppTokens.s8),
-                Expanded(
-                  child: _NumberField(
-                    controller: cirUp,
-                    label: 'الحد الأدنى للرفع',
-                  ),
                 ),
               ],
             ),
