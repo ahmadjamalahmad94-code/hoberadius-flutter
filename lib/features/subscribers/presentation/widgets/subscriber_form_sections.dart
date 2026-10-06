@@ -21,6 +21,33 @@ import 'plan_picker.dart';
 /// Number-only text field used across the new parity sections: nothing
 /// typed is stripped or rewritten; «7.5» in a whole-number field, «-1» or
 /// «abc» show an Arabic error instead of being saved as 0.
+/// «الجلسات المتزامنة» — the same help as the web form.
+const kSimultaneousUseHint =
+    'سقفٌ صارم لعدد الجلسات المفتوحة معًا لهذا الحساب — تُحسب كلّ جلسة ولو '
+    'من الجهاز نفسه. أكبر من 0 = يتقدّم على «عدد الأجهزة المسموحة»؛ 0 = '
+    'يُطبَّق «عدد الأجهزة المسموحة».';
+
+/// «عنوان IP للبرودباند (PPPoE)» — the same help as the web form.
+const kPppoeIpHint =
+    'عنوان IPv4 ثابت يُرسَل للراوتر عند دخول المشترك (Framed-IP-Address). '
+    'يدخل مشترك البرودباند باسم الدخول وكلمة المرور الأساسيّين. إن ضُبط '
+    '«IP ثابت» فيجب أن يطابقه، ولا يُعطى العنوان لمشتركين اثنين.';
+
+/// Empty, or a dotted IPv4 address (Framed-IP-Address is IPv4).
+String? validatePppoeIp(String? value) {
+  final v = (value ?? '').trim();
+  if (v.isEmpty) return null;
+  final parts = v.split('.');
+  final ok = parts.length == 4 &&
+      parts.every((p) {
+        if (p.isEmpty || p.length > 3 || !RegExp(r'^[0-9]+$').hasMatch(p)) {
+          return false;
+        }
+        return int.parse(p) <= 255;
+      });
+  return ok ? null : 'عنوان IPv4 غير صالح (مثل 10.0.0.5)';
+}
+
 class _NumField extends StatelessWidget {
   const _NumField({required this.controller});
   final TextEditingController controller;
@@ -343,53 +370,6 @@ class SubscriberCoreSection extends StatelessWidget {
   }
 }
 
-/// MikroTik / PPP settings section.
-class SubscriberMtSection extends StatelessWidget {
-  const SubscriberMtSection({
-    super.key,
-    required this.controllers,
-    required this.mtService,
-    required this.onMtServiceChanged,
-  });
-
-  final Map<String, TextEditingController> controllers;
-  final String mtService;
-  final ValueChanged<String> onMtServiceChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'sub.mt',
-      icon: Icons.router_outlined,
-      title: 'إعدادات الراوتر (MikroTik / PPP)',
-      child: Column(
-        children: [
-          FormFieldRow(
-            label: 'ملف الراوتر (Profile)',
-            child: TextFormField(controller: controllers['mt_profile']),
-          ),
-          // «الخدمة» (pppoe/hotspot/l2tp…) removed — it duplicated «نوع الخدمة»
-          // above and the server never reads it (owner 2026-10-02). The stored
-          // value is kept untouched in the payload.
-          FormFieldRow(
-            label: 'حد السرعة على الراوتر',
-            hint: 'مثال: 5M/10M أو 5M/10M 6M/12M 4M/8M 30/30',
-            child: TextFormField(controller: controllers['mt_rate_limit']),
-          ),
-          FormFieldRow(
-            label: 'مجموعة عناوين IP',
-            child: TextFormField(controller: controllers['mt_ip_pool']),
-          ),
-          FormFieldRow(
-            label: 'تعليق',
-            child: TextFormField(controller: controllers['mt_comment']),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// «إعدادات شبكة متقدمة جدًا» — the web form's per-subscriber RADIUS reply
 /// overrides (metadata `mikrotik.mikrotik_*` / `radius.*`), sent by the
 /// policy engine on every login.
@@ -510,23 +490,12 @@ class SubscriberRadiusSection extends StatelessWidget {
               child: TextFormField(controller: controllers['dns2']),
             ),
           ),
+          // Session / idle timeout and «معرّف نقطة الاتصال» were retired
+          // (owner 2026-10-06): nothing at authorize read them.
           FormFieldRow(
             label: 'الجلسات المتزامنة',
+            hint: kSimultaneousUseHint,
             child: _NumField(controller: controllers['simultaneous_use']!),
-          ),
-          FormFieldPair(
-            first: FormFieldRow(
-              label: 'مهلة الجلسة (ث)',
-              child: _NumField(controller: controllers['session_timeout']!),
-            ),
-            second: FormFieldRow(
-              label: 'مهلة الخمول (ث)',
-              child: _NumField(controller: controllers['idle_timeout']!),
-            ),
-          ),
-          FormFieldRow(
-            label: 'معرّف نقطة الاتصال',
-            child: TextFormField(controller: controllers['called_station_id']),
           ),
         ],
       ),
@@ -571,17 +540,11 @@ class SubscriberLockSection extends StatelessWidget {
             label: 'IP ثابت',
             child: TextFormField(controller: controllers['static_ip']),
           ),
-          FormFieldPair(
-            first: FormFieldRow(
-              label: 'عدد الأجهزة المسموحة',
-              hint: 'الحد الأقصى للأجهزة المتصلة في آنٍ واحد — يُنفَّذ عند '
-                  'المصادقة.',
-              child: _NumField(controller: controllers['device_count']!),
-            ),
-            second: FormFieldRow(
-              label: 'VLAN',
-              child: _NumField(controller: controllers['vlan_id']!),
-            ),
+          FormFieldRow(
+            label: 'عدد الأجهزة المسموحة',
+            hint: 'الحد الأقصى للأجهزة المتصلة في آنٍ واحد — يُنفَّذ عند '
+                'المصادقة.',
+            child: _NumField(controller: controllers['device_count']!),
           ),
           if (onDeviceLimitModeChanged != null)
             FormFieldRow(
@@ -600,19 +563,13 @@ class SubscriberLockSection extends StatelessWidget {
                 onChanged: (v) => onDeviceLimitModeChanged!(v ?? ''),
               ),
             ),
-          FormFieldRow(
-            label: 'ملف اتصال الجهاز',
-            child: TextFormField(
-              controller: controllers['device_connection_file'],
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-/// Management section — manager (dropdown of admins), group, pool, balance.
+/// Management section — manager (dropdown of admins), group, balance.
 class SubscriberManagementSection extends ConsumerWidget {
   const SubscriberManagementSection({
     super.key,
@@ -682,16 +639,10 @@ class SubscriberManagementSection extends ConsumerWidget {
                 ),
               ),
             ),
-          FormFieldPair(
-            first: FormFieldRow(
-              label: 'المجموعة',
-              hint: 'تُدار من «مجموعات المشتركين».',
-              child: _GroupPicker(controller: controllers['group']!),
-            ),
-            second: FormFieldRow(
-              label: 'مجموعة العناوين (Pool)',
-              child: TextFormField(controller: controllers['pool']),
-            ),
+          FormFieldRow(
+            label: 'المجموعة',
+            hint: 'تُدار من «مجموعات المشتركين».',
+            child: _GroupPicker(controller: controllers['group']!),
           ),
           FormFieldRow(
             label: 'الرصيد',
@@ -1118,7 +1069,9 @@ class SubscriberQuotaSection extends StatelessWidget {
   }
 }
 
-/// PPPoE / broadband section (mirrors web "البرودباند").
+/// PPPoE / broadband section (mirrors web "البرودباند"). A PPPoE subscriber
+/// logs in with its own username/password; the separate PPPoE name/password
+/// were never read and were retired (owner 2026-10-06).
 class SubscriberPppoeSection extends StatelessWidget {
   const SubscriberPppoeSection({super.key, required this.controllers});
 
@@ -1134,104 +1087,15 @@ class SubscriberPppoeSection extends StatelessWidget {
       child: Column(
         children: [
           FormFieldRow(
-            label: 'اسم دخول البرودباند',
-            hint: 'اتركه فارغًا لاستخدام اسم الدخول الأساسي',
-            child: TextFormField(controller: controllers['pppoe_username']),
-          ),
-          FormFieldRow(
-            label: 'كلمة مرور البرودباند',
-            hint: 'اتركها فارغة لاستخدام كلمة المرور الأساسية',
+            label: 'عنوان IP للبرودباند (PPPoE)',
+            hint: kPppoeIpHint,
             child: TextFormField(
-              controller: controllers['pppoe_password'],
-              obscureText: true,
-            ),
-          ),
-          FormFieldRow(
-            label: 'عنوان البرودباند',
-            child: TextFormField(controller: controllers['pppoe_ip']),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Advanced section — the first-use toggle. «ساعات السماح» (a metadata value
-/// nothing read) and «أيام العمل» (a legacy cache) moved to «الأيام والأوقات
-/// المسموحة للاتصال» in «الحصة والوقت», as on the web.
-class SubscriberAdvancedSection extends StatelessWidget {
-  const SubscriberAdvancedSection({
-    super.key,
-    required this.disableOnFirstUse,
-    required this.onDisableOnFirstUseChanged,
-  });
-
-  final bool disableOnFirstUse;
-  final ValueChanged<bool> onDisableOnFirstUseChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'sub.advanced',
-      icon: Icons.tune,
-      title: 'إعدادات متقدّمة',
-      initiallyExpanded: false,
-      child: Column(
-        children: [
-          HubSwitchRow(
-            label: 'تعطيل تلقائي بعد أول استخدام',
-            value: disableOnFirstUse,
-            onChanged: onDisableOnFirstUseChanged,
-            dense: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Notifications section — toggle + email + mobile.
-class SubscriberNotificationsSection extends StatelessWidget {
-  const SubscriberNotificationsSection({
-    super.key,
-    required this.controllers,
-    required this.notifyOnLogin,
-    required this.onNotifyOnLoginChanged,
-  });
-
-  final Map<String, TextEditingController> controllers;
-  final bool notifyOnLogin;
-  final ValueChanged<bool> onNotifyOnLoginChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'sub.notif',
-      icon: Icons.notifications_outlined,
-      title: 'التنبيهات',
-      initiallyExpanded: false,
-      child: Column(
-        children: [
-          HubSwitchRow(
-            label: 'تنبيه عند الدخول',
-            value: notifyOnLogin,
-            onChanged: onNotifyOnLoginChanged,
-            dense: true,
-          ),
-          FormFieldPair(
-            first: FormFieldRow(
-              label: 'بريد التنبيهات',
-              child: TextFormField(
-                controller: controllers['notify_email'],
-                keyboardType: TextInputType.emailAddress,
-                textDirection: TextDirection.ltr,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                validator: validateOptionalEmail,
-              ),
-            ),
-            second: FormFieldRow(
-              label: 'جوال التنبيهات',
-              child: TextFormField(controller: controllers['notify_mobile']),
+              controller: controllers['pppoe_ip'],
+              keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: validatePppoeIp,
+              decoration: const InputDecoration(hintText: '10.0.0.5'),
             ),
           ),
         ],
@@ -1240,20 +1104,15 @@ class SubscriberNotificationsSection extends StatelessWidget {
   }
 }
 
-/// Subscription section — type + days + auto-renew toggle.
+/// Subscription section — the auto-renew toggle. «نوع الاشتراك» / «مدّة
+/// الاشتراك» were retired (owner 2026-10-06): nothing on the server read them.
 class SubscriberSubscriptionSection extends StatelessWidget {
   const SubscriberSubscriptionSection({
     super.key,
-    required this.controllers,
-    required this.subscriptionType,
-    required this.onSubscriptionTypeChanged,
     required this.autoRenew,
     required this.onAutoRenewChanged,
   });
 
-  final Map<String, TextEditingController> controllers;
-  final String subscriptionType;
-  final ValueChanged<String> onSubscriptionTypeChanged;
   final bool autoRenew;
   final ValueChanged<bool> onAutoRenewChanged;
 
@@ -1266,28 +1125,6 @@ class SubscriberSubscriptionSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldPair(
-            first: FormFieldRow(
-              label: 'نوع الاشتراك',
-              child: DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: subscriptionType,
-                items: const [
-                  DropdownMenuItem(value: 'fixed', child: Text('ثابت')),
-                  DropdownMenuItem(value: 'rolling', child: Text('متجدّد')),
-                  DropdownMenuItem(
-                    value: 'prepaid',
-                    child: Text('مدفوع مسبقًا'),
-                  ),
-                ],
-                onChanged: (v) => onSubscriptionTypeChanged(v ?? 'fixed'),
-              ),
-            ),
-            second: FormFieldRow(
-              label: 'مدّة الاشتراك (أيام)',
-              child: _NumField(controller: controllers['subscription_days']!),
-            ),
-          ),
           HubSwitchRow(
             label: 'تجديد تلقائي',
             value: autoRenew,

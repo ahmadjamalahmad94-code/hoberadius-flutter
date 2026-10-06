@@ -37,14 +37,11 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
   String _accountType = 'Personal';
   int? _managerId;
   String _mtService = 'pppoe';
-  String _subscriptionType = 'fixed';
   DateTime? _expireAt;
 
   /// Create form: «بدون انتهاء» chosen explicitly → `expire_at: null`.
   bool _explicitNoExpiry = false;
   final Set<String> _workingDays = {};
-  bool _disableOnFirstUse = false;
-  bool _notifyOnLogin = false;
   bool _autoRenew = false;
   bool _bandwidthControlEnabled = false;
   bool _customSpeed = false;
@@ -93,11 +90,8 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
         accountType: _accountType,
         managerId: _managerId,
         mtService: _mtService,
-        subscriptionType: _subscriptionType,
         expireAt: _expireAt,
         workingDays: _workingDays,
-        disableOnFirstUse: _disableOnFirstUse,
-        notifyOnLogin: _notifyOnLogin,
         autoRenew: _autoRenew,
         bandwidthControlEnabled: _bandwidthControlEnabled,
         customSpeed: _customSpeed,
@@ -127,13 +121,10 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
       _accountType = sel.accountType;
       _managerId = sel.managerId;
       _mtService = sel.mtService;
-      _subscriptionType = sel.subscriptionType;
       _expireAt = sel.expireAt;
       _workingDays
         ..clear()
         ..addAll(sel.workingDays);
-      _disableOnFirstUse = sel.disableOnFirstUse;
-      _notifyOnLogin = sel.notifyOnLogin;
       _autoRenew = sel.autoRenew;
       _bandwidthControlEnabled = sel.bandwidthControlEnabled;
       _customSpeed = sel.customSpeed;
@@ -375,12 +366,6 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
           const SizedBox(height: AppTokens.s12),
           SubscriberPppoeSection(controllers: _c),
           const SizedBox(height: AppTokens.s12),
-          SubscriberMtSection(
-            controllers: _c,
-            mtService: _mtService,
-            onMtServiceChanged: (v) => setState(() => _mtService = v),
-          ),
-          const SizedBox(height: AppTokens.s12),
           SubscriberRadiusSection(controllers: _c),
           const SizedBox(height: AppTokens.s12),
           SubscriberLockSection(
@@ -392,23 +377,7 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
           const SizedBox(height: AppTokens.s12),
           SubscriberAdvancedNetworkSection(controllers: _c),
           const SizedBox(height: AppTokens.s12),
-          SubscriberAdvancedSection(
-            disableOnFirstUse: _disableOnFirstUse,
-            onDisableOnFirstUseChanged: (v) =>
-                setState(() => _disableOnFirstUse = v),
-          ),
-          const SizedBox(height: AppTokens.s12),
-          SubscriberNotificationsSection(
-            controllers: _c,
-            notifyOnLogin: _notifyOnLogin,
-            onNotifyOnLoginChanged: (v) => setState(() => _notifyOnLogin = v),
-          ),
-          const SizedBox(height: AppTokens.s12),
           SubscriberSubscriptionSection(
-            controllers: _c,
-            subscriptionType: _subscriptionType,
-            onSubscriptionTypeChanged: (v) =>
-                setState(() => _subscriptionType = v),
             autoRenew: _autoRenew,
             onAutoRenewChanged: (v) => setState(() => _autoRenew = v),
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hoberadius_app/features/subscribers/application/subscriber_form_mapper.dart';
 import 'package:hoberadius_app/features/subscribers/domain/subscriber_model.dart';
+import 'package:hoberadius_app/features/subscribers/presentation/widgets/subscriber_form_sections.dart';
 
 // Full controller-key set mirrored from SubscriberFormScreen.
 const _keys = [
@@ -42,11 +43,8 @@ SubscriberFormSelections _selections({
       accountType: accountType,
       managerId: managerId,
       mtService: 'pppoe',
-      subscriptionType: 'fixed',
       expireAt: null,
       workingDays: const {},
-      disableOnFirstUse: false,
-      notifyOnLogin: false,
       autoRenew: true,
       bandwidthControlEnabled: bandwidthControlEnabled,
       customSpeed: customSpeed,
@@ -200,7 +198,16 @@ void main() {
     // manager; money goes through «إضافة رصيد»).
     expect(body.containsKey('balance'), isFalse);
     expect(body['group'], 'g1');
-    expect(body['pool'], 'p1');
+    // retired (owner 2026-10-06): never sent, the server keeps stored values
+    for (final k in [
+      'pool',
+      'vlan_id',
+      'device_connection_file',
+      'pppoe_username',
+      'pppoe_password',
+    ]) {
+      expect(body.containsKey(k), isFalse, reason: k);
+    }
     expect(body['father_name'], 'father');
     expect(body['national_id'], '123');
     expect(body['country'], 'JO');
@@ -217,11 +224,53 @@ void main() {
     expect(body['connection_time_limit_enabled'], true);
     expect(body['equal_share_download'], true);
     expect(body['equal_share_upload'], true);
-    expect(body['vlan_id'], 10);
     expect(body['device_count'], 2);
     expect(body['allowed_macs'], 'AA:BB');
-    expect(body['pppoe_username'], 'pu');
-    expect(body['pppoe_password'], 'pp');
     expect(body['pppoe_ip'], '10.0.0.1');
+  });
+
+  test('retired metadata is never sent; stored values survive a PATCH', () {
+    final row = Subscriber.fromJson({
+      'username': 'meta',
+      'metadata': {
+        'mikrotik': {'profile': 'p1', 'rate_limit': '5M/5M', 'service': 'pppoe'},
+        'radius': {'session_timeout': 3600, 'called_station_id': 'ap1'},
+        'advanced': {'disable_on_first_use': true},
+        'notifications': {'on_login': true, 'email': 'a@b.co'},
+        'subscription': {'type': 'rolling', 'days': 30},
+        'general': {
+          'notes': 'n',
+          'tags': ['a'],
+        },
+      },
+    });
+    final create = row.toCreateBody()['metadata'] as Map<String, dynamic>;
+    expect(create.containsKey('notifications'), isFalse);
+    expect(create.containsKey('subscription'), isFalse);
+    expect((create['mikrotik'] as Map).containsKey('profile'), isFalse);
+    expect((create['radius'] as Map).containsKey('session_timeout'), isFalse);
+    expect(
+      (create['advanced'] as Map).containsKey('disable_on_first_use'),
+      isFalse,
+    );
+    // notes/tags are kept (owner: KEEP)
+    expect(create['general'], {
+      'notes': 'n',
+      'tags': ['a'],
+    });
+    final diff = row.copyWith(notes: 'n2').toPatchDiff(row);
+    final meta = diff['metadata'] as Map<String, dynamic>;
+    expect(meta['general']['notes'], 'n2');
+    // merged into the loaded metadata — the stored retired values ride along
+    expect(meta['radius']['session_timeout'], 3600);
+    expect(meta['notifications'], {'on_login': true, 'email': 'a@b.co'});
+  });
+
+  test('PPPoE IP: empty or IPv4 only (Framed-IP-Address)', () {
+    expect(validatePppoeIp(''), isNull);
+    expect(validatePppoeIp('10.0.0.5'), isNull);
+    expect(validatePppoeIp('999.1.1.1'), isNotNull);
+    expect(validatePppoeIp('2001:db8::1'), isNotNull);
+    expect(validatePppoeIp('10.0.0'), isNotNull);
   });
 }

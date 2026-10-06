@@ -215,9 +215,9 @@ void main() {
       final c = {
         for (final k in kSubscriberNumberFields.keys) k: TextEditingController(),
       };
-      c['vlan_id']!.text = '7.5';
-      expect(subscriberFormNumberError(c), contains('VLAN'));
-      c['vlan_id']!.text = '٧';
+      c['simultaneous_use']!.text = '7.5';
+      expect(subscriberFormNumberError(c), contains('الجلسات المتزامنة'));
+      c['simultaneous_use']!.text = '٧';
       c['custom_price']!.text = '1e9';
       expect(subscriberFormNumberError(c), contains('السعر المخصص'));
       c['custom_price']!.text = '١٢٫٥';

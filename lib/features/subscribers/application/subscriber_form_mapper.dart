@@ -19,7 +19,6 @@ const kSubscriberFormControllerKeys = [
   'custom_price',
   'balance',
   'group',
-  'pool',
   'father_name',
   'national_id',
   'nationality',
@@ -39,27 +38,13 @@ const kSubscriberFormControllerKeys = [
   'upload_quota_mb',
   'total_connection_time_min',
   'daily_connection_time_min',
-  'vlan_id',
   'device_count',
   'allowed_macs',
-  'device_connection_file',
-  'pppoe_username',
-  'pppoe_password',
   'pppoe_ip',
-  'mt_profile',
-  'mt_rate_limit',
-  'mt_ip_pool',
-  'mt_comment',
   'dns1',
   'dns2',
   'simultaneous_use',
-  'session_timeout',
-  'idle_timeout',
-  'called_station_id',
   'allowed_hours',
-  'notify_email',
-  'notify_mobile',
-  'subscription_days',
   'notes',
   'tags',
   // «إعدادات شبكة متقدمة جدًا» (web metadata keys, enforced on login)
@@ -84,11 +69,8 @@ class SubscriberFormSelections {
     required this.accountType,
     required this.managerId,
     required this.mtService,
-    required this.subscriptionType,
     required this.expireAt,
     required this.workingDays,
-    required this.disableOnFirstUse,
-    required this.notifyOnLogin,
     required this.autoRenew,
     required this.bandwidthControlEnabled,
     required this.customSpeed,
@@ -108,11 +90,8 @@ class SubscriberFormSelections {
   final String accountType;
   final int? managerId;
   final String mtService;
-  final String subscriptionType;
   final DateTime? expireAt;
   final Set<String> workingDays;
-  final bool disableOnFirstUse;
-  final bool notifyOnLogin;
   final bool autoRenew;
   final bool bandwidthControlEnabled;
   final bool customSpeed;
@@ -162,7 +141,6 @@ void applySubscriberToForm(
   c['balance']!.text = s.balance != 0 ? _moneyInput(s.balance) : '';
   // management / personal
   c['group']!.text = s.group;
-  c['pool']!.text = s.pool;
   c['father_name']!.text = s.fatherName;
   c['national_id']!.text = s.nationalId;
   c['nationality']!.text = s.nationality;
@@ -192,28 +170,15 @@ void applySubscriberToForm(
   c['daily_connection_time_min']!.text =
       s.dailyConnectionTimeMin > 0 ? s.dailyConnectionTimeMin.toString() : '';
   // network
-  c['vlan_id']!.text = s.vlanId > 0 ? s.vlanId.toString() : '';
   c['device_count']!.text = s.deviceCount > 0 ? s.deviceCount.toString() : '';
   c['allowed_macs']!.text = s.allowedMacs;
-  c['device_connection_file']!.text = s.deviceConnectionFile;
-  // pppoe
-  c['pppoe_username']!.text = s.pppoeUsername;
+  // pppoe — the fixed address only (the login is the subscriber's own)
   c['pppoe_ip']!.text = s.pppoeIp;
-  // mikrotik / radius / advanced / notifications / subscription / general
-  c['mt_profile']!.text = s.mtProfile;
-  c['mt_rate_limit']!.text = s.mtRateLimit;
-  c['mt_ip_pool']!.text = s.mtIpPool;
-  c['mt_comment']!.text = s.mtComment;
+  // radius / advanced / general
   c['dns1']!.text = s.primaryDnsPpp;
   c['dns2']!.text = s.secondaryDnsPpp;
   c['simultaneous_use']!.text = s.overrideConcurrent.toString();
-  c['session_timeout']!.text = s.sessionTimeout?.toString() ?? '';
-  c['idle_timeout']!.text = s.idleTimeout?.toString() ?? '';
-  c['called_station_id']!.text = s.calledStationId;
   c['allowed_hours']!.text = s.allowedHours;
-  c['notify_email']!.text = s.notifyEmail;
-  c['notify_mobile']!.text = s.notifyMobile;
-  c['subscription_days']!.text = s.subscriptionDays?.toString() ?? '';
   c['notes']!.text = s.notes;
   c['tags']!.text = s.tags.join(', ');
   _put(c, 'net_filter_chain', s.netFilterChain);
@@ -234,11 +199,8 @@ SubscriberFormSelections selectionsFromSubscriber(Subscriber s) =>
       accountType: s.accountType.isEmpty ? 'Personal' : s.accountType,
       managerId: s.managerId,
       mtService: s.mtService,
-      subscriptionType: s.subscriptionType,
       expireAt: s.expireAt,
       workingDays: Set<String>.from(s.workingDays),
-      disableOnFirstUse: s.disableOnFirstUse,
-      notifyOnLogin: s.notifyOnLogin,
       autoRenew: s.autoRenewal,
       bandwidthControlEnabled: s.bandwidthControlEnabled,
       customSpeed: s.customSpeed,
@@ -273,7 +235,6 @@ Subscriber buildSubscriberFromForm(
       accountType: sel.accountType,
       managerId: sel.managerId,
       group: c['group']!.text.trim(),
-      pool: c['pool']!.text.trim(),
       fatherName: c['father_name']!.text.trim(),
       nationalId: c['national_id']!.text.trim(),
       nationality: c['nationality']!.text.trim(),
@@ -293,10 +254,8 @@ Subscriber buildSubscriberFromForm(
       primaryDnsPpp: c['dns1']!.text.trim(),
       secondaryDnsPpp: c['dns2']!.text.trim(),
       overrideConcurrent: parseIntInput(c['simultaneous_use']!.text) ?? 0,
-      vlanId: parseIntInput(c['vlan_id']!.text) ?? 0,
       deviceCount: parseIntInput(c['device_count']!.text) ?? 1,
       allowedMacs: c['allowed_macs']!.text.trim(),
-      deviceConnectionFile: c['device_connection_file']!.text.trim(),
       bandwidthControlEnabled: sel.bandwidthControlEnabled,
       downloadSpeedKbps: parseIntInput(c['download_speed_kbps']!.text) ?? 0,
       uploadSpeedKbps: parseIntInput(c['upload_speed_kbps']!.text) ?? 0,
@@ -313,26 +272,11 @@ Subscriber buildSubscriberFromForm(
       connectionTimeLimitEnabled: sel.connectionTimeLimitEnabled,
       equalShareDownload: sel.equalShareDownload,
       equalShareUpload: sel.equalShareUpload,
-      pppoeUsername: c['pppoe_username']!.text.trim(),
-      pppoePassword: c['pppoe_password']!.text,
       pppoeIp: c['pppoe_ip']!.text.trim(),
       workingDaysCsv: sel.workingDays.join(','),
       autoRenewal: sel.autoRenew,
-      mtProfile: c['mt_profile']!.text.trim(),
       mtService: sel.mtService,
-      mtRateLimit: c['mt_rate_limit']!.text.trim(),
-      mtIpPool: c['mt_ip_pool']!.text.trim(),
-      mtComment: c['mt_comment']!.text.trim(),
-      sessionTimeout: parseIntInput(c['session_timeout']!.text),
-      idleTimeout: parseIntInput(c['idle_timeout']!.text),
-      calledStationId: c['called_station_id']!.text.trim(),
       allowedHours: c['allowed_hours']!.text.trim(),
-      disableOnFirstUse: sel.disableOnFirstUse,
-      notifyOnLogin: sel.notifyOnLogin,
-      notifyEmail: c['notify_email']!.text.trim(),
-      notifyMobile: c['notify_mobile']!.text.trim(),
-      subscriptionType: sel.subscriptionType,
-      subscriptionDays: parseIntInput(c['subscription_days']!.text),
       notes: c['notes']!.text.trim(),
       tags: c['tags']!
           .text
@@ -362,7 +306,6 @@ const Map<String, String> kSubscriberNumberFields = {
   'custom_price': 'السعر المخصص',
   'balance': 'الرصيد',
   'simultaneous_use': 'الجلسات المتزامنة',
-  'vlan_id': 'VLAN',
   'device_count': 'عدد الأجهزة المسموحة',
   'download_speed_kbps': 'سرعة التنزيل',
   'upload_speed_kbps': 'سرعة الرفع',
@@ -371,9 +314,6 @@ const Map<String, String> kSubscriberNumberFields = {
   'upload_quota_mb': 'كوتا الرفع',
   'total_connection_time_min': 'إجمالي وقت الاتصال',
   'daily_connection_time_min': 'وقت الاتصال اليومي',
-  'session_timeout': 'مهلة الجلسة',
-  'idle_timeout': 'مهلة الخمول',
-  'subscription_days': 'مدّة الاشتراك',
   'net_queue_priority': 'أولوية طابور السرعة',
   'net_acct_interim_sec': 'فترة تحديث الاستهلاك',
 };
