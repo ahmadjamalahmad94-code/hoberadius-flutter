@@ -420,7 +420,6 @@ class Subscriber {
       'remark': remark,
       if (managerId != null) 'manager_id': managerId,
       'group': group,
-      'pool': pool,
       'father_name': fatherName,
       'national_id': nationalId,
       'account_type': accountType,
@@ -450,10 +449,8 @@ class Subscriber {
       'equal_share_download': equalShareDownload,
       'equal_share_upload': equalShareUpload,
       'override_concurrent': overrideConcurrent,
-      'vlan_id': vlanId,
       'device_count': deviceCount,
       'allowed_macs': allowedMacs,
-      'device_connection_file': deviceConnectionFile,
       'primary_dns_ppp': primaryDnsPpp,
       'secondary_dns_ppp': secondaryDnsPpp,
       'caller_id': callerId,
@@ -463,8 +460,10 @@ class Subscriber {
       'login_without_password': loginWithoutPassword,
       'device_limit_mode': deviceLimitMode,
       'auto_renewal': autoRenewal,
-      'pppoe_username': pppoeUsername,
-      if (pppoePassword.isNotEmpty) 'pppoe_password': pppoePassword,
+      // «عنوان IP للبرودباند (PPPoE)» → Framed-IP-Address. Retired (owner
+      // 2026-10-06, never sent): pool, vlan_id, device_connection_file and
+      // the separate PPPoE name/password — a PPPoE subscriber logs in with
+      // its own username/password.
       'pppoe_ip': pppoeIp,
       'metadata': _metadata(),
     };
@@ -581,12 +580,12 @@ class Subscriber {
   Map<String, dynamic> toPatchBody() => _flat(false);
 
   Map<String, dynamic> _metadata() => {
+        // Retired metadata (owner 2026-10-06 — no reader on the server, the
+        // server keeps the stored values): mikrotik profile / rate_limit /
+        // ip_pool / comment, radius session/idle timeout + called-station,
+        // advanced.disable_on_first_use, notifications.*, subscription.*.
         'mikrotik': {
-          'profile': mtProfile,
           'service': mtService,
-          'rate_limit': mtRateLimit,
-          'ip_pool': mtIpPool,
-          'comment': mtComment,
           'mikrotik_filter_chain': netFilterChain,
           'mikrotik_address_list': netAddressList,
           'mikrotik_framed_route': netFramedRoute,
@@ -594,25 +593,12 @@ class Subscriber {
           'mikrotik_queue_priority': netQueuePriority,
         },
         'radius': {
-          if (sessionTimeout != null) 'session_timeout': sessionTimeout,
-          if (idleTimeout != null) 'idle_timeout': idleTimeout,
-          'called_station_id': calledStationId,
           'framed_pool': netFramedPool,
           'acct_interim_interval_sec': netAcctInterimSec,
           'ppp_attributes_extra': netPppExtra,
         },
         'advanced': {
           'allowed_hours': allowedHours,
-          'disable_on_first_use': disableOnFirstUse,
-        },
-        'notifications': {
-          'on_login': notifyOnLogin,
-          'email': notifyEmail,
-          'mobile': notifyMobile,
-        },
-        'subscription': {
-          'type': subscriptionType,
-          if (subscriptionDays != null) 'days': subscriptionDays,
         },
         'general': {
           'notes': notes,
