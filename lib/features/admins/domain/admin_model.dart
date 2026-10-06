@@ -99,7 +99,6 @@ class Admin {
             (original == null ? isCoOwner : isCoOwner != original.isCoOwner))
           'is_co_owner': isCoOwner,
         'enabled': enabled,
-        'avatar_url': avatarUrl,
         'tags': tags,
         if (pendingPassword != null && pendingPassword.isNotEmpty)
           'password': pendingPassword,

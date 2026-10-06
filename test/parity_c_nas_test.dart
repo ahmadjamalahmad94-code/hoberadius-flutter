@@ -20,10 +20,10 @@ void main() {
 
   test('empty port boxes go as null (server default), not 0', () {
     final d = NasDevice(name: 'r', address: '10.0.0.1')
-        .copyWith(blankPorts: {'auth_port', 'ssh_port'});
+        .copyWith(blankPorts: {'api_port', 'ssh_port'});
     final body = d.toBody();
-    expect(body.containsKey('auth_port'), isTrue);
-    expect(body['auth_port'], isNull);
+    expect(body.containsKey('api_port'), isTrue);
+    expect(body['api_port'], isNull);
     expect(body['ssh_port'], isNull);
     expect(body['coa_port'], 3799);
   });

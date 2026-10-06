@@ -365,6 +365,9 @@ class CommunicationChannel {
     required this.mode,
     required this.modeLabel,
     required this.config,
+    this.provider = '',
+    this.connected = false,
+    this.sender = '',
   });
 
   final String channel;
@@ -374,6 +377,15 @@ class CommunicationChannel {
   final String mode;
   final String modeLabel;
   final CommunicationChannelConfig config;
+
+  /// `tweetsms` on updated servers for the SMS item (read-only status).
+  final String provider;
+  final bool connected;
+  final String sender;
+
+  /// SMS always goes through TweetSMS (owner 2026-10-06) — the app never
+  /// edits an SMS HTTP config, even when an older server still lists one.
+  bool get isTweetSms => channel == 'sms' || provider == 'tweetsms';
 
   factory CommunicationChannel.fromJson(Map<String, dynamic> json) {
     final channel = _string(json['channel']);
@@ -391,6 +403,9 @@ class CommunicationChannel {
         fallback: communicationModeLabel(_string(json['mode'])),
       ),
       config: CommunicationChannelConfig.fromJson(_map(json['config'])),
+      provider: _string(json['provider']),
+      connected: _bool(json['connected']),
+      sender: _string(json['sender']),
     );
   }
 
@@ -405,18 +420,15 @@ class CommunicationChannelConfig {
   const CommunicationChannelConfig({
     required this.sendUrlTemplate,
     required this.httpMethod,
-    required this.balanceUrl,
   });
 
   final String sendUrlTemplate;
   final String httpMethod;
-  final String balanceUrl;
 
   factory CommunicationChannelConfig.fromJson(Map<String, dynamic> json) {
     return CommunicationChannelConfig(
       sendUrlTemplate: _string(json['send_url_template']),
       httpMethod: _string(json['http_method'], fallback: 'GET').toUpperCase(),
-      balanceUrl: _string(json['balance_url']),
     );
   }
 }
@@ -436,29 +448,26 @@ class CommunicationModeOption {
   }
 }
 
+/// WhatsApp HTTP channel save. «mode» and «balance_url» were removed (owner
+/// 2026-10-06): the first had one value nobody read, the second was never
+/// queried.
 class CommunicationChannelDraft {
   const CommunicationChannelDraft({
     required this.channel,
     required this.enabled,
-    required this.mode,
     required this.sendUrlTemplate,
     required this.httpMethod,
-    required this.balanceUrl,
   });
 
   final String channel;
   final bool enabled;
-  final String mode;
   final String sendUrlTemplate;
   final String httpMethod;
-  final String balanceUrl;
 
   Map<String, dynamic> toBody() => {
         'enabled': enabled,
-        'mode': mode,
         'send_url_template': sendUrlTemplate,
         'http_method': httpMethod.toUpperCase(),
-        'balance_url': balanceUrl,
       };
 }
 
@@ -481,6 +490,7 @@ class WhatsappBridgeState {
       status: WhatsappBridgeStatus.fromJson(_map(data['status'])),
       events: _list(data['events'])
           .map((item) => WhatsappBridgeEvent.fromJson(_map(item)))
+          .where((e) => !kRetiredWhatsappEvents.contains(e.key))
           .toList(),
       panelPortalUrl: _string(data['panel_portal_url']),
       principles: _strings(data['principles']),
@@ -540,6 +550,10 @@ class WhatsappBridgeStatus {
   }
 }
 
+/// WhatsApp gates the owner removed (2026-10-06): no sender calls them. An
+/// older server still lists them — hidden here too.
+const Set<String> kRetiredWhatsappEvents = {'quota', 'portal'};
+
 class WhatsappBridgeEvent {
   const WhatsappBridgeEvent({
     required this.key,
@@ -580,6 +594,7 @@ class WhatsappBridgeSettingsResult {
     return WhatsappBridgeSettingsResult(
       events: _list(data['events'])
           .map((item) => WhatsappBridgeEvent.fromJson(_map(item)))
+          .where((e) => !kRetiredWhatsappEvents.contains(e.key))
           .toList(),
       message: _string(data['message']),
     );

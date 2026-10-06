@@ -363,20 +363,17 @@ class _RecordEventDialog extends ConsumerStatefulWidget {
 
 class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
   final _message = TextEditingController();
-  final _actorId = TextEditingController();
   final _targetId = TextEditingController();
   final _correlation = TextEditingController();
   String _category = 'system';
   String _severity = 'info';
   String _eventKey = _eventKeyOptions.first.value;
-  String _actorType = '';
   String _targetType = '';
   bool _saving = false;
 
   @override
   void dispose() {
     _message.dispose();
-    _actorId.dispose();
     _targetId.dispose();
     _correlation.dispose();
     super.dispose();
@@ -449,43 +446,8 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
                 minLines: 2,
                 maxLines: 4,
               ),
-              const SizedBox(height: AppTokens.s12),
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      isExpanded: true,
-                      initialValue: _actorType,
-                      decoration: const InputDecoration(
-                        labelText: 'من نفذ الإجراء',
-                      ),
-                      items: [
-                        for (final option in _entityOptions)
-                          DropdownMenuItem(
-                            value: option.value,
-                            child: Text(option.label),
-                          ),
-                      ],
-                      onChanged: (value) {
-                        setState(() => _actorType = value ?? '');
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: AppTokens.s12),
-                  Expanded(
-                    // Strict reader: «-», «e» and letters are refused
-                    // with a message, never silently stripped.
-                    child: NumberTextField(
-                      controller: _actorId,
-                      decimal: false,
-                      decoration: const InputDecoration(
-                        labelText: 'رقم المنفذ',
-                      ),
-                      extraError: _idExtraError,
-                    ),
-                  ),
-                ],
-              ),
+              // «من نفذ الإجراء» / «رقم المنفذ» removed (owner 2026-10-06):
+              // the server always records the signed-in admin as the actor.
               const SizedBox(height: AppTokens.s12),
               Row(
                 children: [
@@ -560,8 +522,7 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
       _snack(context, 'أدخل وصفًا واضحًا للحدث');
       return;
     }
-    final idProblem =
-        _optionalIdError(_actorId.text) ?? _optionalIdError(_targetId.text);
+    final idProblem = _optionalIdError(_targetId.text);
     if (idProblem != null) {
       _snack(context, idProblem);
       return;
@@ -573,8 +534,6 @@ class _RecordEventDialogState extends ConsumerState<_RecordEventDialog> {
             severity: _severity,
             eventKey: _eventKey,
             message: message,
-            actorType: _actorType,
-            actorId: parseIntInput(_actorId.text),
             targetType: _targetType,
             targetId: parseIntInput(_targetId.text),
             correlationId: _correlation.text.trim(),

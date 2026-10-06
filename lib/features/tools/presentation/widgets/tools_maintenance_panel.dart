@@ -82,12 +82,16 @@ class _ToolsMaintenancePanelState extends ConsumerState<ToolsMaintenancePanel> {
               _preview = null;
             }),
           ),
-          const SizedBox(height: AppTokens.s8),
-          ToolsTextField(
-            controller: _days,
-            label: 'أقدم من عدد أيام',
-            keyboardType: TextInputType.number,
-          ),
+          // VACUUM / failed webhooks have no age window — the field is hidden
+          // for them (owner 2026-10-06; the server ignores it).
+          if (maintenanceUsesDays(_action)) ...[
+            const SizedBox(height: AppTokens.s8),
+            ToolsTextField(
+              controller: _days,
+              label: 'أقدم من عدد أيام',
+              keyboardType: TextInputType.number,
+            ),
+          ],
           const SizedBox(height: AppTokens.s8),
           OutlinedButton.icon(
             onPressed: widget.busy ? null : _previewNow,
@@ -231,3 +235,8 @@ String _maintenanceActionLabel(String value) {
     _ => 'عملية صيانة مخصصة',
   };
 }
+
+/// Maintenance actions that delete rows older than «days». VACUUM and the
+/// failed-webhooks purge have no age window (owner 2026-10-06).
+bool maintenanceUsesDays(String action) =>
+    const {'purge_radacct', 'purge_sync_done', 'purge_audit'}.contains(action);

@@ -117,6 +117,7 @@ void main() {
     expect(body['rate_down_unit'], 'Mbps');
     expect(body['rate_up'], 25);
     expect(body['burst'], '60M/30M');
-    expect(body['priority'], 5);
+    // «الأولوية» removed (owner 2026-10-06) — never sent.
+    expect(body.containsKey('priority'), isFalse);
   });
 }

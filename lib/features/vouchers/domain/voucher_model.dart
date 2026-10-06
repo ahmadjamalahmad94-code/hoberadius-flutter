@@ -103,24 +103,23 @@ class VoucherRecord {
   String get planLabel => planId == null ? 'بدون باقة' : 'باقة رقم $planId';
 }
 
+/// Voucher generation. «plan_id» is never sent (owner 2026-10-06: removed —
+/// redeeming a voucher never read it).
 class VoucherGenerateDraft {
   const VoucherGenerateDraft({
     required this.amount,
     required this.count,
-    required this.planId,
     required this.expireAt,
   });
 
   final double amount;
   final int count;
-  final int? planId;
   final DateTime? expireAt;
 
   Map<String, dynamic> toApiJson() {
     return {
       'amount': amount,
       'count': count,
-      if (planId != null && planId! > 0) 'plan_id': planId,
       if (expireAt != null) 'expire_at': toServerUtcIso(expireAt!),
     };
   }

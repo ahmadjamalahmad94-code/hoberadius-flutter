@@ -28,7 +28,7 @@ class RadiusResourcesScreen extends ConsumerWidget {
         PageHeader(
           title: 'موارد تشغيل الريدياس',
           subtitle:
-              'إدارة تجمعات عناوين IP ومجموعات المشاركة التي تستخدمها الباقات والمشتركين بدون كتابة إعدادات تقنية خام.',
+              'إدارة مجموعات المشاركة وملفات السرعة بدون كتابة إعدادات تقنية خام.',
           actions: [
             OutlinedButton.icon(
               onPressed: () => ref.invalidate(radiusResourcesSnapshotProvider),
@@ -40,7 +40,6 @@ class RadiusResourcesScreen extends ConsumerWidget {
               icon: const Icon(Icons.add),
               label: Text(
                 switch (tab) {
-                  RadiusResourcesTab.pools => 'تجمع جديد',
                   RadiusResourcesTab.shareGroups => 'مجموعة جديدة',
                   RadiusResourcesTab.bandwidthProfiles => 'ملف سرعة جديد',
                 },
@@ -66,7 +65,6 @@ class RadiusResourcesScreen extends ConsumerWidget {
               final wide = constraints.maxWidth >= 1080;
               final side = _SideGuide(snapshot: data, tab: tab);
               final list = switch (tab) {
-                RadiusResourcesTab.pools => _PoolsPanel(items: data.pools),
                 RadiusResourcesTab.shareGroups =>
                   _ShareGroupsPanel(items: data.shareGroups),
                 RadiusResourcesTab.bandwidthProfiles =>
@@ -103,8 +101,6 @@ class RadiusResourcesScreen extends ConsumerWidget {
     RadiusResourcesTab tab,
   ) {
     switch (tab) {
-      case RadiusResourcesTab.pools:
-        _showPoolDialog(context: context, ref: ref);
       case RadiusResourcesTab.shareGroups:
         _showShareGroupDialog(context: context, ref: ref);
       case RadiusResourcesTab.bandwidthProfiles:
@@ -124,11 +120,6 @@ class _Tabs extends ConsumerWidget {
       showSelectedIcon: false,
       selected: {selected},
       segments: const [
-        ButtonSegment(
-          value: RadiusResourcesTab.pools,
-          icon: Icon(Icons.hub_outlined),
-          label: Text('تجمعات العناوين'),
-        ),
         ButtonSegment(
           value: RadiusResourcesTab.shareGroups,
           icon: Icon(Icons.groups_2_outlined),
@@ -159,44 +150,37 @@ class _SideGuide extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isPools = tab == RadiusResourcesTab.pools;
-    final rows = isPools
-        ? [
-            ('التجمعات', '${snapshot.pools.length} تجمع محفوظ'),
-            ('مرتبطة براوتر', '${snapshot.assignedPoolRouters} تجمع'),
-            ('الاستخدام', 'تربط الباقات والمشتركين بنطاق عناوين واضح.'),
-          ]
-        : [
-            ('المجموعات', '${snapshot.shareGroups.length} مجموعة محفوظة'),
-            ('مفعلة', '${snapshot.activeGroups} مجموعة'),
-            ('الاستخدام', 'تجمع أكثر من مشترك على حصة أو سرعة مشتركة.'),
-          ];
+    // «تجمعات العناوين» (IP pools) removed (owner 2026-10-06): the pools
+    // table is never read by RADIUS.
+    final rows = [
+      ('المجموعات', '${snapshot.shareGroups.length} مجموعة محفوظة'),
+      ('مفعلة', '${snapshot.activeGroups} مجموعة'),
+      ('الاستخدام', 'تجمع أكثر من مشترك تحت اسم واحد.'),
+    ];
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
+          const CircleAvatar(
             backgroundColor: AppTokens.brandSoft,
             child: Icon(
-              isPools ? Icons.hub_outlined : Icons.groups_2_outlined,
+              Icons.groups_2_outlined,
               color: AppTokens.brandInk,
             ),
           ),
           const SizedBox(height: AppTokens.s12),
-          Text(
-            isPools ? 'تجمعات عناوين IP' : 'مجموعات المشاركة',
-            style: const TextStyle(
+          const Text(
+            'مجموعات المشاركة',
+            style: TextStyle(
               fontWeight: FontWeight.w900,
               fontSize: 17,
               color: AppTokens.sidebarBg,
             ),
           ),
           const SizedBox(height: AppTokens.s8),
-          Text(
-            isPools
-                ? 'استخدم هذه الصفحة لتحديد النطاقات التي يسحب منها الريدياس عناوين المشتركين عند التشغيل.'
-                : 'استخدمها لتجميع مشتركين على حصة أو سرعة مشتركة، مع حد أقصى للأعضاء عند الحاجة.',
-            style: const TextStyle(color: AppTokens.textMuted, height: 1.45),
+          const Text(
+            'استخدمها لتجميع مشتركين تحت اسم واحد.',
+            style: TextStyle(color: AppTokens.textMuted, height: 1.45),
           ),
           const Divider(height: AppTokens.s24),
           for (final row in rows) ...[
@@ -216,144 +200,6 @@ class _SideGuide extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _PoolsPanel extends ConsumerWidget {
-  const _PoolsPanel({required this.items});
-
-  final List<IpPoolResource> items;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (items.isEmpty) {
-      return EmptyState(
-        icon: Icons.hub_outlined,
-        title: 'لا توجد تجمعات عناوين بعد',
-        subtitle: 'أضف أول تجمع ليظهر كخيار جاهز عند ربط الباقات أو الراوترات.',
-        action: ElevatedButton.icon(
-          onPressed: () => _showPoolDialog(context: context, ref: ref),
-          icon: const Icon(Icons.add),
-          label: const Text('تجمع جديد'),
-        ),
-      );
-    }
-    return AppCard(
-      padding: EdgeInsets.zero,
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) => _PoolTile(pool: items[index]),
-      ),
-    );
-  }
-}
-
-class _PoolTile extends ConsumerStatefulWidget {
-  const _PoolTile({required this.pool});
-
-  final IpPoolResource pool;
-
-  @override
-  ConsumerState<_PoolTile> createState() => _PoolTileState();
-}
-
-class _PoolTileState extends ConsumerState<_PoolTile> {
-  bool _busy = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final pool = widget.pool;
-    return Padding(
-      padding: const EdgeInsets.all(AppTokens.s12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const CircleAvatar(
-            backgroundColor: AppTokens.brandSoft,
-            child: Icon(Icons.hub_outlined, color: AppTokens.brandInk),
-          ),
-          const SizedBox(width: AppTokens.s12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  pool.poolName.isEmpty ? 'تجمع #${pool.id}' : pool.poolName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: AppTokens.sidebarBg,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Wrap(
-                  spacing: AppTokens.s8,
-                  runSpacing: AppTokens.s8,
-                  children: [
-                    StatusPill(text: pool.rangeIp, tone: PillTone.blue),
-                    if (pool.localIp.isNotEmpty)
-                      StatusPill(
-                        text: 'عنوان البوابة ${pool.localIp}',
-                        tone: PillTone.cyan,
-                      ),
-                    if (pool.routerId != null)
-                      StatusPill(
-                        text: 'راوتر #${pool.routerId}',
-                        tone: PillTone.purple,
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppTokens.s8),
-          Wrap(
-            spacing: AppTokens.s8,
-            children: [
-              OutlinedButton.icon(
-                onPressed: _busy
-                    ? null
-                    : () => _showPoolDialog(
-                          context: context,
-                          ref: ref,
-                          pool: pool,
-                        ),
-                icon: const Icon(Icons.edit_outlined),
-                label: const Text('تعديل'),
-              ),
-              IconButton(
-                tooltip: 'حذف',
-                onPressed: _busy ? null : _delete,
-                icon: const Icon(Icons.delete_outline),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _delete() async {
-    final ok = await _confirm(
-      context,
-      title: 'حذف تجمع العناوين؟',
-      message: 'سيتم حذف التجمع من الخادم. تأكد أنه غير مستخدم في باقة نشطة.',
-    );
-    if (!ok) return;
-    setState(() => _busy = true);
-    try {
-      await ref
-          .read(radiusResourcesRepositoryProvider)
-          .deletePool(widget.pool.id);
-      ref.invalidate(radiusResourcesSnapshotProvider);
-      if (mounted) _snack(context, 'تم حذف تجمع العناوين');
-    } catch (error) {
-      if (mounted) _snack(context, visibleErrorMessage(error));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
   }
 }
 
@@ -459,22 +305,6 @@ class _ShareGroupTileState extends ConsumerState<_ShareGroupTile> {
             runSpacing: AppTokens.s8,
             children: [
               StatusPill(text: '${group.members} عضو', tone: PillTone.blue),
-              if (group.maxMembers > 0)
-                StatusPill(
-                  text: 'الحد ${group.maxMembers}',
-                  tone: PillTone.cyan,
-                ),
-              if (group.sharedQuotaMb > 0)
-                StatusPill(
-                  text: 'الحصة ${group.sharedQuotaMb} م.ب',
-                  tone: PillTone.purple,
-                ),
-              if (group.sharedSpeedDownKbps > 0 || group.sharedSpeedUpKbps > 0)
-                StatusPill(
-                  text:
-                      'تنزيل ${group.sharedSpeedDownKbps} / رفع ${group.sharedSpeedUpKbps} كيلوبت',
-                  tone: PillTone.amber,
-                ),
             ],
           ),
           const SizedBox(height: AppTokens.s12),
@@ -761,155 +591,6 @@ class _MembersDialogState extends ConsumerState<_MembersDialog> {
   }
 }
 
-Future<void> _showPoolDialog({
-  required BuildContext context,
-  required WidgetRef ref,
-  IpPoolResource? pool,
-}) async {
-  await showDialog<void>(
-    context: context,
-    builder: (_) => _PoolDialog(pool: pool),
-  );
-}
-
-class _PoolDialog extends ConsumerStatefulWidget {
-  const _PoolDialog({this.pool});
-
-  final IpPoolResource? pool;
-
-  @override
-  ConsumerState<_PoolDialog> createState() => _PoolDialogState();
-}
-
-class _PoolDialogState extends ConsumerState<_PoolDialog> {
-  final _form = GlobalKey<FormState>();
-  late final TextEditingController _name;
-  late final TextEditingController _range;
-  late final TextEditingController _local;
-  late final TextEditingController _router;
-  bool _saving = false;
-
-  bool get _editing => widget.pool != null;
-
-  @override
-  void initState() {
-    super.initState();
-    final pool = widget.pool;
-    _name = TextEditingController(text: pool?.poolName ?? '');
-    _range = TextEditingController(text: pool?.rangeIp ?? '');
-    _local = TextEditingController(text: pool?.localIp ?? '');
-    _router = TextEditingController(text: pool?.routerId?.toString() ?? '');
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _range.dispose();
-    _local.dispose();
-    _router.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(_editing ? 'تعديل تجمع العناوين' : 'تجمع عناوين جديد'),
-      content: SizedBox(
-        width: 560,
-        child: Form(
-          key: _form,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _name,
-                decoration: const InputDecoration(labelText: 'اسم التجمع'),
-                validator: _required,
-              ),
-              const SizedBox(height: AppTokens.s12),
-              TextFormField(
-                controller: _range,
-                textDirection: TextDirection.ltr,
-                decoration: const InputDecoration(
-                  labelText: 'نطاق العناوين',
-                  hintText: '10.10.0.10-10.10.0.250',
-                ),
-                validator: _required,
-              ),
-              const SizedBox(height: AppTokens.s12),
-              TextFormField(
-                controller: _local,
-                textDirection: TextDirection.ltr,
-                decoration: const InputDecoration(
-                  labelText: 'عنوان البوابة المحلي',
-                  hintText: 'اختياري',
-                ),
-              ),
-              const SizedBox(height: AppTokens.s12),
-              TextFormField(
-                controller: _router,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: 'رقم الراوتر',
-                  hintText: 'اختياري',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(),
-          child: const Text('إلغاء'),
-        ),
-        FilledButton.icon(
-          onPressed: _saving ? null : _save,
-          icon: _saving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.save_outlined),
-          label: const Text('حفظ'),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _save() async {
-    if (!(_form.currentState?.validate() ?? false)) return;
-    setState(() => _saving = true);
-    try {
-      final existing = widget.pool;
-      final pool = IpPoolResource(
-        id: existing?.id ?? 0,
-        poolName: _name.text.trim(),
-        rangeIp: _range.text.trim(),
-        localIp: _local.text.trim(),
-        routerId: int.tryParse(_router.text.trim()),
-        createdAt: existing?.createdAt,
-      );
-      final repo = ref.read(radiusResourcesRepositoryProvider);
-      if (existing == null) {
-        await repo.createPool(pool);
-      } else {
-        await repo.updatePool(pool);
-      }
-      ref.invalidate(radiusResourcesSnapshotProvider);
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      _snack(context, 'تم حفظ تجمع العناوين');
-    } catch (error) {
-      if (mounted) _snack(context, visibleErrorMessage(error));
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-}
-
 class _BandwidthProfilesPanel extends ConsumerWidget {
   const _BandwidthProfilesPanel({required this.items});
 
@@ -989,10 +670,6 @@ class _BandwidthProfileTileState extends ConsumerState<_BandwidthProfileTile> {
                     StatusPill(text: p.rateLabel, tone: PillTone.blue),
                     if (p.burst.isNotEmpty)
                       StatusPill(text: 'دفعة ${p.burst}', tone: PillTone.amber),
-                    StatusPill(
-                      text: 'أولوية ${p.priority}',
-                      tone: PillTone.purple,
-                    ),
                   ],
                 ),
               ],
@@ -1075,7 +752,6 @@ class _BandwidthProfileDialogState
   late final TextEditingController _down;
   late final TextEditingController _up;
   late final TextEditingController _burst;
-  late final TextEditingController _priority;
   String _downUnit = 'Kbps';
   String _upUnit = 'Kbps';
   bool _saving = false;
@@ -1092,7 +768,6 @@ class _BandwidthProfileDialogState
     _down = TextEditingController(text: _optionalNumber(p?.rateDown));
     _up = TextEditingController(text: _optionalNumber(p?.rateUp));
     _burst = TextEditingController(text: p?.burst ?? '');
-    _priority = TextEditingController(text: _optionalNumber(p?.priority));
     _downUnit = _units.contains(p?.rateDownUnit) ? p!.rateDownUnit : 'Kbps';
     _upUnit = _units.contains(p?.rateUpUnit) ? p!.rateUpUnit : 'Kbps';
   }
@@ -1103,7 +778,6 @@ class _BandwidthProfileDialogState
     _down.dispose();
     _up.dispose();
     _burst.dispose();
-    _priority.dispose();
     super.dispose();
   }
 
@@ -1180,8 +854,7 @@ class _BandwidthProfileDialogState
                   helperMaxLines: 2,
                 ),
               ),
-              const SizedBox(height: AppTokens.s12),
-              _NumberField(controller: _priority, label: 'الأولوية'),
+              // «الأولوية» removed (owner 2026-10-06): nothing reads it.
             ],
           ),
         ),
@@ -1219,7 +892,6 @@ class _BandwidthProfileDialogState
         rateUp: _number(_up),
         rateUpUnit: _upUnit,
         burst: _burst.text.trim(),
-        priority: _number(_priority),
       );
       final repo = ref.read(radiusResourcesRepositoryProvider);
       if (existing == null) {
@@ -1263,10 +935,6 @@ class _ShareGroupDialogState extends ConsumerState<_ShareGroupDialog> {
   final _form = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _description;
-  late final TextEditingController _quota;
-  late final TextEditingController _down;
-  late final TextEditingController _up;
-  late final TextEditingController _maxMembers;
   bool _enabled = true;
   bool _saving = false;
 
@@ -1278,18 +946,6 @@ class _ShareGroupDialogState extends ConsumerState<_ShareGroupDialog> {
     final group = widget.group;
     _name = TextEditingController(text: group?.name ?? '');
     _description = TextEditingController(text: group?.description ?? '');
-    _quota = TextEditingController(
-      text: _optionalNumber(group?.sharedQuotaMb),
-    );
-    _down = TextEditingController(
-      text: _optionalNumber(group?.sharedSpeedDownKbps),
-    );
-    _up = TextEditingController(
-      text: _optionalNumber(group?.sharedSpeedUpKbps),
-    );
-    _maxMembers = TextEditingController(
-      text: _optionalNumber(group?.maxMembers),
-    );
     _enabled = group?.enabled ?? true;
   }
 
@@ -1297,10 +953,6 @@ class _ShareGroupDialogState extends ConsumerState<_ShareGroupDialog> {
   void dispose() {
     _name.dispose();
     _description.dispose();
-    _quota.dispose();
-    _down.dispose();
-    _up.dispose();
-    _maxMembers.dispose();
     super.dispose();
   }
 
@@ -1330,34 +982,8 @@ class _ShareGroupDialogState extends ConsumerState<_ShareGroupDialog> {
                   ),
                   maxLines: 2,
                 ),
-                const SizedBox(height: AppTokens.s12),
-                _NumberField(
-                  controller: _quota,
-                  label: 'الحصة المشتركة بالميغابايت',
-                ),
-                const SizedBox(height: AppTokens.s12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _NumberField(
-                        controller: _down,
-                        label: 'سرعة التحميل كيلوبت',
-                      ),
-                    ),
-                    const SizedBox(width: AppTokens.s8),
-                    Expanded(
-                      child: _NumberField(
-                        controller: _up,
-                        label: 'سرعة الرفع كيلوبت',
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppTokens.s12),
-                _NumberField(
-                  controller: _maxMembers,
-                  label: 'أقصى عدد أعضاء',
-                ),
+                // Shared quota / speeds / max members removed (owner
+                // 2026-10-06): nothing enforces them.
                 const SizedBox(height: AppTokens.s8),
                 SwitchListTile(
                   value: _enabled,
@@ -1399,10 +1025,10 @@ class _ShareGroupDialogState extends ConsumerState<_ShareGroupDialog> {
         id: existing?.id ?? 0,
         name: _name.text.trim(),
         description: _description.text.trim(),
-        sharedQuotaMb: _number(_quota),
-        sharedSpeedDownKbps: _number(_down),
-        sharedSpeedUpKbps: _number(_up),
-        maxMembers: _number(_maxMembers),
+        sharedQuotaMb: existing?.sharedQuotaMb ?? 0,
+        sharedSpeedDownKbps: existing?.sharedSpeedDownKbps ?? 0,
+        sharedSpeedUpKbps: existing?.sharedSpeedUpKbps ?? 0,
+        maxMembers: existing?.maxMembers ?? 0,
         enabled: _enabled,
         members: existing?.members ?? 0,
         createdAt: existing?.createdAt,

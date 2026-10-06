@@ -12,7 +12,15 @@ class CardBatchOperationsPage {
     this.perPage = 25,
     this.pages = 1,
     this.nextBatchId,
+    this.defaultUsernameLength,
+    this.defaultPasswordLength,
   });
+
+  /// `meta.card_defaults` (updated servers): the network's «طول اسم/كلمة
+  /// البطاقة الافتراضي» settings — the generator form starts from them, and
+  /// the server applies them when a length is not sent. Null on older servers.
+  final int? defaultUsernameLength;
+  final int? defaultPasswordLength;
 
   /// `meta.next_batch_id` (updated servers): the id the NEXT generated batch
   /// gets, as the web generator shows it. Null on older servers.
@@ -49,8 +57,17 @@ class CardBatchOperationsPage {
         (data['meta'] is Map ? (data['meta'] as Map)['next_batch_id'] : null) ??
             data['next_batch_id'],
       ),
+      defaultUsernameLength: _cardDefault(data, 'username_length'),
+      defaultPasswordLength: _cardDefault(data, 'password_length'),
     );
   }
+}
+
+int? _cardDefault(Map<String, dynamic> data, String key) {
+  final meta = data['meta'];
+  final defaults = meta is Map ? meta['card_defaults'] : null;
+  final value = defaults is Map ? cardParseInt(defaults[key]) : null;
+  return (value != null && value > 0) ? value : null;
 }
 
 class CardBatchOperationsTotals {

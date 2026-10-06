@@ -197,7 +197,6 @@ const kRouteRequirements = <String, RouteRequirement>{
     section: 'network',
     writeSection: true,
   ),
-  '/mikrotik': RouteRequirement(anyOf: ['nas.view'], section: 'network'),
   '/router-operations':
       RouteRequirement(anyOf: ['nas.view'], section: 'network'),
   // MikroTik-domain pages (programming, smart alerts, network policy) are

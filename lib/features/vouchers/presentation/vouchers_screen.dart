@@ -12,8 +12,6 @@ import '../../../shared/widgets/app_card.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/page_header.dart';
 import '../../../shared/widgets/status_pill.dart';
-import '../../plans/data/plans_repository.dart';
-import '../../plans/domain/plan_model.dart';
 import '../data/vouchers_repository.dart';
 import '../domain/voucher_model.dart';
 
@@ -28,10 +26,6 @@ const _statusOptions = [
 final _vouchersProvider =
     FutureProvider.autoDispose.family<VoucherPage, String>((ref, status) {
   return ref.watch(vouchersRepositoryProvider).list(status: status);
-});
-
-final _plansProvider = FutureProvider.autoDispose<List<Plan>>((ref) {
-  return ref.watch(plansRepositoryProvider).list();
 });
 
 class VouchersScreen extends ConsumerStatefulWidget {
@@ -155,11 +149,7 @@ class _VouchersScreenState extends ConsumerState<VouchersScreen> {
   }
 
   Future<void> _generateVouchers() async {
-    final plans = await ref.read(_plansProvider.future).catchError(
-          (_) => <Plan>[],
-        );
-    if (!mounted) return;
-    final draft = await _voucherDialog(context, plans: plans);
+    final draft = await _voucherDialog(context);
     if (draft == null) return;
     try {
       final result = await ref.read(vouchersRepositoryProvider).generate(draft);
@@ -327,7 +317,6 @@ class _VouchersTable extends StatelessWidget {
             DataColumn(label: Text('#')),
             DataColumn(label: Text('الكود')),
             DataColumn(label: Text('القيمة')),
-            DataColumn(label: Text('الباقة')),
             DataColumn(label: Text('الحالة')),
             DataColumn(label: Text('تنتهي في')),
             DataColumn(label: Text('أُنشئت في')),
@@ -345,7 +334,6 @@ class _VouchersTable extends StatelessWidget {
                     ),
                   ),
                   DataCell(Text(_money(voucher.amount))),
-                  DataCell(Text(voucher.planLabel)),
                   DataCell(
                     StatusPill(
                       text: voucher.statusLabel,
@@ -431,7 +419,6 @@ class _VoucherCard extends StatelessWidget {
           ),
           const SizedBox(height: AppTokens.s12),
           _InfoLine(label: 'القيمة', value: _money(voucher.amount)),
-          _InfoLine(label: 'الباقة', value: voucher.planLabel),
           _InfoLine(label: 'تنتهي في', value: _fmt(voucher.expireAt)),
           _InfoLine(label: 'أُنشئت في', value: _fmt(voucher.createdAt)),
           if (voucher.usedBySubscriberId != null)
@@ -497,13 +484,11 @@ class _InfoLine extends StatelessWidget {
   }
 }
 
-Future<VoucherGenerateDraft?> _voucherDialog(
-  BuildContext context, {
-  required List<Plan> plans,
-}) async {
+/// «الباقة» was removed from vouchers (owner 2026-10-06): redeeming a voucher
+/// never read it.
+Future<VoucherGenerateDraft?> _voucherDialog(BuildContext context) async {
   final amount = TextEditingController(text: '5');
   final count = TextEditingController(text: '20');
-  int? planId;
   DateTime? expireAt;
 
   return showDialog<VoucherGenerateDraft>(
@@ -534,24 +519,6 @@ Future<VoucherGenerateDraft?> _voucherDialog(
                   helperText:
                       'أكبر من صفر — الحدّ الأعلى $kMaxMoneyAmountLabel.',
                 ),
-              ),
-              const SizedBox(height: AppTokens.s8),
-              DropdownButtonFormField<int?>(
-                isExpanded: true,
-                initialValue: planId,
-                decoration: const InputDecoration(labelText: 'الباقة'),
-                items: [
-                  const DropdownMenuItem<int?>(
-                    value: null,
-                    child: Text('بدون ربط بباقة'),
-                  ),
-                  for (final plan in plans.where((plan) => plan.id != null))
-                    DropdownMenuItem<int?>(
-                      value: plan.id,
-                      child: Text(plan.name),
-                    ),
-                ],
-                onChanged: (value) => setState(() => planId = value),
               ),
               const SizedBox(height: AppTokens.s8),
               OutlinedButton.icon(
@@ -598,7 +565,6 @@ Future<VoucherGenerateDraft?> _voucherDialog(
                 VoucherGenerateDraft(
                   amount: parsedAmount,
                   count: parsedCount,
-                  planId: planId,
                   expireAt: expireAt,
                 ),
               );

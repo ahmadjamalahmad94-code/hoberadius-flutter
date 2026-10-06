@@ -60,10 +60,8 @@ class _LifecycleCreatePolicyCardState extends State<LifecycleCreatePolicyCard> {
                           value: 'subscriber',
                           child: Text('مشترك'),
                         ),
-                        DropdownMenuItem(
-                          value: 'external_file',
-                          child: Text('ملف خارجي'),
-                        ),
+                        // «ملف خارجي» removed (owner 2026-10-06): such a
+                        // policy was saved but never executed.
                       ],
                       onChanged: (value) =>
                           setState(() => _entityType = value ?? 'card'),

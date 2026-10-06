@@ -3,10 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/radius_resources_repository.dart';
 import '../domain/radius_resources_model.dart';
 
-enum RadiusResourcesTab { pools, shareGroups, bandwidthProfiles }
+// «pools» removed (owner 2026-10-06): IP pools are never read by RADIUS.
+enum RadiusResourcesTab { shareGroups, bandwidthProfiles }
 
 final selectedRadiusResourcesTabProvider =
-    StateProvider<RadiusResourcesTab>((ref) => RadiusResourcesTab.pools);
+    StateProvider<RadiusResourcesTab>((ref) => RadiusResourcesTab.shareGroups);
 
 final radiusResourcesSnapshotProvider =
     FutureProvider.autoDispose<RadiusResourcesSnapshot>((ref) {

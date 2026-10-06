@@ -749,7 +749,7 @@ void main() {
       expect(adapter.where('POST', '/debit').single.jsonBody['amount'], 5.5);
     });
 
-    testWidgets('event record: actor id «-5» refused, «٧» sent as 7',
+    testWidgets('event record: target id «-5» refused, «٧» sent as 7 (no actor sent)',
         (tester) async {
       final adapter = await _pump(
         tester,
@@ -768,20 +768,22 @@ void main() {
       await tester.tap(find.text('تسجيل حدث').first);
       await tester.pumpAndSettle();
       await tester.enterText(field('وصف الحدث'), 'مراجعة');
-      await tester.enterText(field('رقم المنفذ'), '-5');
+      await tester.enterText(field('رقم العنصر'), '-5');
       await tester.pumpAndSettle();
       expect(find.text('-5'), findsOneWidget); // kept as typed
       expect(find.text('القيم السالبة غير مسموحة.'), findsOneWidget);
       await tester.tap(find.text('حفظ الحدث'));
       await tester.pumpAndSettle();
       expect(adapter.where('POST', '/api/v1/events'), isEmpty);
-      await tester.enterText(field('رقم المنفذ'), '٧');
+      await tester.enterText(field('رقم العنصر'), '٧');
       await tester.tap(find.text('حفظ الحدث'));
       await tester.pumpAndSettle();
-      expect(
-        adapter.where('POST', '/api/v1/events').single.jsonBody['actor_id'],
-        7,
-      );
+      final body = adapter.where('POST', '/api/v1/events').single.jsonBody;
+      expect(body['target_id'], 7);
+      // «من نفذ» removed (owner 2026-10-06): the server takes the actor
+      // from the token.
+      expect(body.containsKey('actor_id'), isFalse);
+      expect(body.containsKey('actor_type'), isFalse);
     });
   });
 

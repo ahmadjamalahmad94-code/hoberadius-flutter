@@ -601,7 +601,7 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
   void _load(RouterAlertTarget router) {
     _enabled = router.enabled;
     if (router.overrideKnown) {
-      // The router's OWN values; empty = «الافتراضي» (the hint shows it).
+      // The router's OWN values; empty = «يرث العامّ (X)» (the hint).
       _offlineAfter.text = router.overrideOfflineAfterMin?.toString() ?? '';
       _speed.text = router.overrideSpeedMbps?.toString() ?? '';
       _usageGb.text = router.overrideUsageGb?.toString() ?? '';
@@ -679,7 +679,9 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
                 label: 'مفصول بعد',
                 suffix: 'دقيقة',
                 hint: widget.router.overrideKnown
-                    ? '${widget.router.offlineAfterMin}'
+                    ? inheritsGlobalLabel(
+                        widget.router.inheritedOfflineAfterMin,
+                      )
                     : null,
               ),
               _NumberField(
@@ -687,7 +689,7 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
                 label: 'حد السرعة',
                 suffix: 'Mbps',
                 hint: widget.router.overrideKnown
-                    ? '${widget.router.normalSpeedMbps}'
+                    ? inheritsGlobalLabel(widget.router.inheritedSpeedMbps)
                     : null,
               ),
               _NumberField(
@@ -695,13 +697,16 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
                 label: 'حد الاستهلاك',
                 suffix: 'GB',
                 hint: widget.router.overrideKnown
-                    ? '${widget.router.normalUsageGb}'
+                    ? inheritsGlobalLabel(widget.router.inheritedUsageGb)
                     : null,
               ),
               _WindowPicker(
                 value: _window,
                 windows: widget.windows,
                 allowDefault: widget.router.overrideKnown,
+                defaultLabel: inheritsGlobalLabel(
+                  usageWindowLabel(widget.router.inheritedUsageWindow),
+                ),
                 onChanged: (value) => setState(() => _window = value),
               ),
             ],
@@ -709,7 +714,7 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
           if (widget.router.overrideKnown) ...[
             const SizedBox(height: AppTokens.s8),
             Text(
-              'فارغ = يستخدم الافتراضي العامّ (الظاهر باهتًا داخل الخانة).',
+              'فارغ = يرث القيمة العامّة (الظاهرة باهتًا) ويتبعها إن تغيّرت.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -744,7 +749,7 @@ class _RouterAlertCardState extends State<_RouterAlertCard> {
           const SnackBar(
             content: Text(
               'أدخل أرقامًا صحيحة (مفصول بعد ≥ 2، الباقي ≥ 1) أو اترك الخانة '
-              'فارغة للافتراضي',
+              'فارغة لترث القيمة العامّة',
             ),
           ),
         );
@@ -843,14 +848,16 @@ class _WindowPicker extends StatelessWidget {
     required this.windows,
     required this.onChanged,
     this.allowDefault = false,
+    this.defaultLabel = 'يرث العامّ',
   });
 
   final String value;
   final List<UsageWindowOption> windows;
   final ValueChanged<String> onChanged;
 
-  /// Per-router: a «الافتراضي» choice (key '') = inherit the global window.
+  /// Per-router: a «يرث العامّ» choice (key '') = inherit the global window.
   final bool allowDefault;
+  final String defaultLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -861,7 +868,7 @@ class _WindowPicker extends StatelessWidget {
           ]
         : windows;
     final options = [
-      if (allowDefault) const UsageWindowOption(key: '', label: 'الافتراضي'),
+      if (allowDefault) UsageWindowOption(key: '', label: defaultLabel),
       ...base,
     ];
     final safeValue =

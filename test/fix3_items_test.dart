@@ -17,7 +17,6 @@ import 'package:hoberadius_app/features/accounting/domain/accounting_model.dart'
 import 'package:hoberadius_app/features/accounting/presentation/financial_reports_screen.dart';
 import 'package:hoberadius_app/features/accounting/presentation/widgets/finance_summary_card.dart';
 import 'package:hoberadius_app/features/admins/domain/permission_labels.dart';
-import 'package:hoberadius_app/features/admins/presentation/admin_form_screen.dart';
 import 'package:hoberadius_app/features/cards/domain/card_batch_requests.dart';
 import 'package:hoberadius_app/features/dashboard/domain/dashboard_model.dart';
 import 'package:hoberadius_app/features/invoices/domain/invoice_model.dart';
@@ -560,11 +559,6 @@ void main() {
     test('dashboard alert «استخدام Disk مرتفع»', () {
       expect(humanizeAlertMessage('استخدام Disk مرتفع'), 'استخدام القرص مرتفع');
       expect(humanizeAlertMessage('Disk high'), 'Disk high');
-    });
-
-    test('the avatar-URL hint is one LTR run', () {
-      expect(kAvatarUrlHint, startsWith(kLtrIsolate));
-      expect(stripBidiMarks(kAvatarUrlHint), 'https://…');
     });
   });
 
