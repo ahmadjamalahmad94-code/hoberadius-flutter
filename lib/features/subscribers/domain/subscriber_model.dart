@@ -466,11 +466,11 @@ class Subscriber {
       'login_without_password': loginWithoutPassword,
       'device_limit_mode': deviceLimitMode,
       'auto_renewal': autoRenewal,
-      // «عنوان IP للبرودباند (PPPoE)» → Framed-IP-Address. Retired (owner
-      // 2026-10-06, never sent): pool, vlan_id, device_connection_file and
-      // the separate PPPoE name/password — a PPPoE subscriber logs in with
-      // its own username/password.
-      'pppoe_ip': pppoeIp,
+      // Retired (owner 2026-10-06, never sent): pool, vlan_id,
+      // device_connection_file and the separate PPPoE name/password — a
+      // PPPoE subscriber logs in with its own username/password. «IP PPPoE»
+      // (pppoe_ip) was merged into «IP ثابت» (static_ip, follow-up
+      // 2026-10-06): read for display only, never sent.
       'metadata': _metadata(),
     };
   }

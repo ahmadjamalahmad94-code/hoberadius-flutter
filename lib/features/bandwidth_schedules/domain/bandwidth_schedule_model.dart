@@ -1,5 +1,20 @@
 import 'package:hoberadius_app/core/format/server_time.dart';
 
+/// «طريقة الرجوع» — exactly two modes (owner follow-up 2026-10-06), both
+/// enforced by the server's schedule worker at window end:
+/// `profile_default` = live CoA back to the normal speed (no disconnect),
+/// `disconnect` = the session is disconnected and re-auths at normal speed.
+const Map<String, String> kScheduleRestoreModes = {
+  'profile_default': 'رجوع مباشر بدون فصل',
+  'disconnect': 'فصل الجلسة',
+};
+
+/// Any other (legacy) stored value means «رجوع مباشر» — as on the server.
+String normalizeScheduleRestoreMode(String? mode) =>
+    (mode ?? '').trim().toLowerCase() == 'disconnect'
+        ? 'disconnect'
+        : 'profile_default';
+
 class BandwidthSchedule {
   const BandwidthSchedule({
     required this.id,
@@ -62,7 +77,7 @@ class BandwidthSchedule {
       speedUpKbps: _asInt(json['speed_up_kbps']),
       cirDownKbps: _asInt(json['cir_down_kbps']),
       cirUpKbps: _asInt(json['cir_up_kbps']),
-      restoreMode: (json['restore_mode'] ?? 'profile_default').toString(),
+      restoreMode: normalizeScheduleRestoreMode(json['restore_mode']?.toString()),
       enabled: _asBool(json['enabled']),
       notes: (json['notes'] ?? '').toString(),
       createdAt: parseServerDateTime(json['created_at']),

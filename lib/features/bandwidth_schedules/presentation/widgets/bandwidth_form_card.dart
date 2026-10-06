@@ -7,6 +7,7 @@ import '../../../../shared/widgets/wheel_picker_fields.dart';
 import '../../../cards/domain/card_model.dart';
 import '../../../plans/domain/plan_model.dart';
 import '../../../subscribers/domain/subscriber_model.dart';
+import '../../domain/bandwidth_schedule_model.dart';
 import 'schedule_days_picker.dart';
 
 class BandwidthFormCard extends StatelessWidget {
@@ -168,23 +169,14 @@ class BandwidthFormCard extends StatelessWidget {
             ),
             const SizedBox(height: AppTokens.s12),
             DropdownButtonFormField<String>(
+              key: const ValueKey('bw-restore-mode'),
               isExpanded: true,
-              initialValue: restoreMode,
-              // parity-c: the web's three modes (the server now refuses
-              // anything else — previous_value/manual were app-only).
-              items: const [
-                DropdownMenuItem(
-                  value: 'profile_default',
-                  child: Text('الرجوع للسرعة الأساسية'),
-                ),
-                DropdownMenuItem(
-                  value: 'keep_current',
-                  child: Text('إبقاء آخر سرعة'),
-                ),
-                DropdownMenuItem(
-                  value: 'disconnect',
-                  child: Text('فصل الجلسة'),
-                ),
+              initialValue: normalizeScheduleRestoreMode(restoreMode),
+              // Owner follow-up 2026-10-06: exactly the web's two modes, both
+              // enforced at window end (the server refuses anything else).
+              items: [
+                for (final m in kScheduleRestoreModes.entries)
+                  DropdownMenuItem(value: m.key, child: Text(m.value)),
               ],
               onChanged: (v) => onRestoreChanged(v ?? 'profile_default'),
               decoration: const InputDecoration(

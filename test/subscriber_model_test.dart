@@ -173,7 +173,7 @@ void main() {
     c['allowed_macs']!.text = 'AA:BB';
     c['pppoe_username']!.text = 'pu';
     c['pppoe_password']!.text = 'pp';
-    c['pppoe_ip']!.text = '10.0.0.1';
+    c['static_ip']!.text = '10.0.0.1';
 
     final body = buildSubscriberFromForm(
       c,
@@ -205,6 +205,8 @@ void main() {
       'device_connection_file',
       'pppoe_username',
       'pppoe_password',
+      // «IP PPPoE» merged into «IP ثابت» (follow-up 2026-10-06)
+      'pppoe_ip',
     ]) {
       expect(body.containsKey(k), isFalse, reason: k);
     }
@@ -226,7 +228,7 @@ void main() {
     expect(body['equal_share_upload'], true);
     expect(body['device_count'], 2);
     expect(body['allowed_macs'], 'AA:BB');
-    expect(body['pppoe_ip'], '10.0.0.1');
+    expect(body['static_ip'], '10.0.0.1');
   });
 
   test('retired metadata is never sent; stored values survive a PATCH', () {
@@ -266,11 +268,25 @@ void main() {
     expect(meta['notifications'], {'on_login': true, 'email': 'a@b.co'});
   });
 
-  test('PPPoE IP: empty or IPv4 only (Framed-IP-Address)', () {
-    expect(validatePppoeIp(''), isNull);
-    expect(validatePppoeIp('10.0.0.5'), isNull);
-    expect(validatePppoeIp('999.1.1.1'), isNotNull);
-    expect(validatePppoeIp('2001:db8::1'), isNotNull);
-    expect(validatePppoeIp('10.0.0'), isNotNull);
+  test('«IP ثابت» (the one address field): empty or IPv4 only', () {
+    expect(validateStaticIp(''), isNull);
+    expect(validateStaticIp('10.0.0.5'), isNull);
+    expect(validateStaticIp('999.1.1.1'), isNotNull);
+    expect(validateStaticIp('10.0.0'), isNotNull);
+    expect(validateStaticIp('2001:db8::1'), contains('IPv4'));
+    // an untouched legacy value loaded into the form stays saveable (web parity)
+    expect(validateStaticIp('2001:db8::1', original: '2001:db8::1'), isNull);
+    expect(validateStaticIp('fe80::1', original: '2001:db8::1'), isNotNull);
+  });
+
+  test('pppoe_ip is read but never sent (merged into static_ip)', () {
+    final row = Subscriber.fromJson({'username': 'pp', 'pppoe_ip': '10.0.0.9'});
+    expect(row.pppoeIp, '10.0.0.9');
+    expect(row.toCreateBody().containsKey('pppoe_ip'), isFalse);
+    expect(
+      row.copyWith(remark: 'x').toPatchDiff(row).containsKey('pppoe_ip'),
+      isFalse,
+    );
+    expect(kSubscriberFormControllerKeys.contains('pppoe_ip'), isFalse);
   });
 }

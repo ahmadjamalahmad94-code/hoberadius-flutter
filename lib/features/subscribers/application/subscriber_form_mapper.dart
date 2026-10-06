@@ -40,7 +40,6 @@ const kSubscriberFormControllerKeys = [
   'daily_connection_time_min',
   'device_count',
   'allowed_macs',
-  'pppoe_ip',
   'dns1',
   'dns2',
   'simultaneous_use',
@@ -173,7 +172,6 @@ void applySubscriberToForm(
   c['device_count']!.text = s.deviceCount > 0 ? s.deviceCount.toString() : '';
   c['allowed_macs']!.text = s.allowedMacs;
   // pppoe — the fixed address only (the login is the subscriber's own)
-  c['pppoe_ip']!.text = s.pppoeIp;
   // radius / advanced / general
   c['dns1']!.text = s.primaryDnsPpp;
   c['dns2']!.text = s.secondaryDnsPpp;
@@ -272,7 +270,6 @@ Subscriber buildSubscriberFromForm(
       connectionTimeLimitEnabled: sel.connectionTimeLimitEnabled,
       equalShareDownload: sel.equalShareDownload,
       equalShareUpload: sel.equalShareUpload,
-      pppoeIp: c['pppoe_ip']!.text.trim(),
       workingDaysCsv: sel.workingDays.join(','),
       autoRenewal: sel.autoRenew,
       mtService: sel.mtService,

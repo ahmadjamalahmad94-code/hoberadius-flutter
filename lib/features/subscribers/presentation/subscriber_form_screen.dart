@@ -364,12 +364,11 @@ class _SubscriberFormScreenState extends ConsumerState<SubscriberFormScreen> {
                 setState(() => _connectionSchedule = v),
           ),
           const SizedBox(height: AppTokens.s12),
-          SubscriberPppoeSection(controllers: _c),
-          const SizedBox(height: AppTokens.s12),
           SubscriberRadiusSection(controllers: _c),
           const SizedBox(height: AppTokens.s12),
           SubscriberLockSection(
             controllers: _c,
+            originalStaticIp: _original?.staticIp ?? '',
             deviceLimitMode: _deviceLimitMode,
             onDeviceLimitModeChanged: (v) =>
                 setState(() => _deviceLimitMode = v),

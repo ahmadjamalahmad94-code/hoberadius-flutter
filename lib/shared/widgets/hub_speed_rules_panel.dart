@@ -18,17 +18,17 @@ import 'hub_unit_input.dart';
 /// The bottom "إضافة قاعدة جديدة" card stages a new rule which is
 /// appended to the list only when the operator taps "اعتماد القاعدة".
 /// Bulk actions (تفعيل الكل / تعطيل الكل) flip every rule's `enabled`.
-enum SpeedRestoreMode { profileDefault, keepCurrent, disconnect }
+/// «طريقة الرجوع» — exactly two modes (owner follow-up 2026-10-06), both
+/// enforced by the server's schedule worker at window end.
+enum SpeedRestoreMode { profileDefault, disconnect }
 
 const Map<SpeedRestoreMode, String> kSpeedRestoreLabels = {
-  SpeedRestoreMode.profileDefault: 'الرجوع للسرعة الأساسية',
-  SpeedRestoreMode.keepCurrent: 'إبقاء آخر سرعة',
+  SpeedRestoreMode.profileDefault: 'رجوع مباشر بدون فصل',
   SpeedRestoreMode.disconnect: 'فصل الجلسة',
 };
 
 const Map<SpeedRestoreMode, String> kSpeedRestoreCodes = {
   SpeedRestoreMode.profileDefault: 'profile_default',
-  SpeedRestoreMode.keepCurrent: 'keep_current',
   SpeedRestoreMode.disconnect: 'disconnect',
 };
 

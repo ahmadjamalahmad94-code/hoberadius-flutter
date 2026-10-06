@@ -45,12 +45,6 @@ class _BandwidthEditDialogState extends State<BandwidthEditDialog> {
   late String _restoreMode;
   late bool _enabled;
 
-  static const _restoreModes = [
-    'profile_default',
-    'keep_current',
-    'disconnect',
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -65,9 +59,7 @@ class _BandwidthEditDialogState extends State<BandwidthEditDialog> {
     _down = i.speedDownKbps;
     _up = i.speedUpKbps;
     _days = parseScheduleDays(i.daysCsv);
-    _restoreMode = _restoreModes.contains(i.restoreMode)
-        ? i.restoreMode
-        : 'profile_default';
+    _restoreMode = normalizeScheduleRestoreMode(i.restoreMode);
     _enabled = i.enabled;
   }
 
@@ -172,21 +164,12 @@ class _BandwidthEditDialogState extends State<BandwidthEditDialog> {
                 _speed('سرعة الرفع', _up, (v) => _up = v),
                 const SizedBox(height: AppTokens.s12),
                 DropdownButtonFormField<String>(
+                  key: const ValueKey('bw-edit-restore-mode'),
                   isExpanded: true,
                   initialValue: _restoreMode,
-                  items: const [
-                    DropdownMenuItem(
-                      value: 'profile_default',
-                      child: Text('الرجوع للسرعة الأساسية'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'keep_current',
-                      child: Text('إبقاء آخر سرعة'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'disconnect',
-                      child: Text('فصل الجلسة'),
-                    ),
+                  items: [
+                    for (final m in kScheduleRestoreModes.entries)
+                      DropdownMenuItem(value: m.key, child: Text(m.value)),
                   ],
                   onChanged: (v) =>
                       setState(() => _restoreMode = v ?? 'profile_default'),

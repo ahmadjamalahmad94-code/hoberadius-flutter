@@ -27,25 +27,42 @@ const kSimultaneousUseHint =
     'من الجهاز نفسه. أكبر من 0 = يتقدّم على «عدد الأجهزة المسموحة»؛ 0 = '
     'يُطبَّق «عدد الأجهزة المسموحة».';
 
-/// «عنوان IP للبرودباند (PPPoE)» — the same help as the web form.
-const kPppoeIpHint =
-    'عنوان IPv4 ثابت يُرسَل للراوتر عند دخول المشترك (Framed-IP-Address). '
-    'يدخل مشترك البرودباند باسم الدخول وكلمة المرور الأساسيّين. إن ضُبط '
-    '«IP ثابت» فيجب أن يطابقه، ولا يُعطى العنوان لمشتركين اثنين.';
+/// «IP ثابت» — the subscriber's ONE fixed address (owner follow-up
+/// 2026-10-06: «IP PPPoE» was merged into it). Same help as the web form.
+const kStaticIpHint =
+    'عنوانٌ ثابت (IPv4) يُرسَل للراوتر عند دخول المشترك — هوت سبوت أو '
+    'برودباند (PPPoE). لا يُعطى العنوان لمشتركين اثنين.';
 
-/// Empty, or a dotted IPv4 address (Framed-IP-Address is IPv4).
-String? validatePppoeIp(String? value) {
-  final v = (value ?? '').trim();
-  if (v.isEmpty) return null;
-  final parts = v.split('.');
-  final ok = parts.length == 4 &&
+/// Shown under «IP ثابت» when the STORED value is not IPv4 (a legacy IPv6 /
+/// malformed value): kept on the server but never sent to the router.
+const kStaticIpLegacyHint =
+    'العنوان المحفوظ ليس عنوان IPv4 صالحًا فلا يُرسَل للراوتر — صحّحه إلى '
+    'IPv4 (مثل 10.0.0.5) أو امسحه.';
+
+/// True for a dotted IPv4 address (Framed-IP-Address is IPv4-only).
+bool isIpv4Address(String value) {
+  final parts = value.trim().split('.');
+  return parts.length == 4 &&
       parts.every((p) {
         if (p.isEmpty || p.length > 3 || !RegExp(r'^[0-9]+$').hasMatch(p)) {
           return false;
         }
         return int.parse(p) <= 255;
       });
-  return ok ? null : 'عنوان IPv4 غير صالح (مثل 10.0.0.5)';
+}
+
+/// Empty, or an IPv4 address — IPv6 and junk are refused in Arabic (the
+/// server says the same with a 422). [original] = the value loaded into the
+/// form: an untouched legacy value stays saveable, as on the web.
+String? validateStaticIp(String? value, {String original = ''}) {
+  final v = (value ?? '').trim();
+  if (v.isEmpty) return null;
+  if (original.trim().isNotEmpty && v == original.trim()) return null;
+  if (isIpv4Address(v)) return null;
+  if (v.contains(':')) {
+    return 'IP الثابت يجب أن يكون IPv4 (مثل 10.0.0.5) — IPv6 غير مدعوم';
+  }
+  return 'عنوان IPv4 غير صالح (مثل 10.0.0.5)';
 }
 
 class _NumField extends StatelessWidget {
@@ -510,9 +527,14 @@ class SubscriberLockSection extends StatelessWidget {
     required this.controllers,
     this.deviceLimitMode = '',
     this.onDeviceLimitModeChanged,
+    this.originalStaticIp = '',
   });
 
   final Map<String, TextEditingController> controllers;
+
+  /// «IP ثابت» as loaded (edit form) — an untouched legacy value stays
+  /// saveable; a non-IPv4 one shows [kStaticIpLegacyHint].
+  final String originalStaticIp;
 
   /// «عند بلوغ حدّ الأجهزة»: '' | reject | replace.
   final String deviceLimitMode;
@@ -538,8 +560,27 @@ class SubscriberLockSection extends StatelessWidget {
           ),
           FormFieldRow(
             label: 'IP ثابت',
-            child: TextFormField(controller: controllers['static_ip']),
+            hint: kStaticIpHint,
+            child: TextFormField(
+              controller: controllers['static_ip'],
+              keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: (v) =>
+                  validateStaticIp(v, original: originalStaticIp),
+              decoration: const InputDecoration(hintText: '10.0.0.5'),
+            ),
           ),
+          if (originalStaticIp.trim().isNotEmpty &&
+              !isIpv4Address(originalStaticIp))
+            Padding(
+              key: const ValueKey('static-ip-legacy-hint'),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                kStaticIpLegacyHint,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
           FormFieldRow(
             label: 'عدد الأجهزة المسموحة',
             hint: 'الحد الأقصى للأجهزة المتصلة في آنٍ واحد — يُنفَّذ عند '
@@ -1072,37 +1113,8 @@ class SubscriberQuotaSection extends StatelessWidget {
 /// PPPoE / broadband section (mirrors web "البرودباند"). A PPPoE subscriber
 /// logs in with its own username/password; the separate PPPoE name/password
 /// were never read and were retired (owner 2026-10-06).
-class SubscriberPppoeSection extends StatelessWidget {
-  const SubscriberPppoeSection({super.key, required this.controllers});
-
-  final Map<String, TextEditingController> controllers;
-
-  @override
-  Widget build(BuildContext context) {
-    return CollapsibleSection(
-      storageKey: 'sub.pppoe',
-      icon: Icons.cable_outlined,
-      title: 'البرودباند (PPPoE)',
-      initiallyExpanded: false,
-      child: Column(
-        children: [
-          FormFieldRow(
-            label: 'عنوان IP للبرودباند (PPPoE)',
-            hint: kPppoeIpHint,
-            child: TextFormField(
-              controller: controllers['pppoe_ip'],
-              keyboardType: TextInputType.number,
-              textDirection: TextDirection.ltr,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: validatePppoeIp,
-              decoration: const InputDecoration(hintText: '10.0.0.5'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// «البرودباند (PPPoE)» section removed: its only field «IP PPPoE» was merged
+// into «IP ثابت» (SubscriberLockSection) — owner follow-up 2026-10-06.
 
 /// Subscription section — the auto-renew toggle. «نوع الاشتراك» / «مدّة
 /// الاشتراك» were retired (owner 2026-10-06): nothing on the server read them.
