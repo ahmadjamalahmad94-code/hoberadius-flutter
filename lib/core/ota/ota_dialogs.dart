@@ -211,6 +211,19 @@ class _OtaUpdateDialogState extends ConsumerState<OtaUpdateDialog> {
                 textAlign: TextAlign.center,
                 style: text.bodyMedium?.copyWith(color: AppTokens.textMuted),
               ),
+              // Owner 2026-10-06: «تعذّر تنزيل التحديث» hid the real cause
+              // (it was the update server answering 500). Show it, small.
+              if (ota.phase == OtaPhase.failed &&
+                  ota.error.trim().isNotEmpty) ...[
+                const SizedBox(height: AppTokens.s8),
+                SelectableText(
+                  'السبب: ${ota.error.trim()}',
+                  key: const ValueKey('ota-error-detail'),
+                  textAlign: TextAlign.center,
+                  maxLines: 3,
+                  style: text.bodySmall?.copyWith(color: AppTokens.textMuted),
+                ),
+              ],
               if (ota.notes.isNotEmpty &&
                   (ota.phase == OtaPhase.available ||
                       ota.phase == OtaPhase.readyToRestart)) ...[
@@ -305,8 +318,11 @@ class _Btn extends StatelessWidget {
 
 /// «الجديد في هذا التحديث» — a short, scrollable bullet list.
 class ReleaseNotesList extends StatelessWidget {
-  const ReleaseNotesList(
-      {super.key, required this.items, this.maxHeight = 220,});
+  const ReleaseNotesList({
+    super.key,
+    required this.items,
+    this.maxHeight = 220,
+  });
   final List<String> items;
   final double maxHeight;
 

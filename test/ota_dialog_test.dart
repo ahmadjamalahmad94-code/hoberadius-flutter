@@ -12,12 +12,17 @@ class _Fixed extends OtaController {
   }
 }
 
-Future<void> _pump(WidgetTester tester, OtaPhase phase) async {
+Future<void> _pump(
+  WidgetTester tester,
+  OtaPhase phase, {
+  String error = '',
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        otaControllerProvider
-            .overrideWith((ref) => _Fixed(OtaState(phase: phase))),
+        otaControllerProvider.overrideWith(
+          (ref) => _Fixed(OtaState(phase: phase, error: error)),
+        ),
       ],
       child: MaterialApp(
         theme: AppTheme.light(),
@@ -68,5 +73,12 @@ void main() {
   testWidgets('failed: retry', (tester) async {
     await _pump(tester, OtaPhase.failed);
     expect(find.text('إعادة المحاولة'), findsOneWidget);
+  });
+
+  testWidgets('failed: shows the real reason under the message',
+      (tester) async {
+    await _pump(tester, OtaPhase.failed, error: 'HTTP 500 from update server');
+    expect(find.byKey(const ValueKey('ota-error-detail')), findsOneWidget);
+    expect(find.textContaining('HTTP 500'), findsOneWidget);
   });
 }
