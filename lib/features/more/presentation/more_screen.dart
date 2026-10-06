@@ -36,6 +36,21 @@ class MoreScreen extends ConsumerWidget {
           ),
         ],
         const SizedBox(height: AppTokens.s12),
+        // Owner 2026-10-07: version, patch, «فحص التحديثات», update history.
+        Card(
+          child: ListTile(
+            key: const ValueKey('more-about'),
+            leading: const Icon(Icons.system_update_outlined),
+            title: const Text(
+              'حول التطبيق والتحديثات',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: const Text('رقم النسخة، فحص التحديثات، سجل التحديثات'),
+            trailing: const Icon(Icons.chevron_left),
+            onTap: () => context.pushNamed('about'),
+          ),
+        ),
+        const SizedBox(height: AppTokens.s8),
         Card(
           color: AppTokens.dangerBg,
           child: ListTile(
@@ -92,7 +107,9 @@ class _AdminSummaryCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    ltrIsolate(admin.email.isEmpty ? '@${admin.username}' : admin.email),
+                    ltrIsolate(admin.email.isEmpty
+                        ? '@${admin.username}'
+                        : admin.email,),
                     style: const TextStyle(
                       color: AppTokens.textMuted,
                       fontSize: 13,

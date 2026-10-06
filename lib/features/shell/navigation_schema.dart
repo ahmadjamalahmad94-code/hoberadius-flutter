@@ -383,6 +383,7 @@ int mobileNavIndexForLocation(
 /// Without this map they fell back to the bottom tab and every one of them
 /// was titled «لوحة التحكم» (R11 L-4). Labels follow the web sidebar.
 const kExtraRouteTitles = <String, String>{
+  '/about': 'حول التطبيق والتحديثات',
   '/notifications': 'الإشعارات',
   '/print-templates': 'قوالب الطباعة',
   '/cards/recharge': 'بطاقات الشحن المسبق',

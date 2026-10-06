@@ -46,6 +46,7 @@ import '../../features/events/presentation/events_center_screen.dart';
 import '../../features/hotspot_cards_portal/presentation/hotspot_cards_portal_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
+import '../../features/more/presentation/about_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_programming_screen.dart';
 import '../../features/mikrotik/presentation/router_operations_screen.dart';
@@ -591,6 +592,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/more',
             name: 'more',
             builder: (ctx, st) => const MoreScreen(),
+          ),
+          GoRoute(
+            path: '/about',
+            name: 'about',
+            builder: (ctx, st) => const AboutScreen(),
           ),
           GoRoute(
             path: '/account',
