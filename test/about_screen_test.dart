@@ -25,9 +25,9 @@ Future<void> _pump(WidgetTester tester, OtaState s) async {
         releaseNotesHistoryProvider.overrideWith(
           (ref) async => [
             const ReleaseNote(
-                patch: 25, date: '2026-10-06', items: ['حذف الحقول']),
+                patch: 25, date: '2026-10-06', items: ['حذف الحقول'],),
             const ReleaseNote(
-                patch: 24, date: '2026-10-05', items: ['تنبيه الحروف']),
+                patch: 24, date: '2026-10-05', items: ['تنبيه الحروف'],),
           ],
         ),
       ],
@@ -51,7 +51,7 @@ void main() {
   testWidgets('shows version, current patch, check button and history',
       (tester) async {
     await _pump(
-        tester, const OtaState(phase: OtaPhase.upToDate, currentPatch: 24));
+        tester, const OtaState(phase: OtaPhase.upToDate, currentPatch: 24),);
     expect(find.text(kAppRelease), findsOneWidget);
     expect(find.text('#24'), findsOneWidget);
     expect(find.byKey(const ValueKey('about-check')), findsOneWidget);
