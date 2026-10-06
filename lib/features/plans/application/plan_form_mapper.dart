@@ -13,23 +13,23 @@ import '../domain/plan_model.dart';
 /// `allowed_hours_*` are legacy fallbacks overridden by
 /// `connection_schedule` / `offer_hours_*`. The form no longer edits them;
 /// [buildPlanFromForm] keeps the loaded plan's values untouched.
+///
+/// Removed (owner 2026-10-06 — nothing read them): «تفعيل التحكم بالسرعة»,
+/// VLAN, ربط MAC/IP, إلزام ربط MAC, الفئة, تجاوز سرعة المستفيد, عدد الأجهزة
+/// المسموحة. The loaded values pass through untouched and are not sent.
 class PlanFormSelections {
   const PlanFormSelections({
     required this.planType,
     required this.serviceType,
     required this.enabled,
-    required this.autoRenew,
-    required this.speedControl,
     required this.burstEnabled,
     required this.nightlyUnlimited,
-    required this.bindMac,
-    required this.bindIp,
     required this.singleUseOnce,
     required this.prepaid,
-    required this.planTier,
     required this.loanEnabled,
-    required this.speedOverrideAllowed,
-    required this.forceMacAddress,
+    this.autoRenewMode = 'off',
+    this.nightlyFrom = '',
+    this.nightlyTo = '',
     this.speedUnlimited = false,
     this.sharedSingleSession = false,
     this.offerHoursFrom = '',
@@ -40,18 +40,18 @@ class PlanFormSelections {
   final String planType;
   final String serviceType;
   final bool enabled;
-  final bool autoRenew;
-  final bool speedControl;
   final bool burstEnabled;
   final bool nightlyUnlimited;
-  final bool bindMac;
-  final bool bindIp;
   final bool singleUseOnce;
   final bool prepaid;
-  final String planTier;
   final bool loanEnabled;
-  final bool speedOverrideAllowed;
-  final bool forceMacAddress;
+
+  /// «تجديد تلقائي»: off / debt / balance / free.
+  final String autoRenewMode;
+
+  /// «غير محدود ليلًا — من / إلى» HH:MM ('' = not set).
+  final String nightlyFrom;
+  final String nightlyTo;
 
   /// «بلا حدّ للسرعة».
   final bool speedUnlimited;
@@ -88,7 +88,6 @@ void applyPlanToForm(Plan p, Map<String, TextEditingController> c) {
   c['monthly_upload_quota_mb']!.text = p.monthlyUploadQuotaMb.toString();
   c['monthly_combined_quota_mb']!.text = p.monthlyCombinedQuotaMb.toString();
   c['max_loan_minutes']!.text = p.maxLoanMinutes.toString();
-  c['allowed_devices_count']!.text = p.allowedDevicesCount.toString();
   c['speed_down_kbps']!.text = p.speedDownKbps.toString();
   c['speed_up_kbps']!.text = p.speedUpKbps.toString();
   c['cir_down_kbps']!.text = p.cirDownKbps.toString();
@@ -100,7 +99,6 @@ void applyPlanToForm(Plan p, Map<String, TextEditingController> c) {
   c['concurrent_sessions']!.text = p.concurrentSessions.toString();
   c['address_pool']!.text = p.addressPool;
   c['framed_pool']!.text = p.framedPool;
-  c['vlan_id']!.text = p.vlanId.toString();
   c['price']!.text = p.price.toString();
   c['currency']!.text = p.currency;
 }
@@ -109,18 +107,14 @@ PlanFormSelections selectionsFromPlan(Plan p) => PlanFormSelections(
       planType: p.planType,
       serviceType: p.serviceType,
       enabled: p.enabled,
-      autoRenew: p.autoRenew,
-      speedControl: p.speedControlEnabled,
+      autoRenewMode: p.autoRenewMode,
       burstEnabled: p.burstEnabled,
       nightlyUnlimited: p.nightlyUnlimitedEnabled,
-      bindMac: p.bindMac,
-      bindIp: p.bindIp,
+      nightlyFrom: p.nightlyFrom,
+      nightlyTo: p.nightlyTo,
       singleUseOnce: p.singleUseOnce,
       prepaid: p.prepaid,
-      planTier: p.planTier,
       loanEnabled: p.loanEnabled,
-      speedOverrideAllowed: p.speedOverrideAllowed,
-      forceMacAddress: p.forceMacAddress,
       speedUnlimited: p.speedUnlimited,
       sharedSingleSession: p.sharedSingleSession,
       offerHoursFrom: p.offerHoursFrom,
@@ -158,9 +152,7 @@ const Map<String, String> kPlanNumberFields = {
   'burst_threshold_kbps': 'عتبة Burst',
   'burst_time_sec': 'زمن Burst',
   'concurrent_sessions': 'الجلسات المتزامنة',
-  'vlan_id': 'VLAN',
   'max_loan_minutes': 'أقصى سلفة (د)',
-  'allowed_devices_count': 'عدد الأجهزة',
 };
 
 /// The first invalid numeric field as «الحقل: السبب», or null.
@@ -223,9 +215,8 @@ Plan buildPlanFromForm(
     // Empty = «not chosen» = 5 (the server's default).
     priority: parseIntInput(c['priority']!.text) ?? kDefaultPlanPriority,
     durationMinutes: parseInt('duration_minutes'),
-    maxDailyMinutes: c['max_daily_minutes'] == null
-        ? null
-        : parseInt('max_daily_minutes'),
+    maxDailyMinutes:
+        c['max_daily_minutes'] == null ? null : parseInt('max_daily_minutes'),
     validityDays: parseInt('validity_days'),
     sessionTimeoutSec: parseInt('session_timeout_sec'),
     idleTimeoutSec: parseInt('idle_timeout_sec'),
@@ -240,7 +231,6 @@ Plan buildPlanFromForm(
     monthlyCombinedQuotaMb: parseInt('monthly_combined_quota_mb'),
     speedDownKbps: parseInt('speed_down_kbps'),
     speedUpKbps: parseInt('speed_up_kbps'),
-    speedControlEnabled: sel.speedControl,
     speedUnlimited: sel.speedUnlimited,
     cirDownKbps: parseInt('cir_down_kbps'),
     cirUpKbps: parseInt('cir_up_kbps'),
@@ -250,10 +240,11 @@ Plan buildPlanFromForm(
     burstThresholdKbps: parseInt('burst_threshold_kbps'),
     burstTimeSec: parseInt('burst_time_sec'),
     nightlyUnlimitedEnabled: sel.nightlyUnlimited,
+    nightlyFrom: sel.nightlyFrom.trim(),
+    nightlyTo: sel.nightlyTo.trim(),
     concurrentSessions: parseInt('concurrent_sessions').clamp(1, 1000),
     addressPool: parseStr('address_pool'),
     framedPool: parseStr('framed_pool'),
-    vlanId: parseInt('vlan_id'),
     sharedSingleSession: sel.sharedSingleSession,
     offerHoursFrom: sel.offerHoursFrom.trim(),
     offerHoursTo: sel.offerHoursTo.trim(),
@@ -261,16 +252,11 @@ Plan buildPlanFromForm(
     price: parseNum('price'),
     currency:
         parseStr('currency').isEmpty ? kDefaultCurrency : parseStr('currency'),
-    planTier: sel.planTier,
     prepaid: sel.prepaid,
-    autoRenew: sel.autoRenew,
+    autoRenewMode: sel.autoRenewMode,
+    autoRenew: sel.autoRenewMode != 'off',
     singleUseOnce: sel.singleUseOnce,
-    bindMac: sel.bindMac,
-    bindIp: sel.bindIp,
     loanEnabled: sel.loanEnabled,
     maxLoanMinutes: parseInt('max_loan_minutes'),
-    speedOverrideAllowed: sel.speedOverrideAllowed,
-    allowedDevicesCount: parseInt('allowed_devices_count'),
-    forceMacAddress: sel.forceMacAddress,
   );
 }

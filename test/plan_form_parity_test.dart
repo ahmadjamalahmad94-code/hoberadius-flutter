@@ -129,8 +129,7 @@ void main() {
       expect(changed, isNull);
     });
 
-    testWidgets('a legacy «Voucher» plan shows «قسيمة (قديم)»',
-        (tester) async {
+    testWidgets('a legacy «Voucher» plan shows «قسيمة (قديم)»', (tester) async {
       await _pump(
         tester,
         PlanCoreSection(
@@ -251,7 +250,8 @@ void main() {
       expect(from, '');
     });
 
-    testWidgets('speed: Mbps typed → kbps stored in the controller; '
+    testWidgets(
+        'speed: Mbps typed → kbps stored in the controller; '
         '«بلا حدّ للسرعة» disables the inputs', (tester) async {
       final c = _controllers();
       c['speed_down_kbps']!.text = '2048';
@@ -260,8 +260,6 @@ void main() {
             controllers: c,
             speedUnlimited: unlimited,
             onSpeedUnlimitedChanged: (_) {},
-            speedControl: false,
-            onSpeedControlChanged: (_) {},
             burstEnabled: false,
             onBurstEnabledChanged: (_) {},
             nightlyUnlimited: false,
@@ -275,7 +273,14 @@ void main() {
       await tester.enterText(down, '3');
       expect(c['speed_down_kbps']!.text, '3072');
       expect(planFormNumberError(c), isNull);
-      expect(find.text(kPlanNotAppliedHint, findRichText: true), findsWidgets);
+      // Burst / CIR / nightly are wired now (owner 2026-10-06): no
+      // «لا يُطبَّق حاليًا» hint and no «تفعيل التحكم بالسرعة» switch.
+      expect(find.text('لا يُطبَّق حاليًا', findRichText: true), findsNothing);
+      expect(find.text('تفعيل التحكم بالسرعة'), findsNothing);
+      expect(
+        find.textContaining('الفترة الليلية', findRichText: true),
+        findsWidgets,
+      );
 
       await _pump(tester, section(true));
       final fields = tester

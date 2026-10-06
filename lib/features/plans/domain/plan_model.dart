@@ -67,6 +67,8 @@ class Plan {
     this.burstThresholdKbps = 0,
     this.burstTimeSec = 0,
     this.nightlyUnlimitedEnabled = false,
+    this.nightlyFrom = '',
+    this.nightlyTo = '',
     // — sessions / network
     this.concurrentSessions = 1,
     this.addressPool = '',
@@ -86,6 +88,7 @@ class Plan {
     this.planTier = 'Personal',
     this.prepaid = true,
     this.autoRenew = false,
+    this.autoRenewMode = 'off',
     // — RM-H3 extras
     this.singleUseOnce = false,
     this.maxConsumptionTimes = 0,
@@ -153,6 +156,11 @@ class Plan {
   final int burstTimeSec;
   final bool nightlyUnlimitedEnabled;
 
+  /// «غير محدود ليلًا — من / إلى» (HH:MM, panel time = Palestine). Usage inside
+  /// the window is not counted toward the quota. '' = not set.
+  final String nightlyFrom;
+  final String nightlyTo;
+
   final int concurrentSessions;
   final String addressPool;
   final String framedPool;
@@ -169,8 +177,15 @@ class Plan {
   final num priceBulk;
   final String currency;
   final String planTier;
+
+  /// «مدفوع مسبقًا» — a reporting label (badge + report filter).
   final bool prepaid;
+
+  /// Legacy mirror of [autoRenewMode] (server-derived: mode != off).
   final bool autoRenew;
+
+  /// «تجديد تلقائي»: off / debt / balance / free.
+  final String autoRenewMode;
 
   final bool singleUseOnce;
   final int maxConsumptionTimes;
@@ -286,6 +301,8 @@ class Plan {
       burstThresholdKbps: _int(j['burst_threshold_kbps']) ?? 0,
       burstTimeSec: _int(j['burst_time_sec']) ?? 0,
       nightlyUnlimitedEnabled: j['nightly_unlimited_enabled'] == true,
+      nightlyFrom: (j['nightly_from'] ?? '').toString(),
+      nightlyTo: (j['nightly_to'] ?? '').toString(),
       concurrentSessions: _int(j['concurrent_sessions']) ?? 1,
       addressPool: (j['address_pool'] ?? '').toString(),
       framedPool: (j['framed_pool'] ?? '').toString(),
@@ -303,6 +320,7 @@ class Plan {
       planTier: (j['plan_tier'] ?? 'Personal').toString(),
       prepaid: j['prepaid'] == true,
       autoRenew: j['auto_renew'] == true,
+      autoRenewMode: _autoRenewMode(j['auto_renew_mode']),
       singleUseOnce: j['single_use_once'] == true,
       maxConsumptionTimes: _int(j['max_consumption_times']) ?? 0,
       ticketValidityDays: _int(j['ticket_validity_days']) ?? 0,
@@ -357,7 +375,6 @@ class Plan {
         'monthly_combined_quota_mb': monthlyCombinedQuotaMb,
         'speed_down_kbps': speedDownKbps,
         'speed_up_kbps': speedUpKbps,
-        'speed_control_enabled': speedControlEnabled,
         'cir_down_kbps': cirDownKbps,
         'cir_up_kbps': cirUpKbps,
         'burst_enabled': burstEnabled,
@@ -366,13 +383,12 @@ class Plan {
         'burst_threshold_kbps': burstThresholdKbps,
         'burst_time_sec': burstTimeSec,
         'nightly_unlimited_enabled': nightlyUnlimitedEnabled,
+        'nightly_from': nightlyFrom,
+        'nightly_to': nightlyTo,
         'concurrent_sessions': concurrentSessions,
         'address_pool': addressPool,
         'framed_pool': framedPool,
-        'vlan_id': vlanId,
         'ipv6_pool': ipv6Pool,
-        'bind_mac': bindMac,
-        'bind_ip': bindIp,
         'allowed_days': allowedDays,
         'allowed_hours_from': allowedHoursFrom,
         'allowed_hours_to': allowedHoursTo,
@@ -380,9 +396,8 @@ class Plan {
         'price_card': priceCard,
         'price_bulk': priceBulk,
         'currency': currency,
-        'plan_tier': planTier,
         'prepaid': prepaid,
-        'auto_renew': autoRenew,
+        'auto_renew_mode': autoRenewMode,
         'single_use_once': singleUseOnce,
         'max_consumption_times': maxConsumptionTimes,
         'ticket_validity_days': ticketValidityDays,
@@ -391,9 +406,6 @@ class Plan {
         'ppp_enabled': pppEnabled,
         'loan_enabled': loanEnabled,
         'max_loan_minutes': maxLoanMinutes,
-        'speed_override_allowed': speedOverrideAllowed,
-        'allowed_devices_count': allowedDevicesCount,
-        'force_mac_address': forceMacAddress,
         'offer_hours_from': offerHoursFrom,
         'offer_hours_to': offerHoursTo,
         'speed_unlimited': speedUnlimited,
@@ -401,6 +413,17 @@ class Plan {
         'connection_schedule': connectionSchedule,
         'metadata': metadata,
       };
+
+  /// Removed from every form (owner 2026-10-06): speed-control flag, VLAN,
+  /// bind MAC/IP, force MAC, plan tier, speed override, plan device count.
+  /// Still read from the server (harmless), never sent back.
+
+  static const Set<String> kAutoRenewModes = {'off', 'debt', 'balance', 'free'};
+
+  static String _autoRenewMode(Object? v) {
+    final s = (v ?? '').toString().trim().toLowerCase();
+    return kAutoRenewModes.contains(s) ? s : 'off';
+  }
 
   static int? _int(Object? v) =>
       v == null ? null : (v is int ? v : int.tryParse(v.toString()));
@@ -479,6 +502,8 @@ class Plan {
     int? burstThresholdKbps,
     int? burstTimeSec,
     bool? nightlyUnlimitedEnabled,
+    String? nightlyFrom,
+    String? nightlyTo,
     int? concurrentSessions,
     String? addressPool,
     String? framedPool,
@@ -496,6 +521,7 @@ class Plan {
     String? planTier,
     bool? prepaid,
     bool? autoRenew,
+    String? autoRenewMode,
     bool? singleUseOnce,
     int? maxConsumptionTimes,
     int? ticketValidityDays,
@@ -555,6 +581,8 @@ class Plan {
         burstTimeSec: burstTimeSec ?? this.burstTimeSec,
         nightlyUnlimitedEnabled:
             nightlyUnlimitedEnabled ?? this.nightlyUnlimitedEnabled,
+        nightlyFrom: nightlyFrom ?? this.nightlyFrom,
+        nightlyTo: nightlyTo ?? this.nightlyTo,
         concurrentSessions: concurrentSessions ?? this.concurrentSessions,
         addressPool: addressPool ?? this.addressPool,
         framedPool: framedPool ?? this.framedPool,
@@ -572,6 +600,7 @@ class Plan {
         planTier: planTier ?? this.planTier,
         prepaid: prepaid ?? this.prepaid,
         autoRenew: autoRenew ?? this.autoRenew,
+        autoRenewMode: autoRenewMode ?? this.autoRenewMode,
         singleUseOnce: singleUseOnce ?? this.singleUseOnce,
         maxConsumptionTimes: maxConsumptionTimes ?? this.maxConsumptionTimes,
         ticketValidityDays: ticketValidityDays ?? this.ticketValidityDays,

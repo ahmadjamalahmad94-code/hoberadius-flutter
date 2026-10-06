@@ -356,7 +356,10 @@ class _StatusChips extends StatelessWidget {
     const options = <(String?, String)>[
       (null, 'كل الحالات'),
       ('enabled', 'مفعّل'),
-      (kExpiringSoonFilter, 'قرب الانتهاء'),  // خلال 3 أيام — قصير كي لا يُصغَّر خطّه
+      (
+        kExpiringSoonFilter,
+        'قرب الانتهاء'
+      ), // خلال 3 أيام — قصير كي لا يُصغَّر خطّه
       ('expired', 'منتهي'),
       ('disabled', 'معطّل'),
       ('suspended', 'موقوف'),
@@ -517,6 +520,13 @@ class _Table extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        if (s.temporaryAccount) ...[
+                          const SizedBox(width: AppTokens.s8),
+                          const StatusPill(
+                            text: 'مؤقت',
+                            tone: PillTone.amber,
+                          ),
+                        ],
                         const SizedBox(width: AppTokens.s8),
                         StatusPill(
                           text: label,

@@ -10,9 +10,9 @@ import '../../../../shared/widgets/hub_switch_row.dart';
 import '../../../../shared/widgets/hub_unit_input.dart';
 import '../../../../shared/widgets/wheel_picker_fields.dart';
 
-/// Muted hint on a field the server stores but no runtime path reads yet
-/// (the owner decides on removal; the value still round-trips).
-const String kPlanNotAppliedHint = 'لا يُطبَّق حاليًا';
+/// «استخدام مرة واحدة» = a temporary account (owner 2026-10-06).
+const String kPlanSingleUseHint = 'حساب مؤقت: عند انتهاء وقته يُعطَّل '
+    'تلقائيًا (ويُفصل إن كان متصلًا) ولا يُجدَّد ولا يُمدَّد.';
 
 /// «نوع الخدمة» — exactly the web's three choices (the web's two cards
 /// combine to Hotspot / PPPoE / Both).
@@ -352,28 +352,32 @@ class PlanSpeedSection extends StatelessWidget {
     required this.controllers,
     required this.speedUnlimited,
     required this.onSpeedUnlimitedChanged,
-    required this.speedControl,
-    required this.onSpeedControlChanged,
     required this.burstEnabled,
     required this.onBurstEnabledChanged,
     required this.nightlyUnlimited,
     required this.onNightlyUnlimitedChanged,
+    this.nightlyFrom = '',
+    this.nightlyTo = '',
+    this.onNightlyFromChanged,
+    this.onNightlyToChanged,
   });
 
   final Map<String, TextEditingController> controllers;
   final bool speedUnlimited;
   final ValueChanged<bool> onSpeedUnlimitedChanged;
-  final bool speedControl;
-  final ValueChanged<bool> onSpeedControlChanged;
   final bool burstEnabled;
   final ValueChanged<bool> onBurstEnabledChanged;
   final bool nightlyUnlimited;
   final ValueChanged<bool> onNightlyUnlimitedChanged;
 
+  /// «الفترة الليلية — من / إلى» HH:MM (panel time = Palestine), '' = unset.
+  final String nightlyFrom;
+  final String nightlyTo;
+  final ValueChanged<String>? onNightlyFromChanged;
+  final ValueChanged<String>? onNightlyToChanged;
+
   @override
   Widget build(BuildContext context) {
-    Widget dead(String key, String label) =>
-        _numField(controllers, key, label, hint: kPlanNotAppliedHint);
     return CollapsibleSection(
       storageKey: 'plan.speed',
       icon: Icons.speed,
@@ -401,45 +405,71 @@ class PlanSpeedSection extends StatelessWidget {
             subtitle: 'باقة مفتوحة السرعة. بدونه لا يُقبل صفر في التنزيل '
                 'أو الرفع — فالصفر الصامت كان يعني «مفتوح» على الراوتر.',
           ),
-          _switchRow(
-            'تفعيل التحكم بالسرعة',
-            speedControl,
-            onSpeedControlChanged,
-            subtitle: kPlanNotAppliedHint,
-          ),
           FormFieldPair(
             first: _speedField(
               controllers,
               'cir_down_kbps',
               'سرعة مضمونة CIR للتنزيل',
-              hint: kPlanNotAppliedHint,
+              hint: 'الحد الأدنى المضمون عند الازدحام — لا يتجاوز سرعة الباقة',
             ),
             second: _speedField(
               controllers,
               'cir_up_kbps',
               'سرعة مضمونة CIR للرفع',
-              hint: kPlanNotAppliedHint,
             ),
           ),
           _switchRow(
             'السرعة المؤقتة (Burst)',
             burstEnabled,
             onBurstEnabledChanged,
-            subtitle: kPlanNotAppliedHint,
+            subtitle: 'تجاوز السرعة مؤقتًا حتى سرعة Burst ثم العودة بعد '
+                'تجاوز العتبة لمدة Burst.',
           ),
           FormFieldPair(
-            first: dead('burst_down_kbps', 'سرعة Burst التنزيل'),
-            second: dead('burst_up_kbps', 'سرعة Burst الرفع'),
+            first: _speedField(
+              controllers,
+              'burst_down_kbps',
+              'سرعة Burst التنزيل',
+            ),
+            second: _speedField(
+              controllers,
+              'burst_up_kbps',
+              'سرعة Burst الرفع',
+            ),
           ),
           FormFieldPair(
-            first: dead('burst_threshold_kbps', 'حد Burst'),
-            second: dead('burst_time_sec', 'مدة Burst (ث)'),
+            first: _speedField(
+              controllers,
+              'burst_threshold_kbps',
+              'حد Burst',
+              hint:
+                  'عتبة التنزيل (أقل من سرعة Burst التنزيل)؛ الرفع بنفس النسبة',
+            ),
+            second: _numField(controllers, 'burst_time_sec', 'مدة Burst (ث)'),
           ),
           _switchRow(
             'غير محدود ليلًا',
             nightlyUnlimited,
             onNightlyUnlimitedChanged,
-            subtitle: kPlanNotAppliedHint,
+            subtitle: 'ما يُستهلك خلال الفترة الليلية لا يُحتسب من الكوتا.',
+          ),
+          FormFieldPair(
+            first: FormFieldRow(
+              label: 'الفترة الليلية — من',
+              hint: 'توقيت فلسطين',
+              child: PlanOptionalTimeField(
+                value: nightlyFrom,
+                onChanged: onNightlyFromChanged ?? (_) {},
+              ),
+            ),
+            second: FormFieldRow(
+              label: 'الفترة الليلية — إلى',
+              hint: 'توقيت فلسطين',
+              child: PlanOptionalTimeField(
+                value: nightlyTo,
+                onChanged: onNightlyToChanged ?? (_) {},
+              ),
+            ),
           ),
         ],
       ),
@@ -451,19 +481,11 @@ class PlanSessionSection extends StatelessWidget {
   const PlanSessionSection({
     super.key,
     required this.controllers,
-    required this.bindMac,
-    required this.bindIp,
-    required this.onBindMacChanged,
-    required this.onBindIpChanged,
     required this.sharedSingleSession,
     required this.onSharedSingleSessionChanged,
   });
 
   final Map<String, TextEditingController> controllers;
-  final bool bindMac;
-  final bool bindIp;
-  final ValueChanged<bool> onBindMacChanged;
-  final ValueChanged<bool> onBindIpChanged;
   final bool sharedSingleSession;
   final ValueChanged<bool> onSharedSingleSessionChanged;
 
@@ -476,18 +498,10 @@ class PlanSessionSection extends StatelessWidget {
       initiallyExpanded: false,
       child: Column(
         children: [
-          FormFieldPair(
-            first: _numField(
-              controllers,
-              'concurrent_sessions',
-              'الجلسات المتزامنة',
-            ),
-            second: _numField(
-              controllers,
-              'vlan_id',
-              'معرّف VLAN',
-              hint: kPlanNotAppliedHint,
-            ),
+          _numField(
+            controllers,
+            'concurrent_sessions',
+            'الجلسات المتزامنة',
           ),
           _switchRow(
             'بطاقة مشتركة — جلسة واحدة فعّالة',
@@ -507,18 +521,6 @@ class PlanSessionSection extends StatelessWidget {
               hint: 'المجمّع الذي تُمنح منه IP للجلسات',
               child: TextFormField(controller: controllers['framed_pool']),
             ),
-          ),
-          _switchRow(
-            'ربط MAC',
-            bindMac,
-            onBindMacChanged,
-            subtitle: kPlanNotAppliedHint,
-          ),
-          _switchRow(
-            'ربط IP',
-            bindIp,
-            onBindIpChanged,
-            subtitle: kPlanNotAppliedHint,
           ),
         ],
       ),
@@ -637,28 +639,35 @@ class PlanOptionalTimeField extends StatelessWidget {
   }
 }
 
+/// «تجديد تلقائي» — the web's four choices (owner 2026-10-06).
+const List<(String, String)> kPlanAutoRenewModes = [
+  ('off', 'بدون'),
+  ('debt', 'مسموح بالدين'),
+  ('balance', 'خصم من الرصيد المتاح'),
+  ('free', 'مجاني'),
+];
+
 class PlanCommerceSection extends StatelessWidget {
   const PlanCommerceSection({
     super.key,
     required this.controllers,
-    required this.planTier,
     required this.prepaid,
-    required this.autoRenew,
-    required this.onPlanTierChanged,
+    required this.autoRenewMode,
     required this.onPrepaidChanged,
-    required this.onAutoRenewChanged,
+    required this.onAutoRenewModeChanged,
   });
 
   final Map<String, TextEditingController> controllers;
-  final String planTier;
   final bool prepaid;
-  final bool autoRenew;
-  final ValueChanged<String> onPlanTierChanged;
+  final String autoRenewMode;
   final ValueChanged<bool> onPrepaidChanged;
-  final ValueChanged<bool> onAutoRenewChanged;
+  final ValueChanged<String> onAutoRenewModeChanged;
 
   @override
   Widget build(BuildContext context) {
+    final mode = kPlanAutoRenewModes.any((m) => m.$1 == autoRenewMode)
+        ? autoRenewMode
+        : 'off';
     return CollapsibleSection(
       storageKey: 'plan.commerce',
       icon: Icons.payments_outlined,
@@ -688,30 +697,26 @@ class PlanCommerceSection extends StatelessWidget {
               child: TextFormField(controller: controllers['currency']),
             ),
           ),
-          FormFieldRow(
-            label: 'الفئة',
-            hint: kPlanNotAppliedHint,
-            child: DropdownButtonFormField<String>(
-              isExpanded: true,
-              initialValue: planTier,
-              items: const [
-                DropdownMenuItem(value: 'Personal', child: Text('شخصي')),
-                DropdownMenuItem(value: 'Business', child: Text('تجاري')),
-              ],
-              onChanged: (v) => onPlanTierChanged(v ?? 'Personal'),
-            ),
-          ),
           _switchRow(
             'مدفوع مسبقًا',
             prepaid,
             onPrepaidChanged,
-            subtitle: kPlanNotAppliedHint,
+            subtitle: 'وسم للتقارير فقط: يظهر في قائمة الباقات وفلتر '
+                '«باقات مدفوعة مسبقًا».',
           ),
-          _switchRow(
-            'تجديد تلقائي',
-            autoRenew,
-            onAutoRenewChanged,
-            subtitle: kPlanNotAppliedHint,
+          FormFieldRow(
+            label: 'تجديد تلقائي',
+            hint: 'عند الانتهاء يُجدَّد بمدة الباقة: بالدين، أو خصمًا من '
+                'الرصيد إن كفى (وإلا ينتهي ويُنبَّه المدراء)، أو مجانًا.',
+            child: DropdownButtonFormField<String>(
+              isExpanded: true,
+              initialValue: mode,
+              items: [
+                for (final (value, label) in kPlanAutoRenewModes)
+                  DropdownMenuItem(value: value, child: Text(label)),
+              ],
+              onChanged: (v) => onAutoRenewModeChanged(v ?? 'off'),
+            ),
           ),
         ],
       ),
@@ -745,7 +750,7 @@ class PlanServicesSection extends StatelessWidget {
             'استخدام مرة واحدة',
             singleUseOnce,
             onSingleUseChanged,
-            subtitle: kPlanNotAppliedHint,
+            subtitle: kPlanSingleUseHint,
           ),
         ],
       ),
@@ -753,62 +758,35 @@ class PlanServicesSection extends StatelessWidget {
   }
 }
 
-/// Loan / speed-override / device-binding policy section (RM-H3 fields).
+/// Loan policy section (RM-H3). «تجاوز سرعة المستفيد» / «إلزام ربط الـ MAC» /
+/// «عدد الأجهزة المسموحة» were removed (owner 2026-10-06 — nothing read them).
 class PlanLoanDeviceSection extends StatelessWidget {
   const PlanLoanDeviceSection({
     super.key,
     required this.controllers,
     required this.loanEnabled,
     required this.onLoanEnabledChanged,
-    required this.speedOverrideAllowed,
-    required this.onSpeedOverrideChanged,
-    required this.forceMacAddress,
-    required this.onForceMacChanged,
   });
 
   final Map<String, TextEditingController> controllers;
   final bool loanEnabled;
   final ValueChanged<bool> onLoanEnabledChanged;
-  final bool speedOverrideAllowed;
-  final ValueChanged<bool> onSpeedOverrideChanged;
-  final bool forceMacAddress;
-  final ValueChanged<bool> onForceMacChanged;
 
   @override
   Widget build(BuildContext context) {
     return CollapsibleSection(
       storageKey: 'plan.loan_device',
       icon: Icons.policy_outlined,
-      title: 'السلف والأجهزة',
+      title: 'السلف',
       initiallyExpanded: false,
       child: Column(
         children: [
           _switchRow('السماح بالسلف', loanEnabled, onLoanEnabledChanged),
-          _switchRow(
-            'تجاوز سرعة المستفيد',
-            speedOverrideAllowed,
-            onSpeedOverrideChanged,
-            subtitle: kPlanNotAppliedHint,
-          ),
-          _switchRow(
-            'إلزام ربط الـ MAC',
-            forceMacAddress,
-            onForceMacChanged,
-            subtitle: kPlanNotAppliedHint,
-          ),
           const SizedBox(height: 4),
-          FormFieldPair(
-            first: _numField(
-              controllers,
-              'max_loan_minutes',
-              'أقصى دقائق السلفة',
-            ),
-            second: _numField(
-              controllers,
-              'allowed_devices_count',
-              'عدد الأجهزة المسموحة',
-              hint: kPlanNotAppliedHint,
-            ),
+          _numField(
+            controllers,
+            'max_loan_minutes',
+            'أقصى دقائق السلفة',
           ),
         ],
       ),

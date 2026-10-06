@@ -30,20 +30,18 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
   String _planType = 'time';
   String _serviceType = 'Hotspot';
   bool _enabled = true;
-  bool _autoRenew = false;
-  bool _speedControl = false;
+  // «تجديد تلقائي»: off / debt / balance / free.
+  String _autoRenewMode = 'off';
   bool _burstEnabled = false;
   bool _nightlyUnlimited = false;
+  // «الفترة الليلية — من / إلى» (HH:MM, '' = unset).
+  String _nightlyFrom = '';
+  String _nightlyTo = '';
   bool _speedUnlimited = false;
   bool _sharedSingleSession = false;
-  bool _bindMac = false;
-  bool _bindIp = false;
   bool _singleUseOnce = false;
   bool _prepaid = true;
   bool _loanEnabled = false;
-  bool _speedOverrideAllowed = false;
-  bool _forceMacAddress = false;
-  String _planTier = 'Personal';
   // «ساعات الباقة» — empty = not set (no fake default).
   String _offerHoursFrom = '';
   String _offerHoursTo = '';
@@ -74,7 +72,6 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     'monthly_upload_quota_mb',
     'monthly_combined_quota_mb',
     'max_loan_minutes',
-    'allowed_devices_count',
     'speed_down_kbps',
     'speed_up_kbps',
     'cir_down_kbps',
@@ -86,7 +83,6 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
     'concurrent_sessions',
     'address_pool',
     'framed_pool',
-    'vlan_id',
     'price',
     'currency',
   ];
@@ -119,18 +115,14 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
         planType: _planType,
         serviceType: _serviceType,
         enabled: _enabled,
-        autoRenew: _autoRenew,
-        speedControl: _speedControl,
+        autoRenewMode: _autoRenewMode,
         burstEnabled: _burstEnabled,
         nightlyUnlimited: _nightlyUnlimited,
-        bindMac: _bindMac,
-        bindIp: _bindIp,
+        nightlyFrom: _nightlyFrom,
+        nightlyTo: _nightlyTo,
         singleUseOnce: _singleUseOnce,
         prepaid: _prepaid,
-        planTier: _planTier,
         loanEnabled: _loanEnabled,
-        speedOverrideAllowed: _speedOverrideAllowed,
-        forceMacAddress: _forceMacAddress,
         speedUnlimited: _speedUnlimited,
         sharedSingleSession: _sharedSingleSession,
         offerHoursFrom: _offerHoursFrom,
@@ -149,23 +141,19 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
       _planType = sel.planType;
       _serviceType = sel.serviceType;
       _enabled = sel.enabled;
-      _autoRenew = sel.autoRenew;
-      _speedControl = sel.speedControl;
+      _autoRenewMode = sel.autoRenewMode;
       _burstEnabled = sel.burstEnabled;
       _nightlyUnlimited = sel.nightlyUnlimited;
+      _nightlyFrom = sel.nightlyFrom;
+      _nightlyTo = sel.nightlyTo;
       _speedUnlimited = sel.speedUnlimited;
       _sharedSingleSession = sel.sharedSingleSession;
       _offerHoursFrom = sel.offerHoursFrom;
       _offerHoursTo = sel.offerHoursTo;
       _connectionSchedule = sel.connectionSchedule;
-      _bindMac = sel.bindMac;
-      _bindIp = sel.bindIp;
       _singleUseOnce = sel.singleUseOnce;
       _prepaid = sel.prepaid;
       _loanEnabled = sel.loanEnabled;
-      _speedOverrideAllowed = sel.speedOverrideAllowed;
-      _forceMacAddress = sel.forceMacAddress;
-      _planTier = sel.planTier;
     });
   }
 
@@ -263,21 +251,19 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             controllers: _c,
             speedUnlimited: _speedUnlimited,
             onSpeedUnlimitedChanged: (v) => setState(() => _speedUnlimited = v),
-            speedControl: _speedControl,
-            onSpeedControlChanged: (v) => setState(() => _speedControl = v),
             burstEnabled: _burstEnabled,
             onBurstEnabledChanged: (v) => setState(() => _burstEnabled = v),
             nightlyUnlimited: _nightlyUnlimited,
             onNightlyUnlimitedChanged: (v) =>
                 setState(() => _nightlyUnlimited = v),
+            nightlyFrom: _nightlyFrom,
+            nightlyTo: _nightlyTo,
+            onNightlyFromChanged: (v) => setState(() => _nightlyFrom = v),
+            onNightlyToChanged: (v) => setState(() => _nightlyTo = v),
           ),
           const SizedBox(height: AppTokens.s12),
           PlanSessionSection(
             controllers: _c,
-            bindMac: _bindMac,
-            bindIp: _bindIp,
-            onBindMacChanged: (v) => setState(() => _bindMac = v),
-            onBindIpChanged: (v) => setState(() => _bindIp = v),
             sharedSingleSession: _sharedSingleSession,
             onSharedSingleSessionChanged: (v) =>
                 setState(() => _sharedSingleSession = v),
@@ -287,8 +273,7 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             offerHoursFrom: _offerHoursFrom,
             offerHoursTo: _offerHoursTo,
             connectionSchedule: _connectionSchedule,
-            onOfferHoursFromChanged: (v) =>
-                setState(() => _offerHoursFrom = v),
+            onOfferHoursFromChanged: (v) => setState(() => _offerHoursFrom = v),
             onOfferHoursToChanged: (v) => setState(() => _offerHoursTo = v),
             // No setState: the picker owns its UI state; rebuilding with the
             // re-parsed value would only re-hydrate it.
@@ -297,12 +282,10 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
           const SizedBox(height: AppTokens.s12),
           PlanCommerceSection(
             controllers: _c,
-            planTier: _planTier,
             prepaid: _prepaid,
-            autoRenew: _autoRenew,
-            onPlanTierChanged: (v) => setState(() => _planTier = v),
+            autoRenewMode: _autoRenewMode,
             onPrepaidChanged: (v) => setState(() => _prepaid = v),
-            onAutoRenewChanged: (v) => setState(() => _autoRenew = v),
+            onAutoRenewModeChanged: (v) => setState(() => _autoRenewMode = v),
           ),
           const SizedBox(height: AppTokens.s12),
           PlanServicesSection(
@@ -314,11 +297,6 @@ class _PlanFormScreenState extends ConsumerState<PlanFormScreen> {
             controllers: _c,
             loanEnabled: _loanEnabled,
             onLoanEnabledChanged: (v) => setState(() => _loanEnabled = v),
-            speedOverrideAllowed: _speedOverrideAllowed,
-            onSpeedOverrideChanged: (v) =>
-                setState(() => _speedOverrideAllowed = v),
-            forceMacAddress: _forceMacAddress,
-            onForceMacChanged: (v) => setState(() => _forceMacAddress = v),
           ),
           const SizedBox(height: AppTokens.s12),
           PlanMetaSection(controllers: _c),

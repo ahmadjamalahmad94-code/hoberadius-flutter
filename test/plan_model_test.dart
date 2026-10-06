@@ -30,9 +30,10 @@ void main() {
     final body = p.toBody();
     expect(body['loan_enabled'], true);
     expect(body['max_loan_minutes'], 120);
-    expect(body['speed_override_allowed'], true);
-    expect(body['allowed_devices_count'], 4);
-    expect(body['force_mac_address'], true);
+    // Removed fields (owner 2026-10-06) are read but never sent back.
+    expect(body.containsKey('speed_override_allowed'), isFalse);
+    expect(body.containsKey('allowed_devices_count'), isFalse);
+    expect(body.containsKey('force_mac_address'), isFalse);
     expect(body['daily_download_quota_mb'], 800);
     expect(body['monthly_combined_quota_mb'], 30000);
   });

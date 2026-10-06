@@ -129,6 +129,7 @@ class Subscriber {
     this.live,
     this.online = false,
     this.accessType = '',
+    this.temporaryAccount = false,
   });
 
   final int? id;
@@ -272,6 +273,10 @@ class Subscriber {
   /// `hotspot` | `broadband` | `both` | '' (unknown / older server).
   final String accessType;
 
+  /// «مؤقت» — on a «استخدام مرة وحدة» plan (server `temporary_account`,
+  /// list endpoint only): disabled at expiry, never renewed/extended.
+  final bool temporaryAccount;
+
   /// Helper for forms — split/join the CSV.
   List<String> get workingDays => workingDaysCsv.isEmpty
       ? const <String>[]
@@ -397,6 +402,7 @@ class Subscriber {
       online: j['online'] == true ||
           (j['live'] is Map && (j['live'] as Map)['online'] == true),
       accessType: (j['access_type'] ?? '').toString().trim().toLowerCase(),
+      temporaryAccount: j['temporary_account'] == true,
     );
   }
 
