@@ -258,8 +258,16 @@ class _PlanCard extends StatelessWidget {
                     text: _serviceTypeLabel(plan.serviceType),
                     tone: PillTone.blue,
                   ),
-                  if (plan.autoRenew)
-                    const StatusPill(text: 'متجدّد', tone: PillTone.green),
+                  // أوسمة قرار المالك 2026-10-06 (مثل الويب).
+                  if (plan.prepaid)
+                    const StatusPill(text: 'مدفوع مسبقًا', tone: PillTone.blue),
+                  if (plan.singleUseOnce)
+                    const StatusPill(text: 'مؤقت', tone: PillTone.amber),
+                  if (plan.autoRenewMode != 'off')
+                    const StatusPill(
+                      text: 'تجديد تلقائي',
+                      tone: PillTone.green,
+                    ),
                 ],
               ),
               if (facts.isNotEmpty) ...[
