@@ -9,15 +9,15 @@ class RadiusResourcesRepository {
   final ApiClient _api;
 
   Future<RadiusResourcesSnapshot> snapshot() async {
+    // IP pools are no longer loaded (owner 2026-10-06: the page is gone).
     final results = await Future.wait([
-      listPools(),
       listShareGroups(),
       listBandwidthProfiles(),
     ]);
     return RadiusResourcesSnapshot(
-      pools: results[0] as List<IpPoolResource>,
-      shareGroups: results[1] as List<ShareGroupResource>,
-      bandwidthProfiles: results[2] as List<BandwidthProfileResource>,
+      pools: const [],
+      shareGroups: results[0] as List<ShareGroupResource>,
+      bandwidthProfiles: results[1] as List<BandwidthProfileResource>,
     );
   }
 

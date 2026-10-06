@@ -406,7 +406,6 @@ const kExtraRouteTitles = <String, String>{
   '/lifecycle': 'الأرشفة التلقائية',
   '/admin-control': 'إعدادات النظام',
   '/audit': 'سجل العمليات',
-  '/mikrotik': 'اتصالات ميكروتك',
   '/router-programming': 'برمجة الراوتر',
   '/device-fingerprints': 'بصمات الأجهزة',
   '/network-devices': 'مراقبة أجهزة الشبكة',

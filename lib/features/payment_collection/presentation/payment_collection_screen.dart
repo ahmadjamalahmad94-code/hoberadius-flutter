@@ -201,7 +201,6 @@ class _PaymentSettingsEditor extends ConsumerStatefulWidget {
 class _PaymentSettingsEditorState
     extends ConsumerState<_PaymentSettingsEditor> {
   late bool _enabled;
-  late bool _autoApply;
   late bool _allowCards;
   late bool _allowMonthly;
   late bool _allowDistributors;
@@ -224,7 +223,6 @@ class _PaymentSettingsEditorState
     super.initState();
     final settings = widget.settings;
     _enabled = settings.enabled;
-    _autoApply = settings.autoApply;
     _allowCards = settings.allowCards;
     _allowMonthly = settings.allowMonthlySubscriptions;
     _allowDistributors = settings.allowDistributorPayments;
@@ -496,12 +494,8 @@ class _PaymentSettingsEditorState
               value: _allowDistributors,
               onChanged: toggle((v) => _allowDistributors = v),
             ),
-            HubSwitchRow(
-              dense: true,
-              label: 'تطبيق الخدمة تلقائيًا بعد الاعتماد',
-              value: _autoApply,
-              onChanged: toggle((v) => _autoApply = v),
-            ),
+            // «تطبيق الخدمة تلقائيًا» removed (owner 2026-10-06): nothing
+            // on the server reads it.
             const SizedBox(height: AppTokens.s8),
             ActionBar(
               items: [
@@ -543,7 +537,7 @@ class _PaymentSettingsEditorState
         walletOwnerName: _ownerController.text.trim(),
         currency: _currency,
         confirmationMode: _confirmationMode,
-        autoApply: _autoApply,
+        autoApply: widget.settings.autoApply,
         allowCards: _allowCards,
         allowMonthlySubscriptions: _allowMonthly,
         allowDistributorPayments: _allowDistributors,
@@ -1010,9 +1004,9 @@ const _paymentPurposeOptions = [
   (value: 'loan_settlement', label: 'تسوية سلفة'),
 ];
 
+// «صورة إثبات» removed (owner 2026-10-06): no image upload exists.
 const _proofTypeOptions = [
   (value: 'manual_reference', label: 'مرجع عملية'),
-  (value: 'image', label: 'صورة إثبات'),
   (value: 'note', label: 'ملاحظة دفع'),
 ];
 

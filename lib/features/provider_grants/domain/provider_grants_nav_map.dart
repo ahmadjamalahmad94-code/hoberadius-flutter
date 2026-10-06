@@ -44,7 +44,6 @@ const List<(String, String)> _pathServiceKeys = [
   // network
   ('/router-operations', 'network'),
   ('/router-programming', 'network'),
-  ('/mikrotik', 'network'),
   ('/router-alerts', 'network'),
   ('/network-devices', 'network'),
   ('/network-policy', 'network'),

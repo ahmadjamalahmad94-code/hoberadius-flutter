@@ -93,6 +93,32 @@ class _CardBatchFormScreenState extends ConsumerState<CardBatchFormScreen> {
     }
     _pricePerCard.addListener(_recomputeTotal);
     _count.addListener(_recomputeTotal);
+    _loadCardDefaults();
+  }
+
+  /// The network's default card lengths (web «طول اسم/كلمة البطاقة
+  /// الافتراضي», owner 2026-10-06 «وصّله»): fill the two boxes unless the
+  /// operator already typed there. Older servers send none → 8 / 6 stay.
+  Future<void> _loadCardDefaults() async {
+    try {
+      final page = await ref
+          .read(cardsRepositoryProvider)
+          .listBatchOperations(perPage: 1);
+      if (!mounted) return;
+      final next = applyCardDefaultLengths(
+        currentUsername: _ulen.text,
+        currentPassword: _plen.text,
+        defaultUsername: page.defaultUsernameLength,
+        defaultPassword: page.defaultPasswordLength,
+      );
+      if (next.$1 != _ulen.text) _ulen.text = next.$1;
+      if (next.$2 != _plen.text) _plen.text = next.$2;
+      if (_nextBatchId == null && page.nextBatchId != null) {
+        setState(() => _nextBatchId = page.nextBatchId);
+      }
+    } catch (_) {
+      // Defaults only — the server applies the network's lengths anyway.
+    }
   }
 
   /// price × count into «السعر الإجمالي» (Arabic digits read too) until
@@ -712,4 +738,21 @@ String? generateErrorField(Object e) {
     return 'count';
   }
   return null;
+}
+
+/// The generator form's length boxes start at 8 / 6; when the server tells
+/// the network's defaults, untouched boxes take them (an edited box wins).
+(String, String) applyCardDefaultLengths({
+  required String currentUsername,
+  required String currentPassword,
+  int? defaultUsername,
+  int? defaultPassword,
+}) {
+  final u = (defaultUsername != null && currentUsername.trim() == '8')
+      ? '$defaultUsername'
+      : currentUsername;
+  final p = (defaultPassword != null && currentPassword.trim() == '6')
+      ? '$defaultPassword'
+      : currentPassword;
+  return (u, p);
 }

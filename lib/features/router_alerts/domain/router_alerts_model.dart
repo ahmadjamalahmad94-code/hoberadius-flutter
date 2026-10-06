@@ -142,6 +142,10 @@ class RouterAlertTarget {
     this.overrideSpeedMbps,
     this.overrideUsageGb,
     this.overrideUsageWindow,
+    this.inheritedOfflineAfterMin,
+    this.inheritedSpeedMbps,
+    this.inheritedUsageGb,
+    this.inheritedUsageWindow,
   });
 
   final int id;
@@ -166,6 +170,14 @@ class RouterAlertTarget {
   final int? overrideUsageGb;
   final String? overrideUsageWindow;
 
+  /// The GLOBAL value each blank limit follows — «يرث العامّ (X)» (owner
+  /// 2026-10-06). From the server's `inherited`; an older server → the
+  /// effective value when the router has no own value (then it IS global).
+  final int? inheritedOfflineAfterMin;
+  final int? inheritedSpeedMbps;
+  final int? inheritedUsageGb;
+  final String? inheritedUsageWindow;
+
   factory RouterAlertTarget.fromJson(Map<String, dynamic> json) {
     final ov = json['override'];
     int? ovInt(String key) {
@@ -181,12 +193,41 @@ class RouterAlertTarget {
       return v.isEmpty ? null : v;
     }
 
+    final inh = json['inherited'];
+    int? inhInt(String key, int? override, Object? effective) {
+      if (inh is Map && inh[key] != null) return int.tryParse('${inh[key]}');
+      if (ov is Map && override == null) return int.tryParse('$effective');
+      return null;
+    }
+
+    String? inhWindow(String? override) {
+      if (inh is Map && '${inh['usage_window'] ?? ''}'.trim().isNotEmpty) {
+        return '${inh['usage_window']}'.trim();
+      }
+      if (ov is Map && override == null) {
+        final eff = '${json['usage_window'] ?? ''}'.trim();
+        return eff.isEmpty ? null : eff;
+      }
+      return null;
+    }
+
+    final oOffline = ovInt('offline_after_min');
+    final oSpeed = ovInt('normal_speed_mbps');
+    final oUsage = ovInt('normal_usage_gb');
+    final oWindow = ovWindow();
     return RouterAlertTarget(
       overrideKnown: ov is Map,
-      overrideOfflineAfterMin: ovInt('offline_after_min'),
-      overrideSpeedMbps: ovInt('normal_speed_mbps'),
-      overrideUsageGb: ovInt('normal_usage_gb'),
-      overrideUsageWindow: ovWindow(),
+      overrideOfflineAfterMin: oOffline,
+      overrideSpeedMbps: oSpeed,
+      overrideUsageGb: oUsage,
+      overrideUsageWindow: oWindow,
+      inheritedOfflineAfterMin:
+          inhInt('offline_after_min', oOffline, json['offline_after_min']),
+      inheritedSpeedMbps:
+          inhInt('normal_speed_mbps', oSpeed, json['normal_speed_mbps']),
+      inheritedUsageGb:
+          inhInt('normal_usage_gb', oUsage, json['normal_usage_gb']),
+      inheritedUsageWindow: inhWindow(oWindow),
       id: _int(json['id']),
       name: _string(json['name']),
       address: _string(json['address']),
@@ -223,6 +264,10 @@ class RouterAlertTarget {
       overrideSpeedMbps: overrideSpeedMbps,
       overrideUsageGb: overrideUsageGb,
       overrideUsageWindow: overrideUsageWindow,
+      inheritedOfflineAfterMin: inheritedOfflineAfterMin,
+      inheritedSpeedMbps: inheritedSpeedMbps,
+      inheritedUsageGb: inheritedUsageGb,
+      inheritedUsageWindow: inheritedUsageWindow,
     );
   }
 
@@ -250,6 +295,10 @@ class RouterAlertTarget {
       overrideSpeedMbps: speedMbps,
       overrideUsageGb: usageGb,
       overrideUsageWindow: usageWindow,
+      inheritedOfflineAfterMin: inheritedOfflineAfterMin,
+      inheritedSpeedMbps: inheritedSpeedMbps,
+      inheritedUsageGb: inheritedUsageGb,
+      inheritedUsageWindow: inheritedUsageWindow,
     );
   }
 
@@ -382,3 +431,17 @@ bool _bool(Object? value, {bool fallback = false}) {
   if (['0', 'false', 'no', 'off'].contains(text)) return false;
   return fallback;
 }
+
+/// «يرث العامّ (X)» — the hint of a blank per-router limit (owner
+/// 2026-10-06): blank = follow the global value, also after it changes.
+String inheritsGlobalLabel(Object? value) {
+  final v = value == null ? '' : '$value'.trim();
+  return v.isEmpty ? 'يرث العامّ' : 'يرث العامّ ($v)';
+}
+
+/// Arabic name of a usage window key.
+String usageWindowLabel(String? key) => switch (key) {
+      'day' => 'يومي',
+      'month' => 'شهري',
+      _ => '',
+    };

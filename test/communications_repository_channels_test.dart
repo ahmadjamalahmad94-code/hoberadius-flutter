@@ -54,7 +54,7 @@ class _CaptureAdapter implements HttpClientAdapter {
           ],
           'methods': ['GET', 'POST'],
         },
-      'POST /api/v1/communications/channels/sms' => {
+      'POST /api/v1/communications/channels/whatsapp' => {
           'channel': _channelPayload(
             enabled: true,
             active: true,
@@ -146,13 +146,13 @@ void main() {
 
     final channels = await repo.channels();
     final saved = await repo.saveChannel(
+      // SMS goes via TweetSMS (owner 2026-10-06) — only WhatsApp keeps an
+      // HTTP config, saved without «mode» / «balance_url».
       const CommunicationChannelDraft(
-        channel: 'sms',
+        channel: 'whatsapp',
         enabled: true,
-        mode: 'self_api',
         sendUrlTemplate: 'https://provider.example/send?to={phone}&text={msg}',
         httpMethod: 'POST',
-        balanceUrl: 'https://provider.example/balance',
       ),
     );
     final whatsapp = await repo.whatsappBridge();
@@ -174,7 +174,7 @@ void main() {
       adapter.requests.map((request) => '${request.method} ${request.path}'),
       [
         'GET /api/v1/communications/channels',
-        'POST /api/v1/communications/channels/sms',
+        'POST /api/v1/communications/channels/whatsapp',
         'GET /api/v1/whatsapp',
         'PATCH /api/v1/whatsapp/settings',
         'POST /api/v1/whatsapp/test',
@@ -183,11 +183,9 @@ void main() {
     );
     expect(adapter.requests[1].data, {
       'enabled': true,
-      'mode': 'self_api',
       'send_url_template':
           'https://provider.example/send?to={phone}&text={msg}',
       'http_method': 'POST',
-      'balance_url': 'https://provider.example/balance',
     });
     expect(adapter.requests[3].data, {
       'toggles': {'otp': true},

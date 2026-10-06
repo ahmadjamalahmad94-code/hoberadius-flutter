@@ -34,7 +34,6 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
   String _nasType = 'hotspot';
   String _rosVersion = '';
   bool _enabled = true;
-  bool _monitoring = true;
   bool _apiUseTls = false;
   bool _requireMessageAuth = false;
   NasDevice? _loaded;
@@ -50,25 +49,21 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     'location',
     'coordinates',
     'description',
-    'snmp_community',
     'tags',
     'api_user',
     'secret',
     'api_password',
-    'auth_port',
-    'acct_port',
     'coa_port',
     'api_port',
     'ssh_port',
-    'ports',
   ];
+  // «المراقبة» / «منفذ المصادقة·المحاسبة» / «مجتمع SNMP» / «عدد المنافذ»
+  // removed (owner 2026-10-06): nothing on the server reads them.
 
   @override
   void initState() {
     super.initState();
     _c = {for (final k in _fields) k: TextEditingController()};
-    _c['auth_port']!.text = '1812';
-    _c['acct_port']!.text = '1813';
     _c['coa_port']!.text = '3799';
     _c['api_port']!.text = '8728';
     _c['ssh_port']!.text = '22';
@@ -104,15 +99,11 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
     _c['location']!.text = d.location;
     _c['coordinates']!.text = d.coordinates;
     _c['description']!.text = d.description;
-    _c['snmp_community']!.text = d.snmpCommunity;
     _c['tags']!.text = d.tags;
     _c['api_user']!.text = d.apiUser;
-    _c['auth_port']!.text = d.authPort.toString();
-    _c['acct_port']!.text = d.acctPort.toString();
     _c['coa_port']!.text = d.coaPort.toString();
     _c['api_port']!.text = d.apiPort.toString();
     _c['ssh_port']!.text = d.sshPort.toString();
-    _c['ports']!.text = d.ports.toString();
     // Secret/api_password are not returned by the server. Leave the form
     // fields empty — typing a new value rotates them; leaving empty keeps
     // the previously-stored value.
@@ -122,7 +113,6 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       _rosVersion =
           const {'', '6', '7'}.contains(d.rosVersion) ? d.rosVersion : '';
       _enabled = d.enabled;
-      _monitoring = d.monitoringEnabled;
       _apiUseTls = d.apiUseTls;
       _requireMessageAuth = d.requireMessageAuthenticator;
     });
@@ -131,12 +121,9 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
   int _i(String key) => parseIntInput(_c[key]!.text) ?? 0;
 
   static const _portKeys = [
-    'auth_port',
-    'acct_port',
     'coa_port',
     'api_port',
     'ssh_port',
-    'ports',
   ];
 
   /// The server said this router NAME is taken (409 `nas_name_conflict`):
@@ -152,17 +139,12 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
       vendor: _vendor,
       nasType: _nasType,
       shortname: _s('shortname'),
-      ports: _i('ports'),
-      snmpCommunity: _s('snmp_community'),
-      authPort: _i('auth_port'),
-      acctPort: _i('acct_port'),
       coaPort: _i('coa_port'),
       apiPort: _i('api_port'),
       apiUser: _s('api_user'),
       apiUseTls: _apiUseTls,
       location: _s('location'),
       coordinates: _s('coordinates'),
-      monitoringEnabled: _monitoring,
       description: _s('description'),
       enabled: _enabled,
       requireMessageAuthenticator: _requireMessageAuth,
@@ -477,12 +459,6 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                   value: _enabled,
                   onChanged: (v) => setState(() => _enabled = v),
                 ),
-                HubSwitchRow(
-                  label: 'المراقبة',
-                  dense: true,
-                  value: _monitoring,
-                  onChanged: (v) => setState(() => _monitoring = v),
-                ),
               ],
             ),
           ),
@@ -510,8 +486,6 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
                 ),
                 _PortsRow(
                   children: [
-                    _portField('منفذ المصادقة', 'auth_port'),
-                    _portField('منفذ المحاسبة', 'acct_port'),
                     _portField('منفذ CoA', 'coa_port'),
                   ],
                 ),
@@ -568,18 +542,11 @@ class _NasFormScreenState extends ConsumerState<NasFormScreen> {
           CollapsibleSection(
             storageKey: 'nas.snmp',
             icon: Icons.settings_remote,
-            title: 'المراقبة والدخول الآمن',
+            title: 'الدخول الآمن',
             initiallyExpanded: false,
             child: Column(
               children: [
-                FormFieldRow(
-                  label: 'مجتمع SNMP',
-                  child: TextFormField(controller: _c['snmp_community']),
-                ),
-                FormFieldPair(
-                  first: _portField('منفذ SSH', 'ssh_port'),
-                  second: _portField('عدد المنافذ', 'ports'),
-                ),
+                _portField('منفذ SSH', 'ssh_port'),
               ],
             ),
           ),

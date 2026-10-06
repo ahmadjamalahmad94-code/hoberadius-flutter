@@ -44,24 +44,18 @@ void main() {
     final draft = VoucherGenerateDraft(
       amount: 7.5,
       count: 20,
-      planId: 4,
       expireAt: DateTime.utc(2026, 6, 30, 23, 59, 59),
     );
 
+    // «plan_id» removed (owner 2026-10-06) — never sent.
     expect(draft.toApiJson(), {
       'amount': 7.5,
       'count': 20,
-      'plan_id': 4,
       'expire_at': '2026-06-30T23:59:59Z',
     });
 
-    const withoutPlan = VoucherGenerateDraft(
-      amount: 5,
-      count: 1,
-      planId: null,
-      expireAt: null,
-    );
-    expect(withoutPlan.toApiJson(), {'amount': 5.0, 'count': 1});
+    const noExpiry = VoucherGenerateDraft(amount: 5, count: 1, expireAt: null);
+    expect(noExpiry.toApiJson(), {'amount': 5.0, 'count': 1});
   });
 
   test('voucher generate and revoke responses parse correctly', () {

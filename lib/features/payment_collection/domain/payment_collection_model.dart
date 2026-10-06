@@ -134,7 +134,7 @@ class PaymentCollectionSettings {
       'wallet_owner_name': walletOwnerName,
       'currency': currency,
       'confirmation_mode': confirmationMode,
-      'auto_apply': autoApply,
+      // 'auto_apply' is no longer sent (owner 2026-10-06: removed).
       'allow_cards': allowCards,
       'allow_monthly_subscriptions': allowMonthlySubscriptions,
       'allow_distributor_payments': allowDistributorPayments,

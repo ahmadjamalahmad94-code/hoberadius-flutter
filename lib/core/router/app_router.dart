@@ -48,7 +48,6 @@ import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/lifecycle/presentation/lifecycle_screen.dart';
 import '../../features/more/presentation/more_screen.dart';
 import '../../features/mikrotik/presentation/mikrotik_programming_screen.dart';
-import '../../features/mikrotik/presentation/mikrotik_screen.dart';
 import '../../features/mikrotik/presentation/router_operations_screen.dart';
 import '../../features/nas/presentation/nas_form_screen.dart';
 import '../../features/nas/presentation/nas_list_screen.dart';
@@ -307,11 +306,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               ),
             ],
           ),
-          GoRoute(
-            path: '/mikrotik',
-            name: 'mikrotik',
-            builder: (ctx, st) => const MikrotikScreen(),
-          ),
+          // «اتصالات ميكروتك» (/mikrotik) removed (owner 2026-10-06): an
+          // in-memory store lost on restart, read only in RADIUS_MODE=direct.
           GoRoute(
             path: '/router-operations',
             name: 'router-operations',

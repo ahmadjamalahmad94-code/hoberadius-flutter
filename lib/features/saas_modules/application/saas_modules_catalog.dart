@@ -52,23 +52,13 @@ const Map<String, SaasModuleDef> kSaasModules = {
       SaasModuleField('name', 'الاسم'),
       SaasModuleField('rate_down', 'تنزيل Kbps', number: true),
       SaasModuleField('rate_up', 'رفع Kbps', number: true),
-      SaasModuleField('priority', 'الأولوية', number: true),
+      // «الأولوية» removed (owner 2026-10-06): nothing reads it.
     ],
-    columns: ['name', 'rate_down', 'rate_up', 'priority'],
+    columns: ['name', 'rate_down', 'rate_up'],
     canDelete: true,
   ),
-  'pools': SaasModuleDef(
-    title: 'مجموعات العناوين',
-    subtitle: 'تجمعات عناوين IP المستخدمة في الباقات والمشتركين كما تظهر في الويب.',
-    path: '/api/v1/pools',
-    fields: [
-      SaasModuleField('pool_name', 'اسم المجموعة'),
-      SaasModuleField('range_ip', 'نطاق العناوين'),
-      SaasModuleField('local_ip', 'العنوان المحلي'),
-    ],
-    columns: ['pool_name', 'range_ip', 'local_ip'],
-    canDelete: true,
-  ),
+  // «مجموعات العناوين» (IP pools) removed (owner 2026-10-06): the pools
+  // table is never read by RADIUS — the web page is gone too.
   'vouchers': SaasModuleDef(
     title: 'قسائم الشحن',
     subtitle: 'إنشاء قسائم وشحنها أو إلغاؤها من الخادم.',
@@ -77,7 +67,7 @@ const Map<String, SaasModuleDef> kSaasModules = {
     fields: [
       SaasModuleField('amount', 'القيمة', number: true),
       SaasModuleField('count', 'العدد', number: true, defaultValue: '1'),
-      SaasModuleField('plan_id', 'رقم الباقة', number: true),
+      // «رقم الباقة» removed (owner 2026-10-06): redeeming never read it.
     ],
     columns: ['code', 'amount', 'status', 'created_at'],
     canRevokeVoucher: true,
@@ -116,23 +106,21 @@ const Map<String, SaasModuleDef> kSaasModules = {
       SaasModuleField('name', 'الاسم'),
       SaasModuleField('serial', 'السيريال'),
       SaasModuleField('mac', 'MAC'),
-      SaasModuleField('rent_per_month', 'الإيجار الشهري', number: true),
+      // «الإيجار الشهري» removed (owner 2026-10-06): no billing reads it.
     ],
-    columns: ['name', 'subscriber_id', 'status', 'rent_per_month'],
+    columns: ['name', 'subscriber_id', 'status'],
     canDelete: true,
   ),
   'share-groups': SaasModuleDef(
     title: 'مجموعات المشاركة',
-    subtitle: 'مشاركة حصة أو سرعة بين أكثر من مستفيد.',
+    subtitle: 'تجميع أكثر من مستفيد تحت اسم واحد.',
     path: '/api/v1/share-groups',
     fields: [
       SaasModuleField('name', 'الاسم'),
-      SaasModuleField('shared_quota_mb', 'الحصة MB', number: true),
-      SaasModuleField('shared_speed_down_kbps', 'سرعة التنزيل', number: true),
-      SaasModuleField('shared_speed_up_kbps', 'سرعة الرفع', number: true),
-      SaasModuleField('max_members', 'أقصى عدد أعضاء', number: true),
+      // shared quota / speeds / max members removed (owner 2026-10-06):
+      // nothing enforces them.
     ],
-    columns: ['name', 'members', 'shared_quota_mb', 'enabled'],
+    columns: ['name', 'members', 'enabled'],
     canDelete: true,
   ),
 };

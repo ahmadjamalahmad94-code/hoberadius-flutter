@@ -89,9 +89,11 @@ class SettingsSnapshot {
           ? raw
               .whereType<Map>()
               .map((item) => SettingItem.fromJson(_map(item)))
+              .where((item) => !kRetiredSettingKeys.contains(item.key))
               .toList()
           : const [],
-      settings: _stringMap(json['settings']),
+      settings: Map.of(_stringMap(json['settings']))
+        ..removeWhere((key, _) => kRetiredSettingKeys.contains(key)),
     );
   }
 }
@@ -109,25 +111,33 @@ Map<String, String> _stringMap(Object? value) {
 
 String _string(Object? value) => (value ?? '').toString();
 
+/// Settings the owner removed (2026-10-06): no reader on the server, or hidden
+/// on the web. Updated servers no longer list them; this filter keeps an
+/// older server from showing them in the app either.
+const Set<String> kRetiredSettingKeys = {
+  'billing.tax_pct',
+  'auth.allow_password_reset',
+  'quota.threshold_alerts',
+  'portal.allow_password_change',
+  'portal.allow_self_purchase',
+  'portal.allow_plan_change',
+};
+
 /// Settings the web edits with a select/toggle — the app offers the same
 /// choices instead of free text (parity-b: «نعم» saved for a toggle was read
 /// as OFF, «شيكل» was stored as the currency). Null = free text.
 const _boolChoices = <(String, String)>[('1', 'مفعّل'), ('0', 'معطّل')];
 
 const Set<String> kBoolSettingKeys = {
-  'auth.allow_password_reset',
   'cards.login_without_password_default',
   'security.block_random_mac_cards',
   'security.block_random_mac_subscribers',
   'portal.show_usage',
   'portal.show_sessions',
   'portal.show_invoices',
-  'portal.allow_password_change',
   'portal.allow_renewal_request',
   'portal.allow_loan_request',
   'portal.show_support',
-  'portal.allow_self_purchase',
-  'portal.allow_plan_change',
 };
 
 

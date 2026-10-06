@@ -372,7 +372,7 @@ class _PolicyTileState extends ConsumerState<_PolicyTile> {
 
   List<Widget> _fieldChips(NetworkPolicyKind kind, NetworkPolicy policy) {
     final keys = kind.isWebBlock
-        ? const ['scope', 'fail_open']
+        ? const ['scope']
         : const ['hotspot_profile'];
     return [
       for (final key in keys)
@@ -1157,7 +1157,6 @@ class _ChildrenEditor extends ConsumerStatefulWidget {
 class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
   final _value = TextEditingController();
   final _category = TextEditingController(text: 'custom');
-  final _notes = TextEditingController();
   final _dstPort = TextEditingController();
   String _kindValue = 'domain';
   String _protocol = '';
@@ -1173,7 +1172,6 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
   void dispose() {
     _value.dispose();
     _category.dispose();
-    _notes.dispose();
     _dstPort.dispose();
     super.dispose();
   }
@@ -1294,12 +1292,7 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
               ],
             ),
           ],
-          const SizedBox(height: AppTokens.s12),
-          TextField(
-            controller: _notes,
-            decoration: const InputDecoration(labelText: 'ملاحظات'),
-            maxLines: 2,
-          ),
+          // «ملاحظات» removed (owner 2026-10-06): never shown or used.
           const SizedBox(height: AppTokens.s12),
           Align(
             alignment: AlignmentDirectional.centerStart,
@@ -1334,20 +1327,17 @@ class _ChildrenEditorState extends ConsumerState<_ChildrenEditor> {
               'category': _category.text.trim().isEmpty
                   ? 'custom'
                   : _category.text.trim(),
-              'notes': _notes.text.trim(),
             }
           : {
               'value': value,
               'entry_type': _kindValue,
               'dst_port': _dstPort.text.trim(),
               'protocol': _protocol,
-              'notes': _notes.text.trim(),
             };
       await ref
           .read(networkPolicyRepositoryProvider)
           .addChild(widget.kind, widget.policy.id, body);
       _value.clear();
-      _notes.clear();
       ref.invalidate(networkPolicyChildrenProvider(widget.request));
       if (mounted) _snack(context, 'تمت الإضافة');
     } catch (error) {
@@ -1421,7 +1411,6 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
   int? _routerId;
   bool _enabled = true;
   bool _saving = false;
-  bool _failOpen = true;
 
   @override
   void initState() {
@@ -1474,15 +1463,9 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
                 title: const Text('السياسة مفعّلة'),
                 onChanged: (value) => setState(() => _enabled = value),
               ),
-              if (kind.isWebBlock) ...[
-                const Divider(height: AppTokens.s24),
-                SwitchListTile(
-                  value: _failOpen,
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('عند فشل القاعدة اسمح بدل الحظر'),
-                  onChanged: (value) => setState(() => _failOpen = value),
-                ),
-              ] else ...[
+              // Web-block «الوضع الآمن» (fail_open) removed (owner
+              // 2026-10-06): it only changed a warning text.
+              if (!kind.isWebBlock) ...[
                 const Divider(height: AppTokens.s24),
                 TextField(
                   controller: _hotspotProfile,
@@ -1534,7 +1517,6 @@ class _CreatePolicyDialogState extends ConsumerState<_CreatePolicyDialog> {
         'enabled': _enabled,
         if (kind.isWebBlock) ...{
           'scope': 'all_users',
-          'fail_open': _failOpen,
         },
         if (kind.isWalledGarden) ...{
           'hotspot_profile': _hotspotProfile.text.trim(),

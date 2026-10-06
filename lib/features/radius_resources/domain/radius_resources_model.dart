@@ -62,7 +62,7 @@ class BandwidthProfileResource {
         'rate_up': rateUp,
         'rate_up_unit': rateUpUnit,
         'burst': burst,
-        'priority': priority,
+        // 'priority' is no longer sent (owner 2026-10-06: removed).
       };
 }
 
@@ -142,13 +142,11 @@ class ShareGroupResource {
     );
   }
 
+  /// Shared quota / speeds / max members are not sent (owner 2026-10-06:
+  /// removed — nothing enforces them; the server keeps stored values).
   Map<String, dynamic> toBody() => {
         'name': name,
         'description': description,
-        'shared_quota_mb': sharedQuotaMb,
-        'shared_speed_down_kbps': sharedSpeedDownKbps,
-        'shared_speed_up_kbps': sharedSpeedUpKbps,
-        'max_members': maxMembers,
         'enabled': enabled,
       };
 }

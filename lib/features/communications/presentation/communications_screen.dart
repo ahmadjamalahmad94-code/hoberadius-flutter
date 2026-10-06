@@ -230,6 +230,11 @@ class _TemplatesPanel extends ConsumerWidget {
       data: (page) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const PreviewOnlyBanner(
+            message: 'القوالب تُحفظ وتُعايَن فقط: لا يوجد مُرسِل يستعملها '
+                'تلقائيًّا بعد. الإرسال الفعليّ من «إرسال» بنصٍّ تكتبه هناك.',
+          ),
+          const SizedBox(height: AppTokens.s12),
           Align(
             alignment: AlignmentDirectional.centerStart,
             child: ElevatedButton.icon(
@@ -532,6 +537,11 @@ class _CampaignsPanelState extends ConsumerState<_CampaignsPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const PreviewOnlyBanner(
+          message: 'الحملات تُحضَّر وتُعايَن فقط: لا تُرسَل أيّ رسالة ولا '
+              'يُنفَّذ أيّ إجراء من هذه الشاشة.',
+        ),
+        const SizedBox(height: AppTokens.s12),
         templates.when(
           loading: () => const _Loading(),
           error: (error, _) => HubErrorState(
@@ -696,7 +706,7 @@ class _ChannelsPanel extends ConsumerWidget {
                   SizedBox(width: AppTokens.s8),
                   Expanded(
                     child: Text(
-                      'فعّل القناة فقط بعد إدخال رابط إرسال صحيح من مزود الرسائل. استخدم {phone} لرقم الجوال و {msg} لنص الرسالة داخل رابط المزود.',
+                      'الرسائل القصيرة تُرسَل عبر حساب TweetSMS المربوط. لواتساب: فعّل القناة فقط بعد إدخال رابط إرسال صحيح من المزود، واستخدم {phone} لرقم الجوال و {msg} لنص الرسالة.',
                       style:
                           TextStyle(color: AppTokens.textMuted, height: 1.35),
                     ),
@@ -706,11 +716,11 @@ class _ChannelsPanel extends ConsumerWidget {
             ),
             const SizedBox(height: AppTokens.s12),
             for (final item in data.items) ...[
-              _ChannelConfigCard(
-                item: item,
-                modes: data.modes,
-                methods: data.methods,
-              ),
+              // SMS = TweetSMS (owner 2026-10-06): status only, no HTTP form.
+              if (item.isTweetSms)
+                TweetSmsStatusCard(item: item)
+              else
+                _ChannelConfigCard(item: item, methods: data.methods),
               const SizedBox(height: AppTokens.s12),
             ],
           ],
@@ -720,15 +730,103 @@ class _ChannelsPanel extends ConsumerWidget {
   }
 }
 
+/// «معاينة فقط» — message templates and campaigns have no sender yet (owner
+/// 2026-10-06: keep them, but say so plainly, like the web pages).
+class PreviewOnlyBanner extends StatelessWidget {
+  const PreviewOnlyBanner({super.key, required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(AppTokens.s12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(AppTokens.r10),
+        border: Border.all(color: const Color(0xFFFCD34D)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.visibility_outlined,
+            size: 18,
+            color: Color(0xFF92400E),
+          ),
+          const SizedBox(width: AppTokens.s8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(
+                    text: 'معاينة فقط — ',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  TextSpan(text: message),
+                ],
+              ),
+              style: const TextStyle(color: Color(0xFF92400E), height: 1.4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The SMS channel: messages go through the tenant's TweetSMS account (the
+/// custom «SMS HTTP channel» was retired — owner 2026-10-06). Read-only.
+class TweetSmsStatusCard extends StatelessWidget {
+  const TweetSmsStatusCard({super.key, required this.item});
+
+  final CommunicationChannel item;
+
+  @override
+  Widget build(BuildContext context) {
+    final known = item.provider == 'tweetsms';
+    return AppCard(
+      title: 'الرسائل القصيرة (TweetSMS)',
+      icon: Icons.sms_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Wrap(
+            spacing: AppTokens.s8,
+            runSpacing: AppTokens.s8,
+            children: [
+              if (known)
+                StatusPill(
+                  text: item.connected ? 'مربوطة' : 'غير مربوطة',
+                  tone: item.connected ? PillTone.green : PillTone.neutral,
+                  dot: true,
+                ),
+              if (known && item.connected && item.sender.isNotEmpty)
+                StatusPill(
+                  text: 'المرسِل: ${item.sender}',
+                  tone: PillTone.blue,
+                  icon: Icons.badge_outlined,
+                ),
+            ],
+          ),
+          const SizedBox(height: AppTokens.s8),
+          const Text(
+            'كل رسائل SMS تخرج عبر حساب TweetSMS المربوط. لا يوجد رابط HTTP مخصّص للرسائل القصيرة؛ اربط الحساب أو عدّله من لوحة الويب: «ربط SMS».',
+            style: TextStyle(color: AppTokens.textMuted, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ChannelConfigCard extends ConsumerStatefulWidget {
   const _ChannelConfigCard({
     required this.item,
-    required this.modes,
     required this.methods,
   });
 
   final CommunicationChannel item;
-  final List<CommunicationModeOption> modes;
   final List<String> methods;
 
   @override
@@ -737,9 +835,7 @@ class _ChannelConfigCard extends ConsumerStatefulWidget {
 
 class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
   late final TextEditingController _sendUrl;
-  late final TextEditingController _balanceUrl;
   late bool _enabled;
-  late String _mode;
   late String _method;
   bool _saving = false;
 
@@ -747,7 +843,6 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
   void initState() {
     super.initState();
     _sendUrl = TextEditingController();
-    _balanceUrl = TextEditingController();
     _resetFromItem();
   }
 
@@ -762,31 +857,17 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
   @override
   void dispose() {
     _sendUrl.dispose();
-    _balanceUrl.dispose();
     super.dispose();
   }
 
   void _resetFromItem() {
     _enabled = widget.item.enabled;
-    _mode = widget.item.mode;
     _method = widget.item.config.httpMethod;
     _sendUrl.text = widget.item.config.sendUrlTemplate;
-    _balanceUrl.text = widget.item.config.balanceUrl;
   }
 
   @override
   Widget build(BuildContext context) {
-    final modeOptions = widget.modes.isEmpty
-        ? const [
-            CommunicationModeOption(
-              key: 'self_api',
-              label: 'ربط مباشر من العميل',
-            ),
-          ]
-        : widget.modes;
-    if (!modeOptions.any((item) => item.key == _mode)) {
-      _mode = modeOptions.first.key;
-    }
     final methodOptions =
         widget.methods.isEmpty ? const ['GET', 'POST'] : widget.methods;
     if (!methodOptions.contains(_method)) {
@@ -808,11 +889,6 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
                 tone: _channelTone(widget.item),
                 dot: true,
               ),
-              StatusPill(
-                text: widget.item.modeLabel,
-                tone: PillTone.blue,
-                icon: Icons.link_outlined,
-              ),
             ],
           ),
           const SizedBox(height: AppTokens.s12),
@@ -826,47 +902,16 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
             onChanged: (value) => setState(() => _enabled = value),
           ),
           const SizedBox(height: AppTokens.s12),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final wide = constraints.maxWidth >= 560;
-              final modeField = DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _mode,
-                decoration: const InputDecoration(labelText: 'طريقة التشغيل'),
-                items: [
-                  for (final mode in modeOptions)
-                    DropdownMenuItem(value: mode.key, child: Text(mode.label)),
-                ],
-                onChanged: (value) => setState(() => _mode = value ?? _mode),
-              );
-              final methodField = DropdownButtonFormField<String>(
-                isExpanded: true,
-                initialValue: _method,
-                decoration: const InputDecoration(labelText: 'نوع الطلب'),
-                items: [
-                  for (final method in methodOptions)
-                    DropdownMenuItem(value: method, child: Text(method)),
-                ],
-                onChanged: (value) =>
-                    setState(() => _method = value ?? _method),
-              );
-              if (!wide) {
-                return Column(
-                  children: [
-                    modeField,
-                    const SizedBox(height: AppTokens.s12),
-                    methodField,
-                  ],
-                );
-              }
-              return Row(
-                children: [
-                  Expanded(child: modeField),
-                  const SizedBox(width: AppTokens.s12),
-                  SizedBox(width: 150, child: methodField),
-                ],
-              );
-            },
+          // «طريقة التشغيل» removed (owner 2026-10-06): one value, unread.
+          DropdownButtonFormField<String>(
+            isExpanded: true,
+            initialValue: _method,
+            decoration: const InputDecoration(labelText: 'نوع الطلب'),
+            items: [
+              for (final method in methodOptions)
+                DropdownMenuItem(value: method, child: Text(method)),
+            ],
+            onChanged: (value) => setState(() => _method = value ?? _method),
           ),
           const SizedBox(height: AppTokens.s12),
           TextField(
@@ -877,15 +922,7 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
               hintText: 'https://provider.example/send?to={phone}&text={msg}',
             ),
           ),
-          const SizedBox(height: AppTokens.s12),
-          TextField(
-            controller: _balanceUrl,
-            textDirection: TextDirection.ltr,
-            decoration: const InputDecoration(
-              labelText: 'رابط قراءة الرصيد من المزود عند الحاجة',
-              hintText: 'https://provider.example/balance',
-            ),
-          ),
+          // «رابط قراءة الرصيد» removed (owner 2026-10-06): never queried.
           const SizedBox(height: AppTokens.s16),
           Align(
             alignment: AlignmentDirectional.centerStart,
@@ -907,10 +944,8 @@ class _ChannelConfigCardState extends ConsumerState<_ChannelConfigCard> {
             CommunicationChannelDraft(
               channel: widget.item.channel,
               enabled: _enabled,
-              mode: _mode,
               sendUrlTemplate: _sendUrl.text.trim(),
               httpMethod: _method,
-              balanceUrl: _balanceUrl.text.trim(),
             ),
           );
       _refresh(ref);

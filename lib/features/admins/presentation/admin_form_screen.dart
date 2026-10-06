@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:hoberadius_app/core/api/visible_error_message.dart';
 
 import '../../../core/auth/permissions.dart';
-import '../../../core/format/bidi.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../shared/widgets/collapsible_section.dart';
 import '../../../shared/widgets/form_field_row.dart';
@@ -31,7 +30,6 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
   final _password = TextEditingController();
   final _passwordConfirm = TextEditingController();
   final _tags = TextEditingController();
-  final _avatar = TextEditingController();
 
   int? _roleId;
   bool _isSuperAdmin = false;
@@ -59,7 +57,6 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       _password,
       _passwordConfirm,
       _tags,
-      _avatar,
     ]) {
       c.dispose();
     }
@@ -87,7 +84,6 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
     _mobile.text = a.mobile;
     _phone.text = a.phone;
     _tags.text = a.tags;
-    _avatar.text = a.avatarUrl;
     setState(() {
       _roleId = a.roleId;
       _isSuperAdmin = a.isSuperAdmin;
@@ -105,7 +101,6 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
       mobile: _mobile.text.trim(),
       phone: _phone.text.trim(),
       tags: _tags.text.trim(),
-      avatarUrl: _avatar.text.trim(),
       roleId: _roleId,
       clearRoleId: _roleId == null,
       isSuperAdmin: _isSuperAdmin,
@@ -276,15 +271,8 @@ class _AdminFormScreenState extends ConsumerState<AdminFormScreen> {
                   label: 'هاتف إضافي',
                   child: TextFormField(controller: _phone),
                 ),
-                FormFieldRow(
-                  label: 'رابط الصورة الرمزية',
-                  // LTR isolate: in RTL «https://…» read «…//:https» (f07 N-C8).
-                  hint: kAvatarUrlHint,
-                  child: TextFormField(
-                    controller: _avatar,
-                    textDirection: TextDirection.ltr,
-                  ),
-                ),
+                // «رابط الصورة الرمزية» removed (owner 2026-10-06): nothing
+                // renders an admin avatar.
                 FormFieldRow(
                   label: 'الوسوم والملاحظات',
                   hint: 'قِيَم مفصولة بفواصل',
@@ -467,6 +455,3 @@ class _OwnerNote extends StatelessWidget {
     );
   }
 }
-
-/// The avatar-URL example, one left-to-right run inside the Arabic form.
-final String kAvatarUrlHint = ltrIsolate('https://…');
