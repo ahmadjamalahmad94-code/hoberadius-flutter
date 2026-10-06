@@ -47,7 +47,7 @@ class MoreScreen extends ConsumerWidget {
             ),
             subtitle: const Text('رقم النسخة، فحص التحديثات، سجل التحديثات'),
             trailing: const Icon(Icons.chevron_left),
-            onTap: () => context.pushNamed('about'),
+            onTap: () => context.goNamed('about'),
           ),
         ),
         const SizedBox(height: AppTokens.s8),

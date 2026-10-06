@@ -44,8 +44,10 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
       _ => ('اضغط «فحص التحديثات»', AppTokens.textMuted),
     };
 
-    return ListView(
-      padding: const EdgeInsets.all(AppTokens.s16),
+    // The shell already scrolls its body (SingleChildScrollView) — a
+    // ListView here got unbounded height and rendered nothing (owner 2026-10-07).
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Card(
           child: Padding(
@@ -111,9 +113,11 @@ class _AboutScreenState extends ConsumerState<AboutScreen> {
                         key: const ValueKey('about-install'),
                         onPressed: ctrl.install,
                         icon: const Icon(Icons.download),
-                        label: Text(ota.phase == OtaPhase.failed
-                            ? 'إعادة المحاولة'
-                            : 'تنزيل التحديث',),
+                        label: Text(
+                          ota.phase == OtaPhase.failed
+                              ? 'إعادة المحاولة'
+                              : 'تنزيل التحديث',
+                        ),
                       ),
                   ],
                 ),
