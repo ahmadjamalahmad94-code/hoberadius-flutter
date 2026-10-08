@@ -33,36 +33,40 @@ final opsSuggestionsProvider =
 
 /// One row of the chat log.
 sealed class OpsEntry {
-  const OpsEntry(this.id);
+  OpsEntry(this.id, {DateTime? at}) : at = at ?? DateTime.now();
   final int id;
+
+  /// When the row entered the transcript — the time shown under the bubble
+  /// (local device clock; the panel time zone is a server-side concern).
+  final DateTime at;
 }
 
 class OpsUserEntry extends OpsEntry {
-  const OpsUserEntry(super.id, this.text);
+  OpsUserEntry(super.id, this.text, {super.at});
   final String text;
 }
 
 /// An assistant bubble. [empty] = an empty-state line (dashed bubble).
 class OpsBotEntry extends OpsEntry {
-  const OpsBotEntry(super.id, this.text, {this.empty = false});
+  OpsBotEntry(super.id, this.text, {this.empty = false, super.at});
   final String text;
   final bool empty;
 }
 
 class OpsErrorEntry extends OpsEntry {
-  const OpsErrorEntry(super.id, this.text);
+  OpsErrorEntry(super.id, this.text, {super.at});
   final String text;
 }
 
 /// A CHOICES list from the system.
 class OpsChoicesEntry extends OpsEntry {
-  const OpsChoicesEntry(super.id, this.reply);
+  OpsChoicesEntry(super.id, this.reply, {super.at});
   final OpsReply reply;
 }
 
 /// A read-only INFO answer (RESULT card).
 class OpsInfoEntry extends OpsEntry {
-  const OpsInfoEntry(super.id, this.reply);
+  OpsInfoEntry(super.id, this.reply, {super.at});
   final OpsReply reply;
 }
 
@@ -70,11 +74,12 @@ enum OpsProposalState { pending, confirming, confirmed, cancelled }
 
 /// The executor's confirmation card.
 class OpsProposalEntry extends OpsEntry {
-  const OpsProposalEntry(
+  OpsProposalEntry(
     super.id,
     this.proposal, {
     this.state = OpsProposalState.pending,
     required this.idempotencyKey,
+    super.at,
   });
 
   final OpsProposal proposal;
@@ -83,13 +88,18 @@ class OpsProposalEntry extends OpsEntry {
   /// One key per proposal: a retry after a lost response reuses it.
   final String idempotencyKey;
 
-  OpsProposalEntry withState(OpsProposalState s) =>
-      OpsProposalEntry(id, proposal, state: s, idempotencyKey: idempotencyKey);
+  OpsProposalEntry withState(OpsProposalState s) => OpsProposalEntry(
+        id,
+        proposal,
+        state: s,
+        idempotencyKey: idempotencyKey,
+        at: at,
+      );
 }
 
 /// The execution report (per step done / failed / not run).
 class OpsReportEntry extends OpsEntry {
-  const OpsReportEntry(super.id, this.report, this.titles);
+  OpsReportEntry(super.id, this.report, this.titles, {super.at});
   final OpsReport report;
 
   /// action → title_ar (from the confirmation cards).
@@ -101,25 +111,34 @@ class OpsChatState {
     this.entries = const [],
     this.conversationId,
     this.busy = false,
+    this.taskChosen = false,
   });
 
   final List<OpsEntry> entries;
   final String? conversationId;
 
-  /// A request is in flight: «المساعد يفكّر…», input and buttons disabled.
+  /// A request is in flight: the typing indicator shows, input and buttons
+  /// are disabled.
   final bool busy;
+
+  /// A suggested task was tapped in this conversation — the quick-task chip
+  /// row above the composer retires (the «+» sheet stays available) and
+  /// comes back with the next [OpsChatController.newConversation].
+  final bool taskChosen;
 
   OpsChatState copyWith({
     List<OpsEntry>? entries,
     String? conversationId,
     bool clearConversation = false,
     bool? busy,
+    bool? taskChosen,
   }) =>
       OpsChatState(
         entries: entries ?? this.entries,
         conversationId:
             clearConversation ? null : (conversationId ?? this.conversationId),
         busy: busy ?? this.busy,
+        taskChosen: taskChosen ?? this.taskChosen,
       );
 }
 
@@ -243,6 +262,15 @@ class OpsChatController extends StateNotifier<OpsChatState> {
     return true;
   }
 
+  /// A suggested task («المهام المقترحة») was tapped: its sentence goes in
+  /// exactly as if the admin had typed it — the model still asks for what is
+  /// missing, and an executable action still ends at a confirmation card.
+  Future<void> sendTask(String prompt) async {
+    if (state.busy) return;
+    state = state.copyWith(taskChosen: true);
+    await send(prompt);
+  }
+
   /// «محادثة جديدة».
   void newConversation() {
     if (state.busy) return;
@@ -256,6 +284,7 @@ class OpsChatController extends StateNotifier<OpsChatState> {
     _titles.clear();
     state = OpsChatState(
       busy: true,
+      taskChosen: true,
       entries: [
         OpsUserEntry(
           _id(),
