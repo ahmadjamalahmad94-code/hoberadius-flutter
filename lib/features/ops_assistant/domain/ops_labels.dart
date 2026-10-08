@@ -6,6 +6,38 @@
 abstract final class OpsTexts {
   static const title = 'مساعد العمليّات';
   static const experimental = 'تجريبيّ';
+
+  // ── the app's chat surface (the owner's mockup) ──
+  /// The header title on the chat screen itself. The MENU entry keeps the
+  /// canonical «مساعد العمليّات» (navigation_schema) — this is the greeting
+  /// name the owner asked for on the screen.
+  static const smartTitle = 'المساعد الذكي';
+  static const smartSubtitle = 'اكتب طلبك بلغة بسيطة وأنا أنفذه لك.';
+  static const botName = 'المساعد الذكي';
+  static const notifications = 'الإشعارات';
+  static const historyTitle = 'المحادثات السابقة';
+
+  /// There is no server endpoint that LISTS an admin's past conversations
+  /// (the web's /ops-assistant/history replays ONE conversation by its id,
+  /// and the app's bearer API has no history route at all), so the button
+  /// shows the conversation that is open now.
+  static const historyOnlyCurrent =
+      'الخادم لا يحفظ قائمة محادثات سابقة — هذه هي المحادثة المفتوحة الآن.';
+  static const historyEmpty = 'لا رسائل في هذه المحادثة بعد.';
+  static const tasksTitle = 'المهام المقترحة';
+  static const tasksHint = 'اختر مهمّة وسأسألك عمّا ينقصني.';
+  static const tasksMore = 'المزيد';
+  static const resultReady = 'النتيجة جاهزة';
+  static const showDetails = 'عرض التفاصيل';
+  static const hideDetails = 'إخفاء التفاصيل';
+  static const greetingLead = 'أهلًا! اكتب ما تريد، مثل:';
+  static const greetingTail = 'سأجهّز الإجراء وأعرضه عليك للتأكيد.';
+  static const exampleRenew = '«جدّد لأحمد شهر مدفوع»';
+  static const exampleCards = '«اعمل 100 كرت من باقة الساعة»';
+  static const micUnavailable =
+      'الإدخال الصوتيّ غير متاح في هذه النسخة من التطبيق.';
+  static const composerHint = 'اكتب رسالتك هنا…';
+  static const typingLabel = 'المساعد الذكي…';
   static const subtitle =
       'اكتب طلبك بلغتك — المساعد يجهّز الإجراء وأنت تؤكّده. لا يُنفَّذ شيء بدون تأكيدك.';
   static const greeting =
@@ -301,3 +333,13 @@ String opsOnlineLine(Map<String, dynamic> it) => [
         .where((x) => x != null && '$x'.isNotEmpty && '$x' != '-')
         .map((x) => '$x')
         .join(' · ');
+
+/// Bubble clock — «3:25 م». 12-hour with the Arabic ص/م marker and LATIN
+/// digits, the app's convention everywhere else (DateFormat('HH:mm') style),
+/// and locale-data free so it is identical in tests and on device.
+String opsClock(DateTime t) {
+  final l = t.toLocal();
+  final h = l.hour % 12 == 0 ? 12 : l.hour % 12;
+  final m = l.minute.toString().padLeft(2, '0');
+  return '$h:$m ${l.hour < 12 ? 'ص' : 'م'}';
+}
