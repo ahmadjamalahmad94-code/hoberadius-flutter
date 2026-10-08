@@ -6,6 +6,7 @@ import '../../../../shared/widgets/status_pill.dart';
 import '../../application/ops_assistant_providers.dart';
 import '../../domain/ops_labels.dart';
 import '../../domain/ops_models.dart';
+import 'ops_chat_shell.dart';
 
 // The chat's building blocks — the web's `.ops-msg` / `.ops-card` family.
 // Every text the model or the server sent is rendered with [Text] (plain
@@ -298,8 +299,8 @@ class OpsInfoCard extends StatelessWidget {
               if (e is Map) e.map((k, v) => MapEntry(k.toString(), v)),
           ]
         : const <Map<String, dynamic>>[];
-    return OpsCardFrame(
-      title: title,
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (rows.isNotEmpty) OpsKeyValues(rows: rows),
         if (items.isNotEmpty) ...[
@@ -309,6 +310,75 @@ class OpsInfoCard extends StatelessWidget {
         ],
         if (data['truncated'] == true) const OpsHint(OpsTexts.infoMore),
       ],
+    );
+    final hasDetails =
+        rows.isNotEmpty || items.isNotEmpty || data['truncated'] == true;
+    // «النتيجة جاهزة» + the summary line; the rows open behind
+    // «عرض التفاصيل» so a long result does not bury the conversation.
+    return OpsResultFrame(
+      summary: title,
+      child: hasDetails
+          ? OpsExpandableDetails(
+              toggleKey: const ValueKey('ops-details-toggle'),
+              child: details,
+            )
+          : null,
+    );
+  }
+}
+
+/// A read-only answer: the green check, «النتيجة جاهزة», the summary line and
+/// (optionally) the expandable details row.
+class OpsResultFrame extends StatelessWidget {
+  const OpsResultFrame({super.key, required this.summary, this.child});
+
+  final String summary;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: AppTokens.card,
+        borderRadius: BorderRadius.circular(AppTokens.r14),
+        border: Border.all(color: AppTokens.borderStrong),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                Icons.check_circle,
+                size: 18,
+                color: AppTokens.green,
+              ),
+              SizedBox(width: 6),
+              Text(
+                OpsTexts.resultReady,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                  color: AppTokens.greenInk,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            summary,
+            style: const TextStyle(
+              fontSize: 14.5,
+              height: 1.6,
+              fontWeight: FontWeight.w700,
+              color: AppTokens.textPrimary,
+            ),
+          ),
+          if (child != null) child!,
+        ],
+      ),
     );
   }
 }
@@ -567,6 +637,70 @@ class _OpsSecretsDialogState extends State<OpsSecretsDialog> {
           child: const Text(OpsTexts.secretClose),
         ),
       ],
+    );
+  }
+}
+
+/// The opening bubble: the welcome line, two tappable example prompts as
+/// chips, and the «سأجهّز الإجراء» promise.
+class OpsGreetingBubble extends StatelessWidget {
+  const OpsGreetingBubble({super.key, this.onExample});
+
+  /// Tapping an example writes it into the composer.
+  final void Function(String text)? onExample;
+
+  static const examples = [OpsTexts.exampleRenew, OpsTexts.exampleCards];
+
+  @override
+  Widget build(BuildContext context) {
+    const r = Radius.circular(14);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTokens.brandSoft,
+        borderRadius: const BorderRadiusDirectional.only(
+          topStart: r,
+          topEnd: r,
+          bottomStart: r,
+          bottomEnd: Radius.circular(4),
+        ),
+        border: Border.all(color: AppTokens.brandLine),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            OpsTexts.greetingLead,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.7,
+              color: AppTokens.textPrimary,
+            ),
+          ),
+          const SizedBox(height: AppTokens.s8),
+          for (final e in examples)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OpsExampleChip(
+                  key: ValueKey('ops-example-${examples.indexOf(e)}'),
+                  text: e,
+                  onTap: onExample == null ? null : () => onExample!(e),
+                ),
+              ),
+            ),
+          const SizedBox(height: 2),
+          const Text(
+            OpsTexts.greetingTail,
+            style: TextStyle(
+              fontSize: 14,
+              height: 1.7,
+              color: AppTokens.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
