@@ -95,6 +95,7 @@ class OpsTaskSheet extends ConsumerWidget {
             const Divider(height: 1),
             Flexible(
               child: ListView(
+                key: const ValueKey('ops-tasks-list'),
                 padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
                 children: [
                   // Level-4 detector events keep their own section: the same

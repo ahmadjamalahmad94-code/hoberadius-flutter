@@ -287,7 +287,7 @@ class _OpsChatSurfaceState extends ConsumerState<OpsChatSurface> {
           onSend: _send,
           onPlus: _openTasks,
         ),
-        const OpsHint(OpsTexts.noPasswordsHint),
+        const OpsHint(OpsTexts.noPasswordsShort),
       ],
     );
 

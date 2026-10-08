@@ -38,6 +38,11 @@ abstract final class OpsTexts {
       'الإدخال الصوتيّ غير متاح في هذه النسخة من التطبيق.';
   static const composerHint = 'اكتب رسالتك هنا…';
   static const typingLabel = 'المساعد الذكي…';
+
+  /// The composer's one-line form of [noPasswordsHint] — the long web
+  /// sentence ate three lines of a phone screen.
+  static const noPasswordsShort =
+      'لا تكتب كلمات مرور — النظام يولّدها ويعرضها مرّة واحدة.';
   static const subtitle =
       'اكتب طلبك بلغتك — المساعد يجهّز الإجراء وأنت تؤكّده. لا يُنفَّذ شيء بدون تأكيدك.';
   static const greeting =
