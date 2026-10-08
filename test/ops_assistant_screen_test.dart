@@ -330,9 +330,7 @@ void main() {
           child: const MaterialApp(
             home: Directionality(
               textDirection: TextDirection.rtl,
-              child: Scaffold(
-                body: SingleChildScrollView(child: OpsAssistantScreen()),
-              ),
+              child: Scaffold(body: OpsAssistantScreen()),
             ),
           ),
         ),
@@ -413,8 +411,8 @@ void main() {
           ],
         ),
       );
-      expect(find.text(OpsTexts.greeting), findsOneWidget);
-      expect(find.text(OpsTexts.eventsEmpty), findsOneWidget);
+      expect(find.text(OpsTexts.greetingLead), findsOneWidget);
+      expect(find.text(OpsTexts.exampleRenew), findsOneWidget);
 
       // markup is shown as plain text, never interpreted
       await tester.enterText(
@@ -591,6 +589,13 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('ops-send')));
       await tester.pumpAndSettle();
       expect(find.text('وضع حزمة البطاقات'), findsOneWidget);
+      expect(find.text(OpsTexts.resultReady), findsWidgets);
+      // the rows open behind «عرض التفاصيل»
+      expect(find.text('حزمة الساعة'), findsNothing);
+      final toggle = find.byKey(const ValueKey('ops-details-toggle'));
+      await tester.ensureVisible(toggle.first);
+      await tester.tap(toggle.first);
+      await tester.pumpAndSettle();
       expect(find.text('حزمة الساعة'), findsOneWidget);
       expect(find.text('فعّال'), findsOneWidget);
       expect(find.text('متاحة (غير مستعملة)'), findsOneWidget);
@@ -618,6 +623,8 @@ void main() {
         ],
       );
       await pump(tester, gw);
+      await tester.tap(find.byKey(const ValueKey('ops-tasks-open')));
+      await tester.pumpAndSettle();
       expect(find.text('مخزون كروت منخفض'), findsOneWidget);
       final start = find.byKey(const ValueKey('ops-start-low_card_stock-0'));
       await tester.ensureVisible(start);
@@ -644,13 +651,13 @@ void main() {
       await tester.enterText(find.byKey(const ValueKey('ops-input')), 'مرحبا');
       await tester.tap(find.byKey(const ValueKey('ops-send')));
       await tester.pump();
-      expect(find.text(OpsTexts.thinking), findsOneWidget);
+      expect(find.byKey(const ValueKey('ops-typing')), findsOneWidget);
       final send = tester
           .widget<ButtonStyleButton>(find.byKey(const ValueKey('ops-send')));
       expect(send.onPressed, isNull);
       gw.hold!.complete();
       await tester.pumpAndSettle();
-      expect(find.text(OpsTexts.thinking), findsNothing);
+      expect(find.byKey(const ValueKey('ops-typing')), findsNothing);
       expect(find.text('تمّ'), findsOneWidget);
     });
 
