@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 /// The Shorebird release this code is built for. Patches keep it; bump it
 /// together with `version:` in pubspec.yaml on every full release (a test
 /// pins the two together).
-const kAppRelease = '0.4.5+10';
+const kAppRelease = '0.4.6+11';
 
 /// «ما الجديد» notes, published next to the APK. Before installing, the app
 /// still runs the OLD code, so it can only learn what a patch brings from
